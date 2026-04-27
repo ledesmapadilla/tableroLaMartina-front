@@ -1,4 +1,214 @@
-#root {min-height: 100vh;
-display: flex;
-flex-direction: column; }
-main { flex-grow: 1; }
+/* ── Layout principal ── */
+#root {
+  height: 100vh;
+  display: flex;
+}
+
+.app-wrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.layout-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 62px;
+  background-color: #1a1a2e;
+  height: 100%;
+  transition: width 0.25s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.sidebar:hover {
+  width: 220px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  padding: 20px 19px;
+  color: #fff;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-brand i {
+  font-size: 1.4rem;
+  min-width: 24px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: 15px 19px;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar-link:hover,
+.sidebar-link--active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sidebar-link i {
+  font-size: 1.25rem;
+  min-width: 24px;
+}
+
+.sidebar-label {
+  margin-left: 14px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar:hover .sidebar-label {
+  opacity: 1;
+}
+
+/* ── Dropdown submenu ── */
+.sidebar--expanded {
+  width: 220px !important;
+}
+
+.sidebar-link--parent {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 15px 19px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
+  user-select: none;
+}
+
+.sidebar-link--parent:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.sidebar-chevron {
+  margin-left: auto;
+  font-size: 0.8rem;
+}
+
+.sidebar-submenu {
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-submenu-link {
+  display: flex;
+  align-items: center;
+  padding: 12px 19px 12px 30px;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s;
+  font-size: 0.93rem;
+}
+
+.sidebar-submenu-link:hover,
+.sidebar-submenu-link--active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ── Cuadros / secciones ── */
+.cuadro {
+  border: 2px solid #333 !important;
+  border-radius: 6px;
+}
+
+/* ── Tabla ── */
+.table {
+  border: 2px solid #000 !important;
+}
+.table th,
+.table td {
+  border-left: 1.5px solid #555 !important;
+  border-right: 1.5px solid #555 !important;
+  border-top: 2.5px solid #444 !important;
+  border-bottom: 2.5px solid #444 !important;
+}
+.table thead th {
+  border-color: #000 !important;
+}
+
+/* ── Radio buttons ── */
+input[type="radio"] {
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid #333 !important;
+  accent-color: #1a1a2e;
+  cursor: pointer;
+}
+
+/* ── Ocultar flechas inputs number ── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* ── Inputs ── */
+.form-control,
+.form-select {
+  border: 2px solid #aaa !important;
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: #1a3a6b !important;
+  box-shadow: 0 0 0 0.2rem rgba(26, 58, 107, 0.2) !important;
+}
+.form-select {
+  text-align-last: center;
+  text-align: center;
+}
+.form-select option {
+  text-align: center;
+}
+
+/* ── Botones placa (ResumenCheckList) ── */
+.btn-placa {
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+.btn-placa:hover {
+  transform: scale(1.12) !important;
+  box-shadow: 4px 4px 10px rgba(0,0,0,0.55) !important;
+}
+
+/* ── Secciones de inicio ── */
+.seccion-inicio {
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.seccion-inicio:hover {
+  filter: brightness(0.82);
+  transform: scale(1.015);
+  z-index: 1;
+}

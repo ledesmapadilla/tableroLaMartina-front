@@ -1,8 +1,47 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Sidebar from "./components/shared/Sidebar";
+import Footer from "./components/shared/Footer";
+import Inicio from "./components/pages/Inicio";
+import Error404 from "./components/pages/Error404";
+import Camionetas from "./components/pages/Camionetas";
+import Tractores from "./components/pages/Tractores";
+import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
+import ReparacionesBerdina from "./components/pages/ReparacionesBerdina";
+import CamionetasAltas from "./components/pages/CamionetasAltas";
+import CamionetasCheckList from "./components/pages/CamionetasCheckList";
+import ResumenCheckList from "./components/pages/ResumenCheckList";
+import CamionetasServices from "./components/pages/CamionetasServices";
+import ServicesKilometros from "./components/pages/ServicesKilometros";
+import ServicesUltimoService from "./components/pages/ServicesUltimoService";
+import ServicesReparaciones from "./components/pages/ServicesReparaciones";
+
 function App() {
   return (
-    <>
-      <div> TABLERO DE CONTROL</div>
-    </>
+    <BrowserRouter>
+      <div className="app-wrapper">
+        <Sidebar />
+        <div className="layout-right">
+          <main>
+            <Routes>
+              <Route path="/" element={<Inicio />} />
+              <Route path="/camionetas" element={<Camionetas />} />
+              <Route path="/camionetas/altas" element={<CamionetasAltas />} />
+              <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
+              <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
+              <Route path="/tractores" element={<Tractores />} />
+              <Route path="/reparaciones/sanpablo" element={<ReparacionesSanPablo />} />
+              <Route path="/reparaciones/berdina" element={<ReparacionesBerdina />} />
+              <Route path="/camionetas/services" element={<CamionetasServices />} />
+              <Route path="/camionetas/services/kilometros" element={<ServicesKilometros />} />
+              <Route path="/camionetas/services/ultimo-service" element={<ServicesUltimoService />} />
+              <Route path="/camionetas/services/reparaciones" element={<ServicesReparaciones />} />
+              <Route path="*" element={<Error404 />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </div>
+    </BrowserRouter>
   );
 }
 
