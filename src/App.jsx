@@ -14,6 +14,7 @@ import CamionetasServices from "./components/pages/CamionetasServices";
 import ServicesKilometros from "./components/pages/ServicesKilometros";
 import ServicesUltimoService from "./components/pages/ServicesUltimoService";
 import ServicesReparaciones from "./components/pages/ServicesReparaciones";
+import ResumenCamionetas from "./components/pages/ResumenCamionetas";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<Inicio />} />
+              <Route path="/camionetas/resumen" element={<ResumenCamionetas />} />
               <Route path="/camionetas" element={<Camionetas />} />
               <Route path="/camionetas/altas" element={<CamionetasAltas />} />
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />

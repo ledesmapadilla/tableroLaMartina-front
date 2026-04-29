@@ -5,6 +5,11 @@ import { Button, Modal, Form, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 
 const INTERVAL_KM = 10000;
+const AÑOS = Array.from({ length: 10 }, (_, i) => 2026 + i);
+
+const BTN_SRV = { padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "#999", color: "#fff", fontWeight: "bold", fontSize: "0.75rem", lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "2px 2px 6px rgba(0,0,0,0.35)", transition: "transform 0.15s ease, box-shadow 0.15s ease", whiteSpace: "nowrap" };
+const btnEnter = (e) => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.boxShadow = "3px 3px 10px rgba(0,0,0,0.5)"; };
+const btnLeave = (e) => { e.currentTarget.style.transform = "scale(1)";   e.currentTarget.style.boxShadow = "2px 2px 6px rgba(0,0,0,0.35)"; };
 
 const formatFecha = (iso) => {
   if (!iso) return "—";
@@ -29,6 +34,9 @@ function ServicesUltimoService() {
   const [dropOpen, setDropOpen] = useState(false);
   const [filtro, setFiltro] = useState("");
   const dropRef = useRef(null);
+  const [año, setAnio] = useState(new Date().getFullYear());
+  const [dropAño, setDropAño] = useState(false);
+  const dropAñoRef = useRef(null);
 
   const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -43,8 +51,8 @@ function ServicesUltimoService() {
   const camionetaId    = useWatch({ control, name: "camioneta" });
   const responsableVal = useWatch({ control, name: "responsable" });
 
-  const cargarTabla = () => Promise.all([
-    fetch("/api/services/ultimos").then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
+  const cargarTabla = (anio) => Promise.all([
+    fetch(`/api/services/ultimos/${anio}`).then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
     fetch("/api/kilometros/ultimos").then((r) => r.json()).then(setUltimosKm).catch(() => setUltimosKm([])),
   ]);
 
@@ -53,15 +61,16 @@ function ServicesUltimoService() {
       .then((r) => r.json())
       .then(setCamionetas)
       .catch(() => setCamionetas([]));
-    cargarTabla();
   }, []);
 
   useEffect(() => {
+    cargarTabla(año);
+  }, [año]);
+
+  useEffect(() => {
     const handler = (e) => {
-      if (dropRef.current && !dropRef.current.contains(e.target)) {
-        setDropOpen(false);
-        setFiltro("");
-      }
+      if (dropRef.current && !dropRef.current.contains(e.target)) { setDropOpen(false); setFiltro(""); }
+      if (dropAñoRef.current && !dropAñoRef.current.contains(e.target)) setDropAño(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -100,7 +109,7 @@ function ServicesUltimoService() {
       });
       if (res.ok) {
         cerrarModal();
-        await cargarTabla();
+        await cargarTabla(año);
         Swal.fire({ icon: "success", title: "Service guardado", timer: 1500, showConfirmButton: false });
       } else {
         const err = await res.json();
@@ -122,7 +131,30 @@ function ServicesUltimoService() {
 
       {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
-        <h3 className="fw-bold mb-0">Último service — Camionetas</h3>
+        <div className="d-flex align-items-center gap-3">
+          <h3 className="fw-bold mb-0">Último service — Camionetas</h3>
+          <div ref={dropAñoRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setDropAño((v) => !v)}
+              style={{ backgroundColor: "#666", color: "#fff", border: "none", borderRadius: "6px", padding: "4px 16px", fontWeight: "700", fontSize: "1rem", cursor: "pointer", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)" }}
+            >
+              {año}
+            </button>
+            {dropAño && (
+              <div style={{ position: "absolute", top: "110%", left: 0, backgroundColor: "#fff", border: "1px solid #aaa", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", zIndex: 200, minWidth: "80px", overflow: "hidden" }}>
+                {AÑOS.map((a) => (
+                  <div
+                    key={a}
+                    onClick={() => { setAnio(a); setDropAño(false); }}
+                    style={{ padding: "6px 16px", cursor: "pointer", fontWeight: a === año ? "700" : "400", backgroundColor: a === año ? "#e3eaf7" : "transparent", fontSize: "0.9rem" }}
+                    onMouseEnter={(e) => { if (a !== año) e.currentTarget.style.backgroundColor = "#f0f0f0"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = a === año ? "#e3eaf7" : "transparent"; }}
+                  >{a}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="d-flex gap-2">
           <Button onClick={() => navigate("/camionetas/services")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-arrow-left me-2"></i>Services
@@ -158,10 +190,10 @@ function ServicesUltimoService() {
                     <td className="text-center">
                       <button
                         onClick={() => abrirModal(c._id)}
-                        style={{ width: "36px", height: "36px", borderRadius: "6px", border: "none", backgroundColor: "#b71c1c", color: "#fff", fontWeight: "bold", fontSize: "1.3rem", lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "3px 3px 8px rgba(0,0,0,0.4)", transition: "transform 0.15s ease, box-shadow 0.15s ease" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.2)"; e.currentTarget.style.boxShadow = "4px 4px 12px rgba(0,0,0,0.5)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "3px 3px 8px rgba(0,0,0,0.4)"; }}
-                      >+</button>
+                        style={BTN_SRV}
+                        onMouseEnter={btnEnter}
+                        onMouseLeave={btnLeave}
+                      >+ ult. service</button>
                     </td>
                     <td className="text-start">
                       <span style={{ display: "inline-block", backgroundColor: "#2e7d32", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
