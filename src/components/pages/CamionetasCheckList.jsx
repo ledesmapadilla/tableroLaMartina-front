@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
-import { Container, Form, Button, Row, Col, Table } from "react-bootstrap";
+import { Container, Form, Button, Row, Col, Table, Modal } from "react-bootstrap";
 
 const SECCIONES = [
   {
@@ -73,6 +73,13 @@ function CamionetasCheckList() {
   const [dropOpen, setDropOpen] = useState(false);
   const [filtro, setFiltro] = useState("");
   const responsableRef = useRef(null);
+  const [paradas, setParadas] = useState([]);
+  const [showHistorial, setShowHistorial] = useState(false);
+  const [showNuevaParada, setShowNuevaParada] = useState(false);
+  const [motivoNueva, setMotivoNueva] = useState("");
+  const [showArranque, setShowArranque] = useState(false);
+  const [fechaArranqueInput, setFechaArranqueInput] = useState("");
+  const [paradaAbiertaId, setParadaAbiertaId] = useState(null);
   const dropRef = useRef(null);
 
   const { register, handleSubmit, setValue, control, formState: { errors } } = useForm({
@@ -90,11 +97,14 @@ function CamionetasCheckList() {
       pruebaMovimiento:   defaultSeccion(SECCIONES[2].items),
       estadoGeneral:      defaultSeccion(SECCIONES[3].items),
       puntuacion: "",
+      camionetatParada: false,
     },
   });
 
-  const camionetaId  = useWatch({ control, name: "camioneta" });
-  const encargadoVal = useWatch({ control, name: "encargado" });
+  const camionetaId      = useWatch({ control, name: "camioneta" });
+  const encargadoVal     = useWatch({ control, name: "encargado" });
+  const camionetatParada = useWatch({ control, name: "camionetatParada" });
+  const fechaVal         = useWatch({ control, name: "fecha" });
 
   useEffect(() => {
     fetch("/api/camionetas")
@@ -116,6 +126,7 @@ function CamionetasCheckList() {
               setValue("kmsUltimoService", cl.kmsUltimoService ?? "");
               setValue("fechaUltimoService", cl.fechaUltimoService ? cl.fechaUltimoService.split("T")[0] : "");
               setValue("puntuacion", cl.puntuacion ?? "");
+              setValue("camionetatParada", cl.camionetatParada ?? false);
               SECCIONES.forEach((s) => {
                 cl[s.campo]?.forEach((item, i) => {
                   setValue(`${s.campo}.${i}.estado`, item.estado ?? "");
@@ -151,6 +162,70 @@ function CamionetasCheckList() {
     if (c?.responsable) setValue("encargado", c.responsable);
   }, [camionetaId, camionetas]);
 
+  const cargarParadas = async (id) => {
+    try {
+      const r = await fetch(`/api/paradas/${id}`);
+      setParadas(await r.json());
+    } catch { setParadas([]); }
+  };
+
+  const alClickCirculo = async (e) => {
+    e.preventDefault();
+    if (!camionetaId) return;
+    if (!camionetatParada) {
+      setMotivoNueva("");
+      setShowNuevaParada(true);
+    } else {
+      const lista = await fetch(`/api/paradas/${camionetaId}`).then((r) => r.json()).catch(() => []);
+      const abierta = lista.find((p) => !p.fechaArranque);
+      setParadaAbiertaId(abierta?._id ?? null);
+      setFechaArranqueInput(new Date().toISOString().split("T")[0]);
+      setShowArranque(true);
+    }
+  };
+
+  const guardarNuevaParada = async () => {
+    try {
+      await fetch("/api/paradas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ camioneta: camionetaId, fechaParada: fechaVal, motivo: motivoNueva }),
+      });
+      setValue("camionetatParada", true);
+      setShowNuevaParada(false);
+    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  };
+
+  const guardarArranque = async () => {
+    if (!fechaArranqueInput) return;
+    try {
+      if (paradaAbiertaId) {
+        await fetch(`/api/paradas/${paradaAbiertaId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fechaArranque: fechaArranqueInput }),
+        });
+      }
+      setValue("camionetatParada", false);
+      setShowArranque(false);
+    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  };
+
+  const abrirHistorial = () => {
+    if (!camionetaId) return;
+    cargarParadas(camionetaId);
+    setShowHistorial(true);
+  };
+
+  const eliminarParada = async (id) => {
+    const r = await Swal.fire({ icon: "warning", title: "¿Eliminar?", showCancelButton: true, confirmButtonText: "Eliminar", cancelButtonText: "Cancelar", confirmButtonColor: "#8b4a4a" });
+    if (!r.isConfirmed) return;
+    await fetch(`/api/paradas/${id}`, { method: "DELETE" });
+    cargarParadas(camionetaId);
+  };
+
+  const formatF = (iso) => iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+
   const onSubmit = async (data) => {
     const payload = {
       ...data,
@@ -180,7 +255,7 @@ function CamionetasCheckList() {
         await fetch("/api/programa-checklist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ camionetaId: data.camioneta, año, mes: data.mes, estado: "realizado", puntuacion: data.puntuacion ? Number(data.puntuacion) : null }),
+          body: JSON.stringify({ camionetaId: data.camioneta, año, mes: data.mes, estado: "realizado", puntuacion: data.puntuacion ? Number(data.puntuacion) : null, camionetatParada: !!data.camionetatParada }),
         });
         Swal.fire({ icon: "success", title: "Check list guardado", timer: 1500, showConfirmButton: false });
         navigate("/camionetas/checklist");
@@ -205,8 +280,11 @@ function CamionetasCheckList() {
               <Button onClick={() => navigate("/camionetas")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
                 <i className="bi bi-arrow-left me-2"></i>Camionetas
               </Button>
+              <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+                <i className="bi bi-speedometer me-2"></i>Tablero
+              </Button>
               <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-                <i className="bi bi-house-fill me-2"></i>Tablero
+                <i className="bi bi-house-fill me-2"></i>General
               </Button>
               <Button type="submit" style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
                 <i className="bi bi-save me-2"></i>Guardar
@@ -227,6 +305,34 @@ function CamionetasCheckList() {
               ))}
             </Form.Select>
             {errors.mes && <span className="text-danger small">{errors.mes.message}</span>}
+            <div className="d-flex flex-column ms-auto">
+              <Form.Check
+                type="checkbox"
+                id="camionetatParada"
+                label="Camioneta parada"
+                className="fw-bold fs-5 mb-0"
+                style={{ cursor: camionetaId ? "pointer" : "default" }}
+                checked={camionetatParada}
+                onClick={alClickCirculo}
+                onChange={() => {}}
+              />
+              {camionetatParada && fechaVal
+                ? <span
+                    className="fw-semibold"
+                    style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#8b4a4a" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: "none" }}
+                    onClick={camionetaId ? abrirHistorial : undefined}
+                  >
+                    desde {new Date(fechaVal + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </span>
+                : <span
+                    className="fw-semibold"
+                    style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#1565c0" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: camionetaId ? "underline" : "none" }}
+                    onClick={camionetaId ? abrirHistorial : undefined}
+                  >
+                    Historial paradas
+                  </span>
+              }
+            </div>
           </div>
         </div>
 
@@ -329,7 +435,7 @@ function CamionetasCheckList() {
         {/* Secciones de items */}
         {SECCIONES.map((seccion) => (
           <div key={seccion.campo} className="cuadro mb-3 overflow-hidden w-75 mx-auto">
-            <div className="px-3 py-1 fw-bold text-white" style={{ backgroundColor: "#1a1a2e", fontSize: "0.9rem" }}>
+            <div className="px-3 py-1 fw-bold text-white" style={{ backgroundColor: "#2c2c2c", fontSize: "0.9rem" }}>
               {seccion.titulo}
             </div>
             <Table bordered size="sm" className="mb-0">
@@ -398,8 +504,86 @@ function CamionetasCheckList() {
         </div>
 
       </Form>
+
+      {/* Modal: Nueva parada (circulo sin tildar → click) */}
+      <Modal show={showNuevaParada} onHide={() => setShowNuevaParada(false)} centered contentClassName="border border-dark">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Registrar parada</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <Form.Label className="fw-semibold">Fecha de parada</Form.Label>
+            <Form.Control type="date" className="w-50" value={fechaVal} readOnly style={{ backgroundColor: "#e9ecef" }} />
+          </div>
+          <div className="mb-3">
+            <Form.Label className="fw-semibold">Motivo</Form.Label>
+            <Form.Control type="text" placeholder="Motivo de la parada" value={motivoNueva} onChange={(e) => setMotivoNueva(e.target.value)} autoFocus />
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowNuevaParada(false)}>Cancelar</Button>
+          <Button style={{ backgroundColor: "#8b4a4a", border: "none", color: "#fff" }} onClick={guardarNuevaParada}>
+            <i className="bi bi-save me-2"></i>Confirmar parada
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: Registrar arranque (circulo tildado → click) */}
+      <Modal show={showArranque} onHide={() => setShowArranque(false)} centered contentClassName="border border-dark">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Registrar arranque</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <Form.Label className="fw-semibold">Fecha de arranque</Form.Label>
+            <Form.Control type="date" className="w-50" value={fechaArranqueInput} onChange={(e) => setFechaArranqueInput(e.target.value)} autoFocus />
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowArranque(false)}>Cancelar</Button>
+          <Button style={{ backgroundColor: "#52735a", border: "none", color: "#fff" }} onClick={guardarArranque}>
+            <i className="bi bi-save me-2"></i>Confirmar arranque
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: Historial (solo listado) */}
+      <Modal show={showHistorial} onHide={() => setShowHistorial(false)} centered size="lg" contentClassName="border border-dark">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Historial de Paradas</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Table bordered size="sm" className="text-center align-middle mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th>Fecha parada</th>
+                <th>Fecha arranque</th>
+                <th>Motivo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {paradas.length === 0 && <tr><td colSpan={4} className="text-muted">Sin registros</td></tr>}
+              {paradas.map((p) => (
+                <tr key={p._id}>
+                  <td>{formatF(p.fechaParada)}</td>
+                  <td>{formatF(p.fechaArranque)}</td>
+                  <td className="text-start">{p.motivo || "—"}</td>
+                  <td>
+                    <button className="btn btn-sm btn-outline-danger py-0 px-2" onClick={() => eliminarParada(p._id)}>
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Modal.Body>
+      </Modal>
+
     </Container>
   );
 }
 
 export default CamionetasCheckList;
+

@@ -12,12 +12,14 @@
   "dependencies": {
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",
+    "exceljs": "^4.4.0",
     "react": "^19.2.5",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.5",
     "react-hook-form": "^7.73.1",
     "react-router-dom": "^7.14.2",
-    "sweetalert2": "^11.26.24"
+    "sweetalert2": "^11.26.24",
+    "vite-plugin-node-polyfills": "^0.26.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

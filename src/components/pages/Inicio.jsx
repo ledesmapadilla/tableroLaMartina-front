@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router-dom";
 
 const secciones = [
-  { titulo: "Camionetas", ruta: "/camionetas/resumen", bg: "#0d47a1", icono: "bi bi-truck-front-fill" },
-  { titulo: "Tractores", ruta: "/tractores", bg: "#1b5e20", icono: "bi bi-truck-flatbed" },
-  { titulo: "Reparaciones San Pablo", ruta: "/reparaciones/sanpablo", bg: "#e65100", icono: "bi bi-tools" },
-  { titulo: "Reparaciones Berdina", ruta: "/reparaciones/berdina", bg: "#b71c1c", icono: "bi bi-wrench-adjustable-circle-fill" },
+  { titulo: "Camionetas", ruta: "/camionetas", bg: "#4a6fa5", icono: "bi bi-truck-front-fill" },
+  { titulo: "Tractores", ruta: "/tractores", bg: "#52735a", icono: "bi bi-truck-flatbed" },
+  { titulo: "Reparaciones San Pablo", ruta: "/reparaciones/sanpablo", bg: "#7a5038", icono: "bi bi-tools" },
+  { titulo: "Reparaciones Berdina", ruta: "/reparaciones/berdina", bg: "#7a3535", icono: "bi bi-wrench-adjustable-circle-fill" },
 ];
 
 function Inicio() {

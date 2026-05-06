@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate } from "react-router-dom";
 import { Container, Button } from "react-bootstrap";
 
 function Tractores() {
@@ -10,12 +10,18 @@ function Tractores() {
           <i className="bi bi-truck-flatbed text-success" style={{ fontSize: "2.5rem" }}></i>
           <h2 className="mb-0 fw-bold">Tractores</h2>
         </div>
-        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-house-fill me-2"></i>Tablero
-        </Button>
+        <div className="d-flex gap-2">
+          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-speedometer me-2"></i>Tablero
+          </Button>
+          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-house-fill me-2"></i>General
+          </Button>
+        </div>
       </div>
     </Container>
   );
 }
 
 export default Tractores;
+

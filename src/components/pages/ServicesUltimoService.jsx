@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button, Modal, Form, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
+import ExcelJS from "exceljs";
 
 const INTERVAL_KM = 10000;
 const AÑOS = Array.from({ length: 10 }, (_, i) => 2026 + i);
@@ -20,9 +21,9 @@ const formatFecha = (iso) => {
 const getEstado = (odoActual, kmsService) => {
   if (odoActual == null || kmsService == null) return null;
   const diff = odoActual - kmsService;
-  if (diff >= INTERVAL_KM)        return { label: "Atrasado",       bg: "#c62828", color: "#fff" };
-  if (diff >= INTERVAL_KM - 1000) return { label: "a 1.000 Km",     bg: "#f9c600", color: "#333" };
-  return                                   { label: "Al día",         bg: "#2e7d32", color: "#fff" };
+  if (diff >= INTERVAL_KM)        return { label: "Atrasado",       bg: "#8b4a4a", color: "#fff" };
+  if (diff >= INTERVAL_KM - 1000) return { label: "a 1.000 Km",     bg: "#b89840", color: "#333" };
+  return                                   { label: "Al día",         bg: "#52735a", color: "#fff" };
 };
 
 function ServicesUltimoService() {
@@ -120,6 +121,72 @@ function ServicesUltimoService() {
     }
   };
 
+  const exportarExcel = async () => {
+    const titulo   = "Último Service — Camionetas";
+    const columnas = ["Patente", "Vehículo", "Fecha", "Km último service", "Observaciones", "Estado"];
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Último Service");
+
+    ws.mergeCells(1, 1, 1, columnas.length);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, 3);
+    const celdaFecha = ws.getCell("A2");
+    celdaFecha.value = `Fecha: ${fechaHoy}`;
+    celdaFecha.alignment = { horizontal: "left" };
+    ws.getRow(2).height = 16;
+
+    ws.addRow([]);
+
+    const filaEncabezado = ws.addRow(columnas);
+    filaEncabezado.eachCell((cell) => {
+      cell.font      = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+    });
+    ws.getRow(4).height = 16;
+
+    camionetas.forEach((c) => {
+      const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
+      const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
+      const estado = getEstado(km?.kms, reg?.kms);
+      const fila = ws.addRow([
+        c.patente,
+        c.marca,
+        reg ? formatFecha(reg.fecha) : "—",
+        reg?.kms ?? "—",
+        reg?.observaciones || "—",
+        estado?.label ?? "—",
+      ]);
+      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.getCell(5).alignment = { horizontal: "left", vertical: "middle" };
+    });
+
+    ws.columns = [
+      { width: 16 },
+      { width: 26 },
+      { width: 14 },
+      { width: 18 },
+      { width: 36 },
+      { width: 14 },
+    ];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href       = url;
+    a.download   = `ultimo_service_${año}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const responsablesUnicos = camionetas
     .map((c) => c.responsable)
     .filter(Boolean)
@@ -156,11 +223,17 @@ function ServicesUltimoService() {
           </div>
         </div>
         <div className="d-flex gap-2">
+          <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+            <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
+          </Button>
           <Button onClick={() => navigate("/camionetas/services")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-arrow-left me-2"></i>Services
           </Button>
+          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-speedometer me-2"></i>Tablero
+          </Button>
           <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>Tablero
+            <i className="bi bi-house-fill me-2"></i>General
           </Button>
         </div>
       </div>
@@ -196,7 +269,7 @@ function ServicesUltimoService() {
                       >+ ult. service</button>
                     </td>
                     <td className="text-start">
-                      <span style={{ display: "inline-block", backgroundColor: "#2e7d32", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
+                      <span style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
                         {c.patente} — {c.marca}
                       </span>
                     </td>
@@ -314,3 +387,5 @@ function ServicesUltimoService() {
 }
 
 export default ServicesUltimoService;
+
+

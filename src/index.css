@@ -27,7 +27,7 @@ main {
 /* ── Sidebar ── */
 .sidebar {
   width: 62px;
-  background-color: #1a1a2e;
+  background-color: #2c2c2c;
   height: 100%;
   transition: width 0.25s ease;
   overflow: hidden;
@@ -141,7 +141,7 @@ main {
 
 /* ── Tabla ── */
 .table {
-  border: 2px solid #000 !important;
+  border: 2px solid #444 !important;
 }
 .table th,
 .table td {
@@ -151,7 +151,7 @@ main {
   border-bottom: 2.5px solid #444 !important;
 }
 .table thead th {
-  border-color: #000 !important;
+  border-color: #444 !important;
 }
 
 /* ── Radio buttons ── */
@@ -159,8 +159,31 @@ input[type="radio"] {
   width: 1.2rem;
   height: 1.2rem;
   border: 2px solid #333 !important;
-  accent-color: #1a1a2e;
+  accent-color: #2c2c2c;
   cursor: pointer;
+}
+
+/* ── Checkbox redondo (Camioneta parada) ── */
+#camionetatParada {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50% !important;
+  border: 2px solid #333 !important;
+  accent-color: #8b4a4a;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: #fff;
+  transition: background-color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+#camionetatParada:checked {
+  background-color: #8b4a4a;
+  border-color: #8b4a4a !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='white' d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 75%;
 }
 
 /* ── Ocultar flechas inputs number ── */
@@ -180,8 +203,8 @@ input[type="number"] {
 }
 .form-control:focus,
 .form-select:focus {
-  border-color: #1a3a6b !important;
-  box-shadow: 0 0 0 0.2rem rgba(26, 58, 107, 0.2) !important;
+  border-color: #4a6fa5 !important;
+  box-shadow: 0 0 0 0.2rem rgba(74, 111, 165, 0.2) !important;
 }
 .form-select {
   text-align-last: center;

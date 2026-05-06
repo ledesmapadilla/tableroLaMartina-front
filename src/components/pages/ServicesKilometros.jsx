@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button, Modal, Form, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
+import ExcelJS from "exceljs";
 
 const INTERVAL_KM = 10000;
 const MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -17,9 +18,9 @@ const formatFecha = (iso) => {
 const getEstado = (odoActual, kmsService) => {
   if (odoActual == null || kmsService == null) return null;
   const diff = odoActual - kmsService;
-  if (diff >= INTERVAL_KM)        return { label: "Atrasado",   bg: "#c62828", color: "#fff" };
-  if (diff >= INTERVAL_KM - 1000) return { label: "a 1.000 Km", bg: "#f9c600", color: "#333" };
-  return                                   { label: "Al día",    bg: "#2e7d32", color: "#fff" };
+  if (diff >= INTERVAL_KM)        return { label: "Atrasado",   bg: "#8b4a4a", color: "#fff" };
+  if (diff >= INTERVAL_KM - 1000) return { label: "a 1.000 Km", bg: "#b89840", color: "#333" };
+  return                                   { label: "Al día",    bg: "#52735a", color: "#fff" };
 };
 
 const BTN_PLUS = { height: "26px", width: "26px", borderRadius: "6px", border: "none", backgroundColor: "#999", color: "#fff", fontWeight: "600", fontSize: "1rem", lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "2px 2px 6px rgba(0,0,0,0.35)", transition: "transform 0.15s ease, box-shadow 0.15s ease" };
@@ -158,7 +159,7 @@ function ServicesKilometros() {
       showCancelButton: true,
       confirmButtonText: "Eliminar",
       cancelButtonText: "Cancelar",
-      confirmButtonColor: "#c62828",
+      confirmButtonColor: "#8b4a4a",
     });
     if (!result.isConfirmed) return;
     try {
@@ -203,6 +204,69 @@ function ServicesKilometros() {
   };
 
   const cerrarKmModal = () => { setShowKmModal(false); setFiltroKm(""); setDropOpenKm(false); };
+
+  const exportarExcel = async () => {
+    const titulo   = "Kilómetros — Camionetas";
+    const columnas = ["Patente", "Vehículo", ...MESES_CORTOS, "Estado service"];
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Kilómetros");
+
+    ws.mergeCells(1, 1, 1, columnas.length);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, 3);
+    const celdaFecha = ws.getCell("A2");
+    celdaFecha.value = `Fecha: ${fechaHoy}`;
+    celdaFecha.alignment = { horizontal: "left" };
+    ws.getRow(2).height = 16;
+
+    ws.addRow([]);
+
+    const filaEncabezado = ws.addRow(columnas);
+    filaEncabezado.eachCell((cell) => {
+      cell.font      = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+    });
+    ws.getRow(4).height = 16;
+
+    camionetas.forEach((c) => {
+      const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
+      const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
+      const estado = getEstado(ultimo?.kms, serv?.kms);
+      const valores = [c.patente, c.marca];
+      MESES_CORTOS.forEach((_, idx) => {
+        const reg = getKmMes(c._id, idx + 1);
+        valores.push(reg ? reg.kms : "—");
+      });
+      valores.push(estado?.label ?? "—");
+      const fila = ws.addRow(valores);
+      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+    });
+
+    ws.columns = [
+      { width: 14 },
+      { width: 26 },
+      ...MESES_CORTOS.map(() => ({ width: 9 })),
+      { width: 16 },
+    ];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href       = url;
+    a.download   = `kilometros_${año}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };;
 
   const onSubmitKm = async (data) => {
     try {
@@ -257,11 +321,17 @@ function ServicesKilometros() {
           </div>
         </div>
         <div className="d-flex gap-2">
+          <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+            <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
+          </Button>
           <Button onClick={() => navigate("/camionetas/services")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-arrow-left me-2"></i>Services
           </Button>
+          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-speedometer me-2"></i>Tablero
+          </Button>
           <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>Tablero
+            <i className="bi bi-house-fill me-2"></i>General
           </Button>
         </div>
       </div>
@@ -285,7 +355,7 @@ function ServicesKilometros() {
                 return (
                   <tr key={c._id}>
                     <td className="text-start">
-                      <span style={{ display: "inline-block", backgroundColor: "#2979c0", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
+                      <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
                         {c.patente} — {c.marca}
                       </span>
                     </td>
@@ -369,7 +439,7 @@ function ServicesKilometros() {
                 <Button
                   type="button"
                   onClick={eliminarKm}
-                  style={{ backgroundColor: "#c62828", border: "none", color: "#fff" }}
+                  style={{ backgroundColor: "#8b4a4a", border: "none", color: "#fff" }}
                 >
                   <i className="bi bi-trash me-2"></i>Eliminar
                 </Button>
@@ -430,3 +500,5 @@ function ServicesKilometros() {
 }
 
 export default ServicesKilometros;
+
+

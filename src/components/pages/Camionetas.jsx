@@ -1,18 +1,24 @@
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate } from "react-router-dom";
 import { Button } from "react-bootstrap";
 
 const tarjetas = [
   {
     titulo: "Check List",
     ruta: "/camionetas/checklist",
-    bg: "#1565c0",
+    bg: "#4a6fa5",
     icono: "bi bi-clipboard2-check-fill",
   },
   {
     titulo: "Services",
     ruta: "/camionetas/services",
-    bg: "#2e7d32",
+    bg: "#52735a",
     icono: "bi bi-gear-fill",
+  },
+  {
+    titulo: "Tablero de Control",
+    ruta: "/camionetas/resumen",
+    bg: "#6b5b7b",
+    icono: "bi bi-speedometer",
   },
 ];
 
@@ -23,9 +29,14 @@ function Camionetas() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
         <h3 className="fw-bold mb-0">Camionetas</h3>
-        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-house-fill me-2"></i>Tablero
-        </Button>
+        <div className="d-flex gap-2">
+          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-speedometer me-2"></i>Tablero
+          </Button>
+          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-house-fill me-2"></i>General
+          </Button>
+        </div>
       </div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "2.5rem", padding: "2rem", overflow: "hidden" }}>
         {tarjetas.map((t) => (
@@ -50,7 +61,7 @@ function Camionetas() {
             onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
           >
             <i className={t.icono} style={{ fontSize: "4rem" }}></i>
-            <h2 className="fw-bold text-center mt-3">{t.titulo}</h2>
+            <h2 className="fw-bold text-center mt-3" style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem" }}>{t.titulo}</h2>
           </div>
         ))}
       </div>
@@ -59,3 +70,4 @@ function Camionetas() {
 }
 
 export default Camionetas;
+

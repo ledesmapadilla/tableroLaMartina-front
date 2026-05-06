@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -77,7 +77,7 @@ function CamionetasAltas() {
       title: "¿Eliminar equipo?",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#6b1a1a",
+      confirmButtonColor: "#7a4040",
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
@@ -97,8 +97,11 @@ function CamionetasAltas() {
           <Button onClick={() => navigate("/camionetas")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-arrow-left me-2"></i>Camionetas
           </Button>
+          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-speedometer me-2"></i>Tablero
+          </Button>
           <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>Tablero
+            <i className="bi bi-house-fill me-2"></i>General
           </Button>
           <Button onClick={abrirNuevo} style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
             Nueva Camioneta
@@ -129,17 +132,17 @@ function CamionetasAltas() {
                 <tr key={c._id}>
                   <td>{c.marca}</td>
                   <td>
-                    <span style={{ display: "inline-block", backgroundColor: "#2979c0", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
+                    <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
                       {c.patente}
                     </span>
                   </td>
                   <td>{c.responsable}</td>
                   <td>
                     <div className="d-flex justify-content-center gap-2">
-                      <Button size="sm" onClick={() => abrirEditar(c)} style={{ backgroundColor: "#1a3a6b", border: "none" }}>
+                      <Button size="sm" onClick={() => abrirEditar(c)} style={{ backgroundColor: "#4a6fa5", border: "none" }}>
                         <i className="bi bi-pencil"></i>
                       </Button>
-                      <Button size="sm" onClick={() => eliminar(c._id)} style={{ backgroundColor: "#6b1a1a", border: "none" }}>
+                      <Button size="sm" onClick={() => eliminar(c._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
                         <i className="bi bi-trash"></i>
                       </Button>
                     </div>
@@ -213,7 +216,7 @@ function CamionetasAltas() {
           </Modal.Body>
           <Modal.Footer>
             <Button onClick={cerrarModal} style={{ backgroundColor: "#555", border: "none" }}>Cancelar</Button>
-            <Button type="submit" style={{ backgroundColor: "#1a3a6b", border: "none" }}>
+            <Button type="submit" style={{ backgroundColor: "#4a6fa5", border: "none" }}>
               <i className="bi bi-check-lg me-2"></i>Guardar
             </Button>
           </Modal.Footer>
@@ -225,3 +228,5 @@ function CamionetasAltas() {
 }
 
 export default CamionetasAltas;
+
+

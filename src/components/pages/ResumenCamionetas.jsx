@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "react-bootstrap";
 
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MES_CAMPO = ["enero", null, "marzo", null, "mayo", null, "julio", null, "septiembre", null, "noviembre", null];
 const INTERVAL_KM = 10000;
+const INICIO_ANIO = 2026;
+const INICIO_MES  = 5;
 
 function ResumenCamionetas() {
   const navigate = useNavigate();
@@ -18,6 +20,7 @@ function ResumenCamionetas() {
   const [totalCamionetas, setTotalCamionetas] = useState(0);
   const [kmResumen, setKmResumen] = useState({});
   const [serviciosAtrasados, setServiciosAtrasados] = useState(null);
+  const [unidadesParadas, setUnidadesParadas] = useState(null);
 
   useEffect(() => {
     const handler = (e) => { if (dropAnioRef.current && !dropAnioRef.current.contains(e.target)) setDropAnio(false); };
@@ -29,6 +32,7 @@ function ResumenCamionetas() {
     setProgramas([]);
     setKmResumen({});
     setServiciosAtrasados(null);
+    setUnidadesParadas(null);
     fetch("/api/camionetas").then((r) => r.json()).then((d) => setTotalCamionetas(d.length)).catch(() => {});
     Promise.all([
       fetch("/api/services/ultimos").then((r) => r.json()).catch(() => []),
@@ -45,6 +49,7 @@ function ResumenCamionetas() {
       }).length;
       setServiciosAtrasados(count);
     }).catch(() => setServiciosAtrasados(0));
+    fetch("/api/paradas/abiertas/count").then((r) => r.json()).then((d) => setUnidadesParadas(d.count)).catch(() => setUnidadesParadas(0));
     fetch(`/api/programa-checklist/${anio}`).then((r) => r.json()).then(setProgramas).catch(() => setProgramas([]));
     fetch("/api/kilometros")
       .then((r) => r.json())
@@ -70,6 +75,9 @@ function ResumenCamionetas() {
       .catch(() => setKmResumen({}));
   }, [anio, location.key]);
 
+  const esAntesDeProgramar = (anioEval, mesEval) =>
+    anioEval < INICIO_ANIO || (anioEval === INICIO_ANIO && mesEval < INICIO_MES);
+
   const getKmSinRelevar = (mesIndex) => {
     if (totalCamionetas === 0) return null;
     const hoy = new Date();
@@ -78,6 +86,7 @@ function ResumenCamionetas() {
     const mesNumero = mesIndex + 1;
     if (anio > anioActual) return null;
     if (anio === anioActual && mesNumero > mesActual) return null;
+    if (esAntesDeProgramar(anio, mesNumero)) return null;
     const conRegistro = kmResumen[mesNumero]?.length ?? 0;
     return totalCamionetas - conRegistro;
   };
@@ -91,6 +100,7 @@ function ResumenCamionetas() {
     const mesNumero = mesIndex + 1;
     if (anio > anioActual) return null;
     if (anio === anioActual && mesNumero > mesActual) return null;
+    if (esAntesDeProgramar(anio, mesNumero)) return null;
     const realizados = programas.filter((p) => p[campo]?.estado === "realizado").length;
     const pendientes = totalCamionetas - realizados;
     return { pendientes };
@@ -101,7 +111,7 @@ function ResumenCamionetas() {
       <div style={{ position: "relative", display: "flex", alignItems: "center", padding: "0.8rem 1.5rem 0" }}>
         <h5 className="fw-bold mb-0 w-100 text-center">Tablero de Control Camionetas</h5>
         <Button onClick={() => navigate("/")} style={{ position: "absolute", right: "1.5rem", backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
-          <i className="bi bi-house-fill me-2"></i>Tablero
+          <i className="bi bi-house-fill me-2"></i>General
         </Button>
       </div>
 
@@ -134,14 +144,14 @@ function ResumenCamionetas() {
         </div>
 
         {/* Grid de meses + tarjeta 13 */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gridAutoRows: "1fr", gap: "0.3rem", flex: 1, maxHeight: "70vh", width: "80%" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gridAutoRows: "1fr", gap: "0.3rem", flex: 1, maxHeight: "70vh", width: "80%" }}>
           {MESES.map((mes, i) => {
             const info = getCheckListInfo(i);
             const esImpar = (i + 1) % 2 !== 0;
-            const clBg = info === null ? "#1565c0" : info.pendientes === 0 ? "#2e7d32" : "#c62828";
-            const clBgHover = info === null ? "#1976d2" : info.pendientes === 0 ? "#388e3c" : "#d32f2f";
+            const clBg = info === null ? "#4a6fa5" : info.pendientes === 0 ? "#52735a" : "#8b4a4a";
+            const clBgHover = info === null ? "#5a7fa8" : info.pendientes === 0 ? "#627d6a" : "#9e5a5a";
             return (
-              <div key={mes} style={{ backgroundColor: "#1565c0", borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", display: "flex", overflow: "hidden", userSelect: "none" }}>
+              <div key={mes} style={{ gridColumn: "span 2", backgroundColor: "#4a6fa5", borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", display: "flex", overflow: "hidden", userSelect: "none" }}>
                 {/* Izquierda: mes */}
                 <div
                   className="d-flex align-items-center justify-content-center"
@@ -172,8 +182,8 @@ function ResumenCamionetas() {
                   )}
                   {(() => {
                     const kmSinRelevar = getKmSinRelevar(i);
-                    const svBg = kmSinRelevar === null ? "#1565c0" : kmSinRelevar === 0 ? "#2e7d32" : "#c62828";
-                    const svBgHover = kmSinRelevar === null ? "#1976d2" : kmSinRelevar === 0 ? "#388e3c" : "#d32f2f";
+                    const svBg = kmSinRelevar === null ? "#4a6fa5" : kmSinRelevar === 0 ? "#52735a" : "#8b4a4a";
+                    const svBgHover = kmSinRelevar === null ? "#5a7fa8" : kmSinRelevar === 0 ? "#627d6a" : "#9e5a5a";
                     return (
                       <div
                         className="d-flex flex-column align-items-center justify-content-center text-white"
@@ -182,7 +192,7 @@ function ResumenCamionetas() {
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = svBgHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = svBg)}
                       >
-                        <span>Service</span>
+                        <span>Kilometraje</span>
                         {kmSinRelevar !== null && kmSinRelevar > 0 && (
                           <span style={{ fontSize: "0.75rem", marginTop: "1px", opacity: 0.9 }}>
                             {kmSinRelevar} sin relevar
@@ -198,12 +208,12 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 13: Services Atrasados */}
           {(() => {
-            const bg = serviciosAtrasados === null ? "#1565c0" : serviciosAtrasados === 0 ? "#2e7d32" : "#c62828";
-            const bgHover = serviciosAtrasados === null ? "#1976d2" : serviciosAtrasados === 0 ? "#388e3c" : "#d32f2f";
+            const bg = serviciosAtrasados === null ? "#4a6fa5" : serviciosAtrasados === 0 ? "#52735a" : "#8b4a4a";
+            const bgHover = serviciosAtrasados === null ? "#5a7fa8" : serviciosAtrasados === 0 ? "#627d6a" : "#9e5a5a";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-white"
-                style={{ gridColumn: "2 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "5px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
+                style={{ gridColumn: "2 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
                 onClick={() => navigate("/camionetas/services/ultimo-service")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
@@ -215,6 +225,26 @@ function ResumenCamionetas() {
               </div>
             );
           })()}
+
+          {/* Tarjeta 14: Unidades Paradas */}
+          {(() => {
+            const bg = unidadesParadas === null ? "#4a6fa5" : unidadesParadas === 0 ? "#52735a" : "#8b4a4a";
+            const bgHover = unidadesParadas === null ? "#5a7fa8" : unidadesParadas === 0 ? "#627d6a" : "#9e5a5a";
+            return (
+              <div
+                className="d-flex flex-column align-items-center justify-content-center text-white"
+                style={{ gridColumn: "6 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
+                onClick={() => navigate("/camionetas/checklist")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+              >
+                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Unidades Paradas</span>
+                {unidadesParadas !== null && (
+                  <span style={{ fontSize: "2rem", fontWeight: "700", marginTop: "4px" }}>{unidadesParadas}</span>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -222,3 +252,4 @@ function ResumenCamionetas() {
 }
 
 export default ResumenCamionetas;
+
