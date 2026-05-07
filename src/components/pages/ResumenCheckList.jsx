@@ -126,7 +126,7 @@ function ResumenCheckList() {
     <Container className="py-4">
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-4 w-75 mx-auto">
         <h3 className="fw-bold mb-0">Resumen Check List — Camionetas</h3>
         <div className="d-flex gap-2">
           <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
@@ -145,7 +145,7 @@ function ResumenCheckList() {
       </div>
 
       {/* Selector de año */}
-      <div className="d-flex align-items-center gap-2 mb-4" ref={dropdownRef} style={{ position: "relative" }}>
+      <div className="d-flex align-items-center gap-2 mb-4 w-75 mx-auto" ref={dropdownRef} style={{ position: "relative" }}>
         <span
           onClick={() => setDropdownAbierto((v) => !v)}
           style={{ display: "inline-block", backgroundColor: "#666", color: "#fff", borderRadius: "4px", padding: "6px 28px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)", fontWeight: "bold", fontSize: "1.4rem", cursor: "pointer", userSelect: "none" }}

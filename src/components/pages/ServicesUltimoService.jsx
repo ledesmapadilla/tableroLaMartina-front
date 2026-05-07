@@ -197,7 +197,7 @@ function ServicesUltimoService() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
+      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "80%", margin: "0 auto" }}>
         <div className="d-flex align-items-center gap-3">
           <h3 className="fw-bold mb-0">Último service — Camionetas</h3>
           <div ref={dropAñoRef} style={{ position: "relative" }}>
@@ -242,7 +242,7 @@ function ServicesUltimoService() {
       <div style={{ flex: 1, padding: "2rem", overflowY: "auto", overflowX: "auto" }}>
 
         <div className="d-flex justify-content-center">
-          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "auto" }}>
+          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "80%" }}>
             <thead className="table-dark">
               <tr>
                 <th></th>

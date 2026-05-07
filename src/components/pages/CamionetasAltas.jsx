@@ -91,7 +91,7 @@ function CamionetasAltas() {
     <Container className="py-4">
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-4 w-75 mx-auto">
         <h3 className="fw-bold mb-0">Alta Flota</h3>
         <div className="d-flex gap-2">
           <Button onClick={() => navigate("/camionetas")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
@@ -111,7 +111,7 @@ function CamionetasAltas() {
 
       {/* Tabla */}
       <div className="d-flex justify-content-center">
-        <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "auto" }}>
+        <Table bordered size="sm" className="text-center align-middle w-75" style={{ whiteSpace: "nowrap", fontSize: "0.75rem" }}>
           <thead className="table-dark">
             <tr>
               <th>Marca</th>

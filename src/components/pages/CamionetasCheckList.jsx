@@ -80,6 +80,9 @@ function CamionetasCheckList() {
   const [showArranque, setShowArranque] = useState(false);
   const [fechaArranqueInput, setFechaArranqueInput] = useState("");
   const [paradaAbiertaId, setParadaAbiertaId] = useState(null);
+  const [showNuevaTarea, setShowNuevaTarea] = useState(false);
+  const [motivoNuevaTarea, setMotivoNuevaTarea] = useState("");
+  const [showResolverTarea, setShowResolverTarea] = useState(false);
   const dropRef = useRef(null);
 
   const { register, handleSubmit, setValue, control, formState: { errors } } = useForm({
@@ -98,12 +101,14 @@ function CamionetasCheckList() {
       estadoGeneral:      defaultSeccion(SECCIONES[3].items),
       puntuacion: "",
       camionetatParada: false,
+      tareaPendiente: false,
     },
   });
 
   const camionetaId      = useWatch({ control, name: "camioneta" });
   const encargadoVal     = useWatch({ control, name: "encargado" });
   const camionetatParada = useWatch({ control, name: "camionetatParada" });
+  const tareaPendiente   = useWatch({ control, name: "tareaPendiente" });
   const fechaVal         = useWatch({ control, name: "fecha" });
 
   useEffect(() => {
@@ -127,6 +132,7 @@ function CamionetasCheckList() {
               setValue("fechaUltimoService", cl.fechaUltimoService ? cl.fechaUltimoService.split("T")[0] : "");
               setValue("puntuacion", cl.puntuacion ?? "");
               setValue("camionetatParada", cl.camionetatParada ?? false);
+              setValue("tareaPendiente", cl.tareaPendiente ?? false);
               SECCIONES.forEach((s) => {
                 cl[s.campo]?.forEach((item, i) => {
                   setValue(`${s.campo}.${i}.estado`, item.estado ?? "");
@@ -182,6 +188,27 @@ function CamionetasCheckList() {
       setFechaArranqueInput(new Date().toISOString().split("T")[0]);
       setShowArranque(true);
     }
+  };
+
+  const alClickCirculoPendiente = (e) => {
+    e.preventDefault();
+    if (!camionetaId) return;
+    if (!tareaPendiente) {
+      setMotivoNuevaTarea("");
+      setShowNuevaTarea(true);
+    } else {
+      setShowResolverTarea(true);
+    }
+  };
+
+  const guardarNuevaTarea = () => {
+    setValue("tareaPendiente", true);
+    setShowNuevaTarea(false);
+  };
+
+  const resolverTarea = () => {
+    setValue("tareaPendiente", false);
+    setShowResolverTarea(false);
   };
 
   const guardarNuevaParada = async () => {
@@ -255,8 +282,15 @@ function CamionetasCheckList() {
         await fetch("/api/programa-checklist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ camionetaId: data.camioneta, año, mes: data.mes, estado: "realizado", puntuacion: data.puntuacion ? Number(data.puntuacion) : null, camionetatParada: !!data.camionetatParada }),
+          body: JSON.stringify({ camionetaId: data.camioneta, año, mes: data.mes, estado: "realizado", puntuacion: data.puntuacion ? Number(data.puntuacion) : null, camionetatParada: !!data.camionetatParada, tareaPendiente: !!data.tareaPendiente }),
         });
+        if (data.tareaPendiente && motivoNuevaTarea.trim()) {
+          await fetch("/api/trabajos-camioneta", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ camioneta: data.camioneta, descripcion: motivoNuevaTarea.trim(), fecha: data.fecha }),
+          });
+        }
         Swal.fire({ icon: "success", title: "Check list guardado", timer: 1500, showConfirmButton: false });
         navigate("/camionetas/checklist");
       } else {
@@ -305,33 +339,49 @@ function CamionetasCheckList() {
               ))}
             </Form.Select>
             {errors.mes && <span className="text-danger small">{errors.mes.message}</span>}
-            <div className="d-flex flex-column ms-auto">
-              <Form.Check
-                type="checkbox"
-                id="camionetatParada"
-                label="Camioneta parada"
-                className="fw-bold fs-5 mb-0"
-                style={{ cursor: camionetaId ? "pointer" : "default" }}
-                checked={camionetatParada}
-                onClick={alClickCirculo}
-                onChange={() => {}}
-              />
-              {camionetatParada && fechaVal
-                ? <span
-                    className="fw-semibold"
-                    style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#8b4a4a" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: "none" }}
-                    onClick={camionetaId ? abrirHistorial : undefined}
-                  >
-                    desde {new Date(fechaVal + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                  </span>
-                : <span
-                    className="fw-semibold"
-                    style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#1565c0" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: camionetaId ? "underline" : "none" }}
-                    onClick={camionetaId ? abrirHistorial : undefined}
-                  >
-                    Historial paradas
-                  </span>
-              }
+            <div className="d-flex flex-row align-items-start gap-4 ms-auto">
+              {/* Tarea pendiente */}
+              <div className="d-flex flex-column">
+                <Form.Check
+                  type="checkbox"
+                  id="tareaPendiente"
+                  label="Tarea pendiente"
+                  className="fw-bold fs-5 mb-0"
+                  style={{ cursor: camionetaId ? "pointer" : "default" }}
+                  checked={tareaPendiente}
+                  onClick={alClickCirculoPendiente}
+                  onChange={() => {}}
+                />
+              </div>
+              {/* Camioneta parada */}
+              <div className="d-flex flex-column">
+                <Form.Check
+                  type="checkbox"
+                  id="camionetatParada"
+                  label="Camioneta parada"
+                  className="fw-bold fs-5 mb-0"
+                  style={{ cursor: camionetaId ? "pointer" : "default" }}
+                  checked={camionetatParada}
+                  onClick={alClickCirculo}
+                  onChange={() => {}}
+                />
+                {camionetatParada && fechaVal
+                  ? <span
+                      className="fw-semibold"
+                      style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#8b4a4a" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: "none" }}
+                      onClick={camionetaId ? abrirHistorial : undefined}
+                    >
+                      desde {new Date(fechaVal + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                    </span>
+                  : <span
+                      className="fw-semibold"
+                      style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#1565c0" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: camionetaId ? "underline" : "none" }}
+                      onClick={camionetaId ? abrirHistorial : undefined}
+                    >
+                      Historial paradas
+                    </span>
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -505,6 +555,41 @@ function CamionetasCheckList() {
 
       </Form>
 
+      {/* Modal: Nueva tarea pendiente */}
+      <Modal show={showNuevaTarea} onHide={() => setShowNuevaTarea(false)} centered contentClassName="border border-dark">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Registrar tarea pendiente</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="mb-3">
+            <Form.Label className="fw-semibold">Descripción</Form.Label>
+            <Form.Control type="text" placeholder="Descripción de la tarea" value={motivoNuevaTarea} onChange={(e) => setMotivoNuevaTarea(e.target.value)} autoFocus />
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowNuevaTarea(false)}>Cancelar</Button>
+          <Button style={{ backgroundColor: "#9e8850", border: "none", color: "#fff" }} onClick={guardarNuevaTarea}>
+            <i className="bi bi-save me-2"></i>Confirmar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal: Resolver tarea pendiente */}
+      <Modal show={showResolverTarea} onHide={() => setShowResolverTarea(false)} centered contentClassName="border border-dark">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Resolver tarea pendiente</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>¿Marcar la tarea como resuelta?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowResolverTarea(false)}>Cancelar</Button>
+          <Button style={{ backgroundColor: "#52735a", border: "none", color: "#fff" }} onClick={resolverTarea}>
+            <i className="bi bi-check-lg me-2"></i>Resolver
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Modal: Nueva parada (circulo sin tildar → click) */}
       <Modal show={showNuevaParada} onHide={() => setShowNuevaParada(false)} centered contentClassName="border border-dark">
         <Modal.Header closeButton>
@@ -558,16 +643,22 @@ function CamionetasCheckList() {
               <tr>
                 <th>Fecha parada</th>
                 <th>Fecha arranque</th>
+                <th>Días de parada</th>
                 <th>Motivo</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {paradas.length === 0 && <tr><td colSpan={4} className="text-muted">Sin registros</td></tr>}
-              {paradas.map((p) => (
+              {paradas.length === 0 && <tr><td colSpan={5} className="text-muted">Sin registros</td></tr>}
+              {paradas.map((p) => {
+                const inicio = p.fechaParada ? new Date(p.fechaParada) : null;
+                const fin    = p.fechaArranque ? new Date(p.fechaArranque) : new Date();
+                const dias   = inicio ? Math.ceil((fin - inicio) / (1000 * 60 * 60 * 24)) : null;
+                return (
                 <tr key={p._id}>
                   <td>{formatF(p.fechaParada)}</td>
                   <td>{formatF(p.fechaArranque)}</td>
+                  <td>{dias != null ? dias : "—"}</td>
                   <td className="text-start">{p.motivo || "—"}</td>
                   <td>
                     <button className="btn btn-sm btn-outline-danger py-0 px-2" onClick={() => eliminarParada(p._id)}>
@@ -575,7 +666,8 @@ function CamionetasCheckList() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </Table>
         </Modal.Body>

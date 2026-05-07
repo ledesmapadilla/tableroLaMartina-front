@@ -7,6 +7,13 @@ import Swal from "sweetalert2";
 const formatF = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
+const formatearPeso = (v) => {
+  if (v === "" || v == null) return "";
+  const n = parseFloat(String(v).replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? "" : n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+const parsearPeso = (v) => parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
+
 const FILA_VACIA = { nombre: "", costo: "", observaciones: "" };
 
 function ReparacionesCamioneta() {
@@ -27,10 +34,6 @@ function ReparacionesCamioneta() {
   const [showDetalle, setShowDetalle]   = useState(false);
   const [detalleTexto, setDetalleTexto] = useState("");
   const [detalleId, setDetalleId]       = useState(null);
-
-  // Modal ver
-  const [showVer, setShowVer] = useState(false);
-  const [verItem, setVerItem] = useState(null);
 
   // Modal repuestos CRUD
   const [showRepuestos, setShowRepuestos]     = useState(false);
@@ -85,18 +88,15 @@ function ReparacionesCamioneta() {
     } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
   };
 
-  /* ── Ver ── */
-  const abrirVer = (t) => { setVerItem(t); setShowVer(true); };
-
   /* ── Repuestos CRUD ── */
   const abrirRepuestos = (t) => {
     setRepuestosId(t._id);
-    setRepuestosLista(t.repuestos ? t.repuestos.map((r) => ({ ...r })) : []);
+    setRepuestosLista(t.repuestos ? t.repuestos.map((r) => ({ ...r, costo: formatearPeso(r.costo) })) : []);
     setNuevaFila(FILA_VACIA);
     setShowRepuestos(true);
   };
   const agregarFila = () => {
-    setRepuestosLista((prev) => [...prev, { ...nuevaFila }]);
+    setRepuestosLista((prev) => [...prev, { ...nuevaFila, costo: formatearPeso(nuevaFila.costo) }]);
     setNuevaFila(FILA_VACIA);
   };
   const eliminarFila = (idx) => setRepuestosLista((prev) => prev.filter((_, i) => i !== idx));
@@ -104,7 +104,7 @@ function ReparacionesCamioneta() {
     setRepuestosLista((prev) => prev.map((r, i) => i === idx ? { ...r, [campo]: valor } : r));
   const guardarRepuestos = async () => {
     try {
-      const lista = repuestosLista.map(({ nombre, costo, observaciones }) => ({ nombre, costo, observaciones }));
+      const lista = repuestosLista.map(({ nombre, costo, observaciones }) => ({ nombre, costo: parsearPeso(costo), observaciones }));
       await fetch(`/api/trabajos-camioneta/${repuestosId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repuestos: lista }) });
       setShowRepuestos(false); cargar();
       Swal.fire({ icon: "success", title: "Repuestos guardados", timer: 1200, showConfirmButton: false });
@@ -114,31 +114,33 @@ function ReparacionesCamioneta() {
   return (
     <Container className="py-4">
 
-      {/* Encabezado */}
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.5rem" }}>
-        <h3 className="fw-bold mb-0 text-center">Reparaciones camioneta: {patente}{marca ? ` — ${marca}` : ""}</h3>
-        <div className="d-flex gap-2" style={{ position: "absolute", right: 0 }}>
-          <Button onClick={() => navigate("/camionetas/services/reparaciones")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-speedometer me-2"></i>Tablero
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-        </div>
+      {/* Botones */}
+      <div className="d-flex justify-content-end gap-2 w-75 mx-auto">
+        <Button onClick={() => navigate("/camionetas/services/reparaciones")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-arrow-left me-2"></i>Volver
+        </Button>
+        <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-speedometer me-2"></i>Tablero
+        </Button>
+        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-house-fill me-2"></i>General
+        </Button>
+      </div>
+
+      {/* Título */}
+      <div className="text-center w-75 mx-auto" style={{ marginTop: "2rem", marginBottom: "1.5rem" }}>
+        <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` — ${marca}` : ""}</h3>
       </div>
 
       {/* Botón agregar */}
-      <div className="mb-3">
-        <Button onClick={abrirNuevo} style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
+      <div className="d-flex justify-content-start w-75 mx-auto mb-2">
+        <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
           <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
         </Button>
       </div>
 
       {/* Tabla principal */}
-      <Table bordered size="sm" className="text-center align-middle">
+      <Table bordered size="sm" className="text-center align-middle w-75 mx-auto">
         <thead className="table-dark">
           <tr>
             <th style={{ width: "120px" }}>Fecha</th>
@@ -156,12 +158,7 @@ function ReparacionesCamioneta() {
                 <div className="d-flex justify-content-center gap-1">
                   <Button size="sm" onClick={() => abrirDetalle(t)} style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.78rem" }}>Detalle</Button>
                   <Button size="sm" onClick={() => abrirRepuestos(t)} style={{ backgroundColor: "#9e8850", border: "none", fontSize: "0.78rem" }}>Repuestos</Button>
-                  <Button size="sm" onClick={() => abrirVer(t)} style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                    <i className="bi bi-eye"></i>
-                  </Button>
-                  <Button size="sm" onClick={() => abrirEditar(t)} style={{ backgroundColor: "#2c2c2c", border: "none" }}>
-                    <i className="bi bi-pencil"></i>
-                  </Button>
+
                   <Button size="sm" onClick={() => eliminar(t._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
                     <i className="bi bi-trash"></i>
                   </Button>
@@ -240,7 +237,15 @@ function ReparacionesCamioneta() {
                   <td>
                     <InputGroup size="sm">
                       <InputGroup.Text>$</InputGroup.Text>
-                      <Form.Control type="number" value={r.costo ?? ""} onChange={(e) => editarFila(idx, "costo", e.target.value)} style={{ textAlign: "right" }} />
+                      <Form.Control
+                        type="text"
+                        inputMode="numeric"
+                        value={r.costo ?? ""}
+                        onChange={(e) => editarFila(idx, "costo", e.target.value.replace(/[^\d]/g, ""))}
+                        onBlur={(e) => editarFila(idx, "costo", formatearPeso(e.target.value))}
+                        onFocus={(e) => editarFila(idx, "costo", String(e.target.value).replace(/\./g, ""))}
+                        style={{ textAlign: "center" }}
+                      />
                     </InputGroup>
                   </td>
                   <td>
@@ -261,7 +266,17 @@ function ReparacionesCamioneta() {
                 <td>
                   <InputGroup size="sm">
                       <InputGroup.Text>$</InputGroup.Text>
-                      <Form.Control type="number" placeholder="0" value={nuevaFila.costo} onChange={(e) => setNuevaFila((p) => ({ ...p, costo: e.target.value }))} style={{ textAlign: "right" }} onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
+                      <Form.Control
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={nuevaFila.costo}
+                        onChange={(e) => setNuevaFila((p) => ({ ...p, costo: e.target.value.replace(/[^\d]/g, "") }))}
+                        onBlur={(e) => setNuevaFila((p) => ({ ...p, costo: formatearPeso(e.target.value) }))}
+                        onFocus={(e) => setNuevaFila((p) => ({ ...p, costo: String(e.target.value).replace(/\./g, "") }))}
+                        style={{ textAlign: "center" }}
+                        onKeyDown={(e) => e.key === "Enter" && agregarFila()}
+                      />
                     </InputGroup>
                 </td>
                 <td>
@@ -281,43 +296,6 @@ function ReparacionesCamioneta() {
           <Button onClick={guardarRepuestos} style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
             <i className="bi bi-save me-2"></i>Guardar
           </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal Ver */}
-      <Modal show={showVer} onHide={() => setShowVer(false)} centered size="lg" contentClassName="border border-dark">
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">Resumen de reparación</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {verItem && (
-            <>
-              <p><span className="fw-semibold">Fecha:</span> {formatF(verItem.fecha)}</p>
-              <p><span className="fw-semibold">Descripción:</span> {verItem.descripcion}</p>
-              {verItem.detalle && <><p className="fw-semibold mb-1">Detalle:</p><p className="text-muted" style={{ whiteSpace: "pre-wrap" }}>{verItem.detalle}</p></>}
-              <p className="fw-semibold mb-1">Repuestos:</p>
-              {verItem.repuestos?.length > 0
-                ? <Table bordered size="sm" className="text-center align-middle">
-                    <thead className="table-secondary">
-                      <tr><th>Repuesto</th><th>Costo</th><th>Observaciones</th></tr>
-                    </thead>
-                    <tbody>
-                      {verItem.repuestos.map((r, i) => (
-                        <tr key={i}>
-                          <td className="text-start">{r.nombre}</td>
-                          <td>{r.costo != null ? `$${Number(r.costo).toLocaleString("es-AR")}` : "—"}</td>
-                          <td className="text-start">{r.observaciones || "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                : <p className="text-muted">Sin repuestos cargados</p>
-              }
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowVer(false)}>Cerrar</Button>
         </Modal.Footer>
       </Modal>
 

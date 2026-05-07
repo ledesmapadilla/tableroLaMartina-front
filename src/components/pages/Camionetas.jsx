@@ -27,9 +27,9 @@ function Camionetas() {
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
-        <h3 className="fw-bold mb-0">Camionetas</h3>
-        <div className="d-flex gap-2">
+      <div className="d-flex align-items-center" style={{ padding: "1rem 2rem 0", position: "relative" }}>
+        <h3 className="fw-bold mb-0 w-100 text-center">Camionetas</h3>
+        <div className="d-flex gap-2" style={{ position: "absolute", right: "2rem" }}>
           <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
           </Button>

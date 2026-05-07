@@ -11,7 +11,7 @@ const INICIO_MES  = 5;
 function ResumenCamionetas() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [anio, setAnio] = useState(new Date().getFullYear());
+  const [anio, setAnio] = useState(() => Number(localStorage.getItem("tablero_anio")) || new Date().getFullYear());
   const [dropAnio, setDropAnio] = useState(false);
   const dropAnioRef = useRef(null);
   const aniosOpciones = Array.from({ length: 10 }, (_, i) => 2026 + i);
@@ -21,6 +21,7 @@ function ResumenCamionetas() {
   const [kmResumen, setKmResumen] = useState({});
   const [serviciosAtrasados, setServiciosAtrasados] = useState(null);
   const [unidadesParadas, setUnidadesParadas] = useState(null);
+  const [tareasPendientes, setTareasPendientes] = useState(null);
 
   useEffect(() => {
     const handler = (e) => { if (dropAnioRef.current && !dropAnioRef.current.contains(e.target)) setDropAnio(false); };
@@ -33,6 +34,7 @@ function ResumenCamionetas() {
     setKmResumen({});
     setServiciosAtrasados(null);
     setUnidadesParadas(null);
+    setTareasPendientes(null);
     fetch("/api/camionetas").then((r) => r.json()).then((d) => setTotalCamionetas(d.length)).catch(() => {});
     Promise.all([
       fetch("/api/services/ultimos").then((r) => r.json()).catch(() => []),
@@ -50,6 +52,7 @@ function ResumenCamionetas() {
       setServiciosAtrasados(count);
     }).catch(() => setServiciosAtrasados(0));
     fetch("/api/paradas/abiertas/count").then((r) => r.json()).then((d) => setUnidadesParadas(d.count)).catch(() => setUnidadesParadas(0));
+    fetch("/api/programa-checklist/tareas-pendientes/count").then((r) => r.json()).then((d) => setTareasPendientes(d.count)).catch(() => setTareasPendientes(0));
     fetch(`/api/programa-checklist/${anio}`).then((r) => r.json()).then(setProgramas).catch(() => setProgramas([]));
     fetch("/api/kilometros")
       .then((r) => r.json())
@@ -109,7 +112,7 @@ function ResumenCamionetas() {
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", padding: "0.8rem 1.5rem 0" }}>
-        <h5 className="fw-bold mb-0 w-100 text-center">Tablero de Control Camionetas</h5>
+        <h3 className="fw-bold mb-0 w-100 text-center">Tablero de Control Camionetas</h3>
         <Button onClick={() => navigate("/")} style={{ position: "absolute", right: "1.5rem", backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
           <i className="bi bi-house-fill me-2"></i>General
         </Button>
@@ -130,7 +133,7 @@ function ResumenCamionetas() {
                 {aniosOpciones.map((a) => (
                   <div
                     key={a}
-                    onClick={() => { setAnio(a); setDropAnio(false); }}
+                    onClick={() => { setAnio(a); localStorage.setItem("tablero_anio", a); setDropAnio(false); }}
                     style={{ padding: "6px 14px", textAlign: "center", cursor: "pointer", fontWeight: a === anio ? "700" : "400", backgroundColor: a === anio ? "#e3eaf7" : "transparent", color: "#000", fontSize: "0.9rem" }}
                     onMouseEnter={(e) => { if (a !== anio) e.currentTarget.style.backgroundColor = "#f0f0f0"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = a === anio ? "#e3eaf7" : "transparent"; }}
@@ -226,7 +229,27 @@ function ResumenCamionetas() {
             );
           })()}
 
-          {/* Tarjeta 14: Unidades Paradas */}
+          {/* Tarjeta 14: Unidades con Tareas Pendientes */}
+          {(() => {
+            const bg = tareasPendientes === null ? "#4a6fa5" : tareasPendientes === 0 ? "#52735a" : "#8b4a4a";
+            const bgHover = tareasPendientes === null ? "#5a7fa8" : tareasPendientes === 0 ? "#627d6a" : "#9e5a5a";
+            return (
+              <div
+                className="d-flex flex-column align-items-center justify-content-center text-white"
+                style={{ gridColumn: "4 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
+                onClick={() => navigate("/camionetas/services/reparaciones")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+              >
+                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Tareas Pendientes</span>
+                {tareasPendientes !== null && (
+                  <span style={{ fontSize: "2rem", fontWeight: "700", marginTop: "4px" }}>{tareasPendientes}</span>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Tarjeta 15: Unidades Paradas */}
           {(() => {
             const bg = unidadesParadas === null ? "#4a6fa5" : unidadesParadas === 0 ? "#52735a" : "#8b4a4a";
             const bgHover = unidadesParadas === null ? "#5a7fa8" : unidadesParadas === 0 ? "#627d6a" : "#9e5a5a";

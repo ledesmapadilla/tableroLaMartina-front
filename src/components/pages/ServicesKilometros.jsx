@@ -292,7 +292,7 @@ function ServicesKilometros() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
+      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "80%", margin: "0 auto" }}>
         <div className="d-flex align-items-center gap-3">
           <h3 className="fw-bold mb-0">Kilómetros — Camionetas</h3>
           {/* Selector de año */}
