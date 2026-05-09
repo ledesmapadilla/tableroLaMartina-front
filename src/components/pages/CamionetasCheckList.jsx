@@ -421,7 +421,7 @@ function CamionetasCheckList() {
                 ref={responsableRef}
                 style={{ width: "auto", textAlign: "center" }}
                 placeholder="— Seleccionar —"
-                value={filtro || encargadoVal}
+                value={dropOpen ? filtro : encargadoVal}
                 onChange={(e) => { setFiltro(e.target.value); setDropOpen(true); }}
                 onFocus={() => { setFiltro(""); setDropOpen(true); }}
                 autoComplete="off"
