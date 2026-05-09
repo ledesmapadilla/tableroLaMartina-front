@@ -2,26 +2,18 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button } from "react-bootstrap";
 
-const MESES_CAMPO = ["enero", "marzo", "mayo", "julio", "septiembre", "noviembre"];
-
 function ServicesReparaciones() {
   const navigate = useNavigate();
   const [camionetas, setCamionetas] = useState([]);
   const [conTareaPendiente, setConTareaPendiente] = useState(new Set());
 
   useEffect(() => {
-    const anio = new Date().getFullYear();
     Promise.all([
       fetch("/api/camionetas").then((r) => r.json()).catch(() => []),
-      fetch(`/api/programa-checklist/${anio}`).then((r) => r.json()).catch(() => []),
-    ]).then(([cams, programas]) => {
+      fetch("/api/trabajos-camioneta/pendientes/ids").then((r) => r.json()).catch(() => []),
+    ]).then(([cams, pendientesIds]) => {
       setCamionetas(cams);
-      const ids = new Set(
-        programas
-          .filter((p) => MESES_CAMPO.some((m) => p[m]?.tareaPendiente === true))
-          .map((p) => (p.camioneta?._id ?? p.camioneta)?.toString())
-      );
-      setConTareaPendiente(ids);
+      setConTareaPendiente(new Set(pendientesIds));
     });
   }, []);
 

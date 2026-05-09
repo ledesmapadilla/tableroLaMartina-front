@@ -52,7 +52,7 @@ function ResumenCamionetas() {
       setServiciosAtrasados(count);
     }).catch(() => setServiciosAtrasados(0));
     fetch("/api/paradas/abiertas/count").then((r) => r.json()).then((d) => setUnidadesParadas(d.count)).catch(() => setUnidadesParadas(0));
-    fetch("/api/programa-checklist/tareas-pendientes/count").then((r) => r.json()).then((d) => setTareasPendientes(d.count)).catch(() => setTareasPendientes(0));
+    fetch("/api/trabajos-camioneta/pendientes/ids").then((r) => r.json()).then((ids) => setTareasPendientes(ids.length)).catch(() => setTareasPendientes(0));
     fetch(`/api/programa-checklist/${anio}`).then((r) => r.json()).then(setProgramas).catch(() => setProgramas([]));
     fetch("/api/kilometros")
       .then((r) => r.json())
