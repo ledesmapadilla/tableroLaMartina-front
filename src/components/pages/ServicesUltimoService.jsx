@@ -226,8 +226,8 @@ function ServicesUltimoService() {
           <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
           </Button>
-          <Button onClick={() => navigate("/camionetas/services")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Services
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
           </Button>
           <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
@@ -360,7 +360,15 @@ function ServicesUltimoService() {
                 type="number"
                 className="w-50"
                 placeholder="Ej: 125000"
-                {...register("kms", { min: { value: 0, message: "Debe ser positivo" } })}
+                {...register("kms", {
+                validate: (v) => {
+                  if (!v && v !== 0) return true;
+                  const reg = ultimos.find((u) => (u.camioneta?._id?.toString() ?? u.camioneta?.toString()) === camionetaId);
+                  if (reg?.kms && Number(v) < reg.kms)
+                    return `No puede ser menor al valor actual (${reg.kms.toLocaleString("es-AR")} km)`;
+                  return true;
+                },
+              })}
                 isInvalid={!!errors.kms}
               />
               <Form.Control.Feedback type="invalid">{errors.kms?.message}</Form.Control.Feedback>

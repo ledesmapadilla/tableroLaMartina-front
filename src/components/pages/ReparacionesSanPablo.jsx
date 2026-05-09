@@ -11,6 +11,9 @@ function ReparacionesSanPablo() {
           <h2 className="mb-0 fw-bold">Reparaciones San Pablo</h2>
         </div>
         <div className="d-flex gap-2">
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
+          </Button>
           <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
           </Button>

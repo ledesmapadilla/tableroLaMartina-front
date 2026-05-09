@@ -113,9 +113,14 @@ function ResumenCamionetas() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div style={{ position: "relative", display: "flex", alignItems: "center", padding: "0.8rem 1.5rem 0" }}>
         <h3 className="fw-bold mb-0 w-100 text-center">Tablero de Control Camionetas</h3>
-        <Button onClick={() => navigate("/")} style={{ position: "absolute", right: "1.5rem", backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
-          <i className="bi bi-house-fill me-2"></i>General
-        </Button>
+        <div className="d-flex gap-2" style={{ position: "absolute", right: "1.5rem" }}>
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
+          </Button>
+          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
+            <i className="bi bi-house-fill me-2"></i>General
+          </Button>
+        </div>
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0.4rem 0.8rem", overflow: "hidden" }}>

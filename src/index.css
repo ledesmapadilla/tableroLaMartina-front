@@ -223,6 +223,15 @@ input[type="number"] {
   text-align: center;
 }
 
+/* ── Hover global de botones ── */
+.btn, button {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:hover, button:hover {
+  transform: scale(1.06);
+  box-shadow: 3px 3px 8px rgba(0,0,0,0.35);
+}
+
 /* ── Botones placa (ResumenCheckList) ── */
 .btn-placa {
   transition: transform 0.15s ease, box-shadow 0.15s ease !important;

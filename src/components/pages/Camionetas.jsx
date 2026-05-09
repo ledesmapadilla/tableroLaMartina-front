@@ -30,6 +30,9 @@ function Camionetas() {
       <div className="d-flex align-items-center" style={{ padding: "1rem 2rem 0", position: "relative" }}>
         <h3 className="fw-bold mb-0 w-100 text-center">Camionetas</h3>
         <div className="d-flex gap-2" style={{ position: "absolute", right: "2rem" }}>
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
+          </Button>
           <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
           </Button>

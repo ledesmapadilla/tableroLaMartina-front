@@ -324,8 +324,8 @@ function ServicesKilometros() {
           <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
           </Button>
-          <Button onClick={() => navigate("/camionetas/services")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Services
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
           </Button>
           <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
@@ -424,7 +424,7 @@ function ServicesKilometros() {
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label className="fw-semibold">Odómetro</Form.Label>
-                <Form.Control type="number" className="w-50" {...editForm.register("kms", { required: "Requerido", min: { value: 0, message: "Debe ser positivo" } })} isInvalid={!!editForm.formState.errors.kms} />
+                <Form.Control type="number" className="w-50" {...editForm.register("kms", { required: "Requerido", validate: (v) => Number(v) >= detalleReg.kms || `No puede ser menor al valor actual (${detalleReg.kms.toLocaleString("es-AR")} km)` })} isInvalid={!!editForm.formState.errors.kms} />
                 <Form.Control.Feedback type="invalid">{editForm.formState.errors.kms?.message}</Form.Control.Feedback>
               </Form.Group>
               <Form.Group className="mb-3">

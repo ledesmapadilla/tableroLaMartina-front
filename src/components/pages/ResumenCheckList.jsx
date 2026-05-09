@@ -14,7 +14,7 @@ const BTN_W = { minWidth: "90px", width: "90px" };
 const getEstiloBtn = (estado, puntuacion) => {
   if (estado !== "realizado") return { ...BTN_W, backgroundColor: "#777", color: "#fff", border: "none", boxShadow: SOMBRA };
   if (puntuacion <= 4)  return { ...BTN_W, backgroundColor: "#b87070", color: "#fff", border: "none", boxShadow: SOMBRA };
-  if (puntuacion <= 7)  return { ...BTN_W, backgroundColor: "#9e8850", color: "#fff", border: "none", boxShadow: SOMBRA };
+  if (puntuacion <= 7)  return { ...BTN_W, backgroundColor: "#c8a800", color: "#fff", border: "none", boxShadow: SOMBRA };
   return { ...BTN_W, backgroundColor: "#7aaa80", color: "#fff", border: "none", boxShadow: SOMBRA };
 };
 
@@ -24,6 +24,7 @@ function ResumenCheckList() {
   const [camionetas, setCamionetas] = useState([]);
   const [programas, setProgramas] = useState([]);
   const [dropdownAbierto, setDropdownAbierto] = useState(false);
+  const [filtroCamioneta, setFiltroCamioneta] = useState("");
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -132,8 +133,8 @@ function ResumenCheckList() {
           <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
           </Button>
-          <Button onClick={() => navigate("/camionetas")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Camionetas
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
           </Button>
           <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
@@ -170,9 +171,24 @@ function ResumenCheckList() {
         )}
       </div>
 
+      {/* Filtro por patente */}
+      <div className="w-75 mx-auto mb-3">
+        <select
+          value={filtroCamioneta}
+          onChange={(e) => setFiltroCamioneta(e.target.value)}
+          style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "1rem", minWidth: "220px", cursor: "pointer" }}
+        >
+          <option value="">Todas las camionetas</option>
+          {camionetas.map((c) => (
+            <option key={c._id} value={c._id}>{c.patente} — {c.marca}</option>
+          ))}
+        </select>
+      </div>
+
       {/* Tabla */}
-      <Table bordered className="text-center align-middle w-75 mx-auto">
-        <thead className="table-dark">
+      <div className="w-75 mx-auto" style={{ maxHeight: "65vh", overflowY: "auto" }}>
+      <Table bordered className="text-center align-middle mb-0">
+        <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
           <tr>
             <th>Camioneta</th>
             {MESES.map((m) => (
@@ -182,7 +198,7 @@ function ResumenCheckList() {
           </tr>
         </thead>
         <tbody>
-          {camionetas.map((c) => {
+          {camionetas.filter((c) => !filtroCamioneta || c._id === filtroCamioneta).map((c) => {
             const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
               .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
               .map(({ puntuacion }) => puntuacion);
@@ -217,7 +233,7 @@ function ResumenCheckList() {
                 })}
                 <td className="fw-bold" style={{ fontSize: "1rem" }}>
                   {promedio != null
-                    ? <span style={{ display: "inline-block", backgroundColor: promedio >= 8 ? "#7aaa80" : promedio >= 5 ? "#9e8850" : "#b87070", color: "#fff", borderRadius: "4px", padding: "2px 12px", boxShadow: SOMBRA }}>{promedio}</span>
+                    ? <span style={{ display: "inline-block", backgroundColor: promedio >= 8 ? "#7aaa80" : promedio >= 5 ? "#c8a800" : "#b87070", color: "#fff", borderRadius: "4px", padding: "2px 12px", boxShadow: SOMBRA }}>{promedio}</span>
                     : <span className="text-muted">—</span>}
                 </td>
               </tr>
@@ -225,6 +241,7 @@ function ResumenCheckList() {
           })}
         </tbody>
       </Table>
+      </div>
 
     </Container>
   );

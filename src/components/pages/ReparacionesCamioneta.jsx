@@ -24,6 +24,7 @@ function ReparacionesCamioneta() {
   const marca   = state?.marca   ?? "";
 
   const [trabajos, setTrabajos] = useState([]);
+  const [filtroEstado, setFiltroEstado] = useState("todos");
 
   // Modal crear/editar
   const [showForm, setShowForm] = useState(false);
@@ -79,6 +80,15 @@ function ReparacionesCamioneta() {
     catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
   };
 
+  /* ── Estado ── */
+  const toggleEstado = async (t) => {
+    const nuevoEstado = t.estado === "terminada" ? "pendiente" : "terminada";
+    try {
+      await fetch(`/api/trabajos-camioneta/${t._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: nuevoEstado }) });
+      cargar();
+    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  };
+
   /* ── Detalle ── */
   const abrirDetalle = (t) => { setDetalleId(t._id); setDetalleTexto(t.detalle ?? ""); setShowDetalle(true); };
   const guardarDetalle = async () => {
@@ -116,7 +126,7 @@ function ReparacionesCamioneta() {
 
       {/* Botones */}
       <div className="d-flex justify-content-end gap-2 w-75 mx-auto">
-        <Button onClick={() => navigate("/camionetas/services/reparaciones")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+        <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-arrow-left me-2"></i>Volver
         </Button>
         <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
@@ -132,11 +142,20 @@ function ReparacionesCamioneta() {
         <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` — ${marca}` : ""}</h3>
       </div>
 
-      {/* Botón agregar */}
-      <div className="d-flex justify-content-start w-75 mx-auto mb-2">
+      {/* Botón agregar + filtro */}
+      <div className="d-flex justify-content-between align-items-center w-75 mx-auto mb-2">
         <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
           <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
         </Button>
+        <select
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+          style={{ padding: "4px 12px", borderRadius: "6px", border: "2px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}
+        >
+          <option value="todos">Todos</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="terminada">Terminada</option>
+        </select>
       </div>
 
       {/* Tabla principal */}
@@ -150,15 +169,25 @@ function ReparacionesCamioneta() {
         </thead>
         <tbody>
           {trabajos.length === 0 && <tr><td colSpan={3} className="text-muted py-3">Sin registros</td></tr>}
-          {trabajos.map((t) => (
+          {trabajos.filter((t) => filtroEstado === "todos" || (t.estado ?? "pendiente") === filtroEstado).map((t) => (
             <tr key={t._id}>
               <td>{formatF(t.fecha)}</td>
-              <td className="text-start">{t.descripcion}</td>
+              <td>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="text-start">{t.descripcion}</span>
+                  <Button
+                    size="sm"
+                    onClick={() => toggleEstado(t)}
+                    style={{ backgroundColor: t.estado === "terminada" ? "#52735a" : "#8b4a4a", border: "none", fontSize: "0.78rem", minWidth: "80px", flexShrink: 0, marginLeft: "0.75rem" }}
+                  >
+                    {t.estado === "terminada" ? "Terminada" : "Pendiente"}
+                  </Button>
+                </div>
+              </td>
               <td>
                 <div className="d-flex justify-content-center gap-1">
-                  <Button size="sm" onClick={() => abrirDetalle(t)} style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.78rem" }}>Detalle</Button>
+                  <Button size="sm" onClick={() => abrirDetalle(t)} style={{ backgroundColor: "#4a6fa5", border: "none", fontSize: "0.78rem" }}>Detalle</Button>
                   <Button size="sm" onClick={() => abrirRepuestos(t)} style={{ backgroundColor: "#9e8850", border: "none", fontSize: "0.78rem" }}>Repuestos</Button>
-
                   <Button size="sm" onClick={() => eliminar(t._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
                     <i className="bi bi-trash"></i>
                   </Button>
