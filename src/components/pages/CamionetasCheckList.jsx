@@ -398,7 +398,7 @@ function CamionetasCheckList() {
               <Form.Select style={{ width: "auto", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", backgroundImage: "none", pointerEvents: "none", backgroundColor: "#e9ecef", cursor: "default" }} {...register("camioneta", { required: "Seleccioná una camioneta" })} isInvalid={!!errors.camioneta}>
                 <option value="">— Seleccionar —</option>
                 {camionetas.map((c) => (
-                  <option key={c._id} value={c._id}>{c.patente}</option>
+                  <option key={c._id} value={c._id}>{c.patente} — {c.marca}</option>
                 ))}
               </Form.Select>
               <Form.Control.Feedback type="invalid">{errors.camioneta?.message}</Form.Control.Feedback>
