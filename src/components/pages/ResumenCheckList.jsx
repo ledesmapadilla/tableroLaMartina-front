@@ -11,8 +11,9 @@ const SOMBRA = "3px 3px 6px rgba(0,0,0,0.45)";
 
 const BTN_W = { minWidth: "90px", whiteSpace: "nowrap" };
 
-const getEstiloBtn = (estado, puntuacion) => {
+const getEstiloBtn = (estado, puntuacion, camionetatParada) => {
   if (estado !== "realizado") return { ...BTN_W, backgroundColor: "#777", color: "#fff", border: "none", boxShadow: SOMBRA };
+  if (camionetatParada)       return { ...BTN_W, backgroundColor: "#8b4a4a", color: "#fff", border: "none", boxShadow: SOMBRA };
   if (puntuacion <= 4)  return { ...BTN_W, backgroundColor: "#b87070", color: "#fff", border: "none", boxShadow: SOMBRA };
   if (puntuacion <= 7)  return { ...BTN_W, backgroundColor: "#c8a800", color: "#fff", border: "none", boxShadow: SOMBRA };
   return { ...BTN_W, backgroundColor: "#7aaa80", color: "#fff", border: "none", boxShadow: SOMBRA };
@@ -216,7 +217,7 @@ function ResumenCheckList() {
                       <Button
                         size="sm"
                         className="btn-placa"
-                        style={getEstiloBtn(estado, puntuacion)}
+                        style={getEstiloBtn(estado, puntuacion, camionetatParada)}
                         onClick={() => navigate("/camionetas/checklist/form", { state: { mes, camionetaId: c._id } })}
                       >
                         {estado === "realizado"
