@@ -85,7 +85,7 @@ function CamionetasCheckList() {
   const [showResolverTarea, setShowResolverTarea] = useState(false);
   const dropRef = useRef(null);
 
-  const { register, handleSubmit, setValue, control, formState: { errors } } = useForm({
+  const { register, handleSubmit, setValue, getValues, control, formState: { errors } } = useForm({
     defaultValues: {
       camioneta: "",
       mes: location.state?.mes ?? "",
@@ -508,6 +508,10 @@ function CamionetasCheckList() {
                         type="radio"
                         value="bien"
                         {...register(`${seccion.campo}.${i}.estado`)}
+                        onClick={() => {
+                          if (getValues(`${seccion.campo}.${i}.estado`) === "bien")
+                            setValue(`${seccion.campo}.${i}.estado`, "");
+                        }}
                       />
                     </td>
                     <td className="text-center align-middle">
@@ -515,6 +519,10 @@ function CamionetasCheckList() {
                         type="radio"
                         value="mal"
                         {...register(`${seccion.campo}.${i}.estado`)}
+                        onClick={() => {
+                          if (getValues(`${seccion.campo}.${i}.estado`) === "mal")
+                            setValue(`${seccion.campo}.${i}.estado`, "");
+                        }}
                       />
                     </td>
                     <td>
