@@ -51,12 +51,12 @@ function ReparacionesCamioneta() {
   /* ── Crear / Editar ── */
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ fecha: new Date().toISOString().split("T")[0], descripcion: "" });
+    reset({ fecha: new Date().toISOString().split("T")[0], descripcion: "", urgencia: "baja" });
     setShowForm(true);
   };
   const abrirEditar = (t) => {
     setEditando(t._id);
-    reset({ fecha: t.fecha ? t.fecha.split("T")[0] : "", descripcion: t.descripcion ?? "" });
+    reset({ fecha: t.fecha ? t.fecha.split("T")[0] : "", descripcion: t.descripcion ?? "", urgencia: t.urgencia ?? "baja" });
     setShowForm(true);
   };
   const cerrarForm = () => { setShowForm(false); setEditando(null); };
@@ -85,6 +85,18 @@ function ReparacionesCamioneta() {
     const nuevoEstado = t.estado === "terminada" ? "pendiente" : "terminada";
     try {
       await fetch(`/api/trabajos-camioneta/${t._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: nuevoEstado }) });
+      cargar();
+    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  };
+
+  /* ── Urgencia ── */
+  const URGENCIAS = ["baja", "media", "alta"];
+  const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
+  const toggleUrgencia = async (t) => {
+    const idx = URGENCIAS.indexOf(t.urgencia ?? "baja");
+    const nueva = URGENCIAS[(idx + 1) % URGENCIAS.length];
+    try {
+      await fetch(`/api/trabajos-camioneta/${t._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ urgencia: nueva }) });
       cargar();
     } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
   };
@@ -164,11 +176,12 @@ function ReparacionesCamioneta() {
           <tr>
             <th style={{ width: "120px" }}>Fecha</th>
             <th>Reparación</th>
+            <th style={{ width: "100px" }}>Urgencia</th>
             <th style={{ width: "220px" }}>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {trabajos.length === 0 && <tr><td colSpan={3} className="text-muted py-3">Sin registros</td></tr>}
+          {trabajos.length === 0 && <tr><td colSpan={4} className="text-muted py-3">Sin registros</td></tr>}
           {trabajos.filter((t) => filtroEstado === "todos" || (t.estado ?? "pendiente") === filtroEstado).map((t) => (
             <tr key={t._id}>
               <td>{formatF(t.fecha)}</td>
@@ -183,6 +196,15 @@ function ReparacionesCamioneta() {
                     {t.estado === "terminada" ? "Terminada" : "Pendiente"}
                   </Button>
                 </div>
+              </td>
+              <td>
+                <Button
+                  size="sm"
+                  onClick={() => toggleUrgencia(t)}
+                  style={{ backgroundColor: URGENCIA_COLORES[t.urgencia ?? "baja"], border: "none", fontSize: "0.78rem", minWidth: "68px", textTransform: "capitalize" }}
+                >
+                  {t.urgencia ?? "baja"}
+                </Button>
               </td>
               <td>
                 <div className="d-flex justify-content-center gap-1">
@@ -214,6 +236,14 @@ function ReparacionesCamioneta() {
               <Form.Label className="fw-semibold">Breve descripción</Form.Label>
               <Form.Control type="text" placeholder="Ej: Cambio de correa" {...register("descripcion", { required: "Requerido" })} isInvalid={!!errors.descripcion} />
               <Form.Control.Feedback type="invalid">{errors.descripcion?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">Urgencia</Form.Label>
+              <Form.Select className="w-50" {...register("urgencia")}>
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+              </Form.Select>
             </Form.Group>
             <div className="d-flex justify-content-end gap-2">
               <Button variant="secondary" onClick={cerrarForm}>Cancelar</Button>
