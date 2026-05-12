@@ -197,7 +197,7 @@ function ServicesUltimoService() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "50%", margin: "0 auto" }}>
+      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
         <div className="d-flex align-items-center gap-3">
           <h3 className="fw-bold mb-0">Último service — Camionetas</h3>
           <div ref={dropAñoRef} style={{ position: "relative" }}>
@@ -223,16 +223,16 @@ function ServicesUltimoService() {
           </div>
         </div>
         <div className="d-flex gap-2">
-          <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+          <Button size="sm" onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
           </Button>
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <Button size="sm" onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-arrow-left me-2"></i>Volver
           </Button>
-          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <Button size="sm" onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-speedometer me-2"></i>Tablero
           </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <Button size="sm" onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-house-fill me-2"></i>General
           </Button>
         </div>
@@ -242,7 +242,7 @@ function ServicesUltimoService() {
       <div style={{ flex: 1, padding: "2rem", overflowY: "auto", overflowX: "auto" }}>
 
         <div className="d-flex justify-content-center">
-          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "50%" }}>
+          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "75%" }}>
             <thead className="table-dark">
               <tr>
                 <th></th>
