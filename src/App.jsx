@@ -16,6 +16,7 @@ import ServicesUltimoService from "./components/pages/ServicesUltimoService";
 import ServicesReparaciones from "./components/pages/ServicesReparaciones";
 import ReparacionesCamioneta from "./components/pages/ReparacionesCamioneta";
 import ResumenCamionetas from "./components/pages/ResumenCamionetas";
+import ResumenReparaciones from "./components/pages/ResumenReparaciones";
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
               <Route path="/camionetas/services/kilometros" element={<ServicesKilometros />} />
               <Route path="/camionetas/services/ultimo-service" element={<ServicesUltimoService />} />
               <Route path="/camionetas/services/reparaciones" element={<ServicesReparaciones />} />
+              <Route path="/camionetas/services/reparaciones/resumen" element={<ResumenReparaciones />} />
               <Route path="/camionetas/services/reparaciones/:camionetaId" element={<ReparacionesCamioneta />} />
               <Route path="*" element={<Error404 />} />
             </Routes>

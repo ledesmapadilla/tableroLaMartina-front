@@ -19,7 +19,11 @@ function ServicesReparaciones() {
 
   return (
     <Container className="py-4">
-      <div className="d-flex justify-content-end gap-2">
+      <div className="d-flex justify-content-between align-items-center">
+        <Button onClick={() => navigate("/camionetas/services/reparaciones/resumen")} style={{ backgroundColor: "#52735a", border: "none", color: "#fff" }}>
+          <i className="bi bi-table me-2"></i>Resumen tareas realizadas
+        </Button>
+        <div className="d-flex gap-2">
         <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-arrow-left me-2"></i>Volver
         </Button>
@@ -29,10 +33,11 @@ function ServicesReparaciones() {
         <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-house-fill me-2"></i>General
         </Button>
+        </div>
       </div>
 
       <div className="text-center" style={{ marginTop: "4rem", marginBottom: "4rem" }}>
-        <h2 className="mb-0 fw-bold">Trabajos Realizados en Camionetas</h2>
+        <h2 className="mb-0 fw-bold">Reparaciones Camionetas</h2>
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "1.2rem", justifyContent: "center", marginBottom: "2rem" }}>
