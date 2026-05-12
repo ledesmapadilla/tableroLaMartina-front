@@ -21,7 +21,7 @@ function ServicesReparaciones() {
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center">
         <Button onClick={() => navigate("/camionetas/services/reparaciones/resumen")} style={{ backgroundColor: "#52735a", border: "none", color: "#fff" }}>
-          <i className="bi bi-table me-2"></i>Resumen tareas realizadas
+          <i className="bi bi-table me-2"></i>Resumen tareas
         </Button>
         <div className="d-flex gap-2">
         <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>

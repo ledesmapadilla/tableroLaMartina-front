@@ -12,13 +12,31 @@ function ResumenReparaciones() {
   const navigate = useNavigate();
   const [trabajos, setTrabajos] = useState([]);
   const [filtro, setFiltro] = useState("pendiente");
+  const [listaResponsables, setListaResponsables] = useState([]);
 
   useEffect(() => {
     fetch("/api/trabajos-camioneta")
       .then((r) => r.json())
       .then(setTrabajos)
       .catch(() => setTrabajos([]));
+
+    fetch("/api/camionetas")
+      .then((r) => r.json())
+      .then((cams) => {
+        const unicos = [...new Set(cams.map((c) => c.responsable).filter(Boolean))].sort();
+        setListaResponsables(unicos);
+      })
+      .catch(() => {});
   }, []);
+
+  const cambiarResponsable = async (id, responsable) => {
+    setTrabajos((prev) => prev.map((t) => t._id === id ? { ...t, responsable } : t));
+    await fetch(`/api/trabajos-camioneta/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ responsable }),
+    }).catch(() => {});
+  };
 
   const trabajosFiltrados = trabajos.filter((t) =>
     filtro === "todos" || (t.estado ?? "pendiente") === filtro
@@ -27,7 +45,7 @@ function ResumenReparaciones() {
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = "Resumen Reparaciones Camionetas";
-    const columnas = ["Patente", "Tarea", "Fecha tarea", "Urgencia", "Estado"];
+    const columnas = ["Patente", "Tarea", "Fecha tarea", "Urgencia", "Estado", "Responsable"];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparaciones");
@@ -57,12 +75,14 @@ function ResumenReparaciones() {
 
     trabajosFiltrados.forEach((t) => {
       const urgencia = t.urgencia ?? "baja";
+      const responsable = t.responsable || t.camioneta?.responsable || "—";
       const fila = ws.addRow([
         t.camioneta?.patente ?? "—",
         t.descripcion,
         formatF(t.fecha),
         urgencia,
         (t.estado ?? "pendiente") === "terminada" ? "Terminada" : "Pendiente",
+        responsable,
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
@@ -71,7 +91,7 @@ function ResumenReparaciones() {
       }
     });
 
-    ws.columns = [{ width: 14 }, { width: 40 }, { width: 14 }, { width: 12 }, { width: 12 }];
+    ws.columns = [{ width: 14 }, { width: 40 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 20 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -125,15 +145,17 @@ function ResumenReparaciones() {
               <th>Fecha tarea</th>
               <th>Urgencia</th>
               <th>Estado</th>
+              <th>Responsable</th>
             </tr>
           </thead>
           <tbody>
             {trabajosFiltrados.length === 0 && (
-              <tr><td colSpan={5} className="text-muted py-3">Sin registros</td></tr>
+              <tr><td colSpan={6} className="text-muted py-3">Sin registros</td></tr>
             )}
             {trabajosFiltrados.map((t) => {
-              const urgencia = t.urgencia ?? "baja";
-              const estado   = t.estado   ?? "pendiente";
+              const urgencia    = t.urgencia ?? "baja";
+              const estado      = t.estado   ?? "pendiente";
+              const responsable = t.responsable || t.camioneta?.responsable || "";
               return (
                 <tr key={t._id}>
                   <td>
@@ -152,6 +174,18 @@ function ResumenReparaciones() {
                     <span style={{ display: "inline-block", backgroundColor: estado === "terminada" ? "#52735a" : "#8b4a4a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
                       {estado === "terminada" ? "Terminada" : "Pendiente"}
                     </span>
+                  </td>
+                  <td>
+                    <select
+                      value={responsable}
+                      onChange={(e) => cambiarResponsable(t._id, e.target.value)}
+                      style={{ padding: "2px 6px", borderRadius: "4px", border: "1px solid #aaa", fontSize: "0.85rem", cursor: "pointer", minWidth: "120px" }}
+                    >
+                      <option value="">— Sin asignar —</option>
+                      {listaResponsables.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
                   </td>
                 </tr>
               );
