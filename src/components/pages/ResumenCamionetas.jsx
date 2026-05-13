@@ -246,7 +246,7 @@ function ResumenCamionetas() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Tareas Pendientes</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: "600", textAlign: "center" }}>Unidades con tareas pendientes</span>
                 {tareasPendientes !== null && (
                   <span style={{ fontSize: "2rem", fontWeight: "700", marginTop: "4px" }}>{tareasPendientes}</span>
                 )}

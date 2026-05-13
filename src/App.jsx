@@ -4,7 +4,6 @@ import Footer from "./components/shared/Footer";
 import Inicio from "./components/pages/Inicio";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
-import Tractores from "./components/pages/Tractores";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
 import ReparacionesBerdina from "./components/pages/ReparacionesBerdina";
 import CamionetasAltas from "./components/pages/CamionetasAltas";
@@ -17,6 +16,8 @@ import ServicesReparaciones from "./components/pages/ServicesReparaciones";
 import ReparacionesCamioneta from "./components/pages/ReparacionesCamioneta";
 import ResumenCamionetas from "./components/pages/ResumenCamionetas";
 import ResumenReparaciones from "./components/pages/ResumenReparaciones";
+import Tractores from "./components/pages/Tractores";
+import TractoresAltas from "./components/pages/TractoresAltas";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
               <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
               <Route path="/tractores" element={<Tractores />} />
+              <Route path="/tractores/altas" element={<TractoresAltas />} />
               <Route path="/reparaciones/sanpablo" element={<ReparacionesSanPablo />} />
               <Route path="/reparaciones/berdina" element={<ReparacionesBerdina />} />
               <Route path="/camionetas/services" element={<CamionetasServices />} />

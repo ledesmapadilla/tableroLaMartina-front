@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import TractorIcon from "./TractorIcon";
 
 const links = [
   { to: "/", label: "Inicio", icon: "bi bi-house-fill", end: true },
@@ -11,10 +12,22 @@ const links = [
       { to: "/camionetas/altas", label: "Alta Flota", icon: "bi bi-plus-circle-fill" },
     ],
   },
-  { to: "/tractores", label: "Tractores", icon: "bi bi-truck-flatbed" },
+  {
+    to: "/tractores",
+    label: "Tractores",
+    customIcon: <TractorIcon size="1rem" color="#fff" style={{ minWidth: "24px" }} />,
+    submenu: [
+      { to: "/tractores/altas", label: "Alta Tractores", icon: "bi bi-plus-circle-fill" },
+    ],
+  },
   { to: "/reparaciones/sanpablo", label: "Rep. San Pablo", icon: "bi bi-tools" },
   { to: "/reparaciones/berdina", label: "Rep. Berdina", icon: "bi bi-wrench-adjustable" },
 ];
+
+function Icono({ icon, customIcon }) {
+  if (customIcon) return customIcon;
+  return <i className={icon} style={{ minWidth: "24px" }}></i>;
+}
 
 function Sidebar() {
   const [open, setOpen] = useState({});
@@ -43,7 +56,7 @@ function Sidebar() {
               tabIndex={0}
               onKeyDown={(e) => e.key === "Enter" && toggle(link.to)}
             >
-              <i className={link.icon} style={{ minWidth: "24px" }}></i>
+              <Icono icon={link.icon} customIcon={link.customIcon} />
               <span className="sidebar-label">{link.label}</span>
               <i className={`bi bi-chevron-${open[link.to] ? "up" : "down"} sidebar-label sidebar-chevron`}></i>
             </div>
@@ -73,7 +86,7 @@ function Sidebar() {
             end={link.end}
             className={({ isActive }) => `sidebar-link${isActive ? " sidebar-link--active" : ""}`}
           >
-            <i className={link.icon} style={{ minWidth: "24px" }}></i>
+            <Icono icon={link.icon} customIcon={link.customIcon} />
             <span className="sidebar-label">{link.label}</span>
           </NavLink>
         )
