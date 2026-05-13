@@ -342,20 +342,25 @@ function ServicesKilometros() {
           <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.88rem", width: "80%" }}>
             <thead className="table-dark">
               <tr>
+                <th style={{ width: "40px" }}>#</th>
                 <th>Patente</th>
                 {MESES_CORTOS.map((m) => <th key={m}>{m}</th>)}
                 <th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {camionetas.map((c) => {
+              {camionetas.map((c, idx) => {
                 const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
                 const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
                 const estado = getEstado(ultimo?.kms, serv?.kms);
                 return (
                   <tr key={c._id}>
+                    <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                     <td className="text-start">
-                      <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
+                      <span
+                        onClick={() => navigate("/camionetas/altas")}
+                        style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", cursor: "pointer" }}
+                      >
                         {c.patente} — {c.marca}
                       </span>
                     </td>

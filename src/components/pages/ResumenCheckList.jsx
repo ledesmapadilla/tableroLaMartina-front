@@ -188,6 +188,7 @@ function ResumenCheckList() {
       <Table bordered size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap" }}>
         <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
           <tr>
+            <th style={{ width: "40px" }}>#</th>
             <th>Camioneta</th>
             {MESES.map((m) => (
               <th key={m} style={{ textTransform: "capitalize" }}>{m}</th>
@@ -196,7 +197,7 @@ function ResumenCheckList() {
           </tr>
         </thead>
         <tbody>
-          {camionetas.filter((c) => !filtroCamioneta || c._id === filtroCamioneta).map((c) => {
+          {camionetas.filter((c) => !filtroCamioneta || c._id === filtroCamioneta).map((c, idx) => {
             const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
               .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
               .map(({ puntuacion }) => puntuacion);
@@ -205,8 +206,12 @@ function ResumenCheckList() {
               : null;
             return (
               <tr key={c._id} style={{ height: "42px" }}>
+                <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                 <td className="fw-semibold text-start" style={{ padding: "4px 8px" }}>
-                  <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)" }}>
+                  <span
+                    onClick={() => navigate("/camionetas/altas")}
+                    style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)", cursor: "pointer" }}
+                  >
                     {c.patente} — {c.marca}
                   </span>
                 </td>

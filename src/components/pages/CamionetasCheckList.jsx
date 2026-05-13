@@ -82,7 +82,10 @@ function CamionetasCheckList() {
   const [paradaAbiertaId, setParadaAbiertaId] = useState(null);
   const [showNuevaTarea, setShowNuevaTarea] = useState(false);
   const [motivoNuevaTarea, setMotivoNuevaTarea] = useState("");
+  const [urgenciaNuevaTarea, setUrgenciaNuevaTarea] = useState("baja");
   const [showResolverTarea, setShowResolverTarea] = useState(false);
+  const [showHistorialTareas, setShowHistorialTareas] = useState(false);
+  const [tareas, setTareas] = useState([]);
   const dropRef = useRef(null);
 
   const { register, handleSubmit, setValue, getValues, control, formState: { errors } } = useForm({
@@ -195,6 +198,7 @@ function CamionetasCheckList() {
     if (!camionetaId) return;
     if (!tareaPendiente) {
       setMotivoNuevaTarea("");
+      setUrgenciaNuevaTarea("baja");
       setShowNuevaTarea(true);
     } else {
       setShowResolverTarea(true);
@@ -244,6 +248,15 @@ function CamionetasCheckList() {
     setShowHistorial(true);
   };
 
+  const abrirHistorialTareas = async () => {
+    if (!camionetaId) return;
+    try {
+      const r = await fetch(`/api/trabajos-camioneta/${camionetaId}`);
+      setTareas(await r.json());
+    } catch { setTareas([]); }
+    setShowHistorialTareas(true);
+  };
+
   const eliminarParada = async (id) => {
     const r = await Swal.fire({ icon: "warning", title: "¿Eliminar?", showCancelButton: true, confirmButtonText: "Eliminar", cancelButtonText: "Cancelar", confirmButtonColor: "#8b4a4a" });
     if (!r.isConfirmed) return;
@@ -288,7 +301,7 @@ function CamionetasCheckList() {
           await fetch("/api/trabajos-camioneta", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ camioneta: data.camioneta, descripcion: motivoNuevaTarea.trim(), fecha: data.fecha }),
+            body: JSON.stringify({ camioneta: data.camioneta, descripcion: motivoNuevaTarea.trim(), fecha: data.fecha, urgencia: urgenciaNuevaTarea }),
           });
         }
         Swal.fire({ icon: "success", title: "Check list guardado", timer: 1500, showConfirmButton: false });
@@ -352,6 +365,13 @@ function CamionetasCheckList() {
                   onClick={alClickCirculoPendiente}
                   onChange={() => {}}
                 />
+                <span
+                  className="fw-semibold"
+                  style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#1565c0" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: camionetaId ? "underline" : "none" }}
+                  onClick={camionetaId ? abrirHistorialTareas : undefined}
+                >
+                  Historial tareas
+                </span>
               </div>
               {/* Camioneta parada */}
               <div className="d-flex flex-column">
@@ -573,6 +593,34 @@ function CamionetasCheckList() {
             <Form.Label className="fw-semibold">Descripción</Form.Label>
             <Form.Control type="text" placeholder="Descripción de la tarea" value={motivoNuevaTarea} onChange={(e) => setMotivoNuevaTarea(e.target.value)} autoFocus />
           </div>
+          <div className="mb-1">
+            <Form.Label className="fw-semibold">Urgencia</Form.Label>
+            <div className="d-flex gap-3">
+              {[
+                { valor: "baja",  label: "Baja",  bg: "#52735a" },
+                { valor: "media", label: "Media", bg: "#9e8850" },
+                { valor: "alta",  label: "Alta",  bg: "#8b4a4a" },
+              ].map(({ valor, label, bg }) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => setUrgenciaNuevaTarea(valor)}
+                  style={{
+                    padding: "5px 20px",
+                    borderRadius: "6px",
+                    border: urgenciaNuevaTarea === valor ? `2px solid ${bg}` : "2px solid #ccc",
+                    backgroundColor: urgenciaNuevaTarea === valor ? bg : "#fff",
+                    color: urgenciaNuevaTarea === valor ? "#fff" : "#555",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowNuevaTarea(false)}>Cancelar</Button>
@@ -638,6 +686,49 @@ function CamionetasCheckList() {
             <i className="bi bi-save me-2"></i>Confirmar arranque
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Modal: Historial tareas */}
+      <Modal show={showHistorialTareas} onHide={() => setShowHistorialTareas(false)} centered size="lg" contentClassName="border border-dark">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Historial de Tareas</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Table bordered size="sm" className="text-center align-middle mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th className="text-start">Descripción</th>
+                <th>Fecha</th>
+                <th>Urgencia</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tareas.length === 0 && <tr><td colSpan={4} className="text-muted">Sin registros</td></tr>}
+              {tareas.map((t) => {
+                const urgencia = t.urgencia ?? "baja";
+                const estado   = t.estado   ?? "pendiente";
+                const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
+                return (
+                  <tr key={t._id}>
+                    <td className="text-start">{t.descripcion}</td>
+                    <td>{formatF(t.fecha)}</td>
+                    <td>
+                      <span style={{ display: "inline-block", backgroundColor: URGENCIA_COLORES[urgencia], color: "#fff", borderRadius: "4px", padding: "2px 10px", textTransform: "capitalize", minWidth: "55px" }}>
+                        {urgencia}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ display: "inline-block", backgroundColor: estado === "terminada" ? "#52735a" : "#8b4a4a", color: "#fff", borderRadius: "4px", padding: "2px 10px", textTransform: "capitalize", minWidth: "75px" }}>
+                        {estado === "terminada" ? "Terminada" : "Pendiente"}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </Modal.Body>
       </Modal>
 
       {/* Modal: Historial (solo listado) */}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Table, Button } from "react-bootstrap";
 import ExcelJS from "exceljs";
+import Swal from "sweetalert2";
 
 const formatF = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
@@ -12,6 +13,9 @@ function ResumenReparaciones() {
   const navigate = useNavigate();
   const [trabajos, setTrabajos] = useState([]);
   const [filtro, setFiltro] = useState("pendiente");
+  const [filtroPatente, setFiltroPatente] = useState("");
+  const [filtroUrgencia, setFiltroUrgencia] = useState("");
+  const [filtroResponsable, setFiltroResponsable] = useState("");
   const [listaResponsables, setListaResponsables] = useState([]);
 
   useEffect(() => {
@@ -23,8 +27,7 @@ function ResumenReparaciones() {
     fetch("/api/camionetas")
       .then((r) => r.json())
       .then((cams) => {
-        const unicos = [...new Set(cams.map((c) => c.responsable).filter(Boolean))].sort();
-        setListaResponsables(unicos);
+        setListaResponsables([...new Set(cams.map((c) => c.responsable).filter(Boolean))].sort());
       })
       .catch(() => {});
   }, []);
@@ -38,9 +41,40 @@ function ResumenReparaciones() {
     }).catch(() => {});
   };
 
-  const trabajosFiltrados = trabajos.filter((t) =>
-    filtro === "todos" || (t.estado ?? "pendiente") === filtro
-  );
+  const eliminar = async (id) => {
+    const result = await Swal.fire({
+      title: "¿Eliminar reparación?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#7a4040",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
+    await fetch(`/api/trabajos-camioneta/${id}`, { method: "DELETE" }).catch(() => {});
+    setTrabajos((prev) => prev.filter((t) => t._id !== id));
+  };
+
+  const listaResponsablesFiltrada = [...new Set(
+    trabajos
+      .filter((t) => (t.estado ?? "pendiente") === "pendiente")
+      .map((t) => t.responsable || t.camioneta?.responsable || "")
+      .filter(Boolean)
+  )].sort();
+
+  const listaPatentes = [...new Map(
+    trabajos
+      .filter((t) => t.camioneta?.patente)
+      .map((t) => [t.camioneta.patente, { patente: t.camioneta.patente, label: `${t.camioneta.patente} — ${t.camioneta.marca}` }])
+  ).values()].sort((a, b) => a.patente.localeCompare(b.patente));
+
+  const trabajosFiltrados = trabajos.filter((t) => {
+    if (filtro !== "todos" && (t.estado ?? "pendiente") !== filtro) return false;
+    if (filtroPatente && t.camioneta?.patente !== filtroPatente) return false;
+    if (filtroUrgencia && (t.urgencia ?? "baja") !== filtroUrgencia) return false;
+    if (filtroResponsable && (t.responsable || t.camioneta?.responsable || "") !== filtroResponsable) return false;
+    return true;
+  });
 
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -124,16 +158,42 @@ function ResumenReparaciones() {
         </div>
       </div>
 
-      <div className="mx-auto mb-3" style={{ width: "92%" }}>
-        <select
-          value={filtro}
-          onChange={(e) => setFiltro(e.target.value)}
-          style={{ padding: "6px 16px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "1rem", cursor: "pointer" }}
-        >
-          <option value="todos">Todas</option>
-          <option value="pendiente">Pendientes</option>
-          <option value="terminada">Terminadas</option>
-        </select>
+      <div className="mx-auto mb-3 d-flex align-items-center gap-3 flex-wrap" style={{ width: "92%" }}>
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-semibold">Estado</span>
+          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
+            <option value="todos">Todas</option>
+            <option value="pendiente">Pendientes</option>
+            <option value="terminada">Terminadas</option>
+          </select>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-semibold">Patente</span>
+          <select value={filtroPatente} onChange={(e) => setFiltroPatente(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
+            <option value="">Todas</option>
+            {listaPatentes.map((p) => (
+              <option key={p.patente} value={p.patente}>{p.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-semibold">Urgencia</span>
+          <select value={filtroUrgencia} onChange={(e) => setFiltroUrgencia(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
+            <option value="">Todas</option>
+            <option value="baja">Baja</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+          </select>
+        </div>
+        <div className="d-flex align-items-center gap-2">
+          <span className="fw-semibold">Responsable</span>
+          <select value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
+            <option value="">Todos</option>
+            {listaResponsablesFiltrada.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mx-auto" style={{ width: "92%", maxHeight: "70vh", overflowY: "auto" }}>
@@ -146,11 +206,12 @@ function ResumenReparaciones() {
               <th>Urgencia</th>
               <th>Estado</th>
               <th>Responsable</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {trabajosFiltrados.length === 0 && (
-              <tr><td colSpan={6} className="text-muted py-3">Sin registros</td></tr>
+              <tr><td colSpan={7} className="text-muted py-3">Sin registros</td></tr>
             )}
             {trabajosFiltrados.map((t) => {
               const urgencia    = t.urgencia ?? "baja";
@@ -186,6 +247,11 @@ function ResumenReparaciones() {
                         <option key={r} value={r}>{r}</option>
                       ))}
                     </select>
+                  </td>
+                  <td>
+                    <Button size="sm" onClick={() => eliminar(t._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
+                      <i className="bi bi-trash"></i>
+                    </Button>
                   </td>
                 </tr>
               );

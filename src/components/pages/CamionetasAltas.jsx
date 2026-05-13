@@ -114,6 +114,7 @@ function CamionetasAltas() {
         <Table bordered size="sm" className="text-center align-middle w-75" style={{ whiteSpace: "nowrap", fontSize: "0.75rem" }}>
           <thead className="table-dark">
             <tr>
+              <th style={{ width: "40px" }}>#</th>
               <th>Marca</th>
               <th>Patente</th>
               <th>Responsable</th>
@@ -123,13 +124,14 @@ function CamionetasAltas() {
           <tbody>
             {camionetas.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-muted py-4">
+                <td colSpan={5} className="text-muted py-4">
                   No hay equipos registrados
                 </td>
               </tr>
             ) : (
-              camionetas.map((c) => (
+              camionetas.map((c, idx) => (
                 <tr key={c._id}>
+                  <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                   <td>{c.marca}</td>
                   <td>
                     <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>

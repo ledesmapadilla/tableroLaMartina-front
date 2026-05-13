@@ -245,21 +245,25 @@ function ServicesUltimoService() {
           <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "75%" }}>
             <thead className="table-dark">
               <tr>
+                <th style={{ width: "40px" }}>#</th>
                 <th></th>
                 <th>Patente</th>
                 <th>Fecha</th>
                 <th>Km último service</th>
+                <th>Km prox. service</th>
+                <th>Km actuales</th>
                 <th>Observaciones</th>
                 <th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {camionetas.map((c) => {
+              {camionetas.map((c, idx) => {
                 const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const estado = getEstado(km?.kms, reg?.kms);
                 return (
                   <tr key={c._id}>
+                    <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                     <td className="text-center">
                       <button
                         onClick={() => abrirModal(c._id)}
@@ -269,12 +273,17 @@ function ServicesUltimoService() {
                       >+ ult. service</button>
                     </td>
                     <td className="text-start">
-                      <span style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
+                      <span
+                        onClick={() => navigate("/camionetas/altas")}
+                        style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", cursor: "pointer" }}
+                      >
                         {c.patente} — {c.marca}
                       </span>
                     </td>
                     <td>{reg ? formatFecha(reg.fecha) : "—"}</td>
                     <td className="fw-semibold">{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
+                    <td className="fw-semibold">{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
+                    <td className="fw-semibold">{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="text-start text-muted" style={{ fontSize: "0.9rem" }}>{reg?.observaciones || "—"}</td>
                     <td>
                       {estado
@@ -285,7 +294,7 @@ function ServicesUltimoService() {
                 );
               })}
               {camionetas.length === 0 && (
-                <tr><td colSpan={6} className="text-muted">Sin datos</td></tr>
+                <tr><td colSpan={9} className="text-muted">Sin datos</td></tr>
               )}
             </tbody>
           </Table>
