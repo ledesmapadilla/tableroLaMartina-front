@@ -38,7 +38,8 @@ function ServicesUltimoService() {
   const [año, setAnio] = useState(new Date().getFullYear());
   const [dropAño, setDropAño] = useState(false);
   const dropAñoRef = useRef(null);
-  const [telefonoAviso, setTelefonoAviso] = useState(() => localStorage.getItem("wsp_aviso_phone") ?? "");
+  const [telefonoAviso, setTelefonoAviso] = useState("");
+  const [guardandoTel, setGuardandoTel]   = useState(false);
 
   const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -62,10 +63,8 @@ function ServicesUltimoService() {
   ]);
 
   useEffect(() => {
-    fetch("/api/camionetas")
-      .then((r) => r.json())
-      .then(setCamionetas)
-      .catch(() => setCamionetas([]));
+    fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => setCamionetas([]));
+    fetch("/api/config").then((r) => r.json()).then((cfg) => setTelefonoAviso(cfg.telefonoAviso ?? "")).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -191,6 +190,18 @@ function ServicesUltimoService() {
     URL.revokeObjectURL(url);
   };
 
+  const guardarTelefono = async () => {
+    setGuardandoTel(true);
+    try {
+      await fetch("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ telefonoAviso }),
+      });
+    } catch { /* silencioso */ }
+    setGuardandoTel(false);
+  };
+
   const marcarWhatsapp = async (camionetaId, enviado) => {
     try {
       await fetch(`/api/camionetas/${camionetaId}`, {
@@ -262,13 +273,18 @@ function ServicesUltimoService() {
         <input
           type="text"
           value={telefonoAviso}
-          onChange={(e) => {
-            setTelefonoAviso(e.target.value);
-            localStorage.setItem("wsp_aviso_phone", e.target.value);
-          }}
+          onChange={(e) => setTelefonoAviso(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && guardarTelefono()}
           placeholder="5491123456789  (sin + ni espacios)"
           style={{ fontSize: "0.85rem", padding: "3px 10px", borderRadius: "6px", border: "1px solid #ccc", width: "260px" }}
         />
+        <button
+          onClick={guardarTelefono}
+          disabled={guardandoTel}
+          style={{ fontSize: "0.8rem", padding: "3px 12px", borderRadius: "6px", border: "none", backgroundColor: "#4a6fa5", color: "#fff", cursor: "pointer" }}
+        >
+          {guardandoTel ? "..." : "Guardar"}
+        </button>
       </div>
 
       {/* Tabla */}
