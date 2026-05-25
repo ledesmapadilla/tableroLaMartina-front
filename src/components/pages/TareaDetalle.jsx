@@ -4,7 +4,8 @@ import { Container, Button, Form, Table, InputGroup } from "react-bootstrap";
 import Swal from "sweetalert2";
 
 const SOMBRA = "3px 3px 6px rgba(0,0,0,0.35)";
-const FILA_VACIA = { nombre: "", costo: "", observaciones: "" };
+const FILA_VACIA        = { nombre: "", costo: "", observaciones: "" };
+const TRABAJO_VACIO     = { descripcion: "", hecho: false };
 
 const formatearPeso = (v) => {
   if (v === "" || v == null) return "";
@@ -29,9 +30,11 @@ function TareaDetalle() {
   const [urgencia,     setUrgencia]     = useState("baja");
   const [responsable,  setResponsable]  = useState("");
   const [estado,       setEstado]       = useState("pendiente");
-  const [detalle,      setDetalle]      = useState("");
-  const [repuestos,    setRepuestos]    = useState([]);
-  const [nuevaFila,    setNuevaFila]    = useState(FILA_VACIA);
+  const [detalle,           setDetalle]           = useState("");
+  const [trabajosRealizados,setTrabajosRealizados] = useState([]);
+  const [nuevoTrabajo,      setNuevoTrabajo]       = useState(TRABAJO_VACIO);
+  const [repuestos,         setRepuestos]          = useState([]);
+  const [nuevaFila,         setNuevaFila]          = useState(FILA_VACIA);
 
   /* ── Cargar datos ── */
   useEffect(() => {
@@ -42,6 +45,7 @@ function TareaDetalle() {
       setResponsable(t.responsable ?? "");
       setEstado(t.estado ?? "pendiente");
       setDetalle(t.detalle ?? "");
+      setTrabajosRealizados(t.trabajosRealizados ?? []);
       setRepuestos(t.repuestos ? t.repuestos.map((r) => ({ ...r, costo: formatearPeso(r.costo) })) : []);
       setLoading(false);
     };
@@ -55,6 +59,18 @@ function TareaDetalle() {
         .catch(() => setLoading(false));
     }
   }, []);
+
+  /* ── Trabajos realizados ── */
+  const agregarTrabajo = () => {
+    if (!nuevoTrabajo.descripcion.trim()) return;
+    setTrabajosRealizados((prev) => [...prev, { ...nuevoTrabajo }]);
+    setNuevoTrabajo(TRABAJO_VACIO);
+  };
+  const eliminarTrabajo = (idx) => setTrabajosRealizados((prev) => prev.filter((_, i) => i !== idx));
+  const toggleTrabajo   = (idx) =>
+    setTrabajosRealizados((prev) => prev.map((t, i) => i === idx ? { ...t, hecho: !t.hecho } : t));
+  const editarTrabajo   = (idx, valor) =>
+    setTrabajosRealizados((prev) => prev.map((t, i) => i === idx ? { ...t, descripcion: valor } : t));
 
   /* ── Repuestos ── */
   const agregarFila = () => {
@@ -81,7 +97,7 @@ function TareaDetalle() {
       const res = await fetch(`/api/trabajos-camioneta/${trabajoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fecha, descripcion, urgencia, responsable, estado, detalle, repuestos: lista }),
+        body: JSON.stringify({ fecha, descripcion, urgencia, responsable, estado, detalle, trabajosRealizados, repuestos: lista }),
       });
       if (res.ok) {
         Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
@@ -222,6 +238,58 @@ function TareaDetalle() {
           onChange={(e) => setDetalle(e.target.value)}
           style={{ resize: "vertical", fontSize: "0.95rem" }}
         />
+      </div>
+
+      {/* Trabajos realizados */}
+      <div className="w-75 mx-auto mb-3">
+        <div className="px-2 py-1 fw-bold text-white rounded mb-2" style={{ backgroundColor: "#2c2c2c", fontSize: "0.85rem" }}>
+          TRABAJOS REALIZADOS
+        </div>
+        <div className="d-flex flex-column gap-1 mb-2">
+          {trabajosRealizados.length === 0 && (
+            <div className="text-muted" style={{ fontSize: "0.9rem" }}>Sin trabajos cargados</div>
+          )}
+          {trabajosRealizados.map((tr, idx) => (
+            <div key={idx} className="d-flex align-items-center gap-2">
+              <input
+                type="checkbox"
+                checked={tr.hecho}
+                onChange={() => toggleTrabajo(idx)}
+                style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "#52735a", flexShrink: 0 }}
+              />
+              <Form.Control
+                size="sm"
+                value={tr.descripcion}
+                onChange={(e) => editarTrabajo(idx, e.target.value)}
+                style={{
+                  textDecoration: tr.hecho ? "line-through" : "none",
+                  color: tr.hecho ? "#888" : "#000",
+                  flex: 1,
+                }}
+              />
+              <button type="button" onClick={() => eliminarTrabajo(idx)}
+                style={{ background: "none", border: "none", color: "#7a4040", cursor: "pointer", fontSize: "1rem", flexShrink: 0 }}>
+                <i className="bi bi-trash"></i>
+              </button>
+            </div>
+          ))}
+        </div>
+        {/* Fila agregar */}
+        <div className="d-flex align-items-center gap-2">
+          <input type="checkbox" disabled style={{ width: "18px", height: "18px", flexShrink: 0, opacity: 0.3 }} />
+          <Form.Control
+            size="sm"
+            placeholder="Nuevo trabajo..."
+            value={nuevoTrabajo.descripcion}
+            onChange={(e) => setNuevoTrabajo((p) => ({ ...p, descripcion: e.target.value }))}
+            onKeyDown={(e) => e.key === "Enter" && agregarTrabajo()}
+            style={{ flex: 1 }}
+          />
+          <Button type="button" size="sm" onClick={agregarTrabajo}
+            style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.75rem", padding: "4px 10px", flexShrink: 0 }}>
+            <i className="bi bi-plus-lg"></i>
+          </Button>
+        </div>
       </div>
 
       {/* Repuestos */}
