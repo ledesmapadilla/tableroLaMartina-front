@@ -22,6 +22,7 @@ const links = [
   },
   { to: "/reparaciones/sanpablo", label: "Rep. San Pablo", icon: "bi bi-tools" },
   { to: "/reparaciones/berdina", label: "Rep. Berdina", icon: "bi bi-wrench-adjustable" },
+  { to: "/visitas", label: "Visitas", icon: "bi bi-calendar3" },
 ];
 
 function Icono({ icon, customIcon }) {
