@@ -187,6 +187,19 @@ function ServicesUltimoService() {
     URL.revokeObjectURL(url);
   };
 
+  const marcarWhatsapp = async (camionetaId, enviado) => {
+    try {
+      await fetch(`/api/camionetas/${camionetaId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serviceNotificado: enviado }),
+      });
+      setCamionetas((prev) =>
+        prev.map((c) => c._id === camionetaId ? { ...c, serviceNotificado: enviado } : c)
+      );
+    } catch { /* silencioso */ }
+  };
+
   const responsablesUnicos = camionetas
     .map((c) => c.responsable)
     .filter(Boolean)
@@ -290,15 +303,25 @@ function ServicesUltimoService() {
                         {estado
                           ? <span style={{ display: "inline-block", backgroundColor: estado.bg, color: estado.color, borderRadius: "4px", padding: "5px 14px", fontWeight: "400", fontSize: "1rem", boxShadow: "2px 2px 5px rgba(0,0,0,0.3)" }}>{estado.label}</span>
                           : "—"}
-                        {estado?.label === "Atrasado" && c.telefono && (
-                          <a
-                            href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a su cargo, ha vencido`)}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#25d366", color: "#fff", borderRadius: "4px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: "600", textDecoration: "none", boxShadow: "1px 1px 4px rgba(0,0,0,0.25)" }}
+                        {estado?.label === "Atrasado" && c.telefono && !c.serviceNotificado && (
+                          <button
+                            onClick={() => {
+                              window.open(`https://wa.me/${c.telefono}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a su cargo, ha vencido`)}`, "_blank");
+                              marcarWhatsapp(c._id, true);
+                            }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#25d366", color: "#fff", borderRadius: "4px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: "600", border: "none", cursor: "pointer", boxShadow: "1px 1px 4px rgba(0,0,0,0.25)" }}
                           >
                             <i className="bi bi-whatsapp"></i> Avisar
-                          </a>
+                          </button>
+                        )}
+                        {estado?.label === "Atrasado" && c.serviceNotificado && (
+                          <button
+                            onClick={() => marcarWhatsapp(c._id, false)}
+                            title="Avisado — click para desmarcar"
+                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#e8f5e9", color: "#2e7d32", borderRadius: "4px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: "600", border: "1px solid #a5d6a7", cursor: "pointer" }}
+                          >
+                            <i className="bi bi-check-lg"></i> Avisado
+                          </button>
                         )}
                       </div>
                     </td>
