@@ -1,0 +1,320 @@
+import { useEffect, useState } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { Container, Button, Form, Table, InputGroup } from "react-bootstrap";
+import Swal from "sweetalert2";
+
+const SOMBRA = "3px 3px 6px rgba(0,0,0,0.35)";
+const FILA_VACIA = { nombre: "", costo: "", observaciones: "" };
+
+const formatearPeso = (v) => {
+  if (v === "" || v == null) return "";
+  const n = parseFloat(String(v).replace(/\./g, "").replace(",", "."));
+  return isNaN(n) ? "" : n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+const parsearPeso = (v) => parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
+
+const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
+
+function TareaDetalle() {
+  const { camionetaId, trabajoId } = useParams();
+  const { state } = useLocation();
+  const navigate = useNavigate();
+
+  const patente = state?.patente ?? "—";
+  const marca   = state?.marca   ?? "";
+
+  const [loading,      setLoading]      = useState(true);
+  const [fecha,        setFecha]        = useState("");
+  const [descripcion,  setDescripcion]  = useState("");
+  const [urgencia,     setUrgencia]     = useState("baja");
+  const [responsable,  setResponsable]  = useState("");
+  const [estado,       setEstado]       = useState("pendiente");
+  const [detalle,      setDetalle]      = useState("");
+  const [repuestos,    setRepuestos]    = useState([]);
+  const [nuevaFila,    setNuevaFila]    = useState(FILA_VACIA);
+
+  /* ── Cargar datos ── */
+  useEffect(() => {
+    const cargarDesdeObj = (t) => {
+      setFecha(t.fecha ? t.fecha.split("T")[0] : "");
+      setDescripcion(t.descripcion ?? "");
+      setUrgencia(t.urgencia ?? "baja");
+      setResponsable(t.responsable ?? "");
+      setEstado(t.estado ?? "pendiente");
+      setDetalle(t.detalle ?? "");
+      setRepuestos(t.repuestos ? t.repuestos.map((r) => ({ ...r, costo: formatearPeso(r.costo) })) : []);
+      setLoading(false);
+    };
+
+    if (state?.trabajo) {
+      cargarDesdeObj(state.trabajo);
+    } else {
+      fetch(`/api/trabajos-camioneta/tarea/${trabajoId}`)
+        .then((r) => r.json())
+        .then(cargarDesdeObj)
+        .catch(() => setLoading(false));
+    }
+  }, []);
+
+  /* ── Repuestos ── */
+  const agregarFila = () => {
+    if (!nuevaFila.nombre.trim()) return;
+    setRepuestos((prev) => [...prev, { ...nuevaFila, costo: formatearPeso(nuevaFila.costo) }]);
+    setNuevaFila(FILA_VACIA);
+  };
+  const eliminarFila = (idx) => setRepuestos((prev) => prev.filter((_, i) => i !== idx));
+  const editarFila   = (idx, campo, valor) =>
+    setRepuestos((prev) => prev.map((r, i) => i === idx ? { ...r, [campo]: valor } : r));
+
+  const totalRepuestos = repuestos.reduce((acc, r) => acc + parsearPeso(r.costo), 0);
+
+  /* ── Guardar ── */
+  const guardar = async () => {
+    if (!descripcion.trim()) {
+      Swal.fire({ icon: "warning", title: "La descripción es requerida" });
+      return;
+    }
+    const lista = repuestos.map(({ nombre, costo, observaciones }) => ({
+      nombre, costo: parsearPeso(costo), observaciones,
+    }));
+    try {
+      const res = await fetch(`/api/trabajos-camioneta/${trabajoId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fecha, descripcion, urgencia, responsable, estado, detalle, repuestos: lista }),
+      });
+      if (res.ok) {
+        Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
+        navigate(-1);
+      } else {
+        const err = await res.json();
+        Swal.fire({ icon: "error", title: "Error", text: err.error });
+      }
+    } catch {
+      Swal.fire({ icon: "error", title: "Sin conexión" });
+    }
+  };
+
+  if (loading) return <Container className="py-5 text-center text-muted">Cargando...</Container>;
+
+  return (
+    <Container className="py-4">
+
+      {/* Encabezado */}
+      <div className="d-flex justify-content-between align-items-center mb-4 w-75 mx-auto">
+        <h3 className="fw-bold mb-0">
+          Reparación —{" "}
+          <span style={{ backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: SOMBRA, fontSize: "1rem" }}>
+            {patente}
+          </span>
+          {marca ? <span className="text-muted fs-5 fw-normal ms-2">— {marca}</span> : ""}
+        </h3>
+        <div className="d-flex gap-2">
+          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-arrow-left me-2"></i>Volver
+          </Button>
+          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-speedometer me-2"></i>Tablero
+          </Button>
+          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-house-fill me-2"></i>General
+          </Button>
+          <Button onClick={guardar} style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
+            <i className="bi bi-save me-2"></i>Guardar
+          </Button>
+        </div>
+      </div>
+
+      {/* Estado */}
+      <div className="w-75 mx-auto mb-3 d-flex align-items-center gap-3">
+        <span className="fw-semibold">Estado:</span>
+        <Button
+          onClick={() => setEstado((e) => e === "terminada" ? "pendiente" : "terminada")}
+          style={{
+            backgroundColor: estado === "terminada" ? "#52735a" : "#8b4a4a",
+            border: "none",
+            boxShadow: SOMBRA,
+            minWidth: "130px",
+            fontWeight: "600",
+          }}
+        >
+          {estado === "terminada"
+            ? <><i className="bi bi-check-lg me-2"></i>Terminada</>
+            : <><i className="bi bi-clock me-2"></i>Pendiente</>}
+        </Button>
+        <span className="text-muted" style={{ fontSize: "0.85rem" }}>
+          (hacé click para cambiar)
+        </span>
+      </div>
+
+      {/* Info básica */}
+      <div className="w-75 mx-auto bg-light rounded p-3 mb-3">
+        <div className="px-2 py-1 fw-bold text-white rounded mb-3" style={{ backgroundColor: "#2c2c2c", fontSize: "0.85rem" }}>
+          DATOS GENERALES
+        </div>
+        <div className="d-flex gap-3 flex-wrap">
+          <div>
+            <Form.Label className="fw-semibold">Fecha</Form.Label>
+            <Form.Control
+              type="date"
+              style={{ width: "160px" }}
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: "200px" }}>
+            <Form.Label className="fw-semibold">Descripción</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="Ej: Cambio de correa"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+            />
+          </div>
+          <div>
+            <Form.Label className="fw-semibold">Urgencia</Form.Label>
+            <div className="d-flex gap-2">
+              {["baja", "media", "alta"].map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setUrgencia(u)}
+                  style={{
+                    padding: "5px 14px",
+                    borderRadius: "6px",
+                    border: urgencia === u ? `2px solid ${URGENCIA_COLORES[u]}` : "2px solid #ccc",
+                    backgroundColor: urgencia === u ? URGENCIA_COLORES[u] : "#fff",
+                    color: urgencia === u ? "#fff" : "#555",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Form.Label className="fw-semibold">Responsable</Form.Label>
+            <Form.Control
+              type="text"
+              placeholder="Nombre"
+              style={{ width: "180px" }}
+              value={responsable}
+              onChange={(e) => setResponsable(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Detalle */}
+      <div className="w-75 mx-auto mb-3">
+        <div className="px-2 py-1 fw-bold text-white rounded mb-2" style={{ backgroundColor: "#2c2c2c", fontSize: "0.85rem" }}>
+          DETALLE
+        </div>
+        <Form.Control
+          as="textarea"
+          rows={6}
+          placeholder="Describí aquí el detalle completo de la reparación..."
+          value={detalle}
+          onChange={(e) => setDetalle(e.target.value)}
+          style={{ resize: "vertical", fontSize: "0.95rem" }}
+        />
+      </div>
+
+      {/* Repuestos */}
+      <div className="w-75 mx-auto mb-4">
+        <div className="px-2 py-1 fw-bold text-white rounded mb-2 d-flex justify-content-between align-items-center" style={{ backgroundColor: "#2c2c2c", fontSize: "0.85rem" }}>
+          <span>REPUESTOS</span>
+          {totalRepuestos > 0 && (
+            <span style={{ fontWeight: "400", fontSize: "0.8rem" }}>
+              Total: ${totalRepuestos.toLocaleString("es-AR")}
+            </span>
+          )}
+        </div>
+        <Table bordered size="sm" className="text-center align-middle mb-0">
+          <thead className="table-secondary">
+            <tr>
+              <th className="text-start">Repuesto</th>
+              <th style={{ width: "130px" }}>Costo</th>
+              <th>Observaciones</th>
+              <th style={{ width: "44px" }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {repuestos.length === 0 && (
+              <tr><td colSpan={4} className="text-muted py-2">Sin repuestos cargados</td></tr>
+            )}
+            {repuestos.map((r, idx) => (
+              <tr key={idx}>
+                <td>
+                  <Form.Control size="sm" value={r.nombre} onChange={(e) => editarFila(idx, "nombre", e.target.value)} />
+                </td>
+                <td>
+                  <InputGroup size="sm">
+                    <InputGroup.Text>$</InputGroup.Text>
+                    <Form.Control
+                      type="text" inputMode="numeric"
+                      value={r.costo ?? ""}
+                      onChange={(e) => editarFila(idx, "costo", e.target.value.replace(/[^\d]/g, ""))}
+                      onBlur={(e)  => editarFila(idx, "costo", formatearPeso(e.target.value))}
+                      onFocus={(e) => editarFila(idx, "costo", String(e.target.value).replace(/\./g, ""))}
+                      style={{ textAlign: "center" }}
+                    />
+                  </InputGroup>
+                </td>
+                <td>
+                  <Form.Control size="sm" value={r.observaciones} onChange={(e) => editarFila(idx, "observaciones", e.target.value)} />
+                </td>
+                <td>
+                  <button type="button" onClick={() => eliminarFila(idx)}
+                    style={{ background: "none", border: "none", color: "#7a4040", cursor: "pointer", fontSize: "1rem" }}>
+                    <i className="bi bi-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            ))}
+
+            {/* Fila agregar */}
+            <tr style={{ backgroundColor: "#f8f9fa" }}>
+              <td>
+                <Form.Control size="sm" placeholder="Repuesto..." value={nuevaFila.nombre}
+                  onChange={(e) => setNuevaFila((p) => ({ ...p, nombre: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
+              </td>
+              <td>
+                <InputGroup size="sm">
+                  <InputGroup.Text>$</InputGroup.Text>
+                  <Form.Control
+                    type="text" inputMode="numeric" placeholder="0"
+                    value={nuevaFila.costo}
+                    onChange={(e) => setNuevaFila((p) => ({ ...p, costo: e.target.value.replace(/[^\d]/g, "") }))}
+                    onBlur={(e)  => setNuevaFila((p) => ({ ...p, costo: formatearPeso(e.target.value) }))}
+                    onFocus={(e) => setNuevaFila((p) => ({ ...p, costo: String(e.target.value).replace(/\./g, "") }))}
+                    style={{ textAlign: "center" }}
+                    onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
+                </InputGroup>
+              </td>
+              <td>
+                <Form.Control size="sm" placeholder="Observaciones..." value={nuevaFila.observaciones}
+                  onChange={(e) => setNuevaFila((p) => ({ ...p, observaciones: e.target.value }))}
+                  onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
+              </td>
+              <td>
+                <Button type="button" size="sm" onClick={agregarFila}
+                  style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.75rem", padding: "2px 8px" }}>
+                  <i className="bi bi-plus-lg"></i>
+                </Button>
+              </td>
+            </tr>
+          </tbody>
+        </Table>
+      </div>
+
+    </Container>
+  );
+}
+
+export default TareaDetalle;

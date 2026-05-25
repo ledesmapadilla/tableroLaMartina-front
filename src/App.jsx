@@ -14,10 +14,12 @@ import ServicesKilometros from "./components/pages/ServicesKilometros";
 import ServicesUltimoService from "./components/pages/ServicesUltimoService";
 import ServicesReparaciones from "./components/pages/ServicesReparaciones";
 import ReparacionesCamioneta from "./components/pages/ReparacionesCamioneta";
+import TareaDetalle from "./components/pages/TareaDetalle";
 import ResumenCamionetas from "./components/pages/ResumenCamionetas";
 import ResumenReparaciones from "./components/pages/ResumenReparaciones";
 import Tractores from "./components/pages/Tractores";
 import TractoresAltas from "./components/pages/TractoresAltas";
+import Visitas from "./components/pages/Visitas";
 
 function App() {
   return (
@@ -43,6 +45,8 @@ function App() {
               <Route path="/camionetas/services/reparaciones" element={<ServicesReparaciones />} />
               <Route path="/camionetas/services/reparaciones/resumen" element={<ResumenReparaciones />} />
               <Route path="/camionetas/services/reparaciones/:camionetaId" element={<ReparacionesCamioneta />} />
+              <Route path="/camionetas/services/reparaciones/:camionetaId/tarea/:trabajoId" element={<TareaDetalle />} />
+              <Route path="/visitas" element={<Visitas />} />
               <Route path="*" element={<Error404 />} />
             </Routes>
           </main>
