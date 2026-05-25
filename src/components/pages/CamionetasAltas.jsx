@@ -37,7 +37,6 @@ function CamionetasAltas() {
     setValue("patente", c.patente);
     setValue("responsable", c.responsable);
     setValue("telefono", c.telefono ?? "");
-    setValue("callmebotApiKey", c.callmebotApiKey ?? "");
     setShowModal(true);
   };
 
@@ -226,17 +225,6 @@ function CamionetasAltas() {
                   {...register("telefono")}
                 />
                 <Form.Text className="text-muted">Con código de país, sin + ni espacios</Form.Text>
-              </Col>
-              <Col md={6}>
-                <Form.Label className="fw-semibold">
-                  <i className="bi bi-key me-1"></i>
-                  CallMeBot API Key
-                </Form.Label>
-                <Form.Control
-                  placeholder="API key de CallMeBot"
-                  {...register("callmebotApiKey")}
-                />
-                <Form.Text className="text-muted">Solo si el responsable se registró en CallMeBot</Form.Text>
               </Col>
             </Row>
           </Modal.Body>
