@@ -38,6 +38,7 @@ function ServicesUltimoService() {
   const [año, setAnio] = useState(new Date().getFullYear());
   const [dropAño, setDropAño] = useState(false);
   const dropAñoRef = useRef(null);
+  const [telefonoAviso, setTelefonoAviso] = useState(() => localStorage.getItem("wsp_aviso_phone") ?? "");
 
   const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -254,6 +255,22 @@ function ServicesUltimoService() {
         </div>
       </div>
 
+      {/* Número de aviso WhatsApp */}
+      <div className="d-flex align-items-center gap-2" style={{ padding: "0.5rem 2rem 0" }}>
+        <i className="bi bi-whatsapp" style={{ color: "#25d366", fontSize: "1.1rem" }}></i>
+        <span style={{ fontSize: "0.85rem", color: "#555", whiteSpace: "nowrap" }}>Número de aviso:</span>
+        <input
+          type="text"
+          value={telefonoAviso}
+          onChange={(e) => {
+            setTelefonoAviso(e.target.value);
+            localStorage.setItem("wsp_aviso_phone", e.target.value);
+          }}
+          placeholder="5491123456789  (sin + ni espacios)"
+          style={{ fontSize: "0.85rem", padding: "3px 10px", borderRadius: "6px", border: "1px solid #ccc", width: "260px" }}
+        />
+      </div>
+
       {/* Tabla */}
       <div style={{ flex: 1, padding: "2rem", overflowY: "auto", overflowX: "auto" }}>
 
@@ -306,16 +323,19 @@ function ServicesUltimoService() {
                         {estado
                           ? <span style={{ display: "inline-block", backgroundColor: estado.bg, color: estado.color, borderRadius: "4px", padding: "5px 14px", fontWeight: "400", fontSize: "1rem", boxShadow: "2px 2px 5px rgba(0,0,0,0.3)" }}>{estado.label}</span>
                           : "—"}
-                        {estado?.label === "Atrasado" && c.telefono && !c.serviceNotificado && (
+                        {estado?.label === "Atrasado" && telefonoAviso && !c.serviceNotificado && (
                           <button
                             onClick={() => {
-                              window.open(`https://wa.me/${c.telefono}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a cargo de ${c.responsable} ha vencido`)}`, "_blank");
+                              window.open(`https://wa.me/${telefonoAviso}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a cargo de ${c.responsable} ha vencido`)}`, "_blank");
                               marcarWhatsapp(c._id, true);
                             }}
                             style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#25d366", color: "#fff", borderRadius: "4px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: "600", border: "none", cursor: "pointer", boxShadow: "1px 1px 4px rgba(0,0,0,0.25)" }}
                           >
                             <i className="bi bi-whatsapp"></i> Avisar
                           </button>
+                        )}
+                        {estado?.label === "Atrasado" && !telefonoAviso && !c.serviceNotificado && (
+                          <span style={{ fontSize: "0.7rem", color: "#aaa" }}>Sin número</span>
                         )}
                         {estado?.label === "Atrasado" && c.serviceNotificado && (
                           <button
