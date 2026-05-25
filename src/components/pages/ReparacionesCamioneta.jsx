@@ -210,6 +210,9 @@ function ReparacionesCamioneta() {
                 <div className="d-flex justify-content-center gap-1">
                   <Button size="sm" onClick={() => abrirDetalle(t)} style={{ backgroundColor: "#4a6fa5", border: "none", fontSize: "0.78rem" }}>Detalle</Button>
                   <Button size="sm" onClick={() => abrirRepuestos(t)} style={{ backgroundColor: "#9e8850", border: "none", fontSize: "0.78rem" }}>Repuestos</Button>
+                  <Button size="sm" onClick={() => abrirEditar(t)} style={{ backgroundColor: "#4a6fa5", border: "none" }}>
+                    <i className="bi bi-pencil"></i>
+                  </Button>
                   <Button size="sm" onClick={() => eliminar(t._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
                     <i className="bi bi-trash"></i>
                   </Button>
