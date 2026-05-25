@@ -286,9 +286,21 @@ function ServicesUltimoService() {
                     <td className="fw-semibold">{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="text-start text-muted" style={{ fontSize: "0.9rem" }}>{reg?.observaciones || "—"}</td>
                     <td>
-                      {estado
-                        ? <span style={{ display: "inline-block", backgroundColor: estado.bg, color: estado.color, borderRadius: "4px", padding: "5px 14px", fontWeight: "400", fontSize: "1rem", boxShadow: "2px 2px 5px rgba(0,0,0,0.3)" }}>{estado.label}</span>
-                        : "—"}
+                      <div className="d-flex flex-column align-items-center gap-1">
+                        {estado
+                          ? <span style={{ display: "inline-block", backgroundColor: estado.bg, color: estado.color, borderRadius: "4px", padding: "5px 14px", fontWeight: "400", fontSize: "1rem", boxShadow: "2px 2px 5px rgba(0,0,0,0.3)" }}>{estado.label}</span>
+                          : "—"}
+                        {estado?.label === "Atrasado" && c.telefono && (
+                          <a
+                            href={`https://wa.me/${c.telefono}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a su cargo, ha vencido`)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#25d366", color: "#fff", borderRadius: "4px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: "600", textDecoration: "none", boxShadow: "1px 1px 4px rgba(0,0,0,0.25)" }}
+                          >
+                            <i className="bi bi-whatsapp"></i> Avisar
+                          </a>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
