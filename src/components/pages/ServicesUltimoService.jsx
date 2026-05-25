@@ -288,11 +288,12 @@ function ServicesUltimoService() {
       </div>
 
       {/* Tabla */}
-      <div style={{ flex: 1, padding: "2rem", overflowY: "auto", overflowX: "auto" }}>
+      <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        <div className="d-flex justify-content-center">
-          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "75%" }}>
-            <thead className="table-dark">
+        <div className="d-flex justify-content-center" style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ width: "75%", overflowY: "auto", overflowX: "auto", borderRadius: "4px" }}>
+          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "100%", marginBottom: 0 }}>
+            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr>
                 <th style={{ width: "40px" }}>#</th>
                 <th></th>
@@ -372,6 +373,7 @@ function ServicesUltimoService() {
               )}
             </tbody>
           </Table>
+          </div>
         </div>
 
       </div>
