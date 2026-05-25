@@ -309,7 +309,7 @@ function ServicesUltimoService() {
                         {estado?.label === "Atrasado" && c.telefono && !c.serviceNotificado && (
                           <button
                             onClick={() => {
-                              window.open(`https://wa.me/${c.telefono}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a su cargo, ha vencido`)}`, "_blank");
+                              window.open(`https://wa.me/${c.telefono}?text=${encodeURIComponent(`El service de la camioneta ${c.patente} a cargo de ${c.responsable} ha vencido`)}`, "_blank");
                               marcarWhatsapp(c._id, true);
                             }}
                             style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#25d366", color: "#fff", borderRadius: "4px", padding: "3px 10px", fontSize: "0.75rem", fontWeight: "600", border: "none", cursor: "pointer", boxShadow: "1px 1px 4px rgba(0,0,0,0.25)" }}
