@@ -36,6 +36,8 @@ function CamionetasAltas() {
     setValue("marca", c.marca);
     setValue("patente", c.patente);
     setValue("responsable", c.responsable);
+    setValue("telefono", c.telefono ?? "");
+    setValue("callmebotApiKey", c.callmebotApiKey ?? "");
     setShowModal(true);
   };
 
@@ -213,6 +215,28 @@ function CamionetasAltas() {
                   isInvalid={!!errors.responsable}
                 />
                 <Form.Control.Feedback type="invalid">{errors.responsable?.message}</Form.Control.Feedback>
+              </Col>
+              <Col md={6}>
+                <Form.Label className="fw-semibold">
+                  <i className="bi bi-whatsapp me-1" style={{ color: "#25d366" }}></i>
+                  Teléfono responsable
+                </Form.Label>
+                <Form.Control
+                  placeholder="Ej: 5491123456789"
+                  {...register("telefono")}
+                />
+                <Form.Text className="text-muted">Con código de país, sin + ni espacios</Form.Text>
+              </Col>
+              <Col md={6}>
+                <Form.Label className="fw-semibold">
+                  <i className="bi bi-key me-1"></i>
+                  CallMeBot API Key
+                </Form.Label>
+                <Form.Control
+                  placeholder="API key de CallMeBot"
+                  {...register("callmebotApiKey")}
+                />
+                <Form.Text className="text-muted">Solo si el responsable se registró en CallMeBot</Form.Text>
               </Col>
             </Row>
           </Modal.Body>
