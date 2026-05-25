@@ -50,15 +50,16 @@ function TareaDetalle() {
       setLoading(false);
     };
 
-    if (state?.trabajo) {
-      cargarDesdeObj(state.trabajo);
-    } else {
-      fetch(`/api/trabajos-camioneta/tarea/${trabajoId}`)
-        .then((r) => r.json())
-        .then(cargarDesdeObj)
-        .catch(() => setLoading(false));
-    }
-  }, []);
+    // Siempre buscar del backend para tener datos frescos
+    fetch(`/api/trabajos-camioneta/tarea/${trabajoId}`)
+      .then((r) => r.json())
+      .then(cargarDesdeObj)
+      .catch(() => {
+        // Si falla el fetch, usar los datos del state como fallback
+        if (state?.trabajo) cargarDesdeObj(state.trabajo);
+        else setLoading(false);
+      });
+  }, [trabajoId]);
 
   /* ── Trabajos realizados ── */
   const agregarTrabajo = () => {
