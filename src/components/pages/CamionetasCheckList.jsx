@@ -114,40 +114,45 @@ function CamionetasCheckList() {
   const tareaPendiente   = useWatch({ control, name: "tareaPendiente" });
   const fechaVal         = useWatch({ control, name: "fecha" });
 
+  // 1. Carga las camionetas
   useEffect(() => {
     fetch("/api/camionetas")
       .then((r) => r.json())
-      .then((data) => {
-        setCamionetas(data);
-        const { camionetaId, mes } = location.state || {};
-        if (camionetaId) setValue("camioneta", camionetaId);
-        if (camionetaId && mes) {
-          const año = new Date().getFullYear();
-          fetch(`/api/checklist/buscar?camioneta=${camionetaId}&mes=${mes}&año=${año}`)
-            .then((r) => r.ok ? r.json() : null)
-            .then((cl) => {
-              if (!cl) return;
-              setChecklistId(cl._id);
-              setValue("fecha", cl.fecha ? cl.fecha.split("T")[0] : "");
-              setValue("kms", cl.kms ?? "");
-              setValue("encargado", cl.encargado ?? "");
-              setValue("kmsUltimoService", cl.kmsUltimoService ?? "");
-              setValue("fechaUltimoService", cl.fechaUltimoService ? cl.fechaUltimoService.split("T")[0] : "");
-              setValue("puntuacion", cl.puntuacion ?? "");
-              setValue("camionetatParada", cl.camionetatParada ?? false);
-              setValue("tareaPendiente", cl.tareaPendiente ?? false);
-              SECCIONES.forEach((s) => {
-                cl[s.campo]?.forEach((item, i) => {
-                  setValue(`${s.campo}.${i}.estado`, item.estado ?? "");
-                  setValue(`${s.campo}.${i}.observaciones`, item.observaciones ?? "");
-                });
-              });
-            })
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
+      .then(setCamionetas)
+      .catch(() => setCamionetas([]));
   }, []);
+
+  // 2. Inicializa el formulario DESPUÉS de que las opciones del select estén en el DOM
+  useEffect(() => {
+    if (!camionetas.length) return;
+    const { camionetaId, mes } = location.state || {};
+    if (!camionetaId) return;
+    setValue("camioneta", camionetaId);
+    if (mes) {
+      const año = new Date().getFullYear();
+      fetch(`/api/checklist/buscar?camioneta=${camionetaId}&mes=${mes}&año=${año}`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((cl) => {
+          if (!cl) return;
+          setChecklistId(cl._id);
+          setValue("fecha", cl.fecha ? cl.fecha.split("T")[0] : "");
+          setValue("kms", cl.kms ?? "");
+          setValue("encargado", cl.encargado ?? "");
+          setValue("kmsUltimoService", cl.kmsUltimoService ?? "");
+          setValue("fechaUltimoService", cl.fechaUltimoService ? cl.fechaUltimoService.split("T")[0] : "");
+          setValue("puntuacion", cl.puntuacion ?? "");
+          setValue("camionetatParada", cl.camionetatParada ?? false);
+          setValue("tareaPendiente", cl.tareaPendiente ?? false);
+          SECCIONES.forEach((s) => {
+            cl[s.campo]?.forEach((item, i) => {
+              setValue(`${s.campo}.${i}.estado`, item.estado ?? "");
+              setValue(`${s.campo}.${i}.observaciones`, item.observaciones ?? "");
+            });
+          });
+        })
+        .catch(() => {});
+    }
+  }, [camionetas]);
 
   useEffect(() => {
     if (responsableRef.current && camionetas.length > 0) {
