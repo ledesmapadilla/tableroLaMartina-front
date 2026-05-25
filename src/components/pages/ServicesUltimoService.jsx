@@ -52,6 +52,9 @@ function ServicesUltimoService() {
   const camionetaId    = useWatch({ control, name: "camioneta" });
   const responsableVal = useWatch({ control, name: "responsable" });
 
+  const cargarCamionetas = () =>
+    fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => {});
+
   const cargarTabla = (anio) => Promise.all([
     fetch(`/api/services/ultimos/${anio}`).then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
     fetch("/api/kilometros/ultimos").then((r) => r.json()).then(setUltimosKm).catch(() => setUltimosKm([])),
@@ -110,7 +113,7 @@ function ServicesUltimoService() {
       });
       if (res.ok) {
         cerrarModal();
-        await cargarTabla(año);
+        await Promise.all([cargarTabla(año), cargarCamionetas()]);
         Swal.fire({ icon: "success", title: "Service guardado", timer: 1500, showConfirmButton: false });
       } else {
         const err = await res.json();
