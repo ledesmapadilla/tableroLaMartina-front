@@ -83,7 +83,7 @@ function ResumenCamionetas() {
     anioEval < INICIO_ANIO || (anioEval === INICIO_ANIO && mesEval < INICIO_MES);
 
   const getKmSinRelevar = (mesIndex) => {
-    if (totalCamionetas === 0) return null;
+    if (camionetas.length === 0) return null;
     const hoy = new Date();
     const anioActual = hoy.getFullYear();
     const mesActual = hoy.getMonth() + 1;
@@ -91,8 +91,10 @@ function ResumenCamionetas() {
     if (anio > anioActual) return null;
     if (anio === anioActual && mesNumero > mesActual) return null;
     if (esAntesDeProgramar(anio, mesNumero)) return null;
-    const conRegistro = kmResumen[mesNumero]?.length ?? 0;
-    return totalCamionetas - conRegistro;
+    // Cruzar contra camionetas activas para no contar registros de camionetas eliminadas
+    const idsConRegistro = new Set(kmResumen[mesNumero] ?? []);
+    const conRegistroActivas = camionetas.filter((c) => idsConRegistro.has(c._id?.toString())).length;
+    return camionetas.length - conRegistroActivas;
   };
 
   const getCheckListInfo = (mesIndex) => {
