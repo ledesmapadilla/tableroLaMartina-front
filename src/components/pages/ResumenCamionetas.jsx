@@ -17,6 +17,7 @@ function ResumenCamionetas() {
   const aniosOpciones = Array.from({ length: 10 }, (_, i) => 2026 + i);
 
   const [programas, setProgramas] = useState([]);
+  const [camionetas, setCamionetas] = useState([]);
   const [totalCamionetas, setTotalCamionetas] = useState(0);
   const [kmResumen, setKmResumen] = useState({});
   const [serviciosAtrasados, setServiciosAtrasados] = useState(null);
@@ -35,7 +36,7 @@ function ResumenCamionetas() {
     setServiciosAtrasados(null);
     setUnidadesParadas(null);
     setTareasPendientes(null);
-    fetch("/api/camionetas").then((r) => r.json()).then((d) => setTotalCamionetas(d.length)).catch(() => {});
+    fetch("/api/camionetas").then((r) => r.json()).then((d) => { setCamionetas(d); setTotalCamionetas(d.length); }).catch(() => {});
     Promise.all([
       fetch("/api/services/ultimos").then((r) => r.json()).catch(() => []),
       fetch("/api/kilometros/ultimos").then((r) => r.json()).catch(() => []),
@@ -96,7 +97,7 @@ function ResumenCamionetas() {
 
   const getCheckListInfo = (mesIndex) => {
     const campo = MES_CAMPO[mesIndex];
-    if (!campo || totalCamionetas === 0) return null;
+    if (!campo || camionetas.length === 0) return null;
     const hoy = new Date();
     const anioActual = hoy.getFullYear();
     const mesActual = hoy.getMonth() + 1;
@@ -104,8 +105,12 @@ function ResumenCamionetas() {
     if (anio > anioActual) return null;
     if (anio === anioActual && mesNumero > mesActual) return null;
     if (esAntesDeProgramar(anio, mesNumero)) return null;
-    const realizados = programas.filter((p) => p[campo]?.estado === "realizado").length;
-    const pendientes = totalCamionetas - realizados;
+    // Cruzar contra camionetas activas para no contar docs "fantasma" de camionetas eliminadas
+    const realizados = camionetas.filter((c) => {
+      const prog = programas.find((p) => (p.camioneta?._id ?? p.camioneta)?.toString() === c._id?.toString());
+      return prog?.[campo]?.estado === "realizado";
+    }).length;
+    const pendientes = camionetas.length - realizados;
     return { pendientes };
   };
 
