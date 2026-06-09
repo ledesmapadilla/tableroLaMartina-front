@@ -224,7 +224,10 @@ function ResumenReparaciones() {
               return (
                 <tr key={t._id}>
                   <td>
-                    <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600" }}>
+                    <span
+                      onClick={() => t.camioneta?._id && navigate(`/camionetas/services/reparaciones/${t.camioneta._id}`, { state: { patente: t.camioneta.patente, marca: t.camioneta.marca } })}
+                      style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600", cursor: t.camioneta?._id ? "pointer" : "default" }}
+                    >
                       {t.camioneta?.patente ?? "—"}
                     </span>
                   </td>
