@@ -68,13 +68,15 @@ function ResumenReparaciones() {
       .map((t) => [t.camioneta.patente, { patente: t.camioneta.patente, label: `${t.camioneta.patente} — ${t.camioneta.marca}` }])
   ).values()].sort((a, b) => a.patente.localeCompare(b.patente));
 
-  const trabajosFiltrados = trabajos.filter((t) => {
-    if (filtro !== "todos" && (t.estado ?? "pendiente") !== filtro) return false;
-    if (filtroPatente && t.camioneta?.patente !== filtroPatente) return false;
-    if (filtroUrgencia && (t.urgencia ?? "baja") !== filtroUrgencia) return false;
-    if (filtroResponsable && (t.responsable || t.camioneta?.responsable || "") !== filtroResponsable) return false;
-    return true;
-  });
+  const trabajosFiltrados = trabajos
+    .filter((t) => {
+      if (filtro !== "todos" && (t.estado ?? "pendiente") !== filtro) return false;
+      if (filtroPatente && t.camioneta?.patente !== filtroPatente) return false;
+      if (filtroUrgencia && (t.urgencia ?? "baja") !== filtroUrgencia) return false;
+      if (filtroResponsable && (t.responsable || t.camioneta?.responsable || "") !== filtroResponsable) return false;
+      return true;
+    })
+    .sort((a, b) => (a.camioneta?.patente ?? "").localeCompare(b.camioneta?.patente ?? ""));
 
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
