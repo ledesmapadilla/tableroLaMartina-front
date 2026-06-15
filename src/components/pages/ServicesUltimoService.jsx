@@ -40,6 +40,7 @@ function ServicesUltimoService() {
   const dropAñoRef = useRef(null);
   const [telefonoAviso, setTelefonoAviso] = useState("");
   const [guardandoTel, setGuardandoTel]   = useState(false);
+  const [busquedaPatente, setBusquedaPatente] = useState("");
 
   const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -126,7 +127,7 @@ function ServicesUltimoService() {
 
   const exportarExcel = async () => {
     const titulo   = "Último Service — Camionetas";
-    const columnas = ["Patente", "Vehículo", "Fecha", "Km último service", "Observaciones", "Estado"];
+    const columnas = ["Patente", "Vehículo", "Responsable", "Fecha", "Km último service", "Observaciones", "Estado"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = new ExcelJS.Workbook();
@@ -162,6 +163,7 @@ function ServicesUltimoService() {
       const fila = ws.addRow([
         c.patente,
         c.marca,
+        c.responsable || "—",
         reg ? formatFecha(reg.fecha) : "—",
         reg?.kms ?? "—",
         reg?.observaciones || "—",
@@ -174,6 +176,7 @@ function ServicesUltimoService() {
     ws.columns = [
       { width: 16 },
       { width: 26 },
+      { width: 22 },
       { width: 14 },
       { width: 18 },
       { width: 36 },
@@ -290,6 +293,29 @@ function ServicesUltimoService() {
       {/* Tabla */}
       <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
+        <div className="d-flex justify-content-center mb-2">
+          <div style={{ width: "75%" }}>
+            <div className="d-flex align-items-center gap-2">
+              <i className="bi bi-search" style={{ color: "#555", fontSize: "0.9rem" }}></i>
+              <input
+                type="text"
+                value={busquedaPatente}
+                onChange={(e) => setBusquedaPatente(e.target.value)}
+                placeholder="Buscar por patente..."
+                style={{ fontSize: "0.85rem", padding: "4px 12px", borderRadius: "6px", border: "1px solid #ccc", width: "220px" }}
+              />
+              {busquedaPatente && (
+                <button
+                  onClick={() => setBusquedaPatente("")}
+                  style={{ fontSize: "0.8rem", padding: "3px 10px", borderRadius: "6px", border: "none", backgroundColor: "#aaa", color: "#fff", cursor: "pointer" }}
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="d-flex justify-content-center" style={{ flex: 1, overflow: "hidden" }}>
           <div style={{ width: "75%", overflowY: "auto", overflowX: "auto", borderRadius: "4px" }}>
           <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "100%", marginBottom: 0 }}>
@@ -298,6 +324,7 @@ function ServicesUltimoService() {
                 <th style={{ width: "40px" }}>#</th>
                 <th></th>
                 <th>Patente</th>
+                <th>Responsable</th>
                 <th>Fecha</th>
                 <th>Km último service</th>
                 <th>Km prox. service</th>
@@ -307,7 +334,9 @@ function ServicesUltimoService() {
               </tr>
             </thead>
             <tbody>
-              {camionetas.map((c, idx) => {
+              {camionetas
+                .filter((c) => c.patente.toLowerCase().includes(busquedaPatente.toLowerCase()))
+                .map((c, idx) => {
                 const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const estado = getEstado(km?.kms, reg?.kms);
@@ -330,6 +359,7 @@ function ServicesUltimoService() {
                         {c.patente} — {c.marca}
                       </span>
                     </td>
+                    <td>{c.responsable || "—"}</td>
                     <td>{reg ? formatFecha(reg.fecha) : "—"}</td>
                     <td className="fw-semibold">{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold">{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
@@ -368,8 +398,8 @@ function ServicesUltimoService() {
                   </tr>
                 );
               })}
-              {camionetas.length === 0 && (
-                <tr><td colSpan={9} className="text-muted">Sin datos</td></tr>
+              {camionetas.filter((c) => c.patente.toLowerCase().includes(busquedaPatente.toLowerCase())).length === 0 && (
+                <tr><td colSpan={10} className="text-muted">{busquedaPatente ? `Sin resultados para "${busquedaPatente}"` : "Sin datos"}</td></tr>
               )}
             </tbody>
           </Table>
