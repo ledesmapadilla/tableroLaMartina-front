@@ -69,6 +69,8 @@ function ServicesKilometros() {
   const [dropAño, setDropAño] = useState(false);
   const dropAñoRef = useRef(null);
 
+  const [filtroPat, setFiltroPat] = useState("");
+
   const [camionetas, setCamionetas] = useState([]);
   const [registros, setRegistros] = useState([]);
   const [ultimos, setUltimos] = useState([]);
@@ -207,7 +209,7 @@ function ServicesKilometros() {
 
   const exportarExcel = async () => {
     const titulo   = "Kilómetros — Camionetas";
-    const columnas = ["Patente", "Vehículo", ...MESES_CORTOS, "Estado service"];
+    const columnas = ["Patente", "Vehículo", "Responsable", ...MESES_CORTOS, "Estado service"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = new ExcelJS.Workbook();
@@ -240,7 +242,7 @@ function ServicesKilometros() {
       const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
       const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
       const estado = getEstado(ultimo?.kms, serv?.kms);
-      const valores = [c.patente, c.marca];
+      const valores = [c.patente, c.marca, c.responsable || "—"];
       MESES_CORTOS.forEach((_, idx) => {
         const reg = getKmMes(c._id, idx + 1);
         valores.push(reg ? reg.kms : "—");
@@ -254,6 +256,7 @@ function ServicesKilometros() {
     ws.columns = [
       { width: 14 },
       { width: 26 },
+      { width: 22 },
       ...MESES_CORTOS.map(() => ({ width: 9 })),
       { width: 16 },
     ];
@@ -295,6 +298,22 @@ function ServicesKilometros() {
       <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "80%", margin: "0 auto" }}>
         <div className="d-flex align-items-center gap-3">
           <h3 className="fw-bold mb-0">Kilómetros — Camionetas</h3>
+          {/* Buscador por patente */}
+          <div style={{ position: "relative" }}>
+            <Form.Control
+              type="text"
+              placeholder="Buscar patente..."
+              value={filtroPat}
+              onChange={(e) => setFiltroPat(e.target.value)}
+              style={{ width: "160px", fontSize: "0.88rem", paddingRight: filtroPat ? "28px" : undefined }}
+            />
+            {filtroPat && (
+              <button
+                onClick={() => setFiltroPat("")}
+                style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: "1rem", lineHeight: 1, padding: 0 }}
+              >×</button>
+            )}
+          </div>
           {/* Selector de año */}
           <div ref={dropAñoRef} style={{ position: "relative" }}>
             <button
@@ -344,26 +363,28 @@ function ServicesKilometros() {
               <tr>
                 <th style={{ width: "40px" }}>#</th>
                 <th>Patente</th>
+                <th>Responsable</th>
                 {MESES_CORTOS.map((m) => <th key={m}>{m}</th>)}
                 <th>Estado</th>
               </tr>
             </thead>
             <tbody>
-              {camionetas.map((c, idx) => {
+              {camionetas
+                .filter((c) => c.patente.toLowerCase().includes(filtroPat.toLowerCase()))
+                .map((c, idx) => {
                 const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
                 const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
                 const estado = getEstado(ultimo?.kms, serv?.kms);
                 return (
                   <tr key={c._id}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
-                    <td className="text-start">
-                      <span
-                        onClick={() => navigate("/camionetas/altas")}
-                        style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", cursor: "pointer" }}
-                      >
-                        {c.patente} — {c.marca}
+                    <td className="text-start" style={{ cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
+                      <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>
+                        {c.patente}
                       </span>
+                      <span style={{ fontSize: "0.88rem" }}>{c.marca}</span>
                     </td>
+                    <td>{c.responsable || "—"}</td>
                     {MESES_CORTOS.map((_, idx) => {
                       const mes = idx + 1;
                       const reg = getKmMes(c._id, mes);
@@ -396,7 +417,9 @@ function ServicesKilometros() {
                   </tr>
                 );
               })}
-              {camionetas.length === 0 && <tr><td colSpan={15} className="text-muted">Sin datos</td></tr>}
+              {camionetas.filter((c) => c.patente.toLowerCase().includes(filtroPat.toLowerCase())).length === 0 && (
+                <tr><td colSpan={16} className="text-muted">{filtroPat ? `Sin resultados para "${filtroPat}"` : "Sin datos"}</td></tr>
+              )}
             </tbody>
           </Table>
         </div>
