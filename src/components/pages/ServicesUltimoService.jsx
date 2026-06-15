@@ -351,13 +351,11 @@ function ServicesUltimoService() {
                         onMouseLeave={btnLeave}
                       >+ ult. service</button>
                     </td>
-                    <td className="text-start">
-                      <span
-                        onClick={() => navigate("/camionetas/altas")}
-                        style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", cursor: "pointer" }}
-                      >
-                        {c.patente} — {c.marca}
+                    <td className="text-start" style={{ cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
+                      <span style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>
+                        {c.patente}
                       </span>
+                      <span style={{ fontSize: "0.82rem" }}>{c.marca}</span>
                     </td>
                     <td>{c.responsable || "—"}</td>
                     <td>{reg ? formatFecha(reg.fecha) : "—"}</td>
