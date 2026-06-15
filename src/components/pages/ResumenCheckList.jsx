@@ -59,7 +59,7 @@ function ResumenCheckList() {
   const exportarExcel = async () => {
     const titulo   = "Resumen Check List — Camionetas";
     const mesesCap = MESES.map((m) => m.charAt(0).toUpperCase() + m.slice(1));
-    const columnas = ["Camioneta", ...mesesCap, "Promedio"];
+    const columnas = ["Camioneta", "Responsable", ...mesesCap, "Promedio"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = new ExcelJS.Workbook();
@@ -96,7 +96,7 @@ function ResumenCheckList() {
         ? (puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length).toFixed(1)
         : "—";
 
-      const valores = [`${c.patente} — ${c.marca}`];
+      const valores = [`${c.patente} — ${c.marca}`, c.responsable || "—"];
       MESES.forEach((mes) => {
         const { estado, puntuacion } = getMes(c._id, mes);
         valores.push(estado === "realizado" ? (puntuacion != null ? `Realizado (${puntuacion})` : "Realizado") : "Pendiente");
@@ -110,6 +110,7 @@ function ResumenCheckList() {
 
     ws.columns = [
       { width: 30 },
+      { width: 22 },
       ...MESES.map(() => ({ width: 18 })),
       { width: 12 },
     ];
@@ -190,6 +191,7 @@ function ResumenCheckList() {
           <tr>
             <th style={{ width: "40px" }}>#</th>
             <th>Camioneta</th>
+            <th>Responsable</th>
             {MESES.map((m) => (
               <th key={m} style={{ textTransform: "capitalize" }}>{m}</th>
             ))}
@@ -207,14 +209,13 @@ function ResumenCheckList() {
             return (
               <tr key={c._id} style={{ height: "42px" }}>
                 <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
-                <td className="fw-semibold text-start" style={{ padding: "4px 8px" }}>
-                  <span
-                    onClick={() => navigate("/camionetas/altas")}
-                    style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)", cursor: "pointer" }}
-                  >
-                    {c.patente} — {c.marca}
+                <td className="fw-semibold text-start" style={{ padding: "4px 8px", cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
+                  <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)", marginRight: "6px" }}>
+                    {c.patente}
                   </span>
+                  <span style={{ fontSize: "0.88rem" }}>{c.marca}</span>
                 </td>
+                <td>{c.responsable || "—"}</td>
                 {MESES.map((mes) => {
                   const { estado, puntuacion, camionetatParada } = getMes(c._id, mes);
                   return (
