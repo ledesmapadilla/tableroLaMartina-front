@@ -24,7 +24,6 @@ function ReparacionesCamioneta() {
   const marca   = state?.marca   ?? "";
 
   const [trabajos, setTrabajos] = useState([]);
-  const [filtroEstado, setFiltroEstado] = useState("todos");
 
   // Modal crear/editar
   const [showForm, setShowForm] = useState(false);
@@ -137,6 +136,8 @@ function ReparacionesCamioneta() {
     } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
   };
 
+  const pendientes = trabajos.filter((t) => (t.estado ?? "pendiente") === "pendiente");
+
   return (
     <Container className="py-4">
 
@@ -171,16 +172,6 @@ function ReparacionesCamioneta() {
             <i className="bi bi-clock-history me-2"></i>Historial
           </Button>
         </div>
-        <select
-          value={filtroEstado}
-          onChange={(e) => setFiltroEstado(e.target.value)}
-          style={{ padding: "4px 12px", borderRadius: "6px", border: "2px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}
-        >
-          <option value="todos">Todos</option>
-          <option value="pendiente">Pendiente</option>
-          <option value="en proceso">En proceso</option>
-          <option value="terminada">Terminada</option>
-        </select>
       </div>
 
       {/* Tabla principal */}
@@ -195,8 +186,8 @@ function ReparacionesCamioneta() {
           </tr>
         </thead>
         <tbody>
-          {trabajos.length === 0 && <tr><td colSpan={5} className="text-muted py-3">Sin registros</td></tr>}
-          {trabajos.filter((t) => filtroEstado === "todos" || (t.estado ?? "pendiente") === filtroEstado).map((t) => (
+          {pendientes.length === 0 && <tr><td colSpan={5} className="text-muted py-3">Sin tareas pendientes</td></tr>}
+          {pendientes.map((t) => (
             <tr key={t._id}>
               <td>{formatF(t.fecha)}</td>
               <td className="text-start">{t.descripcion}</td>
