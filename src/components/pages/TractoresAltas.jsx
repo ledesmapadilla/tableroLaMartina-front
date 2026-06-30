@@ -107,6 +107,10 @@ function TractoresAltas() {
     }
   };
 
+  const supervisoresExistentes = [...new Set(
+    tractores.map((t) => (t.supervisor || "").trim()).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
   return (
     <Container className="py-4">
 
@@ -133,7 +137,7 @@ function TractoresAltas() {
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr>
               <th style={{ width: "40px" }}>#</th>
-              <th>Gruppo</th>
+              <th>Grupo</th>
               <th>Supervisor</th>
               <th>CC</th>
               <th>Descripción</th>
@@ -222,22 +226,33 @@ function TractoresAltas() {
               </Col>
               <Col md={8}>
                 <Form.Label className="fw-semibold">Supervisor</Form.Label>
-                <Form.Control
-                  list="supervisores-list"
-                  placeholder="Seleccionar o escribir nombre"
-                  {...register("supervisor")}
-                />
-                <datalist id="supervisores-list">
-                  <option value="Jorge Rosas" />
-                  <option value="Mario Bustos" />
-                  <option value="Guillermo Bustos" />
-                  <option value="Carlos Chumiento" />
-                  <option value="brandan alejandro" />
-                  <option value="Elio Rojas" />
-                  <option value="BERDINA" />
-                  <option value="SP" />
-                  <option value="ALBERDI" />
-                </datalist>
+                {editando ? (
+                  <Form.Select {...register("supervisor")}>
+                    <option value="">— Seleccionar —</option>
+                    {supervisoresExistentes.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </Form.Select>
+                ) : (
+                  <>
+                    <Form.Control
+                      list="supervisores-list"
+                      placeholder="Seleccionar o escribir nombre"
+                      {...register("supervisor")}
+                    />
+                    <datalist id="supervisores-list">
+                      <option value="Jorge Rosas" />
+                      <option value="Mario Bustos" />
+                      <option value="Guillermo Bustos" />
+                      <option value="Carlos Chumiento" />
+                      <option value="brandan alejandro" />
+                      <option value="Elio Rojas" />
+                      <option value="BERDINA" />
+                      <option value="SP" />
+                      <option value="ALBERDI" />
+                    </datalist>
+                  </>
+                )}
               </Col>
               <Col md={4}>
                 <Form.Label className="fw-semibold">Grupo</Form.Label>
