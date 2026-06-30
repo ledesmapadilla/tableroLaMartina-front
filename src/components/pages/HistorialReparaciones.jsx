@@ -17,12 +17,17 @@ function HistorialReparaciones() {
   const marca   = state?.marca   ?? "";
 
   const [trabajos, setTrabajos] = useState([]);
+  const [respCamioneta, setRespCamioneta] = useState("");
 
   useEffect(() => {
     fetch(`/api/trabajos-camioneta/${camionetaId}`)
       .then((r) => r.json())
       .then((data) => setTrabajos(Array.isArray(data) ? data : []))
       .catch(() => setTrabajos([]));
+    fetch(`/api/camionetas/${camionetaId}`)
+      .then((r) => r.json())
+      .then((c) => setRespCamioneta(c?.responsable || ""))
+      .catch(() => setRespCamioneta(""));
   }, [camionetaId]);
 
   const historial = trabajos.filter((t) => t.estado === "terminada" || t.estado === "en proceso");
@@ -58,7 +63,7 @@ function HistorialReparaciones() {
             <th className="fw-normal" style={{ width: "180px" }}>Responsable</th>
             <th className="fw-normal" style={{ width: "120px" }}>Estado</th>
             <th className="fw-normal" style={{ width: "100px" }}>Urgencia</th>
-            <th className="fw-normal" style={{ width: "70px" }}>Ver</th>
+            <th className="fw-normal" style={{ width: "80px" }}></th>
           </tr>
         </thead>
         <tbody>
@@ -67,7 +72,7 @@ function HistorialReparaciones() {
             <tr key={t._id}>
               <td>{formatF(t.fecha)}</td>
               <td className="text-start">{t.descripcion}</td>
-              <td>{t.responsable || "—"}</td>
+              <td>{t.responsable || respCamioneta || "—"}</td>
               <td>
                 <span style={{ display: "inline-block", backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600" }}>
                   {ESTADO_LABELS[t.estado ?? "pendiente"]}
@@ -84,7 +89,7 @@ function HistorialReparaciones() {
                     state: { patente, marca, trabajo: t }
                   })}
                   style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                  <i className="bi bi-eye"></i>
+                  <i className="bi bi-eye me-1"></i>Ver
                 </Button>
               </td>
             </tr>
