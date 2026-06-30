@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { Container, Button, Form, Table, InputGroup } from "react-bootstrap";
 import Swal from "sweetalert2";
+import ExcelJS from "exceljs";
 
 const SOMBRA = "3px 3px 6px rgba(0,0,0,0.35)";
 const FILA_VACIA        = { nombre: "", costo: "", observaciones: "" };
@@ -135,6 +136,88 @@ function TareaDetalle() {
     }
   };
 
+  const exportarExcel = async () => {
+    const titulo   = `Reparación — ${patente}${marca ? ` — ${marca}` : ""}`;
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const fechaTarea = fecha
+      ? new Date(fecha + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
+      : "—";
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Reparación");
+    const NCOL = 3;
+
+    ws.mergeCells(1, 1, 1, NCOL);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, NCOL);
+    ws.getCell("A2").value = `Fecha: ${fechaHoy}`;
+    ws.getCell("A2").alignment = { horizontal: "left" };
+
+    ws.addRow([]);
+
+    const seccion = (texto) => {
+      const fila = ws.addRow([texto]);
+      ws.mergeCells(fila.number, 1, fila.number, NCOL);
+      fila.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+      fila.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2C2C2C" } };
+      fila.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+    };
+    const dato = (label, valor) => {
+      const fila = ws.addRow([label, valor]);
+      fila.getCell(1).font = { bold: true };
+      ws.mergeCells(fila.number, 2, fila.number, NCOL);
+    };
+
+    seccion("DATOS GENERALES");
+    dato("Fecha", fechaTarea);
+    dato("Descripción", descripcion || "—");
+    dato("Urgencia", urgencia ?? "baja");
+    dato("Responsable", responsable || "—");
+    dato("Estado", estado ?? "pendiente");
+
+    ws.addRow([]);
+    seccion("DESCRIPCIÓN DEL PROBLEMA");
+    const filaDet = ws.addRow([detalle || "—"]);
+    ws.mergeCells(filaDet.number, 1, filaDet.number, NCOL);
+    filaDet.getCell(1).alignment = { horizontal: "left", vertical: "top", wrapText: true };
+
+    if (trabajosRealizados.length > 0) {
+      ws.addRow([]);
+      seccion("TRABAJOS REALIZADOS");
+      trabajosRealizados.forEach((tr) => {
+        const fila = ws.addRow([tr.hecho ? "✔" : "✗", tr.descripcion || "—"]);
+        ws.mergeCells(fila.number, 2, fila.number, NCOL);
+        fila.getCell(1).alignment = { horizontal: "center" };
+      });
+    }
+
+    if (repuestos.length > 0) {
+      ws.addRow([]);
+      seccion("REPUESTOS");
+      const enc = ws.addRow(["Repuesto", "Costo", "Observaciones"]);
+      enc.eachCell((c) => { c.font = { bold: true }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } }; });
+      repuestos.forEach((r) => {
+        ws.addRow([r.nombre || "—", r.costo ? `$ ${formatearPeso(r.costo)}` : "—", r.observaciones || "—"]);
+      });
+    }
+
+    ws.columns = [{ width: 22 }, { width: 22 }, { width: 30 }];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href       = url;
+    a.download   = `reparacion_${patente}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) return <Container className="py-5 text-center text-muted">Cargando...</Container>;
 
   return (
@@ -150,6 +233,9 @@ function TareaDetalle() {
         </Button>
         <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-house-fill me-2"></i>General
+        </Button>
+        <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+          <i className="bi bi-file-earmark-excel me-2"></i>Excel
         </Button>
       </div>
 

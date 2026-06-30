@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container, Button, Table, Modal, Form, InputGroup } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
+import ExcelJS from "exceljs";
 
 const formatF = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
@@ -129,6 +130,59 @@ function ReparacionesCamioneta() {
 
   const pendientes = trabajos.filter((t) => (t.estado ?? "pendiente") === "pendiente");
 
+  const exportarExcel = async () => {
+    const titulo   = `Reparaciones — ${patente}${marca ? ` — ${marca}` : ""}`;
+    const columnas = ["Fecha", "Reparación requerida", "Estado", "Urgencia"];
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Reparaciones");
+
+    ws.mergeCells(1, 1, 1, columnas.length);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, columnas.length);
+    const celdaFecha = ws.getCell("A2");
+    celdaFecha.value = `Fecha: ${fechaHoy}`;
+    celdaFecha.alignment = { horizontal: "left" };
+    ws.getRow(2).height = 16;
+
+    ws.addRow([]);
+
+    const filaEncabezado = ws.addRow(columnas);
+    filaEncabezado.eachCell((cell) => {
+      cell.font      = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+    });
+
+    pendientes.forEach((t) => {
+      const fila = ws.addRow([
+        formatF(t.fecha),
+        t.descripcion || "—",
+        ESTADO_LABELS[t.estado ?? "pendiente"],
+        t.urgencia ?? "baja",
+      ]);
+      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+    });
+
+    ws.columns = [{ width: 14 }, { width: 44 }, { width: 14 }, { width: 12 }];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href       = url;
+    a.download   = `reparaciones_${patente}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Container className="py-4">
 
@@ -143,6 +197,9 @@ function ReparacionesCamioneta() {
         <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-house-fill me-2"></i>General
         </Button>
+        <Button onClick={exportarExcel} disabled={pendientes.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+          <i className="bi bi-file-earmark-excel me-2"></i>Excel
+        </Button>
       </div>
 
       {/* Título */}
@@ -150,19 +207,18 @@ function ReparacionesCamioneta() {
         <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` — ${marca}` : ""}</h3>
       </div>
 
-      {/* Botón agregar + filtro */}
-      <div className="d-flex justify-content-between align-items-center w-75 mx-auto mb-2">
-        <div className="d-flex gap-2">
-          <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
-            <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
-          </Button>
-          <Button
-            onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/historial`, { state: { patente, marca } })}
-            style={{ backgroundColor: "#4a6fa5", border: "none", color: "#fff" }}
-          >
-            <i className="bi bi-clock-history me-2"></i>Historial
-          </Button>
-        </div>
+      {/* Botón agregar + historial */}
+      <div className="position-relative w-75 mx-auto mb-2 d-flex align-items-center" style={{ minHeight: "40px" }}>
+        <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
+          <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
+        </Button>
+        <Button
+          onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/historial`, { state: { patente, marca } })}
+          className="position-absolute top-50 start-50 translate-middle"
+          style={{ backgroundColor: "#4a6fa5", border: "none", color: "#fff" }}
+        >
+          <i className="bi bi-clock-history me-2"></i>Historial
+        </Button>
       </div>
 
       {/* Tabla principal */}
