@@ -19,6 +19,7 @@ const ESTADOS = ["pendiente", "en proceso", "terminada"];
 const ESTADO_COLORES = { pendiente: "#8b4a4a", "en proceso": "#c08a2d", terminada: "#52735a" };
 const ESTADO_ICONOS = { pendiente: "bi-clock", "en proceso": "bi-arrow-repeat", terminada: "bi-check-lg" };
 const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", terminada: "Terminada" };
+const RESP_OTRO = "__otro__";
 
 function TareaDetalle() {
   const { camionetaId, trabajoId } = useParams();
@@ -34,6 +35,7 @@ function TareaDetalle() {
   const [urgencia,     setUrgencia]     = useState("baja");
   const [responsable,  setResponsable]  = useState("");
   const [responsablesLista, setResponsablesLista] = useState([]);
+  const [respManual,   setRespManual]   = useState(false);
   const [estado,       setEstado]       = useState("pendiente");
   const [detalle,           setDetalle]           = useState("");
   const [trabajosRealizados,setTrabajosRealizados] = useState([]);
@@ -227,18 +229,30 @@ function TareaDetalle() {
           </div>
           <div>
             <Form.Label className="fw-semibold">Responsable</Form.Label>
-            <Form.Control
-              list="responsables-list"
-              placeholder="Seleccionar o escribir nombre"
+            <Form.Select
               style={{ width: "220px" }}
-              value={responsable}
-              onChange={(e) => setResponsable(e.target.value)}
-            />
-            <datalist id="responsables-list">
-              {responsablesLista.map((r) => (
-                <option key={r} value={r} />
+              value={respManual ? RESP_OTRO : responsable}
+              onChange={(e) => {
+                if (e.target.value === RESP_OTRO) { setRespManual(true); setResponsable(""); }
+                else { setRespManual(false); setResponsable(e.target.value); }
+              }}
+            >
+              <option value="">— Seleccionar —</option>
+              {[...new Set([responsable, ...responsablesLista].filter((r) => r && !respManual))].map((r) => (
+                <option key={r} value={r}>{r}</option>
               ))}
-            </datalist>
+              <option value={RESP_OTRO}>✏️ Otro (escribir)</option>
+            </Form.Select>
+            {respManual && (
+              <Form.Control
+                className="mt-1"
+                placeholder="Escribir nombre"
+                style={{ width: "220px" }}
+                value={responsable}
+                onChange={(e) => setResponsable(e.target.value)}
+                autoFocus
+              />
+            )}
           </div>
         </div>
       </div>
