@@ -33,6 +33,7 @@ function TareaDetalle() {
   const [descripcion,  setDescripcion]  = useState("");
   const [urgencia,     setUrgencia]     = useState("baja");
   const [responsable,  setResponsable]  = useState("");
+  const [responsablesLista, setResponsablesLista] = useState([]);
   const [estado,       setEstado]       = useState("pendiente");
   const [detalle,           setDetalle]           = useState("");
   const [trabajosRealizados,setTrabajosRealizados] = useState([]);
@@ -64,6 +65,19 @@ function TareaDetalle() {
         else setLoading(false);
       });
   }, [trabajoId]);
+
+  /* ── Cargar lista de responsables (de las camionetas) ── */
+  useEffect(() => {
+    fetch("/api/camionetas")
+      .then((r) => r.json())
+      .then((data) => {
+        const lista = [...new Set(
+          (Array.isArray(data) ? data : []).map((c) => (c.responsable || "").trim()).filter(Boolean)
+        )].sort((a, b) => a.localeCompare(b));
+        setResponsablesLista(lista);
+      })
+      .catch(() => setResponsablesLista([]));
+  }, []);
 
   /* ── Trabajos realizados ── */
   const agregarTrabajo = () => {
@@ -192,38 +206,36 @@ function TareaDetalle() {
           </div>
           <div>
             <Form.Label className="fw-semibold">Urgencia</Form.Label>
-            <div className="d-flex gap-2">
-              {["baja", "media", "alta"].map((u) => (
-                <button
-                  key={u}
-                  type="button"
-                  onClick={() => setUrgencia(u)}
-                  style={{
-                    padding: "5px 14px",
-                    borderRadius: "6px",
-                    border: urgencia === u ? `2px solid ${URGENCIA_COLORES[u]}` : "2px solid #ccc",
-                    backgroundColor: urgencia === u ? URGENCIA_COLORES[u] : "#fff",
-                    color: urgencia === u ? "#fff" : "#555",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    textTransform: "capitalize",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {u}
-                </button>
-              ))}
+            <div>
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "6px 16px",
+                  borderRadius: "6px",
+                  backgroundColor: URGENCIA_COLORES[urgencia ?? "baja"],
+                  color: "#fff",
+                  fontWeight: "600",
+                  textTransform: "capitalize",
+                }}
+              >
+                {urgencia ?? "baja"}
+              </span>
             </div>
           </div>
           <div>
             <Form.Label className="fw-semibold">Responsable</Form.Label>
             <Form.Control
-              type="text"
-              placeholder="Nombre"
-              style={{ width: "180px" }}
+              list="responsables-list"
+              placeholder="Seleccionar o escribir nombre"
+              style={{ width: "220px" }}
               value={responsable}
               onChange={(e) => setResponsable(e.target.value)}
             />
+            <datalist id="responsables-list">
+              {responsablesLista.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
           </div>
         </div>
       </div>
