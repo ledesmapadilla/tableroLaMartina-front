@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form } from "react-bootstrap";
+import Swal from "sweetalert2";
 import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
@@ -108,14 +109,25 @@ function Visitas() {
       setForm(formVacio);
       setError(false);
       setDiaModal(null);
+      Swal.fire({ icon: "success", title: "Visita registrada", timer: 1500, showConfirmButton: false });
     } catch {
       setError(true);
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la visita" });
     }
   };
 
   const eliminarVisita = async (key, idx) => {
     const visita = (visitas[key] ?? [])[idx];
     if (!visita?._id) return;
+    const result = await Swal.fire({
+      title: "¿Eliminar visita?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#7a4040",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
     try {
       const res = await fetch(`${API}/${visita._id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
@@ -124,8 +136,9 @@ function Visitas() {
         lista.splice(idx, 1);
         return { ...prev, [key]: lista };
       });
+      Swal.fire({ icon: "success", title: "Visita eliminada", timer: 1200, showConfirmButton: false });
     } catch {
-      /* noop */
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar la visita" });
     }
   };
 
