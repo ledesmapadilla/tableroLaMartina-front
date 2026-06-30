@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col } from "react-bootstrap";
+import ExcelJS from "exceljs";
 import TractorIcon from "../shared/TractorIcon";
 
 const API = "/api/tractores";
@@ -111,6 +112,69 @@ function TractoresAltas() {
     tractores.map((t) => (t.supervisor || "").trim()).filter(Boolean)
   )].sort((a, b) => a.localeCompare(b));
 
+  const exportarExcel = async () => {
+    const titulo   = "Alta de Tractores";
+    const columnas = ["#", "Grupo", "Supervisor", "CC", "Descripción"];
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Tractores");
+
+    ws.mergeCells(1, 1, 1, columnas.length);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, 3);
+    const celdaFecha = ws.getCell("A2");
+    celdaFecha.value = `Fecha: ${fechaHoy}`;
+    celdaFecha.alignment = { horizontal: "left" };
+    ws.getRow(2).height = 16;
+
+    ws.addRow([]);
+
+    const filaEncabezado = ws.addRow(columnas);
+    filaEncabezado.eachCell((cell) => {
+      cell.font      = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+    });
+    ws.getRow(4).height = 16;
+
+    tractores.forEach((t, idx) => {
+      const gruppoNum = t.gruppo ?? 6;
+      const gruppoLabel = GRUPPO_LABELS[gruppoNum] || "Sin dueño";
+      const fila = ws.addRow([
+        idx + 1,
+        gruppoLabel,
+        t.supervisor || "—",
+        t.cc,
+        t.descripcion || "—",
+      ]);
+      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.getCell(5).alignment = { horizontal: "left", vertical: "middle" };
+    });
+
+    ws.columns = [
+      { width: 6 },
+      { width: 14 },
+      { width: 24 },
+      { width: 14 },
+      { width: 40 },
+    ];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement("a");
+    a.href       = url;
+    a.download   = `tractores_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Container className="py-4">
 
@@ -123,6 +187,9 @@ function TractoresAltas() {
           </Button>
           <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-house-fill me-2"></i>General
+          </Button>
+          <Button onClick={exportarExcel} disabled={tractores.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+            <i className="bi bi-file-earmark-excel me-2"></i>Exportar Excel
           </Button>
           <Button onClick={abrirNuevo} style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
             Nuevo Tractor
