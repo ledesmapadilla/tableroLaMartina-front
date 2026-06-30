@@ -253,7 +253,7 @@ function Visitas() {
                   </button>
                 </div>
               ))}
-              <hr style={{ margin: "12px 0 0", borderTop: "1px solid #ccc" }} />
+              <div style={{ height: "1px", backgroundColor: "#bbb", margin: "12px 0 0" }} />
             </div>
           )}
 
