@@ -5,6 +5,7 @@ import { Container, Button, Table } from "react-bootstrap";
 const formatF = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
+const ESTADOS = ["pendiente", "en proceso", "terminada"];
 const ESTADO_COLORES = { pendiente: "#8b4a4a", "en proceso": "#c08a2d", terminada: "#52735a" };
 const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", terminada: "Terminada" };
 const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
@@ -19,16 +20,33 @@ function HistorialReparaciones() {
   const [trabajos, setTrabajos] = useState([]);
   const [respCamioneta, setRespCamioneta] = useState("");
 
-  useEffect(() => {
+  const cargar = () => {
     fetch(`/api/trabajos-camioneta/${camionetaId}`)
       .then((r) => r.json())
       .then((data) => setTrabajos(Array.isArray(data) ? data : []))
       .catch(() => setTrabajos([]));
+  };
+
+  useEffect(() => {
+    cargar();
     fetch(`/api/camionetas/${camionetaId}`)
       .then((r) => r.json())
       .then((c) => setRespCamioneta(c?.responsable || ""))
       .catch(() => setRespCamioneta(""));
   }, [camionetaId]);
+
+  const cambiarEstado = async (t) => {
+    const actual = t.estado ?? "pendiente";
+    const nuevoEstado = ESTADOS[(ESTADOS.indexOf(actual) + 1) % ESTADOS.length];
+    try {
+      await fetch(`/api/trabajos-camioneta/${t._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      cargar();
+    } catch { /* noop */ }
+  };
 
   const historial = trabajos.filter((t) => t.estado === "terminada" || t.estado === "en proceso");
 
@@ -74,9 +92,13 @@ function HistorialReparaciones() {
               <td className="text-start">{t.descripcion}</td>
               <td>{t.responsable || respCamioneta || "—"}</td>
               <td>
-                <span style={{ display: "inline-block", backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600" }}>
+                <Button
+                  size="sm"
+                  onClick={() => cambiarEstado(t)}
+                  style={{ backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], border: "none", color: "#fff", fontSize: "0.78rem", fontWeight: "600", minWidth: "100px" }}
+                >
                   {ESTADO_LABELS[t.estado ?? "pendiente"]}
-                </span>
+                </Button>
               </td>
               <td>
                 <span style={{ display: "inline-block", backgroundColor: URGENCIA_COLORES[t.urgencia ?? "baja"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600", textTransform: "capitalize" }}>
@@ -89,7 +111,7 @@ function HistorialReparaciones() {
                     state: { patente, marca, trabajo: t }
                   })}
                   style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                  <i className="bi bi-eye me-1"></i>Ver
+                  Ver
                 </Button>
               </td>
             </tr>

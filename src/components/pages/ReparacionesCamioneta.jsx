@@ -79,18 +79,9 @@ function ReparacionesCamioneta() {
     catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
   };
 
-  /* ── Estado ── */
-  const ESTADOS = ["pendiente", "en proceso", "terminada"];
+  /* ── Estado (solo lectura; se cambia desde el historial) ── */
   const ESTADO_COLORES = { pendiente: "#8b4a4a", "en proceso": "#c08a2d", terminada: "#52735a" };
   const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", terminada: "Terminada" };
-  const toggleEstado = async (t) => {
-    const actual = t.estado ?? "pendiente";
-    const nuevoEstado = ESTADOS[(ESTADOS.indexOf(actual) + 1) % ESTADOS.length];
-    try {
-      await fetch(`/api/trabajos-camioneta/${t._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: nuevoEstado }) });
-      cargar();
-    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
-  };
 
   /* ── Urgencia ── */
   const URGENCIAS = ["baja", "media", "alta"];
@@ -192,13 +183,11 @@ function ReparacionesCamioneta() {
               <td>{formatF(t.fecha)}</td>
               <td className="text-start">{t.descripcion}</td>
               <td>
-                <Button
-                  size="sm"
-                  onClick={() => toggleEstado(t)}
-                  style={{ backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], border: "none", fontSize: "0.78rem", minWidth: "90px" }}
+                <span
+                  style={{ display: "inline-block", backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600", minWidth: "90px" }}
                 >
                   {ESTADO_LABELS[t.estado ?? "pendiente"]}
-                </Button>
+                </span>
               </td>
               <td>
                 <Button
