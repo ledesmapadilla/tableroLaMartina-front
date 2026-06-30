@@ -163,7 +163,7 @@ function Visitas() {
                   {dia}
                 </div>
                 {vDia.slice(0, 2).map((v, i) => (
-                  <div key={i} style={{ backgroundColor: colorGrupo(v.grupo), color: "#fff", borderRadius: "4px", padding: "2px 5px", fontSize: "0.68rem", marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div key={i} style={{ color: colorGrupo(v.grupo), fontWeight: "600", textAlign: "center", padding: "2px 5px", fontSize: "0.68rem", marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {v.grupo}
                   </div>
                 ))}
