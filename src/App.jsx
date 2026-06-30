@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { isMobile } from "./utils/device";
 import Sidebar from "./components/shared/Sidebar";
 import Footer from "./components/shared/Footer";
 import Inicio from "./components/pages/Inicio";
@@ -22,6 +23,24 @@ import TractoresAltas from "./components/pages/TractoresAltas";
 import Visitas from "./components/pages/Visitas";
 
 function App() {
+  if (isMobile) {
+    return (
+      <BrowserRouter>
+        <div className="app-wrapper">
+          <div className="layout-right">
+            <main>
+              <Routes>
+                <Route path="/visitas" element={<Visitas />} />
+                <Route path="*" element={<Navigate to="/visitas" replace />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </div>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <div className="app-wrapper">

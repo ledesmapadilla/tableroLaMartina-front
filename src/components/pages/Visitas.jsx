@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form } from "react-bootstrap";
+import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
 
@@ -140,9 +141,11 @@ function Visitas() {
       {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="fw-bold mb-0">Visitas</h3>
-        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-house-fill me-2"></i>General
-        </Button>
+        {!isMobile && (
+          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+            <i className="bi bi-house-fill me-2"></i>General
+          </Button>
+        )}
       </div>
 
       {/* Navegación mes */}
