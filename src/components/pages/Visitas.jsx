@@ -136,11 +136,11 @@ function Visitas() {
   const esMinimoMes = año === 2026 && mes === 4;
 
   return (
-    <Container className="py-4">
+    <Container className={isMobile ? "py-2 px-2" : "py-4"}>
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="fw-bold mb-0">Visitas</h3>
+      <div className={`d-flex justify-content-between align-items-center ${isMobile ? "mb-2" : "mb-4"}`}>
+        <h3 className="fw-bold mb-0" style={{ fontSize: isMobile ? "1.25rem" : undefined }}>Visitas</h3>
         {!isMobile && (
           <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-house-fill me-2"></i>General
@@ -149,14 +149,14 @@ function Visitas() {
       </div>
 
       {/* Navegación mes */}
-      <div className="d-flex align-items-center justify-content-center gap-4 mb-4">
+      <div className={`d-flex align-items-center justify-content-center ${isMobile ? "gap-3 mb-2" : "gap-4 mb-4"}`}>
         <button
           onClick={retroceder}
           style={{ ...estiloNavBtn, opacity: esMinimoMes ? 0.3 : 1, cursor: esMinimoMes ? "default" : "pointer" }}
         >
           <i className="bi bi-chevron-left"></i>
         </button>
-        <span style={{ fontSize: "1.5rem", fontWeight: "bold", minWidth: "250px", textAlign: "center" }}>
+        <span style={{ fontSize: isMobile ? "1.1rem" : "1.5rem", fontWeight: "bold", minWidth: isMobile ? "150px" : "250px", textAlign: "center" }}>
           {MESES_NOMBRE[mes]} {año}
         </span>
         <button onClick={avanzar} style={estiloNavBtn}>
@@ -168,16 +168,16 @@ function Visitas() {
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
 
         {/* Encabezados */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px", marginBottom: "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
           {DIAS.map((d) => (
-            <div key={d} style={{ textAlign: "center", fontWeight: "700", fontSize: "0.82rem", color: "#666", padding: "6px 0", letterSpacing: "0.5px" }}>
+            <div key={d} style={{ textAlign: "center", fontWeight: "700", fontSize: isMobile ? "0.7rem" : "0.82rem", color: "#666", padding: isMobile ? "2px 0" : "6px 0", letterSpacing: "0.5px" }}>
               {d}
             </div>
           ))}
         </div>
 
         {/* Celdas */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: isMobile ? "3px" : "4px" }}>
           {dias.map((dia, idx) => {
             if (!dia) return <div key={`v-${idx}`} />;
             const key    = toKey(año, mes, dia);
@@ -189,9 +189,9 @@ function Visitas() {
                 onClick={() => abrirDia(dia)}
                 style={{
                   border: esHoy ? `2px solid ${COLOR}` : "1.5px solid #ddd",
-                  borderRadius: "8px",
-                  padding: "8px 7px",
-                  minHeight: "88px",
+                  borderRadius: isMobile ? "6px" : "8px",
+                  padding: isMobile ? "3px 2px" : "8px 7px",
+                  minHeight: isMobile ? "52px" : "88px",
                   cursor: "pointer",
                   backgroundColor: esHoy ? "#eef6f6" : "#fff",
                   transition: "background-color 0.15s",
@@ -199,16 +199,16 @@ function Visitas() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0f6f6")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = esHoy ? "#eef6f6" : "#fff")}
               >
-                <div style={{ fontWeight: esHoy ? "bold" : "normal", fontSize: "0.88rem", color: esHoy ? COLOR : "#333", marginBottom: "5px", textAlign: "center" }}>
+                <div style={{ fontWeight: esHoy ? "bold" : "normal", fontSize: isMobile ? "0.75rem" : "0.88rem", color: esHoy ? COLOR : "#333", marginBottom: isMobile ? "2px" : "5px", textAlign: "center" }}>
                   {dia}
                 </div>
                 {vDia.slice(0, 2).map((v, i) => (
-                  <div key={i} style={{ color: colorGrupo(v.grupo), fontWeight: "600", textAlign: "center", padding: "2px 5px", fontSize: "0.68rem", marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div key={i} style={{ color: colorGrupo(v.grupo), fontWeight: "600", textAlign: "center", padding: isMobile ? "0 2px" : "2px 5px", fontSize: isMobile ? "0.58rem" : "0.68rem", marginBottom: isMobile ? "1px" : "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {v.grupo}
                   </div>
                 ))}
                 {vDia.length > 2 && (
-                  <div style={{ fontSize: "0.68rem", color: "#888" }}>+{vDia.length - 2} más</div>
+                  <div style={{ fontSize: isMobile ? "0.58rem" : "0.68rem", color: "#888", textAlign: "center" }}>+{vDia.length - 2} más</div>
                 )}
               </div>
             );
