@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form } from "react-bootstrap";
+
+const API = "/api/visitas";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MESES_NOMBRE = [
@@ -68,27 +70,62 @@ function Visitas() {
     else setMes((m) => m + 1);
   };
 
+  const cargar = async () => {
+    try {
+      const res = await fetch(API);
+      const data = await res.json();
+      const agrupadas = {};
+      (Array.isArray(data) ? data : []).forEach((v) => {
+        (agrupadas[v.fecha] ??= []).push(v);
+      });
+      setVisitas(agrupadas);
+    } catch {
+      setVisitas({});
+    }
+  };
+
+  useEffect(() => { cargar(); }, []);
+
   const abrirDia = (dia) => {
     setDiaModal(dia);
     setForm(formVacio);
     setError(false);
   };
 
-  const agregarVisita = () => {
+  const agregarVisita = async () => {
     if (!form.grupo) { setError(true); return; }
     const key = toKey(año, mes, diaModal);
-    setVisitas((prev) => ({ ...prev, [key]: [...(prev[key] ?? []), { ...form }] }));
-    setForm(formVacio);
-    setError(false);
-    setDiaModal(null);
+    try {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fecha: key, grupo: form.grupo, observaciones: form.observaciones }),
+      });
+      if (!res.ok) throw new Error();
+      const nueva = await res.json();
+      setVisitas((prev) => ({ ...prev, [key]: [...(prev[key] ?? []), nueva] }));
+      setForm(formVacio);
+      setError(false);
+      setDiaModal(null);
+    } catch {
+      setError(true);
+    }
   };
 
-  const eliminarVisita = (key, idx) => {
-    setVisitas((prev) => {
-      const lista = [...(prev[key] ?? [])];
-      lista.splice(idx, 1);
-      return { ...prev, [key]: lista };
-    });
+  const eliminarVisita = async (key, idx) => {
+    const visita = (visitas[key] ?? [])[idx];
+    if (!visita?._id) return;
+    try {
+      const res = await fetch(`${API}/${visita._id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setVisitas((prev) => {
+        const lista = [...(prev[key] ?? [])];
+        lista.splice(idx, 1);
+        return { ...prev, [key]: lista };
+      });
+    } catch {
+      /* noop */
+    }
   };
 
   const dias        = celdasMes(año, mes);
@@ -216,6 +253,7 @@ function Visitas() {
                   </button>
                 </div>
               ))}
+              <hr style={{ margin: "12px 0 0", borderTop: "1px solid #ccc" }} />
             </div>
           )}
 
