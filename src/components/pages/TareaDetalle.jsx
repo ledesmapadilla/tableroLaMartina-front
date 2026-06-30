@@ -121,30 +121,27 @@ function TareaDetalle() {
   return (
     <Container className="py-4">
 
-      {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4 w-75 mx-auto">
-        <h3 className="fw-bold mb-0">
-          Reparación —{" "}
-          <span style={{ backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: SOMBRA, fontSize: "1rem" }}>
-            {patente}
-          </span>
-          {marca ? <span className="text-muted fs-5 fw-normal ms-2">— {marca}</span> : ""}
-        </h3>
-        <div className="d-flex gap-2">
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-speedometer me-2"></i>Tablero
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-          <Button onClick={guardar} style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
-            <i className="bi bi-save me-2"></i>Guardar
-          </Button>
-        </div>
+      {/* Botones navegación */}
+      <div className="d-flex justify-content-end gap-2 mb-2 w-75 mx-auto">
+        <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-arrow-left me-2"></i>Volver
+        </Button>
+        <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-speedometer me-2"></i>Tablero
+        </Button>
+        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-house-fill me-2"></i>General
+        </Button>
       </div>
+
+      {/* Título */}
+      <h3 className="fw-bold mb-4 w-75 mx-auto text-center">
+        Reparación —{" "}
+        <span style={{ backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: SOMBRA, fontSize: "1rem" }}>
+          {patente}
+        </span>
+        {marca ? <span className="text-muted fs-5 fw-normal ms-2">— {marca}</span> : ""}
+      </h3>
 
       {/* Estado */}
       <div className="w-75 mx-auto mb-3 d-flex align-items-center gap-3">
@@ -164,6 +161,9 @@ function TareaDetalle() {
         <span className="text-muted" style={{ fontSize: "0.85rem" }}>
           (hacé click para cambiar)
         </span>
+        <Button onClick={guardar} className="ms-auto" style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
+          <i className="bi bi-save me-2"></i>Guardar
+        </Button>
       </div>
 
       {/* Info básica */}
