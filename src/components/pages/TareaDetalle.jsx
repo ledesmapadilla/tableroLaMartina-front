@@ -47,7 +47,7 @@ function TareaDetalle() {
       setFecha(t.fecha ? t.fecha.split("T")[0] : "");
       setDescripcion(t.descripcion ?? "");
       setUrgencia(t.urgencia ?? "baja");
-      setResponsable(t.responsable ?? "");
+      setResponsable((prev) => t.responsable || prev || "");
       setEstado(t.estado ?? "pendiente");
       setDetalle(t.detalle ?? "");
       setTrabajosRealizados(t.trabajosRealizados ?? []);
@@ -71,13 +71,16 @@ function TareaDetalle() {
     fetch("/api/camionetas")
       .then((r) => r.json())
       .then((data) => {
+        const arr = Array.isArray(data) ? data : [];
         const lista = [...new Set(
-          (Array.isArray(data) ? data : []).map((c) => (c.responsable || "").trim()).filter(Boolean)
+          arr.map((c) => (c.responsable || "").trim()).filter(Boolean)
         )].sort((a, b) => a.localeCompare(b));
         setResponsablesLista(lista);
+        const actual = arr.find((c) => c._id === camionetaId);
+        if (actual?.responsable) setResponsable((prev) => prev || actual.responsable);
       })
       .catch(() => setResponsablesLista([]));
-  }, []);
+  }, [camionetaId]);
 
   /* ── Trabajos realizados ── */
   const agregarTrabajo = () => {
