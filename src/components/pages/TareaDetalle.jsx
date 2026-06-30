@@ -15,6 +15,10 @@ const formatearPeso = (v) => {
 const parsearPeso = (v) => parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
 
 const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
+const ESTADOS = ["pendiente", "en proceso", "terminada"];
+const ESTADO_COLORES = { pendiente: "#8b4a4a", "en proceso": "#c08a2d", terminada: "#52735a" };
+const ESTADO_ICONOS = { pendiente: "bi-clock", "en proceso": "bi-arrow-repeat", terminada: "bi-check-lg" };
+const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", terminada: "Terminada" };
 
 function TareaDetalle() {
   const { camionetaId, trabajoId } = useParams();
@@ -146,18 +150,16 @@ function TareaDetalle() {
       <div className="w-75 mx-auto mb-3 d-flex align-items-center gap-3">
         <span className="fw-semibold">Estado:</span>
         <Button
-          onClick={() => setEstado((e) => e === "terminada" ? "pendiente" : "terminada")}
+          onClick={() => setEstado((e) => ESTADOS[(ESTADOS.indexOf(e ?? "pendiente") + 1) % ESTADOS.length])}
           style={{
-            backgroundColor: estado === "terminada" ? "#52735a" : "#8b4a4a",
+            backgroundColor: ESTADO_COLORES[estado ?? "pendiente"],
             border: "none",
             boxShadow: SOMBRA,
-            minWidth: "130px",
+            minWidth: "140px",
             fontWeight: "600",
           }}
         >
-          {estado === "terminada"
-            ? <><i className="bi bi-check-lg me-2"></i>Terminada</>
-            : <><i className="bi bi-clock me-2"></i>Pendiente</>}
+          <i className={`bi ${ESTADO_ICONOS[estado ?? "pendiente"]} me-2`}></i>{ESTADO_LABELS[estado ?? "pendiente"]}
         </Button>
         <span className="text-muted" style={{ fontSize: "0.85rem" }}>
           (hacé click para cambiar)
@@ -229,7 +231,7 @@ function TareaDetalle() {
       {/* Detalle */}
       <div className="w-75 mx-auto mb-3">
         <div className="px-2 py-1 fw-bold text-white rounded mb-2" style={{ backgroundColor: "#2c2c2c", fontSize: "0.85rem" }}>
-          DETALLE
+          DESCRIPCIÓN DEL PROBLEMA
         </div>
         <Form.Control
           as="textarea"

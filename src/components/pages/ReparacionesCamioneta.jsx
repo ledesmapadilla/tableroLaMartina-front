@@ -81,8 +81,12 @@ function ReparacionesCamioneta() {
   };
 
   /* ── Estado ── */
+  const ESTADOS = ["pendiente", "en proceso", "terminada"];
+  const ESTADO_COLORES = { pendiente: "#8b4a4a", "en proceso": "#c08a2d", terminada: "#52735a" };
+  const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", terminada: "Terminada" };
   const toggleEstado = async (t) => {
-    const nuevoEstado = t.estado === "terminada" ? "pendiente" : "terminada";
+    const actual = t.estado ?? "pendiente";
+    const nuevoEstado = ESTADOS[(ESTADOS.indexOf(actual) + 1) % ESTADOS.length];
     try {
       await fetch(`/api/trabajos-camioneta/${t._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: nuevoEstado }) });
       cargar();
@@ -166,6 +170,7 @@ function ReparacionesCamioneta() {
         >
           <option value="todos">Todos</option>
           <option value="pendiente">Pendiente</option>
+          <option value="en proceso">En proceso</option>
           <option value="terminada">Terminada</option>
         </select>
       </div>
@@ -174,28 +179,27 @@ function ReparacionesCamioneta() {
       <Table bordered size="sm" className="text-center align-middle w-75 mx-auto">
         <thead className="table-dark">
           <tr>
-            <th style={{ width: "120px" }}>Fecha</th>
-            <th>Reparación</th>
-            <th style={{ width: "100px" }}>Urgencia</th>
-            <th style={{ width: "220px" }}>Acciones</th>
+            <th className="fw-normal" style={{ width: "120px" }}>Fecha</th>
+            <th className="fw-normal">Reparación requerida</th>
+            <th className="fw-normal" style={{ width: "120px" }}>Estado</th>
+            <th className="fw-normal" style={{ width: "100px" }}>Urgencia</th>
+            <th className="fw-normal" style={{ width: "120px" }}>Acciones</th>
           </tr>
         </thead>
         <tbody>
-          {trabajos.length === 0 && <tr><td colSpan={4} className="text-muted py-3">Sin registros</td></tr>}
+          {trabajos.length === 0 && <tr><td colSpan={5} className="text-muted py-3">Sin registros</td></tr>}
           {trabajos.filter((t) => filtroEstado === "todos" || (t.estado ?? "pendiente") === filtroEstado).map((t) => (
             <tr key={t._id}>
               <td>{formatF(t.fecha)}</td>
+              <td className="text-start">{t.descripcion}</td>
               <td>
-                <div className="d-flex justify-content-between align-items-center">
-                  <span className="text-start">{t.descripcion}</span>
-                  <Button
-                    size="sm"
-                    onClick={() => toggleEstado(t)}
-                    style={{ backgroundColor: t.estado === "terminada" ? "#52735a" : "#8b4a4a", border: "none", fontSize: "0.78rem", minWidth: "80px", flexShrink: 0, marginLeft: "0.75rem" }}
-                  >
-                    {t.estado === "terminada" ? "Terminada" : "Pendiente"}
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  onClick={() => toggleEstado(t)}
+                  style={{ backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], border: "none", fontSize: "0.78rem", minWidth: "90px" }}
+                >
+                  {ESTADO_LABELS[t.estado ?? "pendiente"]}
+                </Button>
               </td>
               <td>
                 <Button
@@ -208,8 +212,6 @@ function ReparacionesCamioneta() {
               </td>
               <td>
                 <div className="d-flex justify-content-center gap-1">
-                  <Button size="sm" onClick={() => abrirDetalle(t)} style={{ backgroundColor: "#4a6fa5", border: "none", fontSize: "0.78rem" }}>Detalle</Button>
-                  <Button size="sm" onClick={() => abrirRepuestos(t)} style={{ backgroundColor: "#9e8850", border: "none", fontSize: "0.78rem" }}>Repuestos</Button>
                   <Button size="sm"
                     onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/tarea/${t._id}`, {
                       state: { patente, marca, trabajo: t }
