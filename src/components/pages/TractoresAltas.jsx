@@ -189,7 +189,7 @@ function TractoresAltas() {
             <i className="bi bi-house-fill me-2"></i>General
           </Button>
           <Button onClick={exportarExcel} disabled={tractores.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-            <i className="bi bi-file-earmark-excel me-2"></i>Exportar Excel
+            <i className="bi bi-file-earmark-excel me-2"></i>Excel
           </Button>
           <Button onClick={abrirNuevo} style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
             Nuevo Tractor
