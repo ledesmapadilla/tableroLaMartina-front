@@ -160,9 +160,17 @@ function ReparacionesCamioneta() {
 
       {/* Botón agregar + filtro */}
       <div className="d-flex justify-content-between align-items-center w-75 mx-auto mb-2">
-        <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
-          <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
-        </Button>
+        <div className="d-flex gap-2">
+          <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
+            <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
+          </Button>
+          <Button
+            onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/historial`, { state: { patente, marca } })}
+            style={{ backgroundColor: "#4a6fa5", border: "none", color: "#fff" }}
+          >
+            <i className="bi bi-clock-history me-2"></i>Historial
+          </Button>
+        </div>
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
