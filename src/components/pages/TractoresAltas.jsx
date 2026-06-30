@@ -222,20 +222,25 @@ function TractoresAltas() {
               </Col>
               <Col md={8}>
                 <Form.Label className="fw-semibold">Supervisor</Form.Label>
-                <Form.Select {...register("supervisor")}>
-                  <option value="">— Seleccionar —</option>
-                  <option value="Jorge Rosas">Jorge Rosas</option>
-                  <option value="Mario Bustos">Mario Bustos</option>
-                  <option value="Carlos Chumiento">Carlos Chumiento</option>
-                  <option value="brandan alejandro">brandan alejandro</option>
-                  <option value="Elio Rojas">Elio Rojas</option>
-                  <option value="BERDINA">BERDINA</option>
-                  <option value="SP">SP</option>
-                  <option value="ALBERDI">ALBERDI</option>
-                </Form.Select>
+                <Form.Control
+                  list="supervisores-list"
+                  placeholder="Seleccionar o escribir nombre"
+                  {...register("supervisor")}
+                />
+                <datalist id="supervisores-list">
+                  <option value="Jorge Rosas" />
+                  <option value="Mario Bustos" />
+                  <option value="Guillermo Bustos" />
+                  <option value="Carlos Chumiento" />
+                  <option value="brandan alejandro" />
+                  <option value="Elio Rojas" />
+                  <option value="BERDINA" />
+                  <option value="SP" />
+                  <option value="ALBERDI" />
+                </datalist>
               </Col>
               <Col md={4}>
-                <Form.Label className="fw-semibold">Gruppo</Form.Label>
+                <Form.Label className="fw-semibold">Grupo</Form.Label>
                 <Form.Select {...register("gruppo")}>
                   <option value={1}>Grupo 1</option>
                   <option value={2}>Grupo 2</option>
