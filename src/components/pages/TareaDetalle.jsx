@@ -246,10 +246,22 @@ function TareaDetalle() {
             {respManual && (
               <Form.Control
                 className="mt-1"
-                placeholder="Escribir nombre"
+                placeholder="Escribir nombre y Enter"
                 style={{ width: "220px" }}
                 value={responsable}
                 onChange={(e) => setResponsable(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const nombre = responsable.trim();
+                    if (!nombre) return;
+                    setResponsablesLista((prev) =>
+                      prev.includes(nombre) ? prev : [...prev, nombre].sort((a, b) => a.localeCompare(b))
+                    );
+                    setResponsable(nombre);
+                    setRespManual(false);
+                  }
+                }}
                 autoFocus
               />
             )}
