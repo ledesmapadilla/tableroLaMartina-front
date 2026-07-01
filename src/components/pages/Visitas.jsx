@@ -136,7 +136,8 @@ function Visitas() {
         lista.splice(idx, 1);
         return { ...prev, [key]: lista };
       });
-      Swal.fire({ icon: "success", title: "Visita eliminada", timer: 1200, showConfirmButton: false });
+      await Swal.fire({ icon: "success", title: "Visita eliminada", timer: 1200, showConfirmButton: false });
+      setDiaModal(null);
     } catch {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar la visita" });
     }
