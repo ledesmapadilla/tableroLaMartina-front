@@ -145,68 +145,41 @@ function TareaDetalle() {
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparación");
-    const NCOL = 3;
+    const columnas = ["Fecha", "Trabajos realizados", "Responsable", "Urgencia"];
 
-    ws.mergeCells(1, 1, 1, NCOL);
+    ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
     celdaTitulo.value = titulo;
     celdaTitulo.font  = { bold: true, underline: true, size: 14 };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 22;
 
-    ws.mergeCells(2, 1, 2, NCOL);
+    ws.mergeCells(2, 1, 2, columnas.length);
     ws.getCell("A2").value = `Fecha: ${fechaHoy}`;
     ws.getCell("A2").alignment = { horizontal: "left" };
 
     ws.addRow([]);
 
-    const seccion = (texto) => {
-      const fila = ws.addRow([texto]);
-      ws.mergeCells(fila.number, 1, fila.number, NCOL);
-      fila.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      fila.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2C2C2C" } };
-      fila.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
-    };
-    const dato = (label, valor) => {
-      const fila = ws.addRow([label, valor]);
-      fila.getCell(1).font = { bold: true };
-      ws.mergeCells(fila.number, 2, fila.number, NCOL);
-    };
+    const filaEncabezado = ws.addRow(columnas);
+    filaEncabezado.eachCell((cell) => {
+      cell.font      = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+    });
 
-    seccion("DATOS GENERALES");
-    dato("Fecha", fechaTarea);
-    dato("Descripción", descripcion || "—");
-    dato("Urgencia", urgencia ?? "baja");
-    dato("Responsable", responsable || "—");
-    dato("Estado", estado ?? "pendiente");
+    const filas = trabajosRealizados.length > 0 ? trabajosRealizados : [{ descripcion: "—" }];
+    filas.forEach((tr) => {
+      const fila = ws.addRow([
+        fechaTarea,
+        tr.descripcion || "—",
+        responsable || "—",
+        urgencia ?? "baja",
+      ]);
+      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+    });
 
-    ws.addRow([]);
-    seccion("DESCRIPCIÓN DEL PROBLEMA");
-    const filaDet = ws.addRow([detalle || "—"]);
-    ws.mergeCells(filaDet.number, 1, filaDet.number, NCOL);
-    filaDet.getCell(1).alignment = { horizontal: "left", vertical: "top", wrapText: true };
-
-    if (trabajosRealizados.length > 0) {
-      ws.addRow([]);
-      seccion("TRABAJOS REALIZADOS");
-      trabajosRealizados.forEach((tr) => {
-        const fila = ws.addRow([tr.hecho ? "✔" : "✗", tr.descripcion || "—"]);
-        ws.mergeCells(fila.number, 2, fila.number, NCOL);
-        fila.getCell(1).alignment = { horizontal: "center" };
-      });
-    }
-
-    if (repuestos.length > 0) {
-      ws.addRow([]);
-      seccion("REPUESTOS");
-      const enc = ws.addRow(["Repuesto", "Costo", "Observaciones"]);
-      enc.eachCell((c) => { c.font = { bold: true }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } }; });
-      repuestos.forEach((r) => {
-        ws.addRow([r.nombre || "—", r.costo ? `$ ${formatearPeso(r.costo)}` : "—", r.observaciones || "—"]);
-      });
-    }
-
-    ws.columns = [{ width: 22 }, { width: 22 }, { width: 30 }];
+    ws.columns = [{ width: 14 }, { width: 44 }, { width: 22 }, { width: 12 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
