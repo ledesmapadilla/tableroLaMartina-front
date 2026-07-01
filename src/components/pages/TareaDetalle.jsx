@@ -145,7 +145,7 @@ function TareaDetalle() {
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparación");
-    const columnas = ["Fecha", "Trabajos realizados", "Responsable", "Urgencia"];
+    const columnas = ["Fecha", "Trabajos realizados", "Responsable", "Urgencia", "Estado"];
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
@@ -174,12 +174,13 @@ function TareaDetalle() {
         tr.descripcion || "—",
         responsable || "—",
         urgencia ?? "baja",
+        estado ?? "pendiente",
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
     });
 
-    ws.columns = [{ width: 14 }, { width: 44 }, { width: 22 }, { width: 12 }];
+    ws.columns = [{ width: 14 }, { width: 44 }, { width: 22 }, { width: 12 }, { width: 14 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
