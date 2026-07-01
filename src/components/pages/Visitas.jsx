@@ -60,6 +60,7 @@ function Visitas() {
   const [diaModal, setDiaModal] = useState(null);
   const [form, setForm]     = useState(formVacio);
   const [error, setError]   = useState(false);
+  const [tractores, setTractores] = useState([]);
 
   const retroceder = () => {
     if (año === 2026 && mes === 4) return;
@@ -87,6 +88,13 @@ function Visitas() {
   };
 
   useEffect(() => { cargar(); }, []);
+
+  useEffect(() => {
+    fetch("/api/tractores")
+      .then((r) => r.json())
+      .then((d) => setTractores(Array.isArray(d) ? d : []))
+      .catch(() => setTractores([]));
+  }, []);
 
   const abrirDia = (dia) => {
     setDiaModal(dia);
@@ -228,6 +236,26 @@ function Visitas() {
             );
           })}
         </div>
+      </div>
+
+      {/* Leyenda: grupo — supervisor (desde altas de tractores) */}
+      <div style={{ maxWidth: "860px", margin: "1.5rem auto 0" }}>
+        {[1, 2, 3, 4, 5].map((g) => {
+          const label = `Grupo ${g}`;
+          const sups = [...new Set(
+            tractores
+              .filter((t) => (t.gruppo ?? 6) === g)
+              .map((t) => (t.supervisor || "").trim())
+              .filter(Boolean)
+          )];
+          return (
+            <div key={g} className="d-flex align-items-center mb-1" style={{ fontSize: "0.9rem" }}>
+              <span style={{ display: "inline-block", width: "14px", height: "14px", borderRadius: "3px", backgroundColor: colorGrupo(label), marginRight: "8px", flexShrink: 0 }} />
+              <span className="fw-semibold" style={{ minWidth: "70px" }}>{label}:</span>
+              <span className="ms-2">{sups.length ? sups.join(", ") : "—"}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Modal */}
