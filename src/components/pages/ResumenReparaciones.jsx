@@ -247,16 +247,16 @@ function ResumenReparaciones() {
       <div className="mx-auto" style={{ width: "92%", maxHeight: "70vh", overflowY: "auto" }}>
         <Table bordered size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-            <tr>
-              <th>Patente</th>
-              <th>Marca</th>
-              <th className="text-start">Reparación</th>
-              <th className="text-start">Detalle</th>
-              <th>Fecha</th>
-              <th>Prioridad</th>
-              <th>Estado</th>
-              <th>Responsable</th>
-              <th></th>
+            <tr className="fw-normal">
+              <th className="fw-normal">Patente</th>
+              <th className="fw-normal">Marca</th>
+              <th className="fw-normal text-start">Reparación</th>
+              <th className="fw-normal text-start">Detalle</th>
+              <th className="fw-normal">Fecha</th>
+              <th className="fw-normal">Prioridad</th>
+              <th className="fw-normal">Estado</th>
+              <th className="fw-normal">Responsable</th>
+              <th className="fw-normal"></th>
             </tr>
           </thead>
           <tbody>
