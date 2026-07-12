@@ -64,6 +64,20 @@ const repuestoVacio = () => ({
   observaciones: "",
 });
 
+const selectActivo = { backgroundImage: "none" };
+const estiloX = {
+  position: "absolute",
+  right: "10px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  cursor: "pointer",
+  color: "#dc3545",
+  fontSize: "14px",
+  fontWeight: "900",
+  zIndex: 5,
+  userSelect: "none",
+};
+
 function ReparacionesTractor() {
   const navigate = useNavigate();
   const { grupoId, tractorId } = useParams();
@@ -539,7 +553,7 @@ function ReparacionesTractor() {
             size="sm"
             value={filtroReparacion}
             onChange={(e) => setFiltroReparacion(e.target.value)}
-            style={{ paddingRight: filtroReparacion ? "2.5rem" : "" }}
+            style={filtroReparacion ? selectActivo : {}}
           >
             <option value="">Reparación (todas)</option>
             {reparacionesUnicas.map((r) => (
@@ -547,26 +561,7 @@ function ReparacionesTractor() {
             ))}
           </Form.Select>
           {filtroReparacion && (
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0 text-danger position-absolute"
-              onClick={() => setFiltroReparacion("")}
-              style={{
-                right: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                textDecoration: "none",
-                fontSize: "0.85rem",
-                fontWeight: "bold",
-                backgroundColor: "#fff",
-                padding: "0 6px",
-                zIndex: 4,
-              }}
-              title="Limpiar filtro"
-            >
-              X
-            </Button>
+            <span onClick={() => setFiltroReparacion("")} style={estiloX}>X</span>
           )}
         </div>
 
@@ -576,7 +571,7 @@ function ReparacionesTractor() {
             size="sm"
             value={filtroResponsable}
             onChange={(e) => setFiltroResponsable(e.target.value)}
-            style={{ paddingRight: filtroResponsable ? "2.5rem" : "" }}
+            style={filtroResponsable ? selectActivo : {}}
           >
             <option value="">Responsable (todos)</option>
             {responsablesUnicos.map((r) => (
@@ -584,26 +579,7 @@ function ReparacionesTractor() {
             ))}
           </Form.Select>
           {filtroResponsable && (
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0 text-danger position-absolute"
-              onClick={() => setFiltroResponsable("")}
-              style={{
-                right: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                textDecoration: "none",
-                fontSize: "0.85rem",
-                fontWeight: "bold",
-                backgroundColor: "#fff",
-                padding: "0 6px",
-                zIndex: 4,
-              }}
-              title="Limpiar filtro"
-            >
-              X
-            </Button>
+            <span onClick={() => setFiltroResponsable("")} style={estiloX}>X</span>
           )}
         </div>
 
@@ -613,7 +589,7 @@ function ReparacionesTractor() {
             size="sm"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            style={{ paddingRight: filtroEstado ? "2.5rem" : "" }}
+            style={filtroEstado ? selectActivo : {}}
           >
             <option value="">Estado (todos)</option>
             <option value="activas">Activas (Pendientes/Proceso)</option>
@@ -622,26 +598,7 @@ function ReparacionesTractor() {
             <option value="Terminado">Terminado</option>
           </Form.Select>
           {filtroEstado && (
-            <Button
-              variant="link"
-              size="sm"
-              className="p-0 text-danger position-absolute"
-              onClick={() => setFiltroEstado("")}
-              style={{
-                right: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                textDecoration: "none",
-                fontSize: "0.85rem",
-                fontWeight: "bold",
-                backgroundColor: "#fff",
-                padding: "0 6px",
-                zIndex: 4,
-              }}
-              title="Limpiar filtro"
-            >
-              X
-            </Button>
+            <span onClick={() => setFiltroEstado("")} style={estiloX}>X</span>
           )}
         </div>
 
