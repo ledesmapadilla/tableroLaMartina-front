@@ -708,22 +708,15 @@ function ReparacionesCamioneta() {
                     </td>
                     <td>
                       {editando ? (
-                        <Form.Select
+                        <Form.Control
                           size="sm"
+                          type="text"
+                          list="responsables-list"
                           value={f.responsable}
                           onChange={(e) => editar(f.id, "responsable", e.target.value)}
                           style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                        >
-                          <option value="">Seleccionar...</option>
-                          {f.responsable && !responsablesAlta.includes(f.responsable) && (
-                            <option value={f.responsable}>{f.responsable}</option>
-                          )}
-                          {responsablesAlta.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </Form.Select>
+                          placeholder="Responsable"
+                        />
                       ) : (
                         f.responsable || "-"
                       )}
@@ -787,6 +780,11 @@ function ReparacionesCamioneta() {
           </Table>
         </div>
       )}
+      <datalist id="responsables-list">
+        {responsablesAlta.map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
     </Container>
   );
 }
@@ -804,13 +802,12 @@ function DetalleReparacion({ patente, marca, reparacion, onVolver }) {
   return (
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <Button variant="outline-secondary" size="sm" onClick={onVolver}>
-          ← Volver
-        </Button>
-        <h4 className="fw-bold mb-0 text-center">
+        <h4 className="fw-bold mb-0">
           Detalle de reparación — {patente} {marca}
         </h4>
-        <span style={{ width: 80 }} />
+        <Button onClick={onVolver} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-arrow-left me-2"></i>Volver
+        </Button>
       </div>
 
       <div
@@ -851,16 +848,15 @@ function DetalleObservaciones({ patente, marca, reparacion, onVolver, onGuardar 
   return (
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <Button variant="outline-secondary" size="sm" onClick={onVolver}>
-          ← Volver
-        </Button>
-        <h4 className="fw-bold mb-0 text-center">
+        <h4 className="fw-bold mb-0">
           Observaciones — {reparacion?.reparacion || "reparación"}
           <small className="text-muted ms-2" style={{ fontSize: "1rem", fontWeight: 400 }}>
             {patente} {marca}
           </small>
         </h4>
-        <span style={{ width: 80 }} />
+        <Button onClick={onVolver} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-arrow-left me-2"></i>Volver
+        </Button>
       </div>
 
       <div className="border rounded p-4 bg-light" style={{ borderTop: "4px solid #3a7070" }}>
