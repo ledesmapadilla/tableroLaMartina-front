@@ -356,10 +356,10 @@ function ServicesKilometros() {
       </div>
 
       {/* Tabla */}
-      <div style={{ flex: 1, padding: "1.5rem 2rem", overflowY: "auto", overflowX: "auto" }}>
-        <div className="d-flex justify-content-center">
-          <Table striped bordered hover size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "80%" }}>
-            <thead className="table-dark">
+      <div className="d-flex justify-content-center" style={{ flex: 1, padding: "1.5rem 2rem" }}>
+        <div style={{ width: "80%", maxHeight: "65vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}>
+            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
                 <th className="fw-normal" style={{ width: "40px" }}>#</th>
                 <th className="fw-normal">Patente</th>

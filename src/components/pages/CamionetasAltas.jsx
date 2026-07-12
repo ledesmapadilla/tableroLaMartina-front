@@ -112,49 +112,51 @@ function CamionetasAltas() {
 
       {/* Tabla */}
       <div className="d-flex justify-content-center">
-        <Table striped bordered hover size="sm" className="text-center align-middle w-75" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
-          <thead className="table-dark">
-            <tr className="fw-normal">
-              <th className="fw-normal" style={{ width: "40px" }}>#</th>
-              <th className="fw-normal">Marca</th>
-              <th className="fw-normal">Patente</th>
-              <th className="fw-normal">Responsable</th>
-              <th className="fw-normal">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {camionetas.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="text-muted py-4">
-                  No hay equipos registrados
-                </td>
+        <div style={{ width: "75%", maxHeight: "65vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
+            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+              <tr className="fw-normal">
+                <th className="fw-normal" style={{ width: "40px" }}>#</th>
+                <th className="fw-normal">Marca</th>
+                <th className="fw-normal">Patente</th>
+                <th className="fw-normal">Responsable</th>
+                <th className="fw-normal">Acciones</th>
               </tr>
-            ) : (
-              camionetas.map((c, idx) => (
-                <tr key={c._id}>
-                  <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
-                  <td>{c.marca}</td>
-                  <td>
-                    <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
-                      {c.patente}
-                    </span>
-                  </td>
-                  <td>{c.responsable}</td>
-                  <td>
-                    <div className="d-flex justify-content-center gap-2">
-                      <Button size="sm" onClick={() => abrirEditar(c)} style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                        <i className="bi bi-pencil"></i>
-                      </Button>
-                      <Button size="sm" onClick={() => eliminar(c._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
-                        <i className="bi bi-trash"></i>
-                      </Button>
-                    </div>
+            </thead>
+            <tbody>
+              {camionetas.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-muted py-4">
+                    No hay equipos registrados
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </Table>
+              ) : (
+                camionetas.map((c, idx) => (
+                  <tr key={c._id}>
+                    <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
+                    <td>{c.marca}</td>
+                    <td>
+                      <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
+                        {c.patente}
+                      </span>
+                    </td>
+                    <td>{c.responsable}</td>
+                    <td>
+                      <div className="d-flex justify-content-center gap-2">
+                        <Button size="sm" onClick={() => abrirEditar(c)} style={{ backgroundColor: "#4a6fa5", border: "none" }}>
+                          <i className="bi bi-pencil"></i>
+                        </Button>
+                        <Button size="sm" onClick={() => eliminar(c._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
+                          <i className="bi bi-trash"></i>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
+        </div>
       </div>
 
       {/* Modal */}

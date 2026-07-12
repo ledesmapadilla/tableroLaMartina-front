@@ -73,51 +73,55 @@ function HistorialReparaciones() {
       </div>
 
       {/* Tabla */}
-      <Table striped bordered hover size="sm" className="text-center align-middle w-75 mx-auto" style={{ fontSize: "0.78rem" }}>
-        <thead className="table-dark">
-          <tr className="fw-normal">
-            <th className="fw-normal" style={{ width: "120px" }}>Fecha</th>
-            <th className="fw-normal">Reparación requerida</th>
-            <th className="fw-normal" style={{ width: "180px" }}>Responsable</th>
-            <th className="fw-normal" style={{ width: "120px" }}>Estado</th>
-            <th className="fw-normal" style={{ width: "100px" }}>Urgencia</th>
-            <th className="fw-normal" style={{ width: "80px" }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {historial.length === 0 && <tr><td colSpan={6} className="text-muted py-3">Sin registros</td></tr>}
-          {historial.map((t) => (
-            <tr key={t._id}>
-              <td>{formatF(t.fecha)}</td>
-              <td className="text-start">{t.descripcion}</td>
-              <td>{t.responsable || respCamioneta || "—"}</td>
-              <td>
-                <Button
-                  size="sm"
-                  onClick={() => cambiarEstado(t)}
-                  style={{ backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], border: "none", color: "#fff", fontSize: "0.78rem", fontWeight: "600", minWidth: "100px" }}
-                >
-                  {ESTADO_LABELS[t.estado ?? "pendiente"]}
-                </Button>
-              </td>
-              <td>
-                <span style={{ display: "inline-block", backgroundColor: URGENCIA_COLORES[t.urgencia ?? "baja"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600", textTransform: "capitalize" }}>
-                  {t.urgencia ?? "baja"}
-                </span>
-              </td>
-              <td>
-                <Button size="sm"
-                  onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/tarea/${t._id}`, {
-                    state: { patente, marca, trabajo: t }
-                  })}
-                  style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                  Ver
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      <div className="d-flex justify-content-center">
+        <div style={{ width: "75%", maxHeight: "65vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
+            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+              <tr className="fw-normal">
+                <th className="fw-normal" style={{ width: "120px" }}>Fecha</th>
+                <th className="fw-normal">Reparación requerida</th>
+                <th className="fw-normal" style={{ width: "180px" }}>Responsable</th>
+                <th className="fw-normal" style={{ width: "120px" }}>Estado</th>
+                <th className="fw-normal" style={{ width: "100px" }}>Urgencia</th>
+                <th className="fw-normal" style={{ width: "80px" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {historial.length === 0 && <tr><td colSpan={6} className="text-muted py-3">Sin registros</td></tr>}
+              {historial.map((t) => (
+                <tr key={t._id}>
+                  <td>{formatF(t.fecha)}</td>
+                  <td className="text-start">{t.descripcion}</td>
+                  <td>{t.responsable || respCamioneta || "—"}</td>
+                  <td>
+                    <Button
+                      size="sm"
+                      onClick={() => cambiarEstado(t)}
+                      style={{ backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], border: "none", color: "#fff", fontSize: "0.78rem", fontWeight: "600", minWidth: "100px" }}
+                    >
+                      {ESTADO_LABELS[t.estado ?? "pendiente"]}
+                    </Button>
+                  </td>
+                  <td>
+                    <span style={{ display: "inline-block", backgroundColor: URGENCIA_COLORES[t.urgencia ?? "baja"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600", textTransform: "capitalize" }}>
+                      {t.urgencia ?? "baja"}
+                    </span>
+                  </td>
+                  <td>
+                    <Button size="sm"
+                      onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/tarea/${t._id}`, {
+                        state: { patente, marca, trabajo: t }
+                      })}
+                      style={{ backgroundColor: "#4a6fa5", border: "none" }}>
+                      Ver
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      </div>
     </Container>
   );
 }

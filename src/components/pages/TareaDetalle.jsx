@@ -406,83 +406,85 @@ function TareaDetalle() {
             </span>
           )}
         </div>
-        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
-          <thead className="table-secondary">
-            <tr className="fw-normal">
-              <th className="fw-normal text-start">Repuesto</th>
-              <th className="fw-normal" style={{ width: "130px" }}>Costo</th>
-              <th className="fw-normal">Observaciones</th>
-              <th className="fw-normal" style={{ width: "44px" }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {repuestos.length === 0 && (
-              <tr><td colSpan={4} className="text-muted py-2">Sin repuestos cargados</td></tr>
-            )}
-            {repuestos.map((r, idx) => (
-              <tr key={idx}>
+        <div style={{ maxHeight: "40vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
+            <thead className="table-secondary" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+              <tr className="fw-normal">
+                <th className="fw-normal text-start">Repuesto</th>
+                <th className="fw-normal" style={{ width: "130px" }}>Costo</th>
+                <th className="fw-normal">Observaciones</th>
+                <th className="fw-normal" style={{ width: "44px" }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {repuestos.length === 0 && (
+                <tr><td colSpan={4} className="text-muted py-2">Sin repuestos cargados</td></tr>
+              )}
+              {repuestos.map((r, idx) => (
+                <tr key={idx}>
+                  <td>
+                    <Form.Control size="sm" value={r.nombre} onChange={(e) => editarFila(idx, "nombre", e.target.value)} />
+                  </td>
+                  <td>
+                    <InputGroup size="sm">
+                      <InputGroup.Text>$</InputGroup.Text>
+                      <Form.Control
+                        type="text" inputMode="numeric"
+                        value={r.costo ?? ""}
+                        onChange={(e) => editarFila(idx, "costo", e.target.value.replace(/[^\d]/g, ""))}
+                        onBlur={(e)  => editarFila(idx, "costo", formatearPeso(e.target.value))}
+                        onFocus={(e) => editarFila(idx, "costo", String(e.target.value).replace(/\./g, ""))}
+                        style={{ textAlign: "center" }}
+                      />
+                    </InputGroup>
+                  </td>
+                  <td>
+                    <Form.Control size="sm" value={r.observaciones} onChange={(e) => editarFila(idx, "observaciones", e.target.value)} />
+                  </td>
+                  <td>
+                    <button type="button" onClick={() => eliminarFila(idx)}
+                      style={{ background: "none", border: "none", color: "#7a4040", cursor: "pointer", fontSize: "1rem" }}>
+                      <i className="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {/* Fila agregar */}
+              <tr style={{ backgroundColor: "#f8f9fa" }}>
                 <td>
-                  <Form.Control size="sm" value={r.nombre} onChange={(e) => editarFila(idx, "nombre", e.target.value)} />
+                  <Form.Control size="sm" placeholder="Repuesto..." value={nuevaFila.nombre}
+                    onChange={(e) => setNuevaFila((p) => ({ ...p, nombre: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
                 </td>
                 <td>
                   <InputGroup size="sm">
                     <InputGroup.Text>$</InputGroup.Text>
                     <Form.Control
-                      type="text" inputMode="numeric"
-                      value={r.costo ?? ""}
-                      onChange={(e) => editarFila(idx, "costo", e.target.value.replace(/[^\d]/g, ""))}
-                      onBlur={(e)  => editarFila(idx, "costo", formatearPeso(e.target.value))}
-                      onFocus={(e) => editarFila(idx, "costo", String(e.target.value).replace(/\./g, ""))}
+                      type="text" inputMode="numeric" placeholder="0"
+                      value={nuevaFila.costo}
+                      onChange={(e) => setNuevaFila((p) => ({ ...p, costo: e.target.value.replace(/[^\d]/g, "") }))}
+                      onBlur={(e)  => setNuevaFila((p) => ({ ...p, costo: formatearPeso(e.target.value) }))}
+                      onFocus={(e) => setNuevaFila((p) => ({ ...p, costo: String(e.target.value).replace(/\./g, "") }))}
                       style={{ textAlign: "center" }}
-                    />
+                      onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
                   </InputGroup>
                 </td>
                 <td>
-                  <Form.Control size="sm" value={r.observaciones} onChange={(e) => editarFila(idx, "observaciones", e.target.value)} />
+                  <Form.Control size="sm" placeholder="Observaciones..." value={nuevaFila.observaciones}
+                    onChange={(e) => setNuevaFila((p) => ({ ...p, observaciones: e.target.value }))}
+                    onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
                 </td>
                 <td>
-                  <button type="button" onClick={() => eliminarFila(idx)}
-                    style={{ background: "none", border: "none", color: "#7a4040", cursor: "pointer", fontSize: "1rem" }}>
-                    <i className="bi bi-trash"></i>
-                  </button>
+                  <Button type="button" size="sm" onClick={agregarFila}
+                    style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.75rem", padding: "2px 8px" }}>
+                    <i className="bi bi-plus-lg"></i>
+                  </Button>
                 </td>
               </tr>
-            ))}
-
-            {/* Fila agregar */}
-            <tr style={{ backgroundColor: "#f8f9fa" }}>
-              <td>
-                <Form.Control size="sm" placeholder="Repuesto..." value={nuevaFila.nombre}
-                  onChange={(e) => setNuevaFila((p) => ({ ...p, nombre: e.target.value }))}
-                  onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
-              </td>
-              <td>
-                <InputGroup size="sm">
-                  <InputGroup.Text>$</InputGroup.Text>
-                  <Form.Control
-                    type="text" inputMode="numeric" placeholder="0"
-                    value={nuevaFila.costo}
-                    onChange={(e) => setNuevaFila((p) => ({ ...p, costo: e.target.value.replace(/[^\d]/g, "") }))}
-                    onBlur={(e)  => setNuevaFila((p) => ({ ...p, costo: formatearPeso(e.target.value) }))}
-                    onFocus={(e) => setNuevaFila((p) => ({ ...p, costo: String(e.target.value).replace(/\./g, "") }))}
-                    style={{ textAlign: "center" }}
-                    onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
-                </InputGroup>
-              </td>
-              <td>
-                <Form.Control size="sm" placeholder="Observaciones..." value={nuevaFila.observaciones}
-                  onChange={(e) => setNuevaFila((p) => ({ ...p, observaciones: e.target.value }))}
-                  onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
-              </td>
-              <td>
-                <Button type="button" size="sm" onClick={agregarFila}
-                  style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.75rem", padding: "2px 8px" }}>
-                  <i className="bi bi-plus-lg"></i>
-                </Button>
-              </td>
-            </tr>
-          </tbody>
-        </Table>
+            </tbody>
+          </Table>
+        </div>
       </div>
 
     </Container>

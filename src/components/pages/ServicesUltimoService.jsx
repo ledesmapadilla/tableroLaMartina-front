@@ -317,8 +317,8 @@ function ServicesUltimoService() {
         </div>
 
         <div className="d-flex justify-content-center" style={{ flex: 1, overflow: "hidden" }}>
-          <div style={{ width: "75%", overflowY: "auto", overflowX: "auto", borderRadius: "4px" }}>
-          <Table striped bordered hover size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%", marginBottom: 0 }}>
+          <div style={{ width: "75%", maxHeight: "65vh", overflowY: "auto", overflowX: "auto", borderRadius: "4px", border: "1px solid #dee2e6" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
                 <th className="fw-normal" style={{ width: "40px" }}>#</th>
