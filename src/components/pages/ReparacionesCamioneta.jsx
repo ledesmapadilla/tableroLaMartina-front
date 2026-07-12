@@ -262,284 +262,6 @@ function ReparacionesCamioneta() {
     }
   };
 
-  const guardarRepuestos = async (filaId, repuestos) => {
-    const fila = filas.find((f) => f.id === filaId);
-    if (!fila) return { ok: false };
-
-    const body = {
-      camioneta: camionetaId,
-      fecha: fila.fecha,
-      reparacion: fila.reparacion,
-      descripcion: fila.descripcion,
-      parte: fila.parte || "",
-      prioridad: fila.prioridad,
-      estado: fila.estado,
-      responsable: fila.responsable || "",
-      observaciones: fila.observaciones,
-      maquinaParada: !!fila.maquinaParada,
-      repuestos: repuestos.map((r) => ({
-        repuesto: r.repuesto,
-        cantidad: Number(r.cantidad) || 1,
-        precio: Number(r.precio) || 0,
-        proveedor: r.proveedor || "",
-        responsable: r.responsable || "",
-        estado: r.estado || "Pedido",
-        observaciones: r.observaciones || "",
-      })),
-    };
-
-    const isNew = String(filaId).length !== 24;
-
-    if (isNew) {
-      try {
-        const res = await fetch("/api/trabajos-camioneta", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          throw new Error("No se pudo guardar la reparación para registrar los repuestos.");
-        }
-
-        const saved = await res.json();
-        setFilas((prev) =>
-          prev.map((f) =>
-            f.id === filaId
-              ? {
-                  ...f,
-                  id: saved._id,
-                  repuestos: (saved.repuestos || []).map((sr) => ({
-                    id: sr._id,
-                    repuesto: sr.repuesto || "",
-                    cantidad: sr.cantidad || 1,
-                    precio: sr.precio || 0,
-                    proveedor: sr.proveedor || "",
-                    responsable: sr.responsable || "",
-                    estado: sr.estado || "Pedido",
-                    observaciones: sr.observaciones || "",
-                  })),
-                }
-              : f
-          )
-        );
-        return { ok: true };
-      } catch (e) {
-        console.error(e);
-        Swal.fire({ icon: "error", title: "Error", text: e.message });
-        return { ok: false };
-      }
-    }
-
-    try {
-      const res = await fetch(`/api/trabajos-camioneta/${filaId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        throw new Error("No se pudieron guardar los repuestos.");
-      }
-
-      const saved = await res.json();
-      setFilas((prev) =>
-        prev.map((f) =>
-          f.id === filaId
-            ? {
-                ...f,
-                repuestos: (saved.repuestos || []).map((sr) => ({
-                  id: sr._id,
-                  repuesto: sr.repuesto || "",
-                  cantidad: sr.cantidad || 1,
-                  precio: sr.precio || 0,
-                  proveedor: sr.proveedor || "",
-                  responsable: sr.responsable || "",
-                  estado: sr.estado || "Pedido",
-                  observaciones: sr.observaciones || "",
-                })),
-              }
-            : f
-        )
-      );
-      return { ok: true };
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-      return { ok: false };
-    }
-  };
-
-  const guardarObservaciones = async (filaId, observaciones) => {
-    const fila = filas.find((f) => f.id === filaId);
-    if (!fila) return { ok: false };
-
-    const body = {
-      camioneta: camionetaId,
-      fecha: fila.fecha,
-      reparacion: fila.reparacion,
-      descripcion: fila.descripcion,
-      parte: fila.parte || "",
-      prioridad: fila.prioridad,
-      estado: fila.estado,
-      responsable: fila.responsable || "",
-      observaciones: observaciones,
-      maquinaParada: !!fila.maquinaParada,
-      repuestos: (fila.repuestos || []).map((r) => ({
-        repuesto: r.repuesto,
-        cantidad: Number(r.cantidad) || 1,
-        precio: Number(r.precio) || 0,
-        proveedor: r.proveedor || "",
-        responsable: r.responsable || "",
-        estado: r.estado || "Pedido",
-        observaciones: r.observaciones || "",
-      })),
-    };
-
-    const isNew = String(filaId).length !== 24;
-
-    if (isNew) {
-      try {
-        const res = await fetch("/api/trabajos-camioneta", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          throw new Error("No se pudo guardar la reparación para registrar las observaciones.");
-        }
-
-        const saved = await res.json();
-        setFilas((prev) =>
-          prev.map((f) =>
-            f.id === filaId
-              ? {
-                  ...f,
-                  id: saved._id,
-                  observaciones: saved.observaciones || "",
-                }
-              : f
-          )
-        );
-        return { ok: true };
-      } catch (e) {
-        console.error(e);
-        Swal.fire({ icon: "error", title: "Error", text: e.message });
-        return { ok: false };
-      }
-    }
-
-    try {
-      const res = await fetch(`/api/trabajos-camioneta/${filaId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        throw new Error("No se pudieron guardar las observaciones.");
-      }
-
-      const saved = await res.json();
-      setFilas((prev) =>
-        prev.map((f) =>
-          f.id === filaId ? { ...f, observaciones: saved.observaciones || "" } : f
-        )
-      );
-      return { ok: true };
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-      return { ok: false };
-    }
-  };
-
-  const guardarDescripcion = async (filaId, descripcion) => {
-    const fila = filas.find((f) => f.id === filaId);
-    if (!fila) return { ok: false };
-
-    const body = {
-      camioneta: camionetaId,
-      fecha: fila.fecha,
-      reparacion: fila.reparacion,
-      descripcion: descripcion,
-      parte: fila.parte || "",
-      prioridad: fila.prioridad,
-      estado: fila.estado,
-      responsable: fila.responsable || "",
-      observaciones: fila.observaciones,
-      maquinaParada: !!fila.maquinaParada,
-      repuestos: (fila.repuestos || []).map((r) => ({
-        repuesto: r.repuesto,
-        cantidad: Number(r.cantidad) || 1,
-        precio: Number(r.precio) || 0,
-        proveedor: r.proveedor || "",
-        responsable: r.responsable || "",
-        estado: r.estado || "Pedido",
-        observaciones: r.observaciones || "",
-      })),
-    };
-
-    const isNew = String(filaId).length !== 24;
-
-    if (isNew) {
-      try {
-        const res = await fetch("/api/trabajos-camioneta", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-          throw new Error("No se pudo guardar la reparación para registrar el detalle.");
-        }
-
-        const saved = await res.json();
-        setFilas((prev) =>
-          prev.map((f) =>
-            f.id === filaId
-              ? {
-                  ...f,
-                  id: saved._id,
-                  descripcion: saved.descripcion || "",
-                }
-              : f
-          )
-        );
-        return { ok: true };
-      } catch (e) {
-        console.error(e);
-        Swal.fire({ icon: "error", title: "Error", text: e.message });
-        return { ok: false };
-      }
-    }
-
-    try {
-      const res = await fetch(`/api/trabajos-camioneta/${filaId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        throw new Error("No se pudo guardar el detalle.");
-      }
-
-      const saved = await res.json();
-      setFilas((prev) =>
-        prev.map((f) =>
-          f.id === filaId ? { ...f, descripcion: saved.descripcion || "" } : f
-        )
-      );
-      return { ok: true };
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-      return { ok: false };
-    }
-  };
-
   const verObservacion = (texto) =>
     Swal.fire({
       title: "Observaciones / Descripción",
@@ -581,39 +303,60 @@ function ReparacionesCamioneta() {
   };
 
   if (detalleSel) {
+    const isEditMode = editandoId === detalleSel.id;
     return (
       <DetalleReparacion
         patente={patente}
         marca={marca}
         reparacion={detalleSel}
+        readOnly={!isEditMode}
         onVolver={() => setDetalleSel(null)}
-        onGuardar={(texto) => guardarDescripcion(detalleSel.id, texto)}
+        onGuardar={(texto) => {
+          setFilas((prev) =>
+            prev.map((f) => (f.id === detalleSel.id ? { ...f, descripcion: texto } : f))
+          );
+          return { ok: true };
+        }}
       />
     );
   }
 
   if (repuestosSel) {
     const fila = filas.find((f) => f.id === repuestosSel);
+    const isEditMode = editandoId === repuestosSel;
     return (
       <DetalleRepuestos
         patente={patente}
         marca={marca}
         reparacion={fila}
+        readOnly={!isEditMode}
         onVolver={() => setRepuestosSel(null)}
-        onGuardar={(reps) => guardarRepuestos(repuestosSel, reps)}
+        onGuardar={(reps) => {
+          setFilas((prev) =>
+            prev.map((f) => (f.id === repuestosSel ? { ...f, repuestos: reps } : f))
+          );
+          return { ok: true };
+        }}
       />
     );
   }
 
   if (observacionesSel) {
     const fila = filas.find((f) => f.id === observacionesSel);
+    const isEditMode = editandoId === observacionesSel;
     return (
       <DetalleObservaciones
         patente={patente}
         marca={marca}
         reparacion={fila}
+        readOnly={!isEditMode}
         onVolver={() => setObservacionesSel(null)}
-        onGuardar={(texto) => guardarObservaciones(observacionesSel, texto)}
+        onGuardar={(texto) => {
+          setFilas((prev) =>
+            prev.map((f) => (f.id === observacionesSel ? { ...f, observaciones: texto } : f))
+          );
+          return { ok: true };
+        }}
       />
     );
   }
@@ -961,14 +704,14 @@ function ReparacionesCamioneta() {
   );
 }
 
-function DetalleReparacion({ patente, marca, reparacion, onVolver, onGuardar }) {
+function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
   const r = reparacion || {};
   const [texto, setTexto] = useState(r.descripcion || "");
 
   const handleGuardar = async () => {
     const res = await onGuardar(texto);
     if (res?.ok) {
-      Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: "Detalle guardado temporalmente", timer: 1200, showConfirmButton: false });
       onVolver();
     }
   };
@@ -1009,32 +752,41 @@ function DetalleReparacion({ patente, marca, reparacion, onVolver, onGuardar }) 
           <Form.Control
             as="textarea"
             rows={8}
-            placeholder="Escriba aquí los detalles o descripción del trabajo realizado..."
+            placeholder={readOnly ? "Sin detalle cargado." : "Escriba aquí los detalles o descripción del trabajo realizado..."}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
+            disabled={readOnly}
             style={{ fontSize: "0.9rem" }}
           />
         </Form.Group>
         <div className="d-flex justify-content-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onVolver}>
-            Cancelar
-          </Button>
-          <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
-            Guardar
-          </Button>
+          {readOnly ? (
+            <Button variant="secondary" size="sm" onClick={onVolver}>
+              Cerrar
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" size="sm" onClick={onVolver}>
+                Cancelar
+              </Button>
+              <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
+                Guardar
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Container>
   );
 }
 
-function DetalleObservaciones({ patente, marca, reparacion, onVolver, onGuardar }) {
+function DetalleObservaciones({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
   const [texto, setTexto] = useState(reparacion?.observaciones || "");
 
   const handleGuardar = async () => {
     const res = await onGuardar(texto);
     if (res?.ok) {
-      Swal.fire({ icon: "success", title: "Observaciones guardadas", timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: "Observaciones guardadas temporalmente", timer: 1200, showConfirmButton: false });
       onVolver();
     }
   };
@@ -1059,26 +811,35 @@ function DetalleObservaciones({ patente, marca, reparacion, onVolver, onGuardar 
           <Form.Control
             as="textarea"
             rows={8}
-            placeholder="Escriba aquí las observaciones o notas detalladas de la reparación..."
+            placeholder={readOnly ? "Sin observaciones cargadas." : "Escriba aquí las observaciones o notas detalladas de la reparación..."}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
+            disabled={readOnly}
             style={{ fontSize: "0.9rem" }}
           />
         </Form.Group>
         <div className="d-flex justify-content-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onVolver}>
-            Cancelar
-          </Button>
-          <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
-            Guardar
-          </Button>
+          {readOnly ? (
+            <Button variant="secondary" size="sm" onClick={onVolver}>
+              Cerrar
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" size="sm" onClick={onVolver}>
+                Cancelar
+              </Button>
+              <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
+                Guardar
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Container>
   );
 }
 
-function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
+function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
   const [filas, setFilas] = useState(
     (reparacion?.repuestos || []).map((r) => ({ ...r, id: r.id || crypto.randomUUID() }))
   );
@@ -1117,7 +878,7 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
     if (res?.ok) {
       setFilas(nuevasLista);
       setEditandoId((prev) => (prev === id ? null : prev));
-      Swal.fire({ icon: "success", title: "Repuesto eliminado", timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: "Repuesto quitado temporalmente", timer: 1200, showConfirmButton: false });
     }
   };
 
@@ -1137,7 +898,7 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
     if (res?.ok) {
       setEditandoId(null);
       setNuevas((prev) => { const n = new Set(prev); n.delete(id); return n; });
-      Swal.fire({ icon: "success", title: esNueva ? "Repuesto guardado" : "Repuesto editado", timer: 1500, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: esNueva ? "Repuesto agregado" : "Repuesto editado", timer: 1200, showConfirmButton: false });
     }
   };
 
@@ -1175,11 +936,13 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
         </div>
       </div>
 
-      <div className="mb-4">
-        <Button variant="outline-primary" size="sm" onClick={agregar}>
-          Agregar repuesto
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="mb-4">
+          <Button variant="outline-primary" size="sm" onClick={agregar}>
+            Agregar repuesto
+          </Button>
+        </div>
+      )}
 
       <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
@@ -1193,13 +956,13 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
               <th className="fw-normal" style={{ width: 180 }}>Responsable</th>
               <th className="fw-normal" style={{ width: 140 }}>Estado</th>
               <th className="fw-normal" style={{ width: 220 }}>Observaciones</th>
-              <th className="fw-normal" style={{ width: 160 }}>Acciones</th>
+              {!readOnly && <th className="fw-normal" style={{ width: 160 }}>Acciones</th>}
             </tr>
           </thead>
           <tbody>
             {filas.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-muted py-3">
+                <td colSpan={readOnly ? 8 : 9} className="text-muted py-3">
                   Sin repuestos cargados
                 </td>
               </tr>
@@ -1324,22 +1087,24 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
                       f.observaciones || "-"
                     )}
                   </td>
-                  <td>
-                    <div className="d-flex gap-1 justify-content-center align-items-center">
-                      {editando ? (
-                        <Button size="sm" variant="outline-success" onClick={finalizarEdicion}>
-                          Listo
+                  {!readOnly && (
+                    <td>
+                      <div className="d-flex gap-1 justify-content-center align-items-center">
+                        {editando ? (
+                          <Button size="sm" variant="outline-success" onClick={finalizarEdicion}>
+                            Listo
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline-warning" onClick={() => setEditandoId(f.id)}>
+                            Editar
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline-danger" onClick={() => borrar(f.id)}>
+                          Borrar
                         </Button>
-                      ) : (
-                        <Button size="sm" variant="outline-warning" onClick={() => setEditandoId(f.id)}>
-                          Editar
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline-danger" onClick={() => borrar(f.id)}>
-                        Borrar
-                      </Button>
-                    </div>
-                  </td>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
@@ -1351,7 +1116,7 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
                   Total
                 </td>
                 <td>{pesos(total)}</td>
-                <td colSpan={5} />
+                <td colSpan={readOnly ? 4 : 5} />
               </tr>
             </tfoot>
           )}
