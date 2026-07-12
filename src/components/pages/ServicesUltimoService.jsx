@@ -295,7 +295,7 @@ function ServicesUltimoService() {
       <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         <div className="d-flex justify-content-center mb-2">
-          <div style={{ width: "92%" }}>
+          <div style={{ width: "75%" }}>
             <div className="d-flex align-items-center gap-2">
               <i className="bi bi-search" style={{ color: "#555", fontSize: "0.9rem" }}></i>
               <input
@@ -318,7 +318,7 @@ function ServicesUltimoService() {
         </div>
 
         <div className="d-flex justify-content-center" style={{ flex: 1, overflow: "hidden" }}>
-          <div style={{ width: "92%", maxHeight: "78vh", overflowY: "auto", overflowX: "auto", borderRadius: "4px", border: "1px solid #dee2e6" }}>
+          <div style={{ width: "75%", maxHeight: "78vh", overflowY: "auto", overflowX: "auto", borderRadius: "4px", border: "1px solid #dee2e6" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal align-middle">
