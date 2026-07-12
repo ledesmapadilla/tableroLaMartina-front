@@ -7,18 +7,14 @@ import Swal from "sweetalert2";
 const formatF = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
-const PRIORIDAD_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
-
-const getPrioridadLabel = (urg) => {
-  const u = (urg || "").trim().toLowerCase();
-  if (u === "alta") return "Alta";
-  if (u === "media") return "Media";
-  return "Baja";
+const getPrioridad = (t) => {
+  return t.prioridad || (t.urgencia === "alta" ? "Crítico" : t.urgencia === "media" ? "Urgente" : "Normal");
 };
 
-const getPrioridadColor = (urg) => {
-  const u = (urg || "").trim().toLowerCase();
-  return PRIORIDAD_COLORES[u] || PRIORIDAD_COLORES.baja;
+const getPrioridadColor = (p) => {
+  if (p === "Crítico") return "#8b4a4a";
+  if (p === "Urgente") return "#c8a800";
+  return "#7aaa80";
 };
 
 const getEstadoLabel = (est) => {
@@ -106,7 +102,7 @@ function ResumenReparaciones() {
         if (filtro === "pendiente" && esTerminada) return false;
       }
       if (filtroPatente && t.camioneta?.patente !== filtroPatente) return false;
-      if (filtroUrgencia && (t.urgencia ?? "baja") !== filtroUrgencia) return false;
+      if (filtroUrgencia && getPrioridad(t) !== filtroUrgencia) return false;
       if (filtroResponsable && (t.responsable || t.camioneta?.responsable || "") !== filtroResponsable) return false;
       return true;
     })
@@ -144,7 +140,7 @@ function ResumenReparaciones() {
     ws.getRow(4).height = 16;
 
     trabajosFiltrados.forEach((t) => {
-      const urgencia = t.urgencia ?? "baja";
+      const p = getPrioridad(t);
       const responsable = t.responsable || t.camioneta?.responsable || "—";
       const fila = ws.addRow([
         t.camioneta?.patente ?? "-",
@@ -152,14 +148,14 @@ function ResumenReparaciones() {
         t.reparacion || "-",
         t.descripcion || "-",
         formatF(t.fecha),
-        getPrioridadLabel(t.urgencia),
+        p,
         getEstadoLabel(t.estado),
         responsable,
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
-      if (urgencia === "alta") {
+      if (p === "Crítico") {
         fila.eachCell((cell) => { cell.font = { color: { argb: "FFCC0000" } }; });
       }
     });
@@ -228,9 +224,9 @@ function ResumenReparaciones() {
           <span className="fw-semibold">Prioridad</span>
           <select value={filtroUrgencia} onChange={(e) => setFiltroUrgencia(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
             <option value="">Todas</option>
-            <option value="baja">Baja</option>
-            <option value="media">Media</option>
-            <option value="alta">Alta</option>
+            <option value="Normal">Normal</option>
+            <option value="Urgente">Urgente</option>
+            <option value="Crítico">Crítico</option>
           </select>
         </div>
         <div className="d-flex align-items-center gap-2">
@@ -280,8 +276,8 @@ function ResumenReparaciones() {
                   <td className="text-start" style={{ paddingLeft: "12px" }}>{t.descripcion || "-"}</td>
                   <td>{formatF(t.fecha)}</td>
                   <td>
-                    <span style={{ display: "inline-block", backgroundColor: getPrioridadColor(t.urgencia), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
-                      {getPrioridadLabel(t.urgencia)}
+                    <span style={{ display: "inline-block", backgroundColor: getPrioridadColor(getPrioridad(t)), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
+                      {getPrioridad(t)}
                     </span>
                   </td>
                   <td>
