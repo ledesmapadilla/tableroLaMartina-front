@@ -5,9 +5,35 @@ import ExcelJS from "exceljs";
 import Swal from "sweetalert2";
 
 const formatF = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+  iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
 
-const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
+const PRIORIDAD_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
+
+const getPrioridadLabel = (urg) => {
+  const u = (urg || "").trim().toLowerCase();
+  if (u === "alta") return "Alta";
+  if (u === "media") return "Media";
+  return "Baja";
+};
+
+const getPrioridadColor = (urg) => {
+  const u = (urg || "").trim().toLowerCase();
+  return PRIORIDAD_COLORES[u] || PRIORIDAD_COLORES.baja;
+};
+
+const getEstadoLabel = (est) => {
+  const e = (est || "").trim().toLowerCase();
+  if (e === "terminada" || e === "terminado") return "Terminado";
+  if (e === "en proceso") return "En proceso";
+  return "Pendiente";
+};
+
+const getEstadoColor = (est) => {
+  const e = (est || "").trim().toLowerCase();
+  if (e === "terminada" || e === "terminado") return "#52735a";
+  if (e === "en proceso") return "#c8a800";
+  return "#8b4a4a";
+};
 
 function ResumenReparaciones() {
   const navigate = useNavigate();
@@ -89,7 +115,7 @@ function ResumenReparaciones() {
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = "Resumen Reparaciones Camionetas";
-    const columnas = ["Patente", "Marca", "Reparación", "Detalle", "Fecha", "Urgencia", "Estado", "Responsable"];
+    const columnas = ["Patente", "Marca", "Reparación", "Detalle", "Fecha", "Prioridad", "Estado", "Responsable"];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparaciones");
@@ -120,15 +146,14 @@ function ResumenReparaciones() {
     trabajosFiltrados.forEach((t) => {
       const urgencia = t.urgencia ?? "baja";
       const responsable = t.responsable || t.camioneta?.responsable || "—";
-      const esTerminada = ((t.estado || "").trim().toLowerCase() === "terminada" || (t.estado || "").trim().toLowerCase() === "terminado");
       const fila = ws.addRow([
         t.camioneta?.patente ?? "-",
         t.camioneta?.marca ?? "-",
         t.reparacion || "-",
         t.descripcion || "-",
         formatF(t.fecha),
-        urgencia,
-        esTerminada ? "Terminada" : "Pendiente",
+        getPrioridadLabel(t.urgencia),
+        getEstadoLabel(t.estado),
         responsable,
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
@@ -145,7 +170,7 @@ function ResumenReparaciones() {
       { width: 22 }, // Reparación
       { width: 40 }, // Detalle
       { width: 14 }, // Fecha
-      { width: 12 }, // Urgencia
+      { width: 12 }, // Prioridad
       { width: 12 }, // Estado
       { width: 20 }, // Responsable
     ];
@@ -200,7 +225,7 @@ function ResumenReparaciones() {
           </select>
         </div>
         <div className="d-flex align-items-center gap-2">
-          <span className="fw-semibold">Urgencia</span>
+          <span className="fw-semibold">Prioridad</span>
           <select value={filtroUrgencia} onChange={(e) => setFiltroUrgencia(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
             <option value="">Todas</option>
             <option value="baja">Baja</option>
@@ -228,7 +253,7 @@ function ResumenReparaciones() {
               <th className="text-start">Reparación</th>
               <th className="text-start">Detalle</th>
               <th>Fecha</th>
-              <th>Urgencia</th>
+              <th>Prioridad</th>
               <th>Estado</th>
               <th>Responsable</th>
               <th></th>
@@ -239,9 +264,6 @@ function ResumenReparaciones() {
               <tr><td colSpan={9} className="text-muted py-3">Sin registros</td></tr>
             )}
             {trabajosFiltrados.map((t) => {
-              const urgencia    = t.urgencia ?? "baja";
-              const estLower    = (t.estado || "").trim().toLowerCase();
-              const esTerminada = estLower === "terminada" || estLower === "terminado";
               const responsable = t.responsable || t.camioneta?.responsable || "";
               return (
                 <tr key={t._id}>
@@ -258,13 +280,13 @@ function ResumenReparaciones() {
                   <td className="text-start" style={{ paddingLeft: "12px" }}>{t.descripcion || "-"}</td>
                   <td>{formatF(t.fecha)}</td>
                   <td>
-                    <span style={{ display: "inline-block", backgroundColor: URGENCIA_COLORES[urgencia], color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
-                      {urgencia}
+                    <span style={{ display: "inline-block", backgroundColor: getPrioridadColor(t.urgencia), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
+                      {getPrioridadLabel(t.urgencia)}
                     </span>
                   </td>
                   <td>
-                    <span style={{ display: "inline-block", backgroundColor: esTerminada ? "#52735a" : "#8b4a4a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
-                      {esTerminada ? "Terminada" : "Pendiente"}
+                    <span style={{ display: "inline-block", backgroundColor: getEstadoColor(t.estado), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
+                      {getEstadoLabel(t.estado)}
                     </span>
                   </td>
                   <td>
