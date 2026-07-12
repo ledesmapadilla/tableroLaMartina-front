@@ -41,6 +41,7 @@ function ServicesUltimoService() {
   const [telefonoAviso, setTelefonoAviso] = useState("");
   const [guardandoTel, setGuardandoTel]   = useState(false);
   const [busquedaPatente, setBusquedaPatente] = useState("");
+  const [obsModalText, setObsModalText] = useState(null);
 
   const { register, handleSubmit, setValue, reset, control, formState: { errors } } = useForm({
     defaultValues: {
@@ -329,7 +330,7 @@ function ServicesUltimoService() {
                 <th className="fw-normal" style={{ whiteSpace: "normal", width: "80px" }}>Km último service</th>
                 <th className="fw-normal" style={{ whiteSpace: "normal", width: "80px" }}>Km prox. service</th>
                 <th className="fw-normal" style={{ whiteSpace: "normal", width: "80px" }}>Km actuales</th>
-                <th className="fw-normal" style={{ minWidth: "180px", whiteSpace: "normal" }}>Observaciones</th>
+                <th className="fw-normal" style={{ width: "6%" }}>Obs.</th>
                 <th className="fw-normal">Estado</th>
               </tr>
             </thead>
@@ -362,7 +363,24 @@ function ServicesUltimoService() {
                     <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold" style={{ width: "80px" }}>{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
-                    <td className="text-start text-muted" style={{ minWidth: "180px", whiteSpace: "normal", wordBreak: "break-word" }}>{reg?.observaciones || "—"}</td>
+                    <td>
+                      {(() => {
+                        const tieneObs = (reg?.observaciones || "").trim() !== "";
+                        if (tieneObs) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setObsModalText({ patente: c.patente, texto: reg.observaciones })}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        return <span className="text-muted">—</span>;
+                      })()}
+                    </td>
                     <td>
                       <div className="d-flex flex-column align-items-center gap-1">
                         {estado
@@ -501,6 +519,20 @@ function ServicesUltimoService() {
 
           </Form>
         </Modal.Body>
+      </Modal>
+
+      <Modal show={!!obsModalText} onHide={() => setObsModalText(null)} centered contentClassName="border border-secondary">
+        <Modal.Header closeButton>
+          <Modal.Title className="fw-bold">Observaciones — {obsModalText?.patente}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "0.9rem" }}>
+            {obsModalText?.texto || "Sin observaciones"}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setObsModalText(null)}>Cerrar</Button>
+        </Modal.Footer>
       </Modal>
 
     </div>
