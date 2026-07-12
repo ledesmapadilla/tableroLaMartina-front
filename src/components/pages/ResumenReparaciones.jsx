@@ -89,7 +89,7 @@ function ResumenReparaciones() {
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = "Resumen Reparaciones Camionetas";
-    const columnas = ["Patente", "Marca", "Tarea", "Fecha tarea", "Urgencia", "Estado", "Responsable"];
+    const columnas = ["Patente", "Marca", "Reparación", "Detalle", "Fecha", "Urgencia", "Estado", "Responsable"];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparaciones");
@@ -124,7 +124,8 @@ function ResumenReparaciones() {
       const fila = ws.addRow([
         t.camioneta?.patente ?? "-",
         t.camioneta?.marca ?? "-",
-        t.descripcion,
+        t.reparacion || "-",
+        t.descripcion || "-",
         formatF(t.fecha),
         urgencia,
         esTerminada ? "Terminada" : "Pendiente",
@@ -132,12 +133,22 @@ function ResumenReparaciones() {
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
       if (urgencia === "alta") {
         fila.eachCell((cell) => { cell.font = { color: { argb: "FFCC0000" } }; });
       }
     });
 
-    ws.columns = [{ width: 14 }, { width: 18 }, { width: 40 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 20 }];
+    ws.columns = [
+      { width: 14 }, // Patente
+      { width: 18 }, // Marca
+      { width: 22 }, // Reparación
+      { width: 40 }, // Detalle
+      { width: 14 }, // Fecha
+      { width: 12 }, // Urgencia
+      { width: 12 }, // Estado
+      { width: 20 }, // Responsable
+    ];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -214,8 +225,9 @@ function ResumenReparaciones() {
             <tr>
               <th>Patente</th>
               <th>Marca</th>
-              <th className="text-start">Tarea</th>
-              <th>Fecha tarea</th>
+              <th className="text-start">Reparación</th>
+              <th className="text-start">Detalle</th>
+              <th>Fecha</th>
               <th>Urgencia</th>
               <th>Estado</th>
               <th>Responsable</th>
@@ -224,7 +236,7 @@ function ResumenReparaciones() {
           </thead>
           <tbody>
             {trabajosFiltrados.length === 0 && (
-              <tr><td colSpan={8} className="text-muted py-3">Sin registros</td></tr>
+              <tr><td colSpan={9} className="text-muted py-3">Sin registros</td></tr>
             )}
             {trabajosFiltrados.map((t) => {
               const urgencia    = t.urgencia ?? "baja";
@@ -242,7 +254,8 @@ function ResumenReparaciones() {
                     </span>
                   </td>
                   <td>{t.camioneta?.marca ?? "-"}</td>
-                  <td className="text-start" style={{ paddingLeft: "12px" }}>{t.descripcion}</td>
+                  <td className="text-start" style={{ paddingLeft: "12px" }}>{t.reparacion || "-"}</td>
+                  <td className="text-start" style={{ paddingLeft: "12px" }}>{t.descripcion || "-"}</td>
                   <td>{formatF(t.fecha)}</td>
                   <td>
                     <span style={{ display: "inline-block", backgroundColor: URGENCIA_COLORES[urgencia], color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
