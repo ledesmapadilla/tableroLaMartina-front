@@ -295,7 +295,7 @@ function ServicesKilometros() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
       {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "95%", margin: "0 auto" }}>
+      <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "80%", margin: "0 auto" }}>
         <div className="d-flex align-items-center gap-3">
           <h3 className="fw-bold mb-0">Kilómetros — Camionetas</h3>
           {/* Buscador por patente */}
@@ -356,8 +356,8 @@ function ServicesKilometros() {
       </div>
 
       {/* Tabla */}
-      <div className="d-flex justify-content-center" style={{ flex: 1, padding: "1.5rem 2rem" }}>
-        <div style={{ width: "95%", height: "78vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+      <div className="d-flex justify-content-center" style={{ flex: 1, padding: "1.5rem 2rem 0.5rem" }}>
+        <div style={{ width: "80%", height: "calc(100vh - 165px)", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
