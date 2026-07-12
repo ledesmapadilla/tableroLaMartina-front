@@ -6,7 +6,7 @@ import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
 
-const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 const MESES_NOMBRE = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -35,7 +35,7 @@ function celdasMes(año, mes) {
   let offsetSet = false;
   for (let d = 1; d <= totalDias; d++) {
     const dow = new Date(año, mes, d).getDay();
-    if (dow === 0) continue;
+    if (dow === 0 || dow === 6) continue;
     if (!offsetSet) {
       for (let i = 0; i < dow - 1; i++) arr.push(null);
       offsetSet = true;
@@ -199,9 +199,8 @@ function Visitas() {
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
 
         {/* Encabezados */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
           {DIAS.map((d) => {
-            const isSab = d === "Sáb";
             return (
               <div
                 key={d}
@@ -209,9 +208,7 @@ function Visitas() {
                   textAlign: "center",
                   fontWeight: "700",
                   fontSize: isMobile ? "0.7rem" : "0.82rem",
-                  color: isSab ? "#2b6cb0" : "#666",
-                  backgroundColor: isSab ? "#ebf8ff" : "transparent",
-                  borderRadius: "4px",
+                  color: "#666",
                   padding: isMobile ? "2px 0" : "6px 0",
                   letterSpacing: "0.5px"
                 }}
@@ -223,32 +220,23 @@ function Visitas() {
         </div>
 
         {/* Celdas */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: isMobile ? "3px" : "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: isMobile ? "3px" : "4px" }}>
           {dias.map((dia, idx) => {
             if (!dia) return <div key={`v-${idx}`} />;
             const key    = toKey(año, mes, dia);
             const vDia   = visitas[key] ?? [];
             const esHoy  = key === hoyKey;
-            const dateObj = new Date(año, mes, dia);
-            const dow = dateObj.getDay();
-            const esSabado = dow === 6;
 
             const bgCell = esHoy
               ? "#eef6f6"
-              : esSabado
-              ? "#ebf8ff"
               : "#fff";
 
             const hoverBgCell = esHoy
               ? "#dbebeb"
-              : esSabado
-              ? "#deeafd"
               : "#f0f6f6";
 
             const colorText = esHoy
               ? COLOR
-              : esSabado
-              ? "#2b6cb0"
               : "#333";
 
             return (
