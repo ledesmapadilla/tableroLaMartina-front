@@ -1119,7 +1119,7 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAl
 
   return (
     <Container className="py-4">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }} className="mb-3">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }} className="mb-4">
         <div></div>
         <h4 className="mb-0 text-center">
           Repuestos - {reparacion?.reparacion || "reparación"}
@@ -1322,6 +1322,14 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAl
             </tfoot>
           )}
         </Table>
+      </div>
+      <div className="d-flex justify-content-end mt-4">
+        <Button
+          style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }}
+          onClick={onVolver}
+        >
+          Volver a Reparaciones
+        </Button>
       </div>
     </Container>
   );
