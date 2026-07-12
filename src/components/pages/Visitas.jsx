@@ -327,8 +327,8 @@ function Visitas() {
           <Button
             onClick={() => setMostrarItinerario(true)}
             style={{
-              backgroundColor: "#8e44ad",
-              borderColor: "#8e44ad",
+              backgroundColor: COLOR,
+              borderColor: COLOR,
               color: "#fff",
               fontWeight: "bold",
               padding: isMobile ? "6px 12px" : "8px 16px",
