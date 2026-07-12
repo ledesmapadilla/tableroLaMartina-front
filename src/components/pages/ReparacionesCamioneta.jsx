@@ -1,21 +1,68 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Container, Button, Table, Modal, Form, InputGroup } from "react-bootstrap";
-import { useForm } from "react-hook-form";
+import { Container, Button, Table, Form, Row, Col } from "react-bootstrap";
 import Swal from "sweetalert2";
-import ExcelJS from "exceljs";
 
 const formatF = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
+  iso ? new Date(iso + "T12:00:00").toLocaleDateString("es-AR") : "—";
 
-const formatearPeso = (v) => {
-  if (v === "" || v == null) return "";
-  const n = parseFloat(String(v).replace(/\./g, "").replace(",", "."));
-  return isNaN(n) ? "" : n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-};
-const parsearPeso = (v) => parseFloat(String(v).replace(/\./g, "").replace(",", ".")) || 0;
+const PARTES = [
+  "Motor",
+  "Hidráulico",
+  "Eléctrico",
+  "Electrónico",
+  "Herrería",
+  "Tren rodante",
+  "Cabina",
+  "Chapa",
+  "Otra",
+];
+const PRIORIDADES = ["Normal", "Urgente", "Crítico"];
+const ESTADOS = ["Pendiente", "En proceso", "Terminado"];
+const COLOR_ESTADO = { Pendiente: "#6c757d", "En proceso": "#ffc107", Terminado: "#198754" };
 
-const FILA_VACIA = { nombre: "", costo: "", observaciones: "" };
+const pesos = (n) =>
+  (Number(n) || 0).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  });
+
+const InputMoneda = ({ value, onChange }) => (
+  <Form.Control
+    size="sm"
+    type="text"
+    inputMode="numeric"
+    value={Number(value) ? pesos(value) : ""}
+    onChange={(e) => onChange(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
+  />
+);
+
+const hoy = () => new Date().toISOString().split("T")[0];
+const filaVacia = () => ({
+  id: crypto.randomUUID(),
+  fecha: hoy(),
+  reparacion: "",
+  descripcion: "",
+  parte: "Motor",
+  prioridad: "Normal",
+  color: "#3a7070",
+  estado: "Pendiente",
+  maquinaParada: false,
+  observaciones: "",
+  repuestos: [],
+});
+
+const repuestoVacio = () => ({
+  id: crypto.randomUUID(),
+  repuesto: "",
+  cantidad: 1,
+  precio: 0,
+  proveedor: "",
+  responsable: "",
+  estado: "Pedido",
+  observaciones: "",
+});
 
 function ReparacionesCamioneta() {
   const navigate = useNavigate();
@@ -24,170 +71,168 @@ function ReparacionesCamioneta() {
   const patente = state?.patente ?? "—";
   const marca   = state?.marca   ?? "";
 
-  const [trabajos, setTrabajos] = useState([]);
+  const [filas, setFilas] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [editandoId, setEditandoId] = useState(null);
 
-  // Modal crear/editar
-  const [showForm, setShowForm] = useState(false);
-  const [editando, setEditando] = useState(null);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const [filtroReparacion, setFiltroReparacion] = useState("");
+  const [filtroParte, setFiltroParte] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("activas");
 
-  // Modal detalle (textarea)
-  const [showDetalle, setShowDetalle]   = useState(false);
-  const [detalleTexto, setDetalleTexto] = useState("");
-  const [detalleId, setDetalleId]       = useState(null);
+  const [detalleSel, setDetalleSel] = useState(null);
+  const [repuestosSel, setRepuestosSel] = useState(null);
 
-  // Modal repuestos CRUD
-  const [showRepuestos, setShowRepuestos]     = useState(false);
-  const [repuestosId, setRepuestosId]         = useState(null);
-  const [repuestosLista, setRepuestosLista]   = useState([]);
-  const [nuevaFila, setNuevaFila]             = useState(FILA_VACIA);
-
-  const cargar = () =>
+  // Cargar datos existentes y adaptarlos
+  useEffect(() => {
+    setCargando(true);
     fetch(`/api/trabajos-camioneta/${camionetaId}`)
-      .then((r) => r.json()).then(setTrabajos).catch(() => setTrabajos([]));
+      .then((r) => r.json())
+      .then((data) => {
+        const items = (Array.isArray(data) ? data : []).map((t) => ({
+          id: t._id,
+          fecha: t.fecha ? t.fecha.split("T")[0] : "",
+          reparacion: t.descripcion || "",
+          descripcion: t.detalle || "",
+          parte: t.responsable || "Motor",
+          prioridad: t.urgencia === "alta" ? "Crítico" : t.urgencia === "media" ? "Urgente" : "Normal",
+          estado: t.estado === "terminada" ? "Terminado" : t.estado === "en proceso" ? "En proceso" : "Pendiente",
+          maquinaParada: false,
+          observaciones: "",
+          repuestos: (t.repuestos || []).map((r) => ({
+            id: r._id || crypto.randomUUID(),
+            repuesto: r.nombre || "",
+            cantidad: 1,
+            precio: r.costo || 0,
+            proveedor: "",
+            responsable: "",
+            estado: "Pedido",
+            observaciones: r.observaciones || "",
+          })),
+        }));
+        setFilas(items);
+      })
+      .catch(() => setFilas([]))
+      .finally(() => setCargando(false));
+  }, [camionetaId]);
 
-  useEffect(() => { cargar(); }, [camionetaId]);
+  // Manejar el cierre con Esc
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") setEditandoId(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-  /* ── Crear / Editar ── */
-  const abrirNuevo = () => {
-    setEditando(null);
-    reset({ fecha: new Date().toISOString().split("T")[0], descripcion: "", urgencia: "baja" });
-    setShowForm(true);
-  };
-  const abrirEditar = (t) => {
-    setEditando(t._id);
-    reset({ fecha: t.fecha ? t.fecha.split("T")[0] : "", descripcion: t.descripcion ?? "", urgencia: t.urgencia ?? "baja" });
-    setShowForm(true);
-  };
-  const cerrarForm = () => { setShowForm(false); setEditando(null); };
-  const onSubmit = async (data) => {
-    try {
-      const url    = editando ? `/api/trabajos-camioneta/${editando}` : "/api/trabajos-camioneta";
-      const method = editando ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, camioneta: camionetaId }) });
-      if (res.ok) {
-        cerrarForm(); cargar();
-        Swal.fire({ icon: "success", title: editando ? "Trabajo actualizado" : "Trabajo guardado", timer: 1500, showConfirmButton: false });
-      } else { const err = await res.json(); Swal.fire({ icon: "error", title: "Error", text: err.error }); }
-    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
-  };
-
-  /* ── Eliminar ── */
-  const eliminar = async (id) => {
-    const r = await Swal.fire({ icon: "warning", title: "¿Eliminar trabajo?", showCancelButton: true, confirmButtonText: "Eliminar", cancelButtonText: "Cancelar", confirmButtonColor: "#7a4040" });
-    if (!r.isConfirmed) return;
-    try { await fetch(`/api/trabajos-camioneta/${id}`, { method: "DELETE" }); cargar(); }
-    catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
-  };
-
-  /* ── Estado (solo lectura; se cambia desde el historial) ── */
-  const ESTADO_COLORES = { pendiente: "#8b4a4a", "en proceso": "#c08a2d", terminada: "#52735a" };
-  const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", terminada: "Terminada" };
-
-  /* ── Urgencia ── */
-  const URGENCIAS = ["baja", "media", "alta"];
-  const URGENCIA_COLORES = { baja: "#7aaa80", media: "#c8a800", alta: "#8b4a4a" };
-  const toggleUrgencia = async (t) => {
-    const idx = URGENCIAS.indexOf(t.urgencia ?? "baja");
-    const nueva = URGENCIAS[(idx + 1) % URGENCIAS.length];
-    try {
-      await fetch(`/api/trabajos-camioneta/${t._id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ urgencia: nueva }) });
-      cargar();
-    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  const agregar = () => {
+    const nueva = filaVacia();
+    setFilas((p) => [...p, nueva]);
+    setEditandoId(nueva.id);
   };
 
-  /* ── Detalle ── */
-  const abrirDetalle = (t) => { setDetalleId(t._id); setDetalleTexto(t.detalle ?? ""); setShowDetalle(true); };
-  const guardarDetalle = async () => {
-    try {
-      await fetch(`/api/trabajos-camioneta/${detalleId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ detalle: detalleTexto }) });
-      setShowDetalle(false); cargar();
-    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  const editar = (id, campo, valor) =>
+    setFilas((p) => p.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)));
+
+  const borrar = async (id) => {
+    const { isConfirmed } = await Swal.fire({
+      title: "¿Eliminar reparación?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#7a4040",
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!isConfirmed) return;
+    setFilas((p) => p.filter((f) => f.id !== id));
+    setEditandoId((prev) => (prev === id ? null : prev));
+    Swal.fire({ icon: "success", title: "Reparación eliminada (Local)", timer: 1500, showConfirmButton: false });
   };
 
-  /* ── Repuestos CRUD ── */
-  const abrirRepuestos = (t) => {
-    setRepuestosId(t._id);
-    setRepuestosLista(t.repuestos ? t.repuestos.map((r) => ({ ...r, costo: formatearPeso(r.costo) })) : []);
-    setNuevaFila(FILA_VACIA);
-    setShowRepuestos(true);
-  };
-  const agregarFila = () => {
-    setRepuestosLista((prev) => [...prev, { ...nuevaFila, costo: formatearPeso(nuevaFila.costo) }]);
-    setNuevaFila(FILA_VACIA);
-  };
-  const eliminarFila = (idx) => setRepuestosLista((prev) => prev.filter((_, i) => i !== idx));
-  const editarFila = (idx, campo, valor) =>
-    setRepuestosLista((prev) => prev.map((r, i) => i === idx ? { ...r, [campo]: valor } : r));
-  const guardarRepuestos = async () => {
-    try {
-      const lista = repuestosLista.map(({ nombre, costo, observaciones }) => ({ nombre, costo: parsearPeso(costo), observaciones }));
-      await fetch(`/api/trabajos-camioneta/${repuestosId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ repuestos: lista }) });
-      setShowRepuestos(false); cargar();
-      Swal.fire({ icon: "success", title: "Repuestos guardados", timer: 1200, showConfirmButton: false });
-    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
+  const finalizarEdicion = () => {
+    const fila = filas.find((f) => f.id === editandoId);
+    if (fila && !(fila.reparacion || "").trim()) {
+      return Swal.fire({ icon: "warning", title: "Atención", text: "La reparación es obligatoria." });
+    }
+    if (fila && !fila.parte) {
+      return Swal.fire({ icon: "warning", title: "Atención", text: "La parte es obligatoria." });
+    }
+    setEditandoId(null);
+    Swal.fire({ icon: "success", title: "Reparación guardada (Local)", timer: 1500, showConfirmButton: false });
   };
 
-  const pendientes = trabajos.filter((t) => (t.estado ?? "pendiente") === "pendiente");
+  const guardarRepuestos = (filaId, repuestos) => {
+    setFilas((prev) =>
+      prev.map((f) => (f.id === filaId ? { ...f, repuestos } : f))
+    );
+    return { ok: true };
+  };
 
-  const exportarExcel = async () => {
-    const titulo   = `Reparaciones — ${patente}${marca ? ` — ${marca}` : ""}`;
-    const columnas = ["Fecha", "Reparación requerida", "Estado", "Urgencia"];
-    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Reparaciones");
-
-    ws.mergeCells(1, 1, 1, columnas.length);
-    const celdaTitulo = ws.getCell("A1");
-    celdaTitulo.value = titulo;
-    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
-    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 22;
-
-    ws.mergeCells(2, 1, 2, columnas.length);
-    const celdaFecha = ws.getCell("A2");
-    celdaFecha.value = `Fecha: ${fechaHoy}`;
-    celdaFecha.alignment = { horizontal: "left" };
-    ws.getRow(2).height = 16;
-
-    ws.addRow([]);
-
-    const filaEncabezado = ws.addRow(columnas);
-    filaEncabezado.eachCell((cell) => {
-      cell.font      = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+  const verObservacion = (texto) =>
+    Swal.fire({
+      title: "Observaciones / Descripción",
+      text: texto,
+      confirmButtonText: "Cerrar",
+      confirmButtonColor: "#6c757d",
     });
 
-    pendientes.forEach((t) => {
-      const fila = ws.addRow([
-        formatF(t.fecha),
-        t.descripcion || "—",
-        ESTADO_LABELS[t.estado ?? "pendiente"],
-        t.urgencia ?? "baja",
-      ]);
-      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
-      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+  const reparacionesUnicas = useMemo(
+    () => [...new Set(filas.map((f) => f.reparacion).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [filas]
+  );
+  const partesUnicas = useMemo(
+    () => [...new Set(filas.map((f) => f.parte).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [filas]
+  );
+  const filasFiltradas = useMemo(
+    () =>
+      filas.filter(
+        (f) =>
+          f.id === editandoId ||
+          ((!filtroReparacion || f.reparacion === filtroReparacion) &&
+            (!filtroParte || f.parte === filtroParte) &&
+            (filtroEstado === "" ||
+              (filtroEstado === "activas"
+                ? f.estado === "Pendiente" || f.estado === "En proceso"
+                : f.estado === filtroEstado)))
+      ),
+    [filas, filtroReparacion, filtroParte, filtroEstado, editandoId]
+  );
+
+  const exportarExcel = () => {
+    Swal.fire({
+      icon: "info",
+      title: "Exportar Excel",
+      text: "La exportación en este formato planilla está en desarrollo.",
+      confirmButtonColor: "#3a7070",
     });
-
-    ws.columns = [{ width: 14 }, { width: 44 }, { width: 14 }, { width: 12 }];
-
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href       = url;
-    a.download   = `reparaciones_${patente}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
+
+  if (detalleSel) {
+    return (
+      <DetalleReparacion
+        patente={patente}
+        marca={marca}
+        reparacion={detalleSel}
+        onVolver={() => setDetalleSel(null)}
+      />
+    );
+  }
+
+  if (repuestosSel) {
+    const fila = filas.find((f) => f.id === repuestosSel);
+    return (
+      <DetalleRepuestos
+        patente={patente}
+        marca={marca}
+        reparacion={fila}
+        onVolver={() => setRepuestosSel(null)}
+        onGuardar={(reps) => guardarRepuestos(repuestosSel, reps)}
+      />
+    );
+  }
 
   return (
     <Container className="py-4">
-
       {/* Botones */}
-      <div className="d-flex justify-content-end gap-2 w-75 mx-auto">
+      <div className="d-flex justify-content-end gap-2 w-100 mb-4">
         <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-arrow-left me-2"></i>Volver
         </Button>
@@ -197,220 +242,596 @@ function ReparacionesCamioneta() {
         <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-house-fill me-2"></i>General
         </Button>
-        <Button onClick={exportarExcel} disabled={pendientes.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+        <Button onClick={exportarExcel} disabled={filasFiltradas.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
           <i className="bi bi-file-earmark-excel me-2"></i>Excel
         </Button>
       </div>
 
       {/* Título */}
-      <div className="text-center w-75 mx-auto" style={{ marginTop: "2rem", marginBottom: "1.5rem" }}>
+      <div className="text-center mb-4">
         <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` — ${marca}` : ""}</h3>
       </div>
 
-      {/* Botón agregar + historial */}
-      <div className="position-relative w-75 mx-auto mb-2 d-flex align-items-center" style={{ minHeight: "40px" }}>
-        <Button onClick={abrirNuevo} style={{ backgroundColor: "#6c757d", border: "none", color: "#fff" }}>
-          <i className="bi bi-plus-lg me-2"></i>Agregar Reparación
-        </Button>
-        <Button
-          onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/historial`, { state: { patente, marca } })}
-          className="position-absolute top-50 start-50 translate-middle"
-          style={{ backgroundColor: "#4a6fa5", border: "none", color: "#fff" }}
-        >
-          <i className="bi bi-clock-history me-2"></i>Historial
+      {/* Agregar reparación */}
+      <div className="mb-4">
+        <Button variant="outline-primary" size="sm" onClick={agregar}>
+          <i className="bi bi-plus-lg me-1"></i>Agregar reparación
         </Button>
       </div>
 
-      {/* Tabla principal */}
-      <Table bordered size="sm" className="text-center align-middle w-75 mx-auto">
-        <thead className="table-dark">
-          <tr>
-            <th className="fw-normal" style={{ width: "120px" }}>Fecha</th>
-            <th className="fw-normal">Reparación requerida</th>
-            <th className="fw-normal" style={{ width: "120px" }}>Estado</th>
-            <th className="fw-normal" style={{ width: "100px" }}>Urgencia</th>
-            <th className="fw-normal" style={{ width: "120px" }}>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pendientes.length === 0 && <tr><td colSpan={5} className="text-muted py-3">Sin tareas pendientes</td></tr>}
-          {pendientes.map((t) => (
-            <tr key={t._id}>
-              <td>{formatF(t.fecha)}</td>
-              <td className="text-start">{t.descripcion}</td>
-              <td>
-                <span
-                  style={{ display: "inline-block", backgroundColor: ESTADO_COLORES[t.estado ?? "pendiente"], color: "#fff", borderRadius: "6px", padding: "4px 12px", fontSize: "0.78rem", fontWeight: "600", minWidth: "90px" }}
-                >
-                  {ESTADO_LABELS[t.estado ?? "pendiente"]}
-                </span>
-              </td>
-              <td>
-                <Button
-                  size="sm"
-                  onClick={() => toggleUrgencia(t)}
-                  style={{ backgroundColor: URGENCIA_COLORES[t.urgencia ?? "baja"], border: "none", fontSize: "0.78rem", minWidth: "68px", textTransform: "capitalize" }}
-                >
-                  {t.urgencia ?? "baja"}
-                </Button>
-              </td>
-              <td>
-                <div className="d-flex justify-content-center gap-1">
-                  <Button size="sm"
-                    onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}/tarea/${t._id}`, {
-                      state: { patente, marca, trabajo: t }
-                    })}
-                    style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                    <i className="bi bi-pencil"></i>
-                  </Button>
-                  <Button size="sm" onClick={() => eliminar(t._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
-                    <i className="bi bi-trash"></i>
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      {/* Filtros */}
+      <div className="d-flex gap-2 mb-3 flex-wrap">
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+          >
+            <option value="activas">Pendientes y en proceso</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="En proceso">En proceso</option>
+            <option value="Terminado">Terminado</option>
+            <option value="">Todos</option>
+          </Form.Select>
+        </div>
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroReparacion}
+            onChange={(e) => setFiltroReparacion(e.target.value)}
+          >
+            <option value="">Reparación (todas)</option>
+            {reparacionesUnicas.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </Form.Select>
+        </div>
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroParte}
+            onChange={(e) => setFiltroParte(e.target.value)}
+          >
+            <option value="">Parte (todas)</option>
+            {partesUnicas.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </Form.Select>
+        </div>
+      </div>
 
-      {/* Modal Crear / Editar */}
-      <Modal show={showForm} onHide={cerrarForm} centered contentClassName="border border-dark">
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">{editando ? "Editar reparación" : "Nueva reparación"}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleSubmit(onSubmit)}>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Fecha</Form.Label>
-              <Form.Control type="date" className="w-50" {...register("fecha", { required: "Requerido" })} isInvalid={!!errors.fecha} />
-              <Form.Control.Feedback type="invalid">{errors.fecha?.message}</Form.Control.Feedback>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Breve descripción</Form.Label>
-              <Form.Control type="text" placeholder="Ej: Cambio de correa" {...register("descripcion", { required: "Requerido" })} isInvalid={!!errors.descripcion} />
-              <Form.Control.Feedback type="invalid">{errors.descripcion?.message}</Form.Control.Feedback>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold">Urgencia</Form.Label>
-              <Form.Select className="w-50" {...register("urgencia")}>
-                <option value="baja">Baja</option>
-                <option value="media">Media</option>
-                <option value="alta">Alta</option>
-              </Form.Select>
-            </Form.Group>
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="secondary" onClick={cerrarForm}>Cancelar</Button>
-              <Button type="submit" style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
-                <i className="bi bi-save me-2"></i>Guardar
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
-
-      {/* Modal Detalle */}
-      <Modal show={showDetalle} onHide={() => setShowDetalle(false)} centered size="lg" contentClassName="border border-dark">
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">Detalle de tarea</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Control as="textarea" rows={14} placeholder="Escribí aquí el detalle de la tarea a realizar..." value={detalleTexto} onChange={(e) => setDetalleTexto(e.target.value)} style={{ resize: "none", fontSize: "0.95rem" }} />
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowDetalle(false)}>Cancelar</Button>
-          <Button onClick={guardarDetalle} style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
-            <i className="bi bi-save me-2"></i>Guardar
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal Repuestos CRUD */}
-      <Modal show={showRepuestos} onHide={() => setShowRepuestos(false)} centered size="xl" contentClassName="border border-dark">
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">Repuestos</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Table bordered size="sm" className="text-center align-middle mb-3">
-            <thead className="table-dark">
+      {cargando ? (
+        <div className="text-center py-5">Cargando reparaciones...</div>
+      ) : (
+        <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%" }}>
+            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr>
-                <th>Repuesto</th>
-                <th style={{ width: "120px" }}>Costo</th>
-                <th>Observaciones</th>
-                <th style={{ width: "50px" }}></th>
+                <th style={{ width: "10%" }}>Fecha</th>
+                <th style={{ width: "20%" }}>Reparación</th>
+                <th style={{ width: "8%" }}>Detalle</th>
+                <th style={{ width: "12%" }}>Parte</th>
+                <th style={{ width: "10%" }}>Prioridad</th>
+                <th style={{ width: "10%" }}>Estado</th>
+                <th style={{ width: "14%" }}>Observaciones</th>
+                <th style={{ width: "8%" }}>Camioneta parada</th>
+                <th style={{ width: "8%" }}>Repuestos</th>
+                <th style={{ width: "10%" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {repuestosLista.length === 0 && <tr><td colSpan={4} className="text-muted">Sin repuestos</td></tr>}
-              {repuestosLista.map((r, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <Form.Control size="sm" value={r.nombre} onChange={(e) => editarFila(idx, "nombre", e.target.value)} />
-                  </td>
-                  <td>
-                    <InputGroup size="sm">
-                      <InputGroup.Text>$</InputGroup.Text>
-                      <Form.Control
-                        type="text"
-                        inputMode="numeric"
-                        value={r.costo ?? ""}
-                        onChange={(e) => editarFila(idx, "costo", e.target.value.replace(/[^\d]/g, ""))}
-                        onBlur={(e) => editarFila(idx, "costo", formatearPeso(e.target.value))}
-                        onFocus={(e) => editarFila(idx, "costo", String(e.target.value).replace(/\./g, ""))}
-                        style={{ textAlign: "center" }}
-                      />
-                    </InputGroup>
-                  </td>
-                  <td>
-                    <Form.Control size="sm" value={r.observaciones} onChange={(e) => editarFila(idx, "observaciones", e.target.value)} />
-                  </td>
-                  <td>
-                    <button type="button" onClick={() => eliminarFila(idx)} style={{ background: "none", border: "none", color: "#7a4040", cursor: "pointer", fontSize: "1rem" }}>
-                      <i className="bi bi-trash"></i>
-                    </button>
+              {filasFiltradas.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="text-muted py-3">
+                    Sin reparaciones cargadas
                   </td>
                 </tr>
-              ))}
-              {/* Fila para agregar nuevo */}
-              <tr style={{ backgroundColor: "#f8f9fa" }}>
-                <td>
-                  <Form.Control size="sm" placeholder="Repuesto..." value={nuevaFila.nombre} onChange={(e) => setNuevaFila((p) => ({ ...p, nombre: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
-                </td>
-                <td>
-                  <InputGroup size="sm">
-                      <InputGroup.Text>$</InputGroup.Text>
-                      <Form.Control
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="0"
-                        value={nuevaFila.costo}
-                        onChange={(e) => setNuevaFila((p) => ({ ...p, costo: e.target.value.replace(/[^\d]/g, "") }))}
-                        onBlur={(e) => setNuevaFila((p) => ({ ...p, costo: formatearPeso(e.target.value) }))}
-                        onFocus={(e) => setNuevaFila((p) => ({ ...p, costo: String(e.target.value).replace(/\./g, "") }))}
-                        style={{ textAlign: "center" }}
-                        onKeyDown={(e) => e.key === "Enter" && agregarFila()}
-                      />
-                    </InputGroup>
-                </td>
-                <td>
-                  <Form.Control size="sm" placeholder="Observaciones..." value={nuevaFila.observaciones} onChange={(e) => setNuevaFila((p) => ({ ...p, observaciones: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && agregarFila()} />
-                </td>
-                <td>
-                  <Button type="button" size="sm" onClick={agregarFila} style={{ backgroundColor: "#52735a", border: "none", fontSize: "0.75rem", padding: "2px 8px" }}>
-                    Agregar
-                  </Button>
-                </td>
-              </tr>
+              )}
+              {filasFiltradas.map((f) => {
+                const editando = editandoId === f.id;
+                return (
+                  <tr key={f.id}>
+                    <td>
+                      {editando ? (
+                        <Form.Control
+                          type="date"
+                          size="sm"
+                          value={f.fecha}
+                          onChange={(e) => editar(f.id, "fecha", e.target.value)}
+                        />
+                      ) : (
+                        f.fecha ? f.fecha.split("-").reverse().join("/") : "-"
+                      )}
+                    </td>
+                    <td className="text-start" style={{ wordBreak: "break-word" }}>
+                      {editando ? (
+                        <Form.Control
+                          size="sm"
+                          value={f.reparacion}
+                          onChange={(e) => editar(f.id, "reparacion", e.target.value)}
+                        />
+                      ) : (
+                        f.reparacion || "-"
+                      )}
+                    </td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        onClick={() => setDetalleSel(f)}
+                      >
+                        +
+                      </Button>
+                    </td>
+                    <td>
+                      {editando ? (
+                        <Form.Select
+                          size="sm"
+                          value={f.parte}
+                          onChange={(e) => editar(f.id, "parte", e.target.value)}
+                        >
+                          <option value="">—</option>
+                          {PARTES.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      ) : (
+                        f.parte || "-"
+                      )}
+                    </td>
+                    <td>
+                      {editando ? (
+                        <Form.Select
+                          size="sm"
+                          value={f.prioridad}
+                          onChange={(e) => editar(f.id, "prioridad", e.target.value)}
+                        >
+                          {PRIORIDADES.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      ) : (
+                        f.prioridad || "-"
+                      )}
+                    </td>
+                    <td>
+                      {editando ? (
+                        <Form.Select
+                          size="sm"
+                          value={f.estado}
+                          onChange={(e) => editar(f.id, "estado", e.target.value)}
+                        >
+                          {ESTADOS.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      ) : (
+                        <span style={{ color: COLOR_ESTADO[f.estado] || "#dee2e6", fontWeight: 600 }}>
+                          {f.estado || "-"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-start">
+                      {editando ? (
+                        <div className="d-flex align-items-center gap-1">
+                          <Form.Control
+                            size="sm"
+                            value={f.observaciones || ""}
+                            onChange={(e) => editar(f.id, "observaciones", e.target.value)}
+                            style={{ minWidth: 0 }}
+                          />
+                          {f.observaciones && (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              className="py-0 px-1 flex-shrink-0"
+                              onClick={() => verObservacion(f.observaciones)}
+                            >
+                              Ver
+                            </Button>
+                          )}
+                        </div>
+                      ) : f.observaciones ? (
+                        <Button
+                          size="sm"
+                          variant="outline-secondary"
+                          className="py-0 px-2"
+                          onClick={() => verObservacion(f.observaciones)}
+                        >
+                          Ver
+                        </Button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      <div className="d-flex justify-content-center">
+                        {editando ? (
+                          <input
+                            type="checkbox"
+                            checked={!!f.maquinaParada}
+                            onChange={(e) => editar(f.id, "maquinaParada", e.target.checked)}
+                            style={{ cursor: "pointer", accentColor: "#ff0000", width: 20, height: 20 }}
+                          />
+                        ) : f.maquinaParada ? (
+                          <i className="bi bi-check-square-fill" style={{ color: "#ff0000", fontSize: 20 }} />
+                        ) : (
+                          <i className="bi bi-square" style={{ color: "#adb5bd", fontSize: 20 }} />
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        onClick={() => setRepuestosSel(f.id)}
+                      >
+                        +
+                      </Button>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1 justify-content-center align-items-center flex-wrap">
+                        {editando ? (
+                          <Button size="sm" variant="outline-success" onClick={finalizarEdicion}>
+                            Listo
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline-warning" onClick={() => setEditandoId(f.id)}>
+                            Editar
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline-danger" onClick={() => borrar(f.id)}>
+                          Borrar
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowRepuestos(false)}>Cancelar</Button>
-          <Button onClick={guardarRepuestos} style={{ backgroundColor: "#2c2c2c", border: "none", color: "#fff" }}>
-            <i className="bi bi-save me-2"></i>Guardar
-          </Button>
-        </Modal.Footer>
-      </Modal>
+        </div>
+      )}
+    </Container>
+  );
+}
 
+function DetalleReparacion({ patente, marca, reparacion, onVolver }) {
+  const r = reparacion || {};
+
+  const Item = ({ label, value }) => (
+    <Col xs={6} md={4} className="mb-3">
+      <div className="text-muted small">{label}</div>
+      <div className="fw-semibold">{value || "—"}</div>
+    </Col>
+  );
+
+  return (
+    <Container className="py-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <Button variant="outline-secondary" size="sm" onClick={onVolver}>
+          ← Volver
+        </Button>
+        <h4 className="fw-bold mb-0 text-center">
+          Detalle de reparación — {patente} {marca}
+        </h4>
+        <span style={{ width: 80 }} />
+      </div>
+
+      <div
+        className="border rounded p-3 mb-4"
+        style={{ borderTop: "4px solid #3a7070" }}
+      >
+        <Row>
+          <Item label="Fecha" value={formatF(r.fecha)} />
+          <Item label="Reparación" value={r.reparacion} />
+          <Item label="Parte" value={r.parte} />
+          <Item label="Descripción" value={r.descripcion} />
+          <Item label="Prioridad" value={r.prioridad} />
+          <Item label="Estado" value={r.estado} />
+        </Row>
+      </div>
+
+      <div
+        className="text-center text-muted py-5 border rounded"
+        style={{ borderStyle: "dashed" }}
+      >
+        (contenido del detalle a diseñar)
+      </div>
+    </Container>
+  );
+}
+
+const RESPONSABLES = ["Zamorano", "Mauricio", "Nelson", "Juan José", "Nacho", "Agustín"];
+const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
+const COLOR_ESTADO_REP = {
+  Pedido: "#0dcaf0",
+  Pendiente: "#6c757d",
+  "En taller": "#fd7e14",
+  Colocado: "#198754",
+};
+
+function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
+  const [filas, setFilas] = useState(
+    (reparacion?.repuestos || []).map((r) => ({ ...r, id: r.id || crypto.randomUUID() }))
+  );
+  const [editandoId, setEditandoId] = useState(null);
+  const [otroResp, setOtroResp] = useState(() => new Set());
+  const [nuevas, setNuevas] = useState(() => new Set());
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") setEditandoId(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const agregar = () => {
+    const nueva = repuestoVacio();
+    setFilas((p) => [...p, nueva]);
+    setEditandoId(nueva.id);
+    setNuevas((prev) => new Set(prev).add(nueva.id));
+  };
+
+  const editar = (id, campo, valor) =>
+    setFilas((p) => p.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)));
+
+  const borrar = async (id) => {
+    const { isConfirmed } = await Swal.fire({
+      title: "¿Eliminar repuesto?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#7a4040",
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!isConfirmed) return;
+    const nuevasLista = filas.filter((f) => f.id !== id);
+    setFilas(nuevasLista);
+    setEditandoId((prev) => (prev === id ? null : prev));
+    onGuardar(nuevasLista);
+    Swal.fire({ icon: "success", title: "Repuesto eliminado (Local)", timer: 1500, showConfirmButton: false });
+  };
+
+  const finalizarEdicion = () => {
+    const id = editandoId;
+    const fila = filas.find((f) => f.id === id);
+    if (fila) {
+      if (!(fila.repuesto || "").trim())
+        return Swal.fire({ icon: "warning", title: "Atención", text: "El repuesto es obligatorio." });
+      if (!(Number(fila.cantidad) > 0))
+        return Swal.fire({ icon: "warning", title: "Atención", text: "La cantidad es obligatoria." });
+      if (!(fila.responsable || "").trim())
+        return Swal.fire({ icon: "warning", title: "Atención", text: "El responsable es obligatorio." });
+    }
+    const esNueva = nuevas.has(id);
+    setEditandoId(null);
+    onGuardar(filas);
+    setNuevas((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    Swal.fire({ icon: "success", title: esNueva ? "Repuesto guardado (Local)" : "Repuesto editado (Local)", timer: 1500, showConfirmButton: false });
+  };
+
+  const total = filas.reduce(
+    (s, f) => s + (Number(f.cantidad) || 0) * (Number(f.precio) || 0),
+    0
+  );
+
+  const exportarExcel = () => {
+    Swal.fire({
+      icon: "info",
+      title: "Exportar Excel",
+      text: "La exportación en este formato planilla está en desarrollo.",
+      confirmButtonColor: "#3a7070",
+    });
+  };
+
+  return (
+    <Container className="py-4">
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }} className="mb-3">
+        <div></div>
+        <h4 className="mb-0 text-center">
+          Repuestos - {reparacion?.reparacion || "reparación"}
+          <small className="text-muted ms-2" style={{ fontSize: "1rem", fontWeight: 400 }}>
+            {patente} {marca}
+          </small>
+        </h4>
+        <div className="d-flex gap-2 justify-content-end">
+          <Button variant="outline-dark" size="sm" onClick={exportarExcel}>
+            Excel
+          </Button>
+          <Button variant="outline-success" size="sm" onClick={onVolver}>
+            Volver
+          </Button>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <Button variant="outline-primary" size="sm" onClick={agregar}>
+          Agregar repuesto
+        </Button>
+      </div>
+
+      <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
+        <Table striped bordered hover size="sm" className="text-center align-middle mb-0">
+          <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+            <tr>
+              <th style={{ width: 40 }}>#</th>
+              <th>Repuesto</th>
+              <th style={{ width: 110 }}>Cantidad</th>
+              <th style={{ width: 150 }}>Precio</th>
+              <th style={{ width: 200 }}>Proveedor</th>
+              <th style={{ width: 180 }}>Responsable</th>
+              <th style={{ width: 140 }}>Estado</th>
+              <th style={{ width: 220 }}>Observaciones</th>
+              <th style={{ width: 160 }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filas.length === 0 && (
+              <tr>
+                <td colSpan={9} className="text-muted py-3">
+                  Sin repuestos cargados
+                </td>
+              </tr>
+            )}
+            {filas.map((f, idx) => {
+              const editando = editandoId === f.id;
+              return (
+                <tr key={f.id}>
+                  <td className="text-muted">{idx + 1}</td>
+                  <td className="text-start">
+                    {editando ? (
+                      <Form.Control
+                        size="sm"
+                        value={f.repuesto}
+                        onChange={(e) => editar(f.id, "repuesto", e.target.value)}
+                      />
+                    ) : (
+                      f.repuesto || "-"
+                    )}
+                  </td>
+                  <td>
+                    {editando ? (
+                      <Form.Control
+                        type="number"
+                        size="sm"
+                        value={f.cantidad}
+                        onChange={(e) => editar(f.id, "cantidad", e.target.value)}
+                      />
+                    ) : (
+                      Number(f.cantidad) || 0
+                    )}
+                  </td>
+                  <td>
+                    {editando ? (
+                      <InputMoneda
+                        value={f.precio}
+                        onChange={(v) => editar(f.id, "precio", v)}
+                      />
+                    ) : (
+                      pesos(f.precio)
+                    )}
+                  </td>
+                  <td>
+                    {editando ? (
+                      <Form.Control
+                        size="sm"
+                        value={f.proveedor}
+                        onChange={(e) => editar(f.id, "proveedor", e.target.value)}
+                      />
+                    ) : (
+                      f.proveedor || "-"
+                    )}
+                  </td>
+                  <td>
+                    {editando ? (
+                      <>
+                        <Form.Select
+                          size="sm"
+                          value={
+                            RESPONSABLES.includes(f.responsable)
+                              ? f.responsable
+                              : (f.responsable || otroResp.has(f.id)) ? "__otro__" : ""
+                          }
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "__otro__") {
+                              setOtroResp((prev) => new Set(prev).add(f.id));
+                              editar(f.id, "responsable", "");
+                            } else {
+                              setOtroResp((prev) => { const n = new Set(prev); n.delete(f.id); return n; });
+                              editar(f.id, "responsable", v);
+                            }
+                          }}
+                        >
+                          <option value="">Seleccionar...</option>
+                          {RESPONSABLES.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                          <option value="__otro__">Otro...</option>
+                        </Form.Select>
+                        {(otroResp.has(f.id) || (f.responsable && !RESPONSABLES.includes(f.responsable))) && (
+                          <Form.Control
+                            size="sm"
+                            className="mt-1"
+                            placeholder="Nombre"
+                            value={f.responsable}
+                            onChange={(e) => editar(f.id, "responsable", e.target.value)}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      f.responsable || "-"
+                    )}
+                  </td>
+                  <td>
+                    {editando ? (
+                      <Form.Select
+                        size="sm"
+                        value={f.estado || "Pedido"}
+                        onChange={(e) => editar(f.id, "estado", e.target.value)}
+                      >
+                        {ESTADOS_REP.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    ) : (
+                      <span style={{ color: COLOR_ESTADO_REP[f.estado] || "#dee2e6", fontWeight: 600 }}>
+                        {f.estado || "-"}
+                      </span>
+                    )}
+                  </td>
+                  <td className={editando ? "" : "text-start"}>
+                    {editando ? (
+                      <Form.Control
+                        size="sm"
+                        value={f.observaciones || ""}
+                        onChange={(e) => editar(f.id, "observaciones", e.target.value)}
+                      />
+                    ) : (
+                      f.observaciones || "-"
+                    )}
+                  </td>
+                  <td>
+                    <div className="d-flex gap-1 justify-content-center align-items-center">
+                      {editando ? (
+                        <Button size="sm" variant="outline-success" onClick={finalizarEdicion}>
+                          Listo
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline-warning" onClick={() => setEditandoId(f.id)}>
+                          Editar
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline-danger" onClick={() => borrar(f.id)}>
+                        Borrar
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          {filas.length > 0 && (
+            <tfoot>
+              <tr className="table-dark">
+                <td className="text-end" colSpan={3}>
+                  Total
+                </td>
+                <td>{pesos(total)}</td>
+                <td colSpan={5} />
+              </tr>
+            </tfoot>
+          )}
+        </Table>
+      </div>
     </Container>
   );
 }
