@@ -246,8 +246,8 @@ function ResumenReparaciones() {
             <tr className="fw-normal">
               <th className="fw-normal">Patente</th>
               <th className="fw-normal">Marca</th>
-              <th className="fw-normal text-start">Reparación</th>
-              <th className="fw-normal text-start">Detalle</th>
+              <th className="fw-normal text-start" style={{ minWidth: "150px", whiteSpace: "normal" }}>Reparación</th>
+              <th className="fw-normal text-start" style={{ minWidth: "200px", whiteSpace: "normal" }}>Detalle</th>
               <th className="fw-normal">Fecha</th>
               <th className="fw-normal">Prioridad</th>
               <th className="fw-normal">Estado</th>
@@ -272,8 +272,8 @@ function ResumenReparaciones() {
                     </span>
                   </td>
                   <td>{t.camioneta?.marca ?? "-"}</td>
-                  <td className="text-start" style={{ paddingLeft: "12px" }}>{t.reparacion || "-"}</td>
-                  <td className="text-start" style={{ paddingLeft: "12px" }}>{t.descripcion || "-"}</td>
+                  <td className="text-start" style={{ paddingLeft: "12px", minWidth: "150px", whiteSpace: "normal", wordBreak: "break-word" }}>{t.reparacion || "-"}</td>
+                  <td className="text-start" style={{ paddingLeft: "12px", minWidth: "200px", whiteSpace: "normal", wordBreak: "break-word" }}>{t.descripcion || "-"}</td>
                   <td>{formatF(t.fecha)}</td>
                   <td>
                     <span style={{ display: "inline-block", backgroundColor: getPrioridadColor(getPrioridad(t)), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
