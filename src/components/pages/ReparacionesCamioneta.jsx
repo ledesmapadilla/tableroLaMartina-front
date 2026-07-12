@@ -37,7 +37,7 @@ const InputMoneda = ({ value, onChange }) => (
 );
 
 const hoy = () => new Date().toISOString().split("T")[0];
-const filaVacia = () => ({
+const filaVacia = (defaultResp = "") => ({
   id: crypto.randomUUID(),
   fecha: hoy(),
   reparacion: "",
@@ -46,7 +46,7 @@ const filaVacia = () => ({
   prioridad: "Normal",
   color: "#3a7070",
   estado: "Pendiente",
-  responsable: "",
+  responsable: defaultResp,
   maquinaParada: false,
   observaciones: "",
   repuestos: [],
@@ -82,13 +82,27 @@ function ReparacionesCamioneta() {
   const [repuestosSel, setRepuestosSel] = useState(null);
   const [observacionesSel, setObservacionesSel] = useState(null);
 
+  const [responsablesAlta, setResponsablesAlta] = useState([]);
+  const [responsableDefault, setResponsableDefault] = useState("");
+
   // Cargar datos existentes y adaptarlos
   useEffect(() => {
     setCargando(true);
-    fetch(`/api/trabajos-camioneta/${camionetaId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const items = (Array.isArray(data) ? data : []).map((t) => ({
+    Promise.all([
+      fetch(`/api/trabajos-camioneta/${camionetaId}`).then((r) => r.json()),
+      fetch("/api/camionetas").then((r) => r.json())
+    ])
+      .then(([trabajosData, camionetasData]) => {
+        if (Array.isArray(camionetasData)) {
+          const currentCamioneta = camionetasData.find((c) => String(c._id) === String(camionetaId));
+          if (currentCamioneta?.responsable) {
+            setResponsableDefault(currentCamioneta.responsable);
+          }
+          const list = [...new Set(camionetasData.map((c) => c.responsable).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+          setResponsablesAlta(list);
+        }
+
+        const items = (Array.isArray(trabajosData) ? trabajosData : []).map((t) => ({
           id: t._id,
           fecha: t.fecha ? t.fecha.split("T")[0] : "",
           reparacion: t.reparacion || t.descripcion || "",
@@ -112,7 +126,10 @@ function ReparacionesCamioneta() {
         }));
         setFilas(items);
       })
-      .catch(() => setFilas([]))
+      .catch((e) => {
+        console.error("Error loading data:", e);
+        setFilas([]);
+      })
       .finally(() => setCargando(false));
   }, [camionetaId]);
 
@@ -124,7 +141,7 @@ function ReparacionesCamioneta() {
   }, []);
 
   const agregar = () => {
-    const nueva = filaVacia();
+    const nueva = filaVacia(responsableDefault);
     setFilas((p) => [...p, nueva]);
     setEditandoId(nueva.id);
   };
@@ -698,7 +715,10 @@ function ReparacionesCamioneta() {
                           style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         >
                           <option value="">Seleccionar...</option>
-                          {RESPONSABLES.map((r) => (
+                          {f.responsable && !responsablesAlta.includes(f.responsable) && (
+                            <option value={f.responsable}>{f.responsable}</option>
+                          )}
+                          {responsablesAlta.map((r) => (
                             <option key={r} value={r}>
                               {r}
                             </option>
