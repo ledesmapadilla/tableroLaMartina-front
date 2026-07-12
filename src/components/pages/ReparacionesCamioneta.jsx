@@ -6,20 +6,18 @@ import Swal from "sweetalert2";
 const formatF = (iso) =>
   iso ? new Date(iso + "T12:00:00").toLocaleDateString("es-AR") : "—";
 
-const PARTES = [
-  "Motor",
-  "Hidráulico",
-  "Eléctrico",
-  "Electrónico",
-  "Herrería",
-  "Tren rodante",
-  "Cabina",
-  "Chapa",
-  "Otra",
-];
 const PRIORIDADES = ["Normal", "Urgente", "Crítico"];
 const ESTADOS = ["Pendiente", "En proceso", "Terminado"];
 const COLOR_ESTADO = { Pendiente: "#6c757d", "En proceso": "#ffc107", Terminado: "#198754" };
+
+const RESPONSABLES = ["Zamorano", "Mauricio", "Nelson", "Juan José", "Nacho", "Agustín"];
+const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
+const COLOR_ESTADO_REP = {
+  Pedido: "#0dcaf0",
+  Pendiente: "#6c757d",
+  "En taller": "#fd7e14",
+  Colocado: "#198754",
+};
 
 const pesos = (n) =>
   (Number(n) || 0).toLocaleString("es-AR", {
@@ -44,10 +42,11 @@ const filaVacia = () => ({
   fecha: hoy(),
   reparacion: "",
   descripcion: "",
-  parte: "Motor",
+  parte: "",
   prioridad: "Normal",
   color: "#3a7070",
   estado: "Pendiente",
+  responsable: "",
   maquinaParada: false,
   observaciones: "",
   repuestos: [],
@@ -76,11 +75,12 @@ function ReparacionesCamioneta() {
   const [editandoId, setEditandoId] = useState(null);
 
   const [filtroReparacion, setFiltroReparacion] = useState("");
-  const [filtroParte, setFiltroParte] = useState("");
+  const [filtroResponsable, setFiltroResponsable] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("activas");
 
   const [detalleSel, setDetalleSel] = useState(null);
   const [repuestosSel, setRepuestosSel] = useState(null);
+  const [observacionesSel, setObservacionesSel] = useState(null);
 
   // Cargar datos existentes y adaptarlos
   useEffect(() => {
@@ -91,21 +91,22 @@ function ReparacionesCamioneta() {
         const items = (Array.isArray(data) ? data : []).map((t) => ({
           id: t._id,
           fecha: t.fecha ? t.fecha.split("T")[0] : "",
-          reparacion: t.descripcion || "",
-          descripcion: t.detalle || "",
-          parte: t.responsable || "Motor",
-          prioridad: t.urgencia === "alta" ? "Crítico" : t.urgencia === "media" ? "Urgente" : "Normal",
-          estado: t.estado === "terminada" ? "Terminado" : t.estado === "en proceso" ? "En proceso" : "Pendiente",
-          maquinaParada: false,
-          observaciones: "",
+          reparacion: t.reparacion || t.descripcion || "",
+          descripcion: t.descripcion && t.reparacion ? t.descripcion : (t.detalle || ""),
+          parte: t.parte || "",
+          prioridad: t.prioridad || (t.urgencia === "alta" ? "Crítico" : t.urgencia === "media" ? "Urgente" : "Normal"),
+          estado: t.estado ? (t.estado === "terminada" ? "Terminado" : t.estado === "en proceso" ? "En proceso" : t.estado === "pendiente" ? "Pendiente" : t.estado) : "Pendiente",
+          responsable: t.responsable || "",
+          maquinaParada: !!t.maquinaParada,
+          observaciones: t.observaciones || "",
           repuestos: (t.repuestos || []).map((r) => ({
             id: r._id || crypto.randomUUID(),
-            repuesto: r.nombre || "",
-            cantidad: 1,
-            precio: r.costo || 0,
-            proveedor: "",
-            responsable: "",
-            estado: "Pedido",
+            repuesto: r.repuesto || r.nombre || "",
+            cantidad: r.cantidad || 1,
+            precio: r.precio || r.costo || 0,
+            proveedor: r.proveedor || "",
+            responsable: r.responsable || "",
+            estado: r.estado || "Pedido",
             observaciones: r.observaciones || "",
           })),
         }));
@@ -174,18 +175,16 @@ function ReparacionesCamioneta() {
     if (fila && !(fila.reparacion || "").trim()) {
       return Swal.fire({ icon: "warning", title: "Atención", text: "La reparación es obligatoria." });
     }
-    if (fila && !fila.parte) {
-      return Swal.fire({ icon: "warning", title: "Atención", text: "La parte es obligatoria." });
-    }
 
     const body = {
       camioneta: camionetaId,
       fecha: fila.fecha,
       reparacion: fila.reparacion,
       descripcion: fila.descripcion,
-      parte: fila.parte,
+      parte: fila.parte || "",
       prioridad: fila.prioridad,
       estado: fila.estado,
+      responsable: fila.responsable || "",
       observaciones: fila.observaciones,
       maquinaParada: !!fila.maquinaParada,
       repuestos: (fila.repuestos || []).map((r) => ({
@@ -254,9 +253,10 @@ function ReparacionesCamioneta() {
       fecha: fila.fecha,
       reparacion: fila.reparacion,
       descripcion: fila.descripcion,
-      parte: fila.parte,
+      parte: fila.parte || "",
       prioridad: fila.prioridad,
       estado: fila.estado,
+      responsable: fila.responsable || "",
       observaciones: fila.observaciones,
       maquinaParada: !!fila.maquinaParada,
       repuestos: repuestos.map((r) => ({
@@ -352,6 +352,91 @@ function ReparacionesCamioneta() {
     }
   };
 
+  const guardarObservaciones = async (filaId, observaciones) => {
+    const fila = filas.find((f) => f.id === filaId);
+    if (!fila) return { ok: false };
+
+    const body = {
+      camioneta: camionetaId,
+      fecha: fila.fecha,
+      reparacion: fila.reparacion,
+      descripcion: fila.descripcion,
+      parte: fila.parte || "",
+      prioridad: fila.prioridad,
+      estado: fila.estado,
+      responsable: fila.responsable || "",
+      observaciones: observaciones,
+      maquinaParada: !!fila.maquinaParada,
+      repuestos: (fila.repuestos || []).map((r) => ({
+        repuesto: r.repuesto,
+        cantidad: Number(r.cantidad) || 1,
+        precio: Number(r.precio) || 0,
+        proveedor: r.proveedor || "",
+        responsable: r.responsable || "",
+        estado: r.estado || "Pedido",
+        observaciones: r.observaciones || "",
+      })),
+    };
+
+    const isNew = String(filaId).length !== 24;
+
+    if (isNew) {
+      try {
+        const res = await fetch("/api/trabajos-camioneta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          throw new Error("No se pudo guardar la reparación para registrar las observaciones.");
+        }
+
+        const saved = await res.json();
+        setFilas((prev) =>
+          prev.map((f) =>
+            f.id === filaId
+              ? {
+                  ...f,
+                  id: saved._id,
+                  observaciones: saved.observaciones || "",
+                }
+              : f
+          )
+        );
+        return { ok: true };
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: "error", title: "Error", text: e.message });
+        return { ok: false };
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/trabajos-camioneta/${filaId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudieron guardar las observaciones.");
+      }
+
+      const saved = await res.json();
+      setFilas((prev) =>
+        prev.map((f) =>
+          f.id === filaId ? { ...f, observaciones: saved.observaciones || "" } : f
+        )
+      );
+      return { ok: true };
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+      return { ok: false };
+    }
+  };
+
   const verObservacion = (texto) =>
     Swal.fire({
       title: "Observaciones / Descripción",
@@ -364,8 +449,8 @@ function ReparacionesCamioneta() {
     () => [...new Set(filas.map((f) => f.reparacion).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [filas]
   );
-  const partesUnicas = useMemo(
-    () => [...new Set(filas.map((f) => f.parte).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+  const responsablesUnicos = useMemo(
+    () => [...new Set(filas.map((f) => f.responsable).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [filas]
   );
   const filasFiltradas = useMemo(
@@ -374,13 +459,13 @@ function ReparacionesCamioneta() {
         (f) =>
           f.id === editandoId ||
           ((!filtroReparacion || f.reparacion === filtroReparacion) &&
-            (!filtroParte || f.parte === filtroParte) &&
+            (!filtroResponsable || f.responsable === filtroResponsable) &&
             (filtroEstado === "" ||
               (filtroEstado === "activas"
                 ? f.estado === "Pendiente" || f.estado === "En proceso"
                 : f.estado === filtroEstado)))
       ),
-    [filas, filtroReparacion, filtroParte, filtroEstado, editandoId]
+    [filas, filtroReparacion, filtroResponsable, filtroEstado, editandoId]
   );
 
   const exportarExcel = () => {
@@ -412,6 +497,19 @@ function ReparacionesCamioneta() {
         reparacion={fila}
         onVolver={() => setRepuestosSel(null)}
         onGuardar={(reps) => guardarRepuestos(repuestosSel, reps)}
+      />
+    );
+  }
+
+  if (observacionesSel) {
+    const fila = filas.find((f) => f.id === observacionesSel);
+    return (
+      <DetalleObservaciones
+        patente={patente}
+        marca={marca}
+        reparacion={fila}
+        onVolver={() => setObservacionesSel(null)}
+        onGuardar={(texto) => guardarObservaciones(observacionesSel, texto)}
       />
     );
   }
@@ -476,12 +574,12 @@ function ReparacionesCamioneta() {
         <div className="position-relative" style={{ width: 220 }}>
           <Form.Select
             size="sm"
-            value={filtroParte}
-            onChange={(e) => setFiltroParte(e.target.value)}
+            value={filtroResponsable}
+            onChange={(e) => setFiltroResponsable(e.target.value)}
           >
-            <option value="">Parte (todas)</option>
-            {partesUnicas.map((p) => (
-              <option key={p} value={p}>{p}</option>
+            <option value="">Responsable (todos)</option>
+            {responsablesUnicos.map((r) => (
+              <option key={r} value={r}>{r}</option>
             ))}
           </Form.Select>
         </div>
@@ -497,10 +595,10 @@ function ReparacionesCamioneta() {
                 <th className="fw-normal" style={{ width: "9%" }}>Fecha</th>
                 <th className="fw-normal" style={{ width: "23%" }}>Reparación</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Detalle</th>
-                <th className="fw-normal" style={{ width: "10%" }}>Parte</th>
                 <th className="fw-normal" style={{ width: "9%" }}>Prioridad</th>
                 <th className="fw-normal" style={{ width: "9%" }}>Estado</th>
-                <th className="fw-normal" style={{ width: "15%" }}>Observaciones</th>
+                <th className="fw-normal" style={{ width: "14%" }}>Responsable</th>
+                <th className="fw-normal" style={{ width: "7%" }}>Observaciones</th>
                 <th className="fw-normal" style={{ width: "7%" }}>Parada</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Repuestos</th>
                 <th className="fw-normal" style={{ width: "10%" }}>Acciones</th>
@@ -557,25 +655,6 @@ function ReparacionesCamioneta() {
                       {editando ? (
                         <Form.Select
                           size="sm"
-                          value={f.parte}
-                          onChange={(e) => editar(f.id, "parte", e.target.value)}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                        >
-                          <option value="">—</option>
-                          {PARTES.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      ) : (
-                        f.parte || "-"
-                      )}
-                    </td>
-                    <td>
-                      {editando ? (
-                        <Form.Select
-                          size="sm"
                           value={f.prioridad}
                           onChange={(e) => editar(f.id, "prioridad", e.target.value)}
                           style={{ fontSize: "0.72rem", padding: "2px 4px" }}
@@ -610,30 +689,34 @@ function ReparacionesCamioneta() {
                         </span>
                       )}
                     </td>
-                    <td className="text-start text-truncate" title={f.observaciones} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <td>
                       {editando ? (
-                        <div className="d-flex align-items-center gap-1">
-                          <Form.Control
-                            size="sm"
-                            value={f.observaciones || ""}
-                            onChange={(e) => editar(f.id, "observaciones", e.target.value)}
-                            style={{ minWidth: 0, fontSize: "0.72rem", padding: "2px 4px" }}
-                          />
-                          {f.observaciones && (
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              className="py-0 px-1 flex-shrink-0"
-                              onClick={() => verObservacion(f.observaciones)}
-                              style={{ fontSize: "0.7rem" }}
-                            >
-                              Ver
-                            </Button>
-                          )}
-                        </div>
+                        <Form.Select
+                          size="sm"
+                          value={f.responsable}
+                          onChange={(e) => editar(f.id, "responsable", e.target.value)}
+                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
+                        >
+                          <option value="">Seleccionar...</option>
+                          {RESPONSABLES.map((r) => (
+                            <option key={r} value={r}>
+                              {r}
+                            </option>
+                          ))}
+                        </Form.Select>
                       ) : (
-                        f.observaciones || "-"
+                        f.responsable || "-"
                       )}
+                    </td>
+                    <td>
+                      <Button
+                        size="sm"
+                        variant="outline-secondary"
+                        style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                        onClick={() => setObservacionesSel(f.id)}
+                      >
+                        +
+                      </Button>
                     </td>
                     <td>
                       <div className="d-flex justify-content-center">
@@ -734,14 +817,56 @@ function DetalleReparacion({ patente, marca, reparacion, onVolver }) {
   );
 }
 
-const RESPONSABLES = ["Zamorano", "Mauricio", "Nelson", "Juan José", "Nacho", "Agustín"];
-const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
-const COLOR_ESTADO_REP = {
-  Pedido: "#0dcaf0",
-  Pendiente: "#6c757d",
-  "En taller": "#fd7e14",
-  Colocado: "#198754",
-};
+function DetalleObservaciones({ patente, marca, reparacion, onVolver, onGuardar }) {
+  const [texto, setTexto] = useState(reparacion?.observaciones || "");
+
+  const handleGuardar = async () => {
+    const res = await onGuardar(texto);
+    if (res?.ok) {
+      Swal.fire({ icon: "success", title: "Observaciones guardadas", timer: 1500, showConfirmButton: false });
+      onVolver();
+    }
+  };
+
+  return (
+    <Container className="py-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <Button variant="outline-secondary" size="sm" onClick={onVolver}>
+          ← Volver
+        </Button>
+        <h4 className="fw-bold mb-0 text-center">
+          Observaciones — {reparacion?.reparacion || "reparación"}
+          <small className="text-muted ms-2" style={{ fontSize: "1rem", fontWeight: 400 }}>
+            {patente} {marca}
+          </small>
+        </h4>
+        <span style={{ width: 80 }} />
+      </div>
+
+      <div className="border rounded p-4 bg-light" style={{ borderTop: "4px solid #3a7070" }}>
+        <Form.Group className="mb-3">
+          <Form.Label className="fw-semibold">Notas y Observaciones de la Reparación</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={8}
+            placeholder="Escriba aquí las observaciones o notas detalladas de la reparación..."
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            style={{ fontSize: "0.9rem" }}
+          />
+        </Form.Group>
+        <div className="d-flex justify-content-end gap-2">
+          <Button variant="secondary" size="sm" onClick={onVolver}>
+            Cancelar
+          </Button>
+          <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </Container>
+  );
+}
 
 function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
   const [filas, setFilas] = useState(
