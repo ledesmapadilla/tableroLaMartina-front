@@ -84,6 +84,7 @@ function ReparacionesCamioneta() {
 
   const [responsablesAlta, setResponsablesAlta] = useState([]);
   const [responsableDefault, setResponsableDefault] = useState("");
+  const [otroRespMain, setOtroRespMain] = useState(() => new Set());
 
   // Cargar datos existentes y adaptarlos
   useEffect(() => {
@@ -747,16 +748,31 @@ function ReparacionesCamioneta() {
                     <td>
                       {(() => {
                         const tieneDet = (f.descripcion || "").trim() !== "";
-                        return (
-                          <Button
-                            size="sm"
-                            variant={tieneDet ? "outline-success" : "outline-secondary"}
-                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                            onClick={() => setDetalleSel(f)}
-                          >
-                            {tieneDet ? "+" : "—"}
-                          </Button>
-                        );
+                        if (tieneDet) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setDetalleSel(f)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        if (editando) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setDetalleSel(f)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        return <span className="text-muted">—</span>;
                       })()}
                     </td>
                     <td>
@@ -799,21 +815,45 @@ function ReparacionesCamioneta() {
                     </td>
                     <td>
                       {editando ? (
-                        <Form.Control
-                          size="sm"
-                          type="text"
-                          list="responsables-list"
-                          value={f.responsable}
-                          onChange={(e) => editar(f.id, "responsable", e.target.value)}
-                          onClick={(e) => {
-                            try { e.target.showPicker(); } catch (err) {}
-                          }}
-                          onFocus={(e) => {
-                            try { e.target.showPicker(); } catch (err) {}
-                          }}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                          placeholder="Responsable"
-                        />
+                        <>
+                          <Form.Select
+                            size="sm"
+                            value={
+                              responsablesAlta.includes(f.responsable)
+                                ? f.responsable
+                                : (f.responsable || otroRespMain.has(f.id)) ? "__otro__" : ""
+                            }
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === "__otro__") {
+                                setOtroRespMain((prev) => new Set(prev).add(f.id));
+                                editar(f.id, "responsable", "");
+                              } else {
+                                setOtroRespMain((prev) => { const n = new Set(prev); n.delete(f.id); return n; });
+                                editar(f.id, "responsable", v);
+                              }
+                            }}
+                            style={{ fontSize: "0.72rem", padding: "2px 4px" }}
+                          >
+                            <option value="">Seleccionar...</option>
+                            {responsablesAlta.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                            <option value="__otro__">Otro...</option>
+                          </Form.Select>
+                          {(otroRespMain.has(f.id) || (f.responsable && !responsablesAlta.includes(f.responsable))) && (
+                            <Form.Control
+                              size="sm"
+                              className="mt-1"
+                              placeholder="Nombre"
+                              value={f.responsable}
+                              onChange={(e) => editar(f.id, "responsable", e.target.value)}
+                              style={{ fontSize: "0.72rem", padding: "2px 4px" }}
+                            />
+                          )}
+                        </>
                       ) : (
                         f.responsable || "-"
                       )}
@@ -821,16 +861,31 @@ function ReparacionesCamioneta() {
                     <td>
                       {(() => {
                         const tieneObs = (f.observaciones || "").trim() !== "";
-                        return (
-                          <Button
-                            size="sm"
-                            variant={tieneObs ? "outline-success" : "outline-secondary"}
-                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                            onClick={() => setObservacionesSel(f.id)}
-                          >
-                            {tieneObs ? "+" : "—"}
-                          </Button>
-                        );
+                        if (tieneObs) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setObservacionesSel(f.id)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        if (editando) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setObservacionesSel(f.id)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        return <span className="text-muted">—</span>;
                       })()}
                     </td>
                     <td>
@@ -852,16 +907,31 @@ function ReparacionesCamioneta() {
                     <td>
                       {(() => {
                         const tieneReps = (f.repuestos || []).length > 0;
-                        return (
-                          <Button
-                            size="sm"
-                            variant={tieneReps ? "outline-success" : "outline-secondary"}
-                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                            onClick={() => setRepuestosSel(f.id)}
-                          >
-                            {tieneReps ? "+" : "—"}
-                          </Button>
-                        );
+                        if (tieneReps) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setRepuestosSel(f.id)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        if (editando) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setRepuestosSel(f.id)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        return <span className="text-muted">—</span>;
                       })()}
                     </td>
                     <td>
@@ -887,11 +957,6 @@ function ReparacionesCamioneta() {
           </Table>
         </div>
       )}
-      <datalist id="responsables-list">
-        {responsablesAlta.map((r) => (
-          <option key={r} value={r} />
-        ))}
-      </datalist>
     </Container>
   );
 }
