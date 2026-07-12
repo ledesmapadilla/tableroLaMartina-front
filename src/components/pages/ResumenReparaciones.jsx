@@ -240,7 +240,7 @@ function ResumenReparaciones() {
         </div>
       </div>
 
-      <div className="mx-auto" style={{ width: "92%", maxHeight: "70vh", overflowY: "auto" }}>
+      <div className="mx-auto" style={{ width: "92%", maxHeight: "78vh", overflowY: "auto" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr className="fw-normal">

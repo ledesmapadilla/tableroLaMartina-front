@@ -74,7 +74,7 @@ function HistorialReparaciones() {
 
       {/* Tabla */}
       <div className="d-flex justify-content-center">
-        <div style={{ width: "75%", maxHeight: "65vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+        <div style={{ width: "75%", maxHeight: "78vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">

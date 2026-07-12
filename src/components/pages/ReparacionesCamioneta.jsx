@@ -572,7 +572,7 @@ function ReparacionesCamioneta() {
       {cargando ? (
         <div className="text-center py-5">Cargando reparaciones...</div>
       ) : (
-        <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
+        <div style={{ maxHeight: "78vh", overflowY: "auto" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
@@ -1158,7 +1158,7 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAl
         </Button>
       </div>
 
-      <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
+      <div style={{ maxHeight: "78vh", overflowY: "auto" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr className="fw-normal">
