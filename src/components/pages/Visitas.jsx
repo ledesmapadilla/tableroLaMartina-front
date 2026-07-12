@@ -363,25 +363,40 @@ function Visitas() {
               </thead>
               <tbody>
                 {ITINERARIO.map((item, idx) => {
-                  const getBadgeStyle = (text, isTarde) => {
-                    if (text === "Resumen semanal") {
+                  const getBadgeStyle = (text) => {
+                    const t = (text || "").trim();
+                    if (t === "Visita a Campo") {
                       return {
-                        backgroundColor: "#f3e8ff",
-                        color: "#6b21a8",
-                        borderColor: "#e9d5ff"
+                        backgroundColor: "#e6fffa",
+                        color: "#006d5b",
+                        borderColor: "#b2f5ea"
                       };
                     }
-                    if (isTarde) {
+                    if (t === "Visita San Pablo" || t === "Visita Berdina") {
+                      return {
+                        backgroundColor: "#ebf8ff",
+                        color: "#2b6cb0",
+                        borderColor: "#bee3f8"
+                      };
+                    }
+                    if (t === "Repuestos San Pablo" || t === "Repuestos Berdina") {
                       return {
                         backgroundColor: "#fff5ed",
                         color: "#a05820",
                         borderColor: "#ffe3d1"
                       };
                     }
+                    if (t === "Resumen semanal") {
+                      return {
+                        backgroundColor: "#f3e8ff",
+                        color: "#6b21a8",
+                        borderColor: "#e9d5ff"
+                      };
+                    }
                     return {
-                      backgroundColor: "#eef7f7",
-                      color: "#2a5050",
-                      borderColor: "#d4ecec"
+                      backgroundColor: "#f8f9fa",
+                      color: "#333",
+                      borderColor: "#dee2e6"
                     };
                   };
 
@@ -402,7 +417,7 @@ function Visitas() {
                             whiteSpace: "normal",
                             wordBreak: "break-word",
                             lineHeight: "1.2",
-                            ...getBadgeStyle(item.manana, false)
+                            ...getBadgeStyle(item.manana)
                           }}
                         >
                           {item.manana}
@@ -420,7 +435,7 @@ function Visitas() {
                             whiteSpace: "normal",
                             wordBreak: "break-word",
                             lineHeight: "1.2",
-                            ...getBadgeStyle(item.tarde, true)
+                            ...getBadgeStyle(item.tarde)
                           }}
                         >
                           {item.tarde}
