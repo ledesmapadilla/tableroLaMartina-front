@@ -553,16 +553,19 @@ function ReparacionesTractor() {
               className="p-0 text-danger position-absolute"
               onClick={() => setFiltroReparacion("")}
               style={{
-                right: "1.8rem",
+                right: "10px",
                 top: "50%",
                 transform: "translateY(-50%)",
                 textDecoration: "none",
-                fontSize: "1.1rem",
+                fontSize: "0.85rem",
+                fontWeight: "bold",
+                backgroundColor: "#fff",
+                padding: "0 6px",
                 zIndex: 4,
               }}
               title="Limpiar filtro"
             >
-              <i className="bi bi-x-circle-fill"></i>
+              X
             </Button>
           )}
         </div>
@@ -587,16 +590,19 @@ function ReparacionesTractor() {
               className="p-0 text-danger position-absolute"
               onClick={() => setFiltroResponsable("")}
               style={{
-                right: "1.8rem",
+                right: "10px",
                 top: "50%",
                 transform: "translateY(-50%)",
                 textDecoration: "none",
-                fontSize: "1.1rem",
+                fontSize: "0.85rem",
+                fontWeight: "bold",
+                backgroundColor: "#fff",
+                padding: "0 6px",
                 zIndex: 4,
               }}
               title="Limpiar filtro"
             >
-              <i className="bi bi-x-circle-fill"></i>
+              X
             </Button>
           )}
         </div>
@@ -622,16 +628,19 @@ function ReparacionesTractor() {
               className="p-0 text-danger position-absolute"
               onClick={() => setFiltroEstado("")}
               style={{
-                right: "1.8rem",
+                right: "10px",
                 top: "50%",
                 transform: "translateY(-50%)",
                 textDecoration: "none",
-                fontSize: "1.1rem",
+                fontSize: "0.85rem",
+                fontWeight: "bold",
+                backgroundColor: "#fff",
+                padding: "0 6px",
                 zIndex: 4,
               }}
               title="Limpiar filtro"
             >
-              <i className="bi bi-x-circle-fill"></i>
+              X
             </Button>
           )}
         </div>
