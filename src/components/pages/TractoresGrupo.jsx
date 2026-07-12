@@ -55,7 +55,7 @@ function TractoresGrupo() {
         <h5 className="text-muted fw-normal">Supervisor: {infoGrupo.supervisor}</h5>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "1.2rem", justifyContent: "center", marginBottom: "2rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 180px)", gap: "1.2rem", justifyContent: "center", marginBottom: "2rem" }}>
         {tractores.map((t) => {
           const tieneTarea = conTareaPendiente.has(t._id?.toString());
           const estaParado = paradosIds.has(t._id?.toString());
@@ -73,7 +73,7 @@ function TractoresGrupo() {
                 boxShadow: "3px 3px 8px rgba(0,0,0,0.25)",
                 userSelect: "none",
                 transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                width: "170px",
+                width: "100%",
                 height: "110px",
                 textAlign: "center",
                 display: "flex",
