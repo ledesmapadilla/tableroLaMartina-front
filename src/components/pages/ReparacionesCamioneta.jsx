@@ -401,6 +401,7 @@ function ReparacionesCamioneta() {
         marca={marca}
         reparacion={fila}
         readOnly={!isEditMode}
+        responsablesAlta={responsablesAlta}
         onVolver={() => setRepuestosSel(null)}
         onGuardar={(reps) => {
           setFilas((prev) =>
@@ -976,7 +977,7 @@ function DetalleObservaciones({ patente, marca, reparacion, readOnly, onVolver, 
   );
 }
 
-function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
+function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAlta, onVolver, onGuardar }) {
   const [filas, setFilas] = useState(
     (reparacion?.repuestos || []).map((r) => ({ ...r, id: r.id || crypto.randomUUID() }))
   );
@@ -1150,13 +1151,13 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGu
             <tr className="fw-normal">
               <th className="fw-normal" style={{ width: 40 }}>#</th>
               <th className="fw-normal">Repuesto</th>
-              <th className="fw-normal" style={{ width: 110 }}>Cantidad</th>
-              <th className="fw-normal" style={{ width: 150 }}>Precio</th>
-              <th className="fw-normal" style={{ width: 200 }}>Proveedor</th>
-              <th className="fw-normal" style={{ width: 180 }}>Responsable</th>
-              <th className="fw-normal" style={{ width: 140 }}>Estado</th>
-              <th className="fw-normal" style={{ width: 220 }}>Observaciones</th>
-              {!readOnly && <th className="fw-normal" style={{ width: 160 }}>Acciones</th>}
+              <th className="fw-normal" style={{ width: 65 }}>Cantidad</th>
+              <th className="fw-normal" style={{ width: 110 }}>Precio</th>
+              <th className="fw-normal" style={{ width: 140 }}>Proveedor</th>
+              <th className="fw-normal" style={{ width: 220 }}>Responsable</th>
+              <th className="fw-normal" style={{ width: 115 }}>Estado</th>
+              <th className="fw-normal" style={{ width: 180 }}>Observaciones</th>
+              {!readOnly && <th className="fw-normal" style={{ width: 120 }}>Acciones</th>}
             </tr>
           </thead>
           <tbody>
@@ -1222,7 +1223,7 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGu
                         <Form.Select
                           size="sm"
                           value={
-                            RESPONSABLES.includes(f.responsable)
+                            responsablesAlta.includes(f.responsable)
                               ? f.responsable
                               : (f.responsable || otroResp.has(f.id)) ? "__otro__" : ""
                           }
@@ -1238,12 +1239,12 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGu
                           }}
                         >
                           <option value="">Seleccionar...</option>
-                          {RESPONSABLES.map((r) => (
+                          {responsablesAlta.map((r) => (
                             <option key={r} value={r}>{r}</option>
                           ))}
                           <option value="__otro__">Otro...</option>
                         </Form.Select>
-                        {(otroResp.has(f.id) || (f.responsable && !RESPONSABLES.includes(f.responsable))) && (
+                        {(otroResp.has(f.id) || (f.responsable && !responsablesAlta.includes(f.responsable))) && (
                           <Form.Control
                             size="sm"
                             className="mt-1"
