@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Table, Button } from "react-bootstrap";
 import ExcelJS from "exceljs";
@@ -186,16 +186,16 @@ function ResumenCheckList() {
 
       {/* Tabla */}
       <div className="mx-auto" style={{ width: "92%", maxHeight: "65vh", overflowY: "auto" }}>
-      <Table bordered size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap" }}>
+      <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
         <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-          <tr>
-            <th style={{ width: "40px" }}>#</th>
-            <th>Camioneta</th>
-            <th>Responsable</th>
+          <tr className="fw-normal">
+            <th className="fw-normal" style={{ width: "40px" }}>#</th>
+            <th className="fw-normal">Camioneta</th>
+            <th className="fw-normal">Responsable</th>
             {MESES.map((m) => (
-              <th key={m} style={{ textTransform: "capitalize" }}>{m}</th>
+              <th key={m} className="fw-normal" style={{ textTransform: "capitalize" }}>{m}</th>
             ))}
-            <th>Promedio</th>
+            <th className="fw-normal">Promedio</th>
           </tr>
         </thead>
         <tbody>

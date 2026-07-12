@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button, Modal, Form, Table } from "react-bootstrap";
@@ -358,14 +358,14 @@ function ServicesKilometros() {
       {/* Tabla */}
       <div style={{ flex: 1, padding: "1.5rem 2rem", overflowY: "auto", overflowX: "auto" }}>
         <div className="d-flex justify-content-center">
-          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.88rem", width: "80%" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "80%" }}>
             <thead className="table-dark">
-              <tr>
-                <th style={{ width: "40px" }}>#</th>
-                <th>Patente</th>
-                <th>Responsable</th>
-                {MESES_CORTOS.map((m) => <th key={m}>{m}</th>)}
-                <th>Estado</th>
+              <tr className="fw-normal">
+                <th className="fw-normal" style={{ width: "40px" }}>#</th>
+                <th className="fw-normal">Patente</th>
+                <th className="fw-normal">Responsable</th>
+                {MESES_CORTOS.map((m) => <th key={m} className="fw-normal">{m}</th>)}
+                <th className="fw-normal">Estado</th>
               </tr>
             </thead>
             <tbody>

@@ -200,15 +200,15 @@ function TractoresAltas() {
       {/* Tabla */}
       <div className="d-flex justify-content-center">
         <div style={{ width: "75%", maxHeight: "calc(100vh - 150px)", overflowY: "auto", border: "1px solid #dee2e6" }}>
-        <Table bordered size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.75rem" }}>
+        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-            <tr>
-              <th style={{ width: "40px" }}>#</th>
-              <th>Grupo</th>
-              <th>Supervisor</th>
-              <th>CC</th>
-              <th>Descripción</th>
-              <th>Acciones</th>
+            <tr className="fw-normal">
+              <th className="fw-normal" style={{ width: "40px" }}>#</th>
+              <th className="fw-normal">Grupo</th>
+              <th className="fw-normal">Supervisor</th>
+              <th className="fw-normal">CC</th>
+              <th className="fw-normal">Descripción</th>
+              <th className="fw-normal">Acciones</th>
             </tr>
           </thead>
           <tbody>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { useNavigate, useLocation } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -513,14 +513,14 @@ function CamionetasCheckList() {
             <div className="px-3 py-1 fw-bold text-white" style={{ backgroundColor: "#2c2c2c", fontSize: "0.9rem" }}>
               {seccion.titulo}
             </div>
-            <Table bordered size="sm" className="mb-0">
+            <Table striped bordered hover size="sm" className="mb-0" style={{ fontSize: "0.78rem" }}>
               <thead className="table-secondary">
-                <tr>
-                  <th style={{ width: "22%" }}>Ítem</th>
-                  <th style={{ width: "18%" }}>Estándar requerido</th>
-                  <th style={{ width: "6%" }} className="text-center">Bien</th>
-                  <th style={{ width: "6%" }} className="text-center">Mal</th>
-                  <th>Observaciones</th>
+                <tr className="fw-normal">
+                  <th className="fw-normal" style={{ width: "22%" }}>Ítem</th>
+                  <th className="fw-normal" style={{ width: "18%" }}>Estándar requerido</th>
+                  <th className="fw-normal text-center" style={{ width: "6%" }}>Bien</th>
+                  <th className="fw-normal text-center" style={{ width: "6%" }}>Mal</th>
+                  <th className="fw-normal">Observaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -699,13 +699,13 @@ function CamionetasCheckList() {
           <Modal.Title className="fw-bold">Historial de Tareas</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Table bordered size="sm" className="text-center align-middle mb-0">
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
             <thead className="table-dark">
-              <tr>
-                <th className="text-start">Descripción</th>
-                <th>Fecha</th>
-                <th>Urgencia</th>
-                <th>Estado</th>
+              <tr className="fw-normal">
+                <th className="fw-normal text-start">Descripción</th>
+                <th className="fw-normal">Fecha</th>
+                <th className="fw-normal">Prioridad</th>
+                <th className="fw-normal">Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -742,14 +742,14 @@ function CamionetasCheckList() {
           <Modal.Title className="fw-bold">Historial de Paradas</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Table bordered size="sm" className="text-center align-middle mb-0">
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
             <thead className="table-dark">
-              <tr>
-                <th>Fecha parada</th>
-                <th>Fecha arranque</th>
-                <th>Días de parada</th>
-                <th>Motivo</th>
-                <th></th>
+              <tr className="fw-normal">
+                <th className="fw-normal">Fecha parada</th>
+                <th className="fw-normal">Fecha arranque</th>
+                <th className="fw-normal">Días de parada</th>
+                <th className="fw-normal">Motivo</th>
+                <th className="fw-normal"></th>
               </tr>
             </thead>
             <tbody>

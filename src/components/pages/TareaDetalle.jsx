@@ -406,13 +406,13 @@ function TareaDetalle() {
             </span>
           )}
         </div>
-        <Table bordered size="sm" className="text-center align-middle mb-0">
+        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
           <thead className="table-secondary">
-            <tr>
-              <th className="text-start">Repuesto</th>
-              <th style={{ width: "130px" }}>Costo</th>
-              <th>Observaciones</th>
-              <th style={{ width: "44px" }}></th>
+            <tr className="fw-normal">
+              <th className="fw-normal text-start">Repuesto</th>
+              <th className="fw-normal" style={{ width: "130px" }}>Costo</th>
+              <th className="fw-normal">Observaciones</th>
+              <th className="fw-normal" style={{ width: "44px" }}></th>
             </tr>
           </thead>
           <tbody>

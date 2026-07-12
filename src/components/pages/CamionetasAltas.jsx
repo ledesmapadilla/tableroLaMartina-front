@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -112,14 +112,14 @@ function CamionetasAltas() {
 
       {/* Tabla */}
       <div className="d-flex justify-content-center">
-        <Table bordered size="sm" className="text-center align-middle w-75" style={{ whiteSpace: "nowrap", fontSize: "0.75rem" }}>
+        <Table striped bordered hover size="sm" className="text-center align-middle w-75" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
           <thead className="table-dark">
-            <tr>
-              <th style={{ width: "40px" }}>#</th>
-              <th>Marca</th>
-              <th>Patente</th>
-              <th>Responsable</th>
-              <th>Acciones</th>
+            <tr className="fw-normal">
+              <th className="fw-normal" style={{ width: "40px" }}>#</th>
+              <th className="fw-normal">Marca</th>
+              <th className="fw-normal">Patente</th>
+              <th className="fw-normal">Responsable</th>
+              <th className="fw-normal">Acciones</th>
             </tr>
           </thead>
           <tbody>

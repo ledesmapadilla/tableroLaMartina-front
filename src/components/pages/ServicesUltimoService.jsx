@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button, Modal, Form, Table } from "react-bootstrap";
@@ -318,19 +318,19 @@ function ServicesUltimoService() {
 
         <div className="d-flex justify-content-center" style={{ flex: 1, overflow: "hidden" }}>
           <div style={{ width: "75%", overflowY: "auto", overflowX: "auto", borderRadius: "4px" }}>
-          <Table bordered size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.75rem", width: "100%", marginBottom: 0 }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%", marginBottom: 0 }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <tr>
-                <th style={{ width: "40px" }}>#</th>
-                <th></th>
-                <th>Patente</th>
-                <th>Responsable</th>
-                <th>Fecha</th>
-                <th>Km último service</th>
-                <th>Km prox. service</th>
-                <th>Km actuales</th>
-                <th>Observaciones</th>
-                <th>Estado</th>
+              <tr className="fw-normal">
+                <th className="fw-normal" style={{ width: "40px" }}>#</th>
+                <th className="fw-normal"></th>
+                <th className="fw-normal">Patente</th>
+                <th className="fw-normal">Responsable</th>
+                <th className="fw-normal">Fecha</th>
+                <th className="fw-normal">Km último service</th>
+                <th className="fw-normal">Km prox. service</th>
+                <th className="fw-normal">Km actuales</th>
+                <th className="fw-normal">Observaciones</th>
+                <th className="fw-normal">Estado</th>
               </tr>
             </thead>
             <tbody>
