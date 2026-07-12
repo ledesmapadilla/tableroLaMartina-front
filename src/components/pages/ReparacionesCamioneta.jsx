@@ -454,6 +454,91 @@ function ReparacionesCamioneta() {
     }
   };
 
+  const guardarDescripcion = async (filaId, descripcion) => {
+    const fila = filas.find((f) => f.id === filaId);
+    if (!fila) return { ok: false };
+
+    const body = {
+      camioneta: camionetaId,
+      fecha: fila.fecha,
+      reparacion: fila.reparacion,
+      descripcion: descripcion,
+      parte: fila.parte || "",
+      prioridad: fila.prioridad,
+      estado: fila.estado,
+      responsable: fila.responsable || "",
+      observaciones: fila.observaciones,
+      maquinaParada: !!fila.maquinaParada,
+      repuestos: (fila.repuestos || []).map((r) => ({
+        repuesto: r.repuesto,
+        cantidad: Number(r.cantidad) || 1,
+        precio: Number(r.precio) || 0,
+        proveedor: r.proveedor || "",
+        responsable: r.responsable || "",
+        estado: r.estado || "Pedido",
+        observaciones: r.observaciones || "",
+      })),
+    };
+
+    const isNew = String(filaId).length !== 24;
+
+    if (isNew) {
+      try {
+        const res = await fetch("/api/trabajos-camioneta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          throw new Error("No se pudo guardar la reparación para registrar el detalle.");
+        }
+
+        const saved = await res.json();
+        setFilas((prev) =>
+          prev.map((f) =>
+            f.id === filaId
+              ? {
+                  ...f,
+                  id: saved._id,
+                  descripcion: saved.descripcion || "",
+                }
+              : f
+          )
+        );
+        return { ok: true };
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: "error", title: "Error", text: e.message });
+        return { ok: false };
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/trabajos-camioneta/${filaId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudo guardar el detalle.");
+      }
+
+      const saved = await res.json();
+      setFilas((prev) =>
+        prev.map((f) =>
+          f.id === filaId ? { ...f, descripcion: saved.descripcion || "" } : f
+        )
+      );
+      return { ok: true };
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+      return { ok: false };
+    }
+  };
+
   const verObservacion = (texto) =>
     Swal.fire({
       title: "Observaciones / Descripción",
@@ -501,6 +586,7 @@ function ReparacionesCamioneta() {
         marca={marca}
         reparacion={detalleSel}
         onVolver={() => setDetalleSel(null)}
+        onGuardar={(texto) => guardarDescripcion(detalleSel.id, texto)}
       />
     );
   }
@@ -659,14 +745,19 @@ function ReparacionesCamioneta() {
                       )}
                     </td>
                     <td>
-                      <Button
-                        size="sm"
-                        variant="outline-secondary"
-                        style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                        onClick={() => setDetalleSel(f)}
-                      >
-                        +
-                      </Button>
+                      {(() => {
+                        const tieneDet = (f.descripcion || "").trim() !== "";
+                        return (
+                          <Button
+                            size="sm"
+                            variant={tieneDet ? "outline-success" : "outline-secondary"}
+                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                            onClick={() => setDetalleSel(f)}
+                          >
+                            {tieneDet ? "+" : "—"}
+                          </Button>
+                        );
+                      })()}
                     </td>
                     <td>
                       {editando ? (
@@ -714,6 +805,12 @@ function ReparacionesCamioneta() {
                           list="responsables-list"
                           value={f.responsable}
                           onChange={(e) => editar(f.id, "responsable", e.target.value)}
+                          onClick={(e) => {
+                            try { e.target.showPicker(); } catch (err) {}
+                          }}
+                          onFocus={(e) => {
+                            try { e.target.showPicker(); } catch (err) {}
+                          }}
                           style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                           placeholder="Responsable"
                         />
@@ -722,14 +819,19 @@ function ReparacionesCamioneta() {
                       )}
                     </td>
                     <td>
-                      <Button
-                        size="sm"
-                        variant="outline-secondary"
-                        style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                        onClick={() => setObservacionesSel(f.id)}
-                      >
-                        +
-                      </Button>
+                      {(() => {
+                        const tieneObs = (f.observaciones || "").trim() !== "";
+                        return (
+                          <Button
+                            size="sm"
+                            variant={tieneObs ? "outline-success" : "outline-secondary"}
+                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                            onClick={() => setObservacionesSel(f.id)}
+                          >
+                            {tieneObs ? "+" : "—"}
+                          </Button>
+                        );
+                      })()}
                     </td>
                     <td>
                       <div className="d-flex justify-content-center">
@@ -748,14 +850,19 @@ function ReparacionesCamioneta() {
                       </div>
                     </td>
                     <td>
-                      <Button
-                        size="sm"
-                        variant="outline-secondary"
-                        style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                        onClick={() => setRepuestosSel(f.id)}
-                      >
-                        +
-                      </Button>
+                      {(() => {
+                        const tieneReps = (f.repuestos || []).length > 0;
+                        return (
+                          <Button
+                            size="sm"
+                            variant={tieneReps ? "outline-success" : "outline-secondary"}
+                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                            onClick={() => setRepuestosSel(f.id)}
+                          >
+                            {tieneReps ? "+" : "—"}
+                          </Button>
+                        );
+                      })()}
                     </td>
                     <td>
                       <div className="d-flex gap-1 justify-content-center align-items-center flex-wrap">
@@ -789,11 +896,20 @@ function ReparacionesCamioneta() {
   );
 }
 
-function DetalleReparacion({ patente, marca, reparacion, onVolver }) {
+function DetalleReparacion({ patente, marca, reparacion, onVolver, onGuardar }) {
   const r = reparacion || {};
+  const [texto, setTexto] = useState(r.descripcion || "");
+
+  const handleGuardar = async () => {
+    const res = await onGuardar(texto);
+    if (res?.ok) {
+      Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1500, showConfirmButton: false });
+      onVolver();
+    }
+  };
 
   const Item = ({ label, value }) => (
-    <Col xs={6} md={4} className="mb-3">
+    <Col xs={6} md={3} className="mb-3">
       <div className="text-muted small">{label}</div>
       <div className="fw-semibold">{value || "—"}</div>
     </Col>
@@ -811,24 +927,37 @@ function DetalleReparacion({ patente, marca, reparacion, onVolver }) {
       </div>
 
       <div
-        className="border rounded p-3 mb-4"
+        className="border rounded p-3 mb-4 bg-light"
         style={{ borderTop: "4px solid #3a7070" }}
       >
         <Row>
           <Item label="Fecha" value={formatF(r.fecha)} />
           <Item label="Reparación" value={r.reparacion} />
-          <Item label="Parte" value={r.parte} />
-          <Item label="Descripción" value={r.descripcion} />
           <Item label="Prioridad" value={r.prioridad} />
           <Item label="Estado" value={r.estado} />
         </Row>
       </div>
 
-      <div
-        className="text-center text-muted py-5 border rounded"
-        style={{ borderStyle: "dashed" }}
-      >
-        (contenido del detalle a diseñar)
+      <div className="border rounded p-4 bg-white" style={{ borderTop: "4px solid #3a7070" }}>
+        <Form.Group className="mb-3">
+          <Form.Label className="fw-semibold">Descripción Detallada del Trabajo</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={8}
+            placeholder="Escriba aquí los detalles o descripción del trabajo realizado..."
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            style={{ fontSize: "0.9rem" }}
+          />
+        </Form.Group>
+        <div className="d-flex justify-content-end gap-2">
+          <Button variant="secondary" size="sm" onClick={onVolver}>
+            Cancelar
+          </Button>
+          <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
+            Guardar
+          </Button>
+        </div>
       </div>
     </Container>
   );
