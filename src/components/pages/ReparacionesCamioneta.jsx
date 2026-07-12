@@ -304,18 +304,18 @@ function ReparacionesCamioneta() {
         <div className="text-center py-5">Cargando reparaciones...</div>
       ) : (
         <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
-          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%" }}>
+          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr>
-                <th style={{ width: "10%" }}>Fecha</th>
-                <th style={{ width: "20%" }}>Reparación</th>
-                <th style={{ width: "8%" }}>Detalle</th>
-                <th style={{ width: "12%" }}>Parte</th>
-                <th style={{ width: "10%" }}>Prioridad</th>
-                <th style={{ width: "10%" }}>Estado</th>
-                <th style={{ width: "14%" }}>Observaciones</th>
-                <th style={{ width: "8%" }}>Camioneta parada</th>
-                <th style={{ width: "8%" }}>Repuestos</th>
+                <th style={{ width: "9%" }}>Fecha</th>
+                <th style={{ width: "23%" }}>Reparación</th>
+                <th style={{ width: "6%" }}>Detalle</th>
+                <th style={{ width: "10%" }}>Parte</th>
+                <th style={{ width: "9%" }}>Prioridad</th>
+                <th style={{ width: "9%" }}>Estado</th>
+                <th style={{ width: "15%" }}>Observaciones</th>
+                <th style={{ width: "7%" }}>Parada</th>
+                <th style={{ width: "6%" }}>Repuestos</th>
                 <th style={{ width: "10%" }}>Acciones</th>
               </tr>
             </thead>
@@ -330,7 +330,7 @@ function ReparacionesCamioneta() {
               {filasFiltradas.map((f) => {
                 const editando = editandoId === f.id;
                 return (
-                  <tr key={f.id}>
+                  <tr key={f.id} style={{ height: "36px" }}>
                     <td>
                       {editando ? (
                         <Form.Control
@@ -338,17 +338,19 @@ function ReparacionesCamioneta() {
                           size="sm"
                           value={f.fecha}
                           onChange={(e) => editar(f.id, "fecha", e.target.value)}
+                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         />
                       ) : (
                         f.fecha ? f.fecha.split("-").reverse().join("/") : "-"
                       )}
                     </td>
-                    <td className="text-start" style={{ wordBreak: "break-word" }}>
+                    <td className="text-start text-truncate" title={f.reparacion} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {editando ? (
                         <Form.Control
                           size="sm"
                           value={f.reparacion}
                           onChange={(e) => editar(f.id, "reparacion", e.target.value)}
+                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         />
                       ) : (
                         f.reparacion || "-"
@@ -358,6 +360,7 @@ function ReparacionesCamioneta() {
                       <Button
                         size="sm"
                         variant="outline-secondary"
+                        style={{ fontSize: "0.7rem", padding: "1px 6px" }}
                         onClick={() => setDetalleSel(f)}
                       >
                         +
@@ -369,6 +372,7 @@ function ReparacionesCamioneta() {
                           size="sm"
                           value={f.parte}
                           onChange={(e) => editar(f.id, "parte", e.target.value)}
+                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         >
                           <option value="">—</option>
                           {PARTES.map((p) => (
@@ -387,6 +391,7 @@ function ReparacionesCamioneta() {
                           size="sm"
                           value={f.prioridad}
                           onChange={(e) => editar(f.id, "prioridad", e.target.value)}
+                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         >
                           {PRIORIDADES.map((p) => (
                             <option key={p} value={p}>
@@ -404,6 +409,7 @@ function ReparacionesCamioneta() {
                           size="sm"
                           value={f.estado}
                           onChange={(e) => editar(f.id, "estado", e.target.value)}
+                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         >
                           {ESTADOS.map((s) => (
                             <option key={s} value={s}>
@@ -417,14 +423,14 @@ function ReparacionesCamioneta() {
                         </span>
                       )}
                     </td>
-                    <td className="text-start">
+                    <td className="text-start text-truncate" title={f.observaciones} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {editando ? (
                         <div className="d-flex align-items-center gap-1">
                           <Form.Control
                             size="sm"
                             value={f.observaciones || ""}
                             onChange={(e) => editar(f.id, "observaciones", e.target.value)}
-                            style={{ minWidth: 0 }}
+                            style={{ minWidth: 0, fontSize: "0.72rem", padding: "2px 4px" }}
                           />
                           {f.observaciones && (
                             <Button
@@ -432,22 +438,14 @@ function ReparacionesCamioneta() {
                               variant="outline-secondary"
                               className="py-0 px-1 flex-shrink-0"
                               onClick={() => verObservacion(f.observaciones)}
+                              style={{ fontSize: "0.7rem" }}
                             >
                               Ver
                             </Button>
                           )}
                         </div>
-                      ) : f.observaciones ? (
-                        <Button
-                          size="sm"
-                          variant="outline-secondary"
-                          className="py-0 px-2"
-                          onClick={() => verObservacion(f.observaciones)}
-                        >
-                          Ver
-                        </Button>
                       ) : (
-                        "-"
+                        f.observaciones || "-"
                       )}
                     </td>
                     <td>
@@ -457,12 +455,12 @@ function ReparacionesCamioneta() {
                             type="checkbox"
                             checked={!!f.maquinaParada}
                             onChange={(e) => editar(f.id, "maquinaParada", e.target.checked)}
-                            style={{ cursor: "pointer", accentColor: "#ff0000", width: 20, height: 20 }}
+                            style={{ cursor: "pointer", accentColor: "#ff0000", width: 16, height: 16 }}
                           />
                         ) : f.maquinaParada ? (
-                          <i className="bi bi-check-square-fill" style={{ color: "#ff0000", fontSize: 20 }} />
+                          <i className="bi bi-check-square-fill" style={{ color: "#ff0000", fontSize: 16 }} />
                         ) : (
-                          <i className="bi bi-square" style={{ color: "#adb5bd", fontSize: 20 }} />
+                          <i className="bi bi-square" style={{ color: "#adb5bd", fontSize: 16 }} />
                         )}
                       </div>
                     </td>
@@ -470,6 +468,7 @@ function ReparacionesCamioneta() {
                       <Button
                         size="sm"
                         variant="outline-secondary"
+                        style={{ fontSize: "0.7rem", padding: "1px 6px" }}
                         onClick={() => setRepuestosSel(f.id)}
                       >
                         +
@@ -478,15 +477,15 @@ function ReparacionesCamioneta() {
                     <td>
                       <div className="d-flex gap-1 justify-content-center align-items-center flex-wrap">
                         {editando ? (
-                          <Button size="sm" variant="outline-success" onClick={finalizarEdicion}>
+                          <Button size="sm" variant="outline-success" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={finalizarEdicion}>
                             Listo
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline-warning" onClick={() => setEditandoId(f.id)}>
+                          <Button size="sm" variant="outline-warning" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={() => setEditandoId(f.id)}>
                             Editar
                           </Button>
                         )}
-                        <Button size="sm" variant="outline-danger" onClick={() => borrar(f.id)}>
+                        <Button size="sm" variant="outline-danger" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={() => borrar(f.id)}>
                           Borrar
                         </Button>
                       </div>
@@ -657,7 +656,7 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
       </div>
 
       <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
-        <Table striped bordered hover size="sm" className="text-center align-middle mb-0">
+        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr>
               <th style={{ width: 40 }}>#</th>
