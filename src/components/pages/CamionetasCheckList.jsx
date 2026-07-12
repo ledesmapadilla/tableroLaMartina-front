@@ -357,6 +357,37 @@ function CamionetasCheckList() {
               ))}
             </Form.Select>
             {errors.mes && <span className="text-danger small">{errors.mes.message}</span>}
+            <div className="d-flex flex-row align-items-start gap-4 ms-auto">
+               {/* Camioneta parada */}
+               <div className="d-flex flex-column">
+                 <Form.Check
+                   type="checkbox"
+                   id="camionetatParada"
+                   label="Camioneta parada"
+                   className="fw-bold fs-5 mb-0"
+                   style={{ cursor: camionetaId ? "pointer" : "default" }}
+                   checked={camionetatParada}
+                   onClick={alClickCirculo}
+                   onChange={() => {}}
+                 />
+                 {camionetatParada && fechaVal
+                   ? <span
+                       className="fw-semibold"
+                       style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#8b4a4a" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: "none" }}
+                       onClick={camionetaId ? abrirHistorial : undefined}
+                     >
+                       desde {new Date(fechaVal + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                     </span>
+                   : <span
+                       className="fw-semibold"
+                       style={{ fontSize: "0.85rem", paddingLeft: "1.9rem", color: camionetaId ? "#1565c0" : "#aaa", cursor: camionetaId ? "pointer" : "default", textDecoration: camionetaId ? "underline" : "none" }}
+                       onClick={camionetaId ? abrirHistorial : undefined}
+                     >
+                       Historial paradas
+                     </span>
+                 }
+               </div>
+             </div>
           </div>
         </div>
 
