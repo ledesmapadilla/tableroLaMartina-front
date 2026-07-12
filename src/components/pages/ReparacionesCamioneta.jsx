@@ -853,7 +853,7 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
   };
 
   const Item = ({ label, value }) => (
-    <Col xs={6} md={3} className="mb-3">
+    <Col xs={6} md={4} lg={2.4} className="mb-3">
       <div className="text-muted small">{label}</div>
       <div className="fw-semibold">{value || "-"}</div>
     </Col>
@@ -879,6 +879,7 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
           <Item label="Reparación" value={r.reparacion} />
           <Item label="Prioridad" value={r.prioridad} />
           <Item label="Estado" value={r.estado} />
+          <Item label="Responsable" value={r.responsable} />
         </Row>
       </div>
 
