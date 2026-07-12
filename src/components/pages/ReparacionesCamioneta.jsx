@@ -141,12 +141,35 @@ function ReparacionesCamioneta() {
       cancelButtonText: "Cancelar",
     });
     if (!isConfirmed) return;
-    setFilas((p) => p.filter((f) => f.id !== id));
-    setEditandoId((prev) => (prev === id ? null : prev));
-    Swal.fire({ icon: "success", title: "Reparación eliminada (Local)", timer: 1500, showConfirmButton: false });
+
+    const isNew = String(id).length !== 24;
+
+    if (isNew) {
+      setFilas((p) => p.filter((f) => f.id !== id));
+      setEditandoId((prev) => (prev === id ? null : prev));
+      Swal.fire({ icon: "success", title: "Reparación eliminada", timer: 1500, showConfirmButton: false });
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/trabajos-camioneta/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudo eliminar la reparación de la base de datos.");
+      }
+
+      setFilas((p) => p.filter((f) => f.id !== id));
+      setEditandoId((prev) => (prev === id ? null : prev));
+      Swal.fire({ icon: "success", title: "Reparación eliminada", timer: 1500, showConfirmButton: false });
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+    }
   };
 
-  const finalizarEdicion = () => {
+  const finalizarEdicion = async () => {
     const fila = filas.find((f) => f.id === editandoId);
     if (fila && !(fila.reparacion || "").trim()) {
       return Swal.fire({ icon: "warning", title: "Atención", text: "La reparación es obligatoria." });
@@ -154,15 +177,179 @@ function ReparacionesCamioneta() {
     if (fila && !fila.parte) {
       return Swal.fire({ icon: "warning", title: "Atención", text: "La parte es obligatoria." });
     }
-    setEditandoId(null);
-    Swal.fire({ icon: "success", title: "Reparación guardada (Local)", timer: 1500, showConfirmButton: false });
+
+    const body = {
+      camioneta: camionetaId,
+      fecha: fila.fecha,
+      reparacion: fila.reparacion,
+      descripcion: fila.descripcion,
+      parte: fila.parte,
+      prioridad: fila.prioridad,
+      estado: fila.estado,
+      observaciones: fila.observaciones,
+      maquinaParada: !!fila.maquinaParada,
+      repuestos: (fila.repuestos || []).map((r) => ({
+        repuesto: r.repuesto,
+        cantidad: Number(r.cantidad) || 1,
+        precio: Number(r.precio) || 0,
+        proveedor: r.proveedor || "",
+        responsable: r.responsable || "",
+        estado: r.estado || "Pedido",
+        observaciones: r.observaciones || "",
+      })),
+    };
+
+    const isNew = String(fila.id).length !== 24;
+
+    try {
+      const url = isNew ? "/api/trabajos-camioneta" : `/api/trabajos-camioneta/${fila.id}`;
+      const method = isNew ? "POST" : "PUT";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudo guardar la reparación en la base de datos.");
+      }
+
+      const saved = await res.json();
+      
+      setFilas((prev) =>
+        prev.map((f) =>
+          f.id === editandoId
+            ? {
+                ...f,
+                id: saved._id,
+                repuestos: (saved.repuestos || []).map((sr) => ({
+                  id: sr._id,
+                  repuesto: sr.repuesto || "",
+                  cantidad: sr.cantidad || 1,
+                  precio: sr.precio || 0,
+                  proveedor: sr.proveedor || "",
+                  responsable: sr.responsable || "",
+                  estado: sr.estado || "Pedido",
+                  observaciones: sr.observaciones || "",
+                })),
+              }
+            : f
+        )
+      );
+
+      setEditandoId(null);
+      Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+    }
   };
 
-  const guardarRepuestos = (filaId, repuestos) => {
-    setFilas((prev) =>
-      prev.map((f) => (f.id === filaId ? { ...f, repuestos } : f))
-    );
-    return { ok: true };
+  const guardarRepuestos = async (filaId, repuestos) => {
+    const fila = filas.find((f) => f.id === filaId);
+    if (!fila) return { ok: false };
+
+    const body = {
+      camioneta: camionetaId,
+      fecha: fila.fecha,
+      reparacion: fila.reparacion,
+      descripcion: fila.descripcion,
+      parte: fila.parte,
+      prioridad: fila.prioridad,
+      estado: fila.estado,
+      observaciones: fila.observaciones,
+      maquinaParada: !!fila.maquinaParada,
+      repuestos: repuestos.map((r) => ({
+        repuesto: r.repuesto,
+        cantidad: Number(r.cantidad) || 1,
+        precio: Number(r.precio) || 0,
+        proveedor: r.proveedor || "",
+        responsable: r.responsable || "",
+        estado: r.estado || "Pedido",
+        observaciones: r.observaciones || "",
+      })),
+    };
+
+    const isNew = String(filaId).length !== 24;
+
+    if (isNew) {
+      try {
+        const res = await fetch("/api/trabajos-camioneta", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          throw new Error("No se pudo guardar la reparación para registrar los repuestos.");
+        }
+
+        const saved = await res.json();
+        setFilas((prev) =>
+          prev.map((f) =>
+            f.id === filaId
+              ? {
+                  ...f,
+                  id: saved._id,
+                  repuestos: (saved.repuestos || []).map((sr) => ({
+                    id: sr._id,
+                    repuesto: sr.repuesto || "",
+                    cantidad: sr.cantidad || 1,
+                    precio: sr.precio || 0,
+                    proveedor: sr.proveedor || "",
+                    responsable: sr.responsable || "",
+                    estado: sr.estado || "Pedido",
+                    observaciones: sr.observaciones || "",
+                  })),
+                }
+              : f
+          )
+        );
+        return { ok: true };
+      } catch (e) {
+        console.error(e);
+        Swal.fire({ icon: "error", title: "Error", text: e.message });
+        return { ok: false };
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/trabajos-camioneta/${filaId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudieron guardar los repuestos.");
+      }
+
+      const saved = await res.json();
+      setFilas((prev) =>
+        prev.map((f) =>
+          f.id === filaId
+            ? {
+                ...f,
+                repuestos: (saved.repuestos || []).map((sr) => ({
+                  id: sr._id,
+                  repuesto: sr.repuesto || "",
+                  cantidad: sr.cantidad || 1,
+                  precio: sr.precio || 0,
+                  proveedor: sr.proveedor || "",
+                  responsable: sr.responsable || "",
+                  estado: sr.estado || "Pedido",
+                  observaciones: sr.observaciones || "",
+                })),
+              }
+            : f
+        )
+      );
+      return { ok: true };
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+      return { ok: false };
+    }
   };
 
   const verObservacion = (texto) =>
@@ -591,13 +778,15 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
     });
     if (!isConfirmed) return;
     const nuevasLista = filas.filter((f) => f.id !== id);
-    setFilas(nuevasLista);
-    setEditandoId((prev) => (prev === id ? null : prev));
-    onGuardar(nuevasLista);
-    Swal.fire({ icon: "success", title: "Repuesto eliminado (Local)", timer: 1500, showConfirmButton: false });
+    const res = await onGuardar(nuevasLista);
+    if (res?.ok) {
+      setFilas(nuevasLista);
+      setEditandoId((prev) => (prev === id ? null : prev));
+      Swal.fire({ icon: "success", title: "Repuesto eliminado", timer: 1500, showConfirmButton: false });
+    }
   };
 
-  const finalizarEdicion = () => {
+  const finalizarEdicion = async () => {
     const id = editandoId;
     const fila = filas.find((f) => f.id === id);
     if (fila) {
@@ -609,10 +798,12 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
         return Swal.fire({ icon: "warning", title: "Atención", text: "El responsable es obligatorio." });
     }
     const esNueva = nuevas.has(id);
-    setEditandoId(null);
-    onGuardar(filas);
-    setNuevas((prev) => { const n = new Set(prev); n.delete(id); return n; });
-    Swal.fire({ icon: "success", title: esNueva ? "Repuesto guardado (Local)" : "Repuesto editado (Local)", timer: 1500, showConfirmButton: false });
+    const res = await onGuardar(filas);
+    if (res?.ok) {
+      setEditandoId(null);
+      setNuevas((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      Swal.fire({ icon: "success", title: esNueva ? "Repuesto guardado" : "Repuesto editado", timer: 1500, showConfirmButton: false });
+    }
   };
 
   const total = filas.reduce(
