@@ -326,9 +326,9 @@ function ServicesUltimoService() {
                 <th className="fw-normal">Patente</th>
                 <th className="fw-normal">Responsable</th>
                 <th className="fw-normal">Fecha</th>
-                <th className="fw-normal" style={{ whiteSpace: "normal", maxWidth: "80px" }}>Km último service</th>
-                <th className="fw-normal" style={{ whiteSpace: "normal", maxWidth: "80px" }}>Km prox. service</th>
-                <th className="fw-normal" style={{ whiteSpace: "normal", maxWidth: "80px" }}>Km actuales</th>
+                <th className="fw-normal" style={{ whiteSpace: "normal", width: "80px" }}>Km último service</th>
+                <th className="fw-normal" style={{ whiteSpace: "normal", width: "80px" }}>Km prox. service</th>
+                <th className="fw-normal" style={{ whiteSpace: "normal", width: "80px" }}>Km actuales</th>
                 <th className="fw-normal" style={{ minWidth: "180px", whiteSpace: "normal" }}>Observaciones</th>
                 <th className="fw-normal">Estado</th>
               </tr>
@@ -359,9 +359,9 @@ function ServicesUltimoService() {
                     </td>
                     <td>{c.responsable || "—"}</td>
                     <td>{reg ? formatFecha(reg.fecha) : "—"}</td>
-                    <td className="fw-semibold">{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
-                    <td className="fw-semibold">{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
-                    <td className="fw-semibold">{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
+                    <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
+                    <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
+                    <td className="fw-semibold" style={{ width: "80px" }}>{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="text-start text-muted" style={{ minWidth: "180px", whiteSpace: "normal", wordBreak: "break-word" }}>{reg?.observaciones || "—"}</td>
                     <td>
                       <div className="d-flex flex-column align-items-center gap-1">
