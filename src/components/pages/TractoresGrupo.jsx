@@ -36,7 +36,10 @@ function TractoresGrupo() {
 
   return (
     <Container className="py-4">
-      <div className="d-flex justify-content-end align-items-center">
+      <div className="d-flex justify-content-between align-items-center">
+        <Button onClick={() => navigate("/tractores/services/reparaciones/resumen")} style={{ backgroundColor: "#52735a", border: "none", color: "#fff" }}>
+          <i className="bi bi-table me-2"></i>Resumen reparaciones
+        </Button>
         <div className="d-flex gap-2">
           <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
             <i className="bi bi-arrow-left me-2"></i>Volver

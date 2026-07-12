@@ -23,6 +23,7 @@ import Tractores from "./components/pages/Tractores";
 import TractoresAltas from "./components/pages/TractoresAltas";
 import TractoresGrupo from "./components/pages/TractoresGrupo";
 import ReparacionesTractor from "./components/pages/ReparacionesTractor";
+import ResumenReparacionesTractores from "./components/pages/ResumenReparacionesTractores";
 import Visitas from "./components/pages/Visitas";
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
               <Route path="/tractores/altas" element={<TractoresAltas />} />
               <Route path="/tractores/grupo/:grupoId" element={<TractoresGrupo />} />
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId" element={<ReparacionesTractor />} />
+              <Route path="/tractores/services/reparaciones/resumen" element={<ResumenReparacionesTractores />} />
               <Route path="/reparaciones/sanpablo" element={<ReparacionesSanPablo />} />
               <Route path="/reparaciones/berdina" element={<ReparacionesBerdina />} />
               <Route path="/camionetas/services" element={<CamionetasServices />} />
