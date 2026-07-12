@@ -292,7 +292,7 @@ function ServicesKilometros() {
   };
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", height: "calc(100vh - 40px)" }}>
 
       {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "80%", margin: "0 auto" }}>
@@ -356,8 +356,8 @@ function ServicesKilometros() {
       </div>
 
       {/* Tabla */}
-      <div className="d-flex justify-content-center" style={{ flex: 1, padding: "1.5rem 2rem 0.5rem" }}>
-        <div style={{ width: "80%", height: "calc(100vh - 165px)", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+      <div className="d-flex justify-content-center" style={{ flex: 1, padding: "1.5rem 2rem 0.5rem", overflow: "hidden" }}>
+        <div style={{ width: "80%", height: "100%", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
