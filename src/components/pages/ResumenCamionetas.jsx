@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "react-bootstrap";
 
@@ -18,7 +18,7 @@ function ResumenCamionetas() {
 
   const [programas, setProgramas] = useState([]);
   const [camionetas, setCamionetas] = useState([]);
-  const [totalCamionetas, setTotalCamionetas] = useState(0);
+
   const [kmResumen, setKmResumen] = useState({});
   const [serviciosAtrasados, setServiciosAtrasados] = useState(null);
   const [unidadesParadas, setUnidadesParadas] = useState(null);

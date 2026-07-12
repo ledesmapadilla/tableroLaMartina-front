@@ -9,11 +9,6 @@ const INTERVAL_KM = 10000;
 const MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const AÑOS = Array.from({ length: 10 }, (_, i) => 2026 + i);
 
-const formatFecha = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-};
 
 const getEstado = (odoActual, kmsService) => {
   if (odoActual == null || kmsService == null) return null;
