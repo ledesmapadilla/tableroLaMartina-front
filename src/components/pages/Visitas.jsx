@@ -6,7 +6,7 @@ import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
 
-const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const MESES_NOMBRE = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -34,9 +34,9 @@ function celdasMes(año, mes) {
   let offsetSet = false;
   for (let d = 1; d <= totalDias; d++) {
     const dow = new Date(año, mes, d).getDay();
-    if (dow === 0) continue;
+    const logicalDow = dow === 0 ? 6 : dow - 1;
     if (!offsetSet) {
-      for (let i = 0; i < dow - 1; i++) arr.push(null);
+      for (let i = 0; i < logicalDow; i++) arr.push(null);
       offsetSet = true;
     }
     arr.push(d);
@@ -157,6 +157,14 @@ function Visitas() {
   const visitasModal = keyModal ? (visitas[keyModal] ?? []) : [];
   const esMinimoMes = año === 2026 && mes === 4;
 
+  const getModalTitle = () => {
+    if (!diaModal) return "";
+    const dateObj = new Date(año, mes, diaModal);
+    const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const nombreDia = diasSemana[dateObj.getDay()];
+    return `${nombreDia}, ${diaModal} de ${MESES_NOMBRE[mes]} de ${año}`;
+  };
+
   return (
     <Container className={isMobile ? "py-2 px-2" : "py-4"}>
 
@@ -190,21 +198,66 @@ function Visitas() {
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
 
         {/* Encabezados */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
-          {DIAS.map((d) => (
-            <div key={d} style={{ textAlign: "center", fontWeight: "700", fontSize: isMobile ? "0.7rem" : "0.82rem", color: "#666", padding: isMobile ? "2px 0" : "6px 0", letterSpacing: "0.5px" }}>
-              {d}
-            </div>
-          ))}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
+          {DIAS.map((d) => {
+            const isSab = d === "Sáb";
+            const isDom = d === "Dom";
+            return (
+              <div
+                key={d}
+                style={{
+                  textAlign: "center",
+                  fontWeight: "700",
+                  fontSize: isMobile ? "0.7rem" : "0.82rem",
+                  color: isDom ? "#c53030" : isSab ? "#2b6cb0" : "#666",
+                  backgroundColor: isDom ? "#fff5f5" : isSab ? "#ebf8ff" : "transparent",
+                  borderRadius: "4px",
+                  padding: isMobile ? "2px 0" : "6px 0",
+                  letterSpacing: "0.5px"
+                }}
+              >
+                {d}
+              </div>
+            );
+          })}
         </div>
 
         {/* Celdas */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: isMobile ? "3px" : "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: isMobile ? "3px" : "4px" }}>
           {dias.map((dia, idx) => {
             if (!dia) return <div key={`v-${idx}`} />;
             const key    = toKey(año, mes, dia);
             const vDia   = visitas[key] ?? [];
             const esHoy  = key === hoyKey;
+            const dateObj = new Date(año, mes, dia);
+            const dow = dateObj.getDay();
+            const esSabado = dow === 6;
+            const esDomingo = dow === 0;
+
+            const bgCell = esHoy
+              ? "#eef6f6"
+              : esDomingo
+              ? "#fff5f5"
+              : esSabado
+              ? "#ebf8ff"
+              : "#fff";
+
+            const hoverBgCell = esHoy
+              ? "#dbebeb"
+              : esDomingo
+              ? "#ffe3e3"
+              : esSabado
+              ? "#deeafd"
+              : "#f0f6f6";
+
+            const colorText = esHoy
+              ? COLOR
+              : esDomingo
+              ? "#c53030"
+              : esSabado
+              ? "#2b6cb0"
+              : "#333";
+
             return (
               <div
                 key={key}
@@ -215,13 +268,13 @@ function Visitas() {
                   padding: isMobile ? "3px 2px" : "8px 7px",
                   minHeight: isMobile ? "52px" : "88px",
                   cursor: "pointer",
-                  backgroundColor: esHoy ? "#eef6f6" : "#fff",
+                  backgroundColor: bgCell,
                   transition: "background-color 0.15s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0f6f6")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = esHoy ? "#eef6f6" : "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverBgCell)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bgCell)}
               >
-                <div style={{ fontWeight: esHoy ? "bold" : "normal", fontSize: isMobile ? "0.75rem" : "0.88rem", color: esHoy ? COLOR : "#333", marginBottom: isMobile ? "2px" : "5px", textAlign: "center" }}>
+                <div style={{ fontWeight: esHoy ? "bold" : "normal", fontSize: isMobile ? "0.75rem" : "0.88rem", color: colorText, marginBottom: isMobile ? "2px" : "5px", textAlign: "center" }}>
                   {dia}
                 </div>
                 {vDia.slice(0, 2).map((v, i) => (
@@ -262,7 +315,7 @@ function Visitas() {
       <Modal show={diaModal !== null} onHide={() => setDiaModal(null)} centered contentClassName="border border-dark">
         <Modal.Header closeButton>
           <Modal.Title className="fw-bold">
-            {diaModal} de {MESES_NOMBRE[mes]} {año}
+            {getModalTitle()}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
