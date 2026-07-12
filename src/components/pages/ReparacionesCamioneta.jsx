@@ -577,13 +577,12 @@ function ReparacionesCamioneta() {
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
                 <th className="fw-normal" style={{ width: "9%" }}>Fecha</th>
-                <th className="fw-normal" style={{ width: "23%" }}>Reparación</th>
+                <th className="fw-normal" style={{ width: "30%" }}>Reparación</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Detalle</th>
                 <th className="fw-normal" style={{ width: "9%" }}>Prioridad</th>
                 <th className="fw-normal" style={{ width: "9%" }}>Estado</th>
                 <th className="fw-normal" style={{ width: "14%" }}>Responsable</th>
                 <th className="fw-normal" style={{ width: "7%" }}>Observaciones</th>
-                <th className="fw-normal" style={{ width: "7%" }}>Parada</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Repuestos</th>
                 <th className="fw-normal" style={{ width: "10%" }}>Acciones</th>
               </tr>
@@ -591,7 +590,7 @@ function ReparacionesCamioneta() {
             <tbody>
               {filasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-muted py-3">
+                  <td colSpan={9} className="text-muted py-3">
                     Sin reparaciones cargadas
                   </td>
                 </tr>
@@ -776,22 +775,6 @@ function ReparacionesCamioneta() {
                         }
                         return <span className="text-muted">-</span>;
                       })()}
-                    </td>
-                    <td>
-                      <div className="d-flex justify-content-center">
-                        {editando ? (
-                          <input
-                            type="checkbox"
-                            checked={!!f.maquinaParada}
-                            onChange={(e) => editar(f.id, "maquinaParada", e.target.checked)}
-                            style={{ cursor: "pointer", accentColor: "#ff0000", width: 16, height: 16 }}
-                          />
-                        ) : f.maquinaParada ? (
-                          <i className="bi bi-check-square-fill" style={{ color: "#ff0000", fontSize: 16 }} />
-                        ) : (
-                          <i className="bi bi-square" style={{ color: "#adb5bd", fontSize: 16 }} />
-                        )}
-                      </div>
                     </td>
                     <td>
                       {(() => {
