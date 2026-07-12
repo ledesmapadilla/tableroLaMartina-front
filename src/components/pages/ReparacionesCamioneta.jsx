@@ -4,7 +4,7 @@ import { Container, Button, Table, Form, Row, Col } from "react-bootstrap";
 import Swal from "sweetalert2";
 
 const formatF = (iso) =>
-  iso ? new Date(iso + "T12:00:00").toLocaleDateString("es-AR") : "—";
+  iso ? new Date(iso + "T12:00:00").toLocaleDateString("es-AR") : "-";
 
 const PRIORIDADES = ["Normal", "Urgente", "Crítico"];
 const ESTADOS = ["Pendiente", "En proceso", "Terminado"];
@@ -67,7 +67,7 @@ function ReparacionesCamioneta() {
   const navigate = useNavigate();
   const { camionetaId } = useParams();
   const { state } = useLocation();
-  const patente = state?.patente ?? "—";
+  const patente = state?.patente ?? "-";
   const marca   = state?.marca   ?? "";
 
   const [filas, setFilas] = useState([]);
@@ -381,7 +381,7 @@ function ReparacionesCamioneta() {
 
       {/* Título */}
       <div className="text-center mb-4">
-        <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` — ${marca}` : ""}</h3>
+        <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` - ${marca}` : ""}</h3>
       </div>
 
       {/* Agregar reparación */}
@@ -392,8 +392,61 @@ function ReparacionesCamioneta() {
       </div>
 
       {/* Filtros */}
-      <div className="d-flex gap-2 mb-3 flex-wrap">
-        <div className="position-relative" style={{ width: 220 }}>
+      <div className="d-flex gap-3 mb-3 align-items-center flex-wrap">
+        {/* Filtro Reparacion */}
+        <div className="d-flex align-items-center gap-1" style={{ minWidth: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroReparacion}
+            onChange={(e) => setFiltroReparacion(e.target.value)}
+          >
+            <option value="">Reparación (todas)</option>
+            {reparacionesUnicas.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </Form.Select>
+          {filtroReparacion && (
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 text-danger"
+              onClick={() => setFiltroReparacion("")}
+              style={{ textDecoration: "none", fontSize: "1.1rem" }}
+              title="Limpiar filtro"
+            >
+              <i className="bi bi-x-circle-fill"></i>
+            </Button>
+          )}
+        </div>
+
+        {/* Filtro Responsable */}
+        <div className="d-flex align-items-center gap-1" style={{ minWidth: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroResponsable}
+            onChange={(e) => setFiltroResponsable(e.target.value)}
+          >
+            <option value="">Responsable (todos)</option>
+            {responsablesUnicos.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </Form.Select>
+          {filtroResponsable && (
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 text-danger"
+              onClick={() => setFiltroResponsable("")}
+              style={{ textDecoration: "none", fontSize: "1.1rem" }}
+              title="Limpiar filtro"
+            >
+              <i className="bi bi-x-circle-fill"></i>
+            </Button>
+          )}
+        </div>
+
+        {/* Filtro Estado (a la derecha) */}
+        <div className="d-flex align-items-center gap-1" style={{ minWidth: 220 }}>
           <Form.Select
             size="sm"
             value={filtroEstado}
@@ -405,30 +458,18 @@ function ReparacionesCamioneta() {
             <option value="Terminado">Terminado</option>
             <option value="">Todos</option>
           </Form.Select>
-        </div>
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroReparacion}
-            onChange={(e) => setFiltroReparacion(e.target.value)}
-          >
-            <option value="">Reparación (todas)</option>
-            {reparacionesUnicas.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </Form.Select>
-        </div>
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroResponsable}
-            onChange={(e) => setFiltroResponsable(e.target.value)}
-          >
-            <option value="">Responsable (todos)</option>
-            {responsablesUnicos.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </Form.Select>
+          {filtroEstado !== "activas" && (
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 text-danger"
+              onClick={() => setFiltroEstado("activas")}
+              style={{ textDecoration: "none", fontSize: "1.1rem" }}
+              title="Limpiar filtro"
+            >
+              <i className="bi bi-x-circle-fill"></i>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -515,7 +556,7 @@ function ReparacionesCamioneta() {
                             </Button>
                           );
                         }
-                        return <span className="text-muted">—</span>;
+                        return <span className="text-muted">-</span>;
                       })()}
                     </td>
                     <td>
@@ -628,7 +669,7 @@ function ReparacionesCamioneta() {
                             </Button>
                           );
                         }
-                        return <span className="text-muted">—</span>;
+                        return <span className="text-muted">-</span>;
                       })()}
                     </td>
                     <td>
@@ -674,7 +715,7 @@ function ReparacionesCamioneta() {
                             </Button>
                           );
                         }
-                        return <span className="text-muted">—</span>;
+                        return <span className="text-muted">-</span>;
                       })()}
                     </td>
                     <td>
@@ -711,7 +752,7 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
   const handleGuardar = async () => {
     const res = await onGuardar(texto);
     if (res?.ok) {
-      Swal.fire({ icon: "success", title: "Detalle guardado temporalmente", timer: 1200, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
       onVolver();
     }
   };
@@ -719,7 +760,7 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
   const Item = ({ label, value }) => (
     <Col xs={6} md={3} className="mb-3">
       <div className="text-muted small">{label}</div>
-      <div className="fw-semibold">{value || "—"}</div>
+      <div className="fw-semibold">{value || "-"}</div>
     </Col>
   );
 
@@ -727,7 +768,7 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="fw-bold mb-0">
-          Detalle de reparación — {patente} {marca}
+          Detalle de reparación - {patente} {marca}
         </h4>
         <Button onClick={onVolver} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-arrow-left me-2"></i>Volver
@@ -786,7 +827,7 @@ function DetalleObservaciones({ patente, marca, reparacion, readOnly, onVolver, 
   const handleGuardar = async () => {
     const res = await onGuardar(texto);
     if (res?.ok) {
-      Swal.fire({ icon: "success", title: "Observaciones guardadas temporalmente", timer: 1200, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: "Observaciones guardadas", timer: 1200, showConfirmButton: false });
       onVolver();
     }
   };
@@ -795,7 +836,7 @@ function DetalleObservaciones({ patente, marca, reparacion, readOnly, onVolver, 
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="fw-bold mb-0">
-          Observaciones — {reparacion?.reparacion || "reparación"}
+          Observaciones - {reparacion?.reparacion || "reparación"}
           <small className="text-muted ms-2" style={{ fontSize: "1rem", fontWeight: 400 }}>
             {patente} {marca}
           </small>
@@ -878,7 +919,7 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGu
     if (res?.ok) {
       setFilas(nuevasLista);
       setEditandoId((prev) => (prev === id ? null : prev));
-      Swal.fire({ icon: "success", title: "Repuesto quitado temporalmente", timer: 1200, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: "Repuesto quitado", timer: 1200, showConfirmButton: false });
     }
   };
 
