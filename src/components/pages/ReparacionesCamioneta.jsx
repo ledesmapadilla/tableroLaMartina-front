@@ -538,7 +538,7 @@ function ReparacionesCamioneta() {
             size="sm"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            style={{ paddingRight: filtroEstado !== "activas" ? "2.5rem" : "" }}
+            style={{ paddingRight: filtroEstado !== "" ? "2.5rem" : "" }}
           >
             <option value="activas">Pendientes y en proceso</option>
             <option value="Pendiente">Pendiente</option>
@@ -546,12 +546,12 @@ function ReparacionesCamioneta() {
             <option value="Terminado">Terminado</option>
             <option value="">Todos</option>
           </Form.Select>
-          {filtroEstado !== "activas" && (
+          {filtroEstado !== "" && (
             <Button
               variant="link"
               size="sm"
               className="p-0 text-danger position-absolute"
-              onClick={() => setFiltroEstado("activas")}
+              onClick={() => setFiltroEstado("")}
               style={{
                 right: "1.8rem",
                 top: "50%",
