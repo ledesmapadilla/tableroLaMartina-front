@@ -57,7 +57,10 @@ function ResumenReparaciones() {
 
   const listaResponsablesFiltrada = [...new Set(
     trabajos
-      .filter((t) => (t.estado ?? "pendiente") === "pendiente")
+      .filter((t) => {
+        const estLower = (t.estado || "").trim().toLowerCase();
+        return estLower !== "terminada" && estLower !== "terminado";
+      })
       .map((t) => t.responsable || t.camioneta?.responsable || "")
       .filter(Boolean)
   )].sort();
@@ -65,12 +68,17 @@ function ResumenReparaciones() {
   const listaPatentes = [...new Map(
     trabajos
       .filter((t) => t.camioneta?.patente)
-      .map((t) => [t.camioneta.patente, { patente: t.camioneta.patente, label: `${t.camioneta.patente} — ${t.camioneta.marca}` }])
+      .map((t) => [t.camioneta.patente, { patente: t.camioneta.patente, label: `${t.camioneta.patente} - ${t.camioneta.marca}` }])
   ).values()].sort((a, b) => a.patente.localeCompare(b.patente));
 
   const trabajosFiltrados = trabajos
     .filter((t) => {
-      if (filtro !== "todos" && (t.estado ?? "pendiente") !== filtro) return false;
+      if (filtro !== "todos") {
+        const estLower = (t.estado || "").trim().toLowerCase();
+        const esTerminada = estLower === "terminada" || estLower === "terminado";
+        if (filtro === "terminada" && !esTerminada) return false;
+        if (filtro === "pendiente" && esTerminada) return false;
+      }
       if (filtroPatente && t.camioneta?.patente !== filtroPatente) return false;
       if (filtroUrgencia && (t.urgencia ?? "baja") !== filtroUrgencia) return false;
       if (filtroResponsable && (t.responsable || t.camioneta?.responsable || "") !== filtroResponsable) return false;
@@ -112,13 +120,14 @@ function ResumenReparaciones() {
     trabajosFiltrados.forEach((t) => {
       const urgencia = t.urgencia ?? "baja";
       const responsable = t.responsable || t.camioneta?.responsable || "—";
+      const esTerminada = ((t.estado || "").trim().toLowerCase() === "terminada" || (t.estado || "").trim().toLowerCase() === "terminado");
       const fila = ws.addRow([
-        t.camioneta?.patente ?? "—",
-        t.camioneta?.marca ?? "—",
+        t.camioneta?.patente ?? "-",
+        t.camioneta?.marca ?? "-",
         t.descripcion,
         formatF(t.fecha),
         urgencia,
-        (t.estado ?? "pendiente") === "terminada" ? "Terminada" : "Pendiente",
+        esTerminada ? "Terminada" : "Pendiente",
         responsable,
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
@@ -219,7 +228,8 @@ function ResumenReparaciones() {
             )}
             {trabajosFiltrados.map((t) => {
               const urgencia    = t.urgencia ?? "baja";
-              const estado      = t.estado   ?? "pendiente";
+              const estLower    = (t.estado || "").trim().toLowerCase();
+              const esTerminada = estLower === "terminada" || estLower === "terminado";
               const responsable = t.responsable || t.camioneta?.responsable || "";
               return (
                 <tr key={t._id}>
@@ -228,10 +238,10 @@ function ResumenReparaciones() {
                       onClick={() => t.camioneta?._id && navigate(`/camionetas/services/reparaciones/${t.camioneta._id}`, { state: { patente: t.camioneta.patente, marca: t.camioneta.marca } })}
                       style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600", cursor: t.camioneta?._id ? "pointer" : "default" }}
                     >
-                      {t.camioneta?.patente ?? "—"}
+                      {t.camioneta?.patente ?? "-"}
                     </span>
                   </td>
-                  <td>{t.camioneta?.marca ?? "—"}</td>
+                  <td>{t.camioneta?.marca ?? "-"}</td>
                   <td className="text-start" style={{ paddingLeft: "12px" }}>{t.descripcion}</td>
                   <td>{formatF(t.fecha)}</td>
                   <td>
@@ -240,8 +250,8 @@ function ResumenReparaciones() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ display: "inline-block", backgroundColor: estado === "terminada" ? "#52735a" : "#8b4a4a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
-                      {estado === "terminada" ? "Terminada" : "Pendiente"}
+                    <span style={{ display: "inline-block", backgroundColor: esTerminada ? "#52735a" : "#8b4a4a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
+                      {esTerminada ? "Terminada" : "Pendiente"}
                     </span>
                   </td>
                   <td>
