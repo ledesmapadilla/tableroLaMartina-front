@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container, Button, Table, Form, Row, Col } from "react-bootstrap";
 import Swal from "sweetalert2";
+import ExcelJS from "exceljs";
 
 const formatF = (iso) =>
   iso ? new Date(iso + "T12:00:00").toLocaleDateString("es-AR") : "-";
@@ -293,13 +294,83 @@ function ReparacionesCamioneta() {
     [filas, filtroReparacion, filtroResponsable, filtroEstado, editandoId]
   );
 
-  const exportarExcel = () => {
-    Swal.fire({
-      icon: "info",
-      title: "Exportar Excel",
-      text: "La exportación en este formato planilla está en desarrollo.",
-      confirmButtonColor: "#3a7070",
+  const exportarExcel = async () => {
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const titulo = `Reparaciones Camioneta: ${patente}${marca ? ` - ${marca}` : ""}`;
+    const columnas = ["Fecha", "Reparación", "Detalle", "Prioridad", "Estado", "Responsable", "Máquina Parada", "Observaciones", "Repuestos"];
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Reparaciones");
+
+    ws.mergeCells(1, 1, 1, columnas.length);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, 4);
+    const celdaFecha = ws.getCell("A2");
+    celdaFecha.value = `Fecha: ${fechaHoy}`;
+    celdaFecha.alignment = { horizontal: "left" };
+    ws.getRow(2).height = 16;
+
+    ws.addRow([]);
+
+    const filaEnc = ws.addRow(columnas);
+    filaEnc.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
     });
+    ws.getRow(4).height = 18;
+
+    filasFiltradas.forEach((t) => {
+      const repsStr = (t.repuestos || [])
+        .map((r) => `${r.cantidad}x ${r.repuesto} (${pesos(r.precio)})`)
+        .join(", ");
+
+      const fila = ws.addRow([
+        t.fecha ? t.fecha.split("-").reverse().join("/") : "-",
+        t.reparacion || "-",
+        t.descripcion || "-",
+        t.prioridad || "-",
+        t.estado || "-",
+        t.responsable || "-",
+        t.maquinaParada ? "SÍ" : "NO",
+        t.observaciones || "-",
+        repsStr || "-",
+      ]);
+
+      fila.eachCell((cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(9).alignment = { horizontal: "left", vertical: "middle" };
+    });
+
+    ws.columns = [
+      { width: 12 }, // Fecha
+      { width: 25 }, // Reparación
+      { width: 30 }, // Detalle
+      { width: 12 }, // Prioridad
+      { width: 12 }, // Estado
+      { width: 18 }, // Responsable
+      { width: 15 }, // Máquina Parada
+      { width: 30 }, // Observaciones
+      { width: 35 }, // Repuestos
+    ];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reparaciones_${patente}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (detalleSel) {
@@ -972,13 +1043,76 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, onVolver, onGu
     0
   );
 
-  const exportarExcel = () => {
-    Swal.fire({
-      icon: "info",
-      title: "Exportar Excel",
-      text: "La exportación en este formato planilla está en desarrollo.",
-      confirmButtonColor: "#3a7070",
+  const exportarExcel = async () => {
+    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const titulo = `Repuestos - ${reparacion?.reparacion || "reparación"} (${patente} ${marca})`;
+    const columnas = ["#", "Repuesto", "Cantidad", "Precio", "Proveedor", "Responsable", "Estado", "Observaciones"];
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Repuestos");
+
+    ws.mergeCells(1, 1, 1, columnas.length);
+    const celdaTitulo = ws.getCell("A1");
+    celdaTitulo.value = titulo;
+    celdaTitulo.font = { bold: true, underline: true, size: 14 };
+    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+    ws.getRow(1).height = 22;
+
+    ws.mergeCells(2, 1, 2, 4);
+    const celdaFecha = ws.getCell("A2");
+    celdaFecha.value = `Fecha: ${fechaHoy}`;
+    celdaFecha.alignment = { horizontal: "left" };
+    ws.getRow(2).height = 16;
+
+    ws.addRow([]);
+
+    const filaEnc = ws.addRow(columnas);
+    filaEnc.eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
     });
+    ws.getRow(4).height = 18;
+
+    filas.forEach((r, idx) => {
+      const fila = ws.addRow([
+        idx + 1,
+        r.repuesto || "-",
+        Number(r.cantidad) || 0,
+        Number(r.precio) || 0,
+        r.proveedor || "-",
+        r.responsable || "-",
+        r.estado || "Pedido",
+        r.observaciones || "-",
+      ]);
+
+      fila.eachCell((cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(4).numFmt = '"$"#,##0';
+    });
+
+    ws.columns = [
+      { width: 6 },  // #
+      { width: 25 }, // Repuesto
+      { width: 10 }, // Cantidad
+      { width: 15 }, // Precio
+      { width: 20 }, // Proveedor
+      { width: 18 }, // Responsable
+      { width: 14 }, // Estado
+      { width: 25 }, // Observaciones
+    ];
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `repuestos_${patente}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
