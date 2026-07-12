@@ -304,8 +304,8 @@ function Visitas() {
       </div>
 
       {/* Leyenda: grupo — supervisor (desde altas de tractores) */}
-      <div style={{ maxWidth: "860px", margin: "1.5rem auto 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "20px", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: "250px" }}>
+      <div style={{ maxWidth: "860px", margin: "1.5rem auto 0", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+        <div style={{ flex: 1 }}>
           {[1, 2, 3, 4, 5].map((g) => {
             const label = `Grupo ${g}`;
             const sups = [...new Set(
@@ -315,10 +315,10 @@ function Visitas() {
                 .filter(Boolean)
             )];
             return (
-              <div key={g} className="d-flex align-items-center mb-1" style={{ fontSize: "0.9rem" }}>
-                <span style={{ display: "inline-block", width: "14px", height: "14px", borderRadius: "3px", backgroundColor: colorGrupo(label), marginRight: "8px", flexShrink: 0 }} />
-                <span className="fw-semibold" style={{ minWidth: "70px" }}>{label}:</span>
-                <span className="ms-2">{sups.length ? sups.join(", ") : "—"}</span>
+              <div key={g} className="d-flex align-items-center mb-1" style={{ fontSize: isMobile ? "0.78rem" : "0.9rem" }}>
+                <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(label), marginRight: "8px", flexShrink: 0 }} />
+                <span className="fw-semibold" style={{ minWidth: isMobile ? "55px" : "70px" }}>{label}:</span>
+                <span className="ms-2 text-truncate" style={{ maxWidth: isMobile ? "100px" : "none" }}>{sups.length ? sups.join(", ") : "—"}</span>
               </div>
             );
           })}
@@ -326,7 +326,14 @@ function Visitas() {
         <div style={{ flexShrink: 0 }}>
           <Button
             onClick={() => setMostrarItinerario(true)}
-            style={{ backgroundColor: "#8e44ad", borderColor: "#8e44ad", color: "#fff", fontWeight: "bold", padding: "8px 16px" }}
+            style={{
+              backgroundColor: "#8e44ad",
+              borderColor: "#8e44ad",
+              color: "#fff",
+              fontWeight: "bold",
+              padding: isMobile ? "6px 12px" : "8px 16px",
+              fontSize: isMobile ? "0.82rem" : "1rem"
+            }}
           >
             <i className="bi bi-journal-text me-2"></i>Itinerario
           </Button>
@@ -336,64 +343,92 @@ function Visitas() {
       {/* Modal de Itinerario */}
       <Modal show={mostrarItinerario} onHide={() => setMostrarItinerario(false)} size="lg" centered contentClassName="border border-dark">
         <Modal.Header closeButton style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-          <Modal.Title className="fw-bold">
+          <Modal.Title className="fw-bold" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
             <i className="bi bi-calendar4-week me-2"></i>Itinerario de Visitas
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4" style={{ backgroundColor: "#fdfdfd" }}>
-          <div className="table-responsive">
-            <table className="table table-bordered align-middle text-center" style={{ minWidth: "500px", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0" }}>
+        <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
+          <div className="table-responsive" style={{ overflowX: "hidden" }}>
+            <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
               <thead>
                 <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-                  <th style={{ padding: "12px", border: "1px solid #2e5959", fontWeight: "700" }}>Día</th>
-                  <th style={{ padding: "12px", border: "1px solid #2e5959", fontWeight: "700" }}>
-                    <i className="bi bi-sun-fill text-warning me-2"></i>Mañana
+                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Día</th>
+                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>
+                    <i className="bi bi-sun-fill text-warning me-1"></i>Mañana
                   </th>
-                  <th style={{ padding: "12px", border: "1px solid #2e5959", fontWeight: "700" }}>
-                    <i className="bi bi-sunset-fill me-2" style={{ color: "#fd7e14" }}></i>Tarde
+                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>
+                    <i className="bi bi-sunset-fill me-1" style={{ color: "#fd7e14" }}></i>Tarde
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {ITINERARIO.map((item, idx) => (
-                  <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
-                    <td className="fw-bold" style={{ padding: "15px", border: "1px solid #dee2e6", color: "#495057", width: "100px" }}>
-                      {item.dia}
-                    </td>
-                    <td style={{ padding: "15px", border: "1px solid #dee2e6" }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "0.9rem",
-                          fontWeight: "600",
-                          backgroundColor: "#eef7f7",
-                          color: "#2a5050",
-                          border: "1px solid #d4ecec"
-                        }}
-                      >
-                        {item.manana}
-                      </span>
-                    </td>
-                    <td style={{ padding: "15px", border: "1px solid #dee2e6" }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "6px 12px",
-                          borderRadius: "20px",
-                          fontSize: "0.9rem",
-                          fontWeight: "600",
-                          backgroundColor: "#fff5ed",
-                          color: "#a05820",
-                          border: "1px solid #ffe3d1"
-                        }}
-                      >
-                        {item.tarde}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {ITINERARIO.map((item, idx) => {
+                  const getBadgeStyle = (text, isTarde) => {
+                    if (text === "Resumen semanal") {
+                      return {
+                        backgroundColor: "#f3e8ff",
+                        color: "#6b21a8",
+                        borderColor: "#e9d5ff"
+                      };
+                    }
+                    if (isTarde) {
+                      return {
+                        backgroundColor: "#fff5ed",
+                        color: "#a05820",
+                        borderColor: "#ffe3d1"
+                      };
+                    }
+                    return {
+                      backgroundColor: "#eef7f7",
+                      color: "#2a5050",
+                      borderColor: "#d4ecec"
+                    };
+                  };
+
+                  return (
+                    <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: "#495057", fontSize: isMobile ? "0.75rem" : "0.95rem", width: isMobile ? "50px" : "100px" }}>
+                        {item.dia}
+                      </td>
+                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6" }}>
+                        <span
+                          style={{
+                            display: "block",
+                            padding: isMobile ? "4px 6px" : "6px 12px",
+                            borderRadius: "20px",
+                            fontSize: isMobile ? "0.7rem" : "0.88rem",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: "1.2",
+                            ...getBadgeStyle(item.manana, false)
+                          }}
+                        >
+                          {item.manana}
+                        </span>
+                      </td>
+                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6" }}>
+                        <span
+                          style={{
+                            display: "block",
+                            padding: isMobile ? "4px 6px" : "6px 12px",
+                            borderRadius: "20px",
+                            fontSize: isMobile ? "0.7rem" : "0.88rem",
+                            fontWeight: "600",
+                            textAlign: "center",
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            lineHeight: "1.2",
+                            ...getBadgeStyle(item.tarde, true)
+                          }}
+                        >
+                          {item.tarde}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
