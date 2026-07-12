@@ -306,17 +306,17 @@ function ReparacionesCamioneta() {
         <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <tr>
-                <th style={{ width: "9%" }}>Fecha</th>
-                <th style={{ width: "23%" }}>Reparación</th>
-                <th style={{ width: "6%" }}>Detalle</th>
-                <th style={{ width: "10%" }}>Parte</th>
-                <th style={{ width: "9%" }}>Prioridad</th>
-                <th style={{ width: "9%" }}>Estado</th>
-                <th style={{ width: "15%" }}>Observaciones</th>
-                <th style={{ width: "7%" }}>Parada</th>
-                <th style={{ width: "6%" }}>Repuestos</th>
-                <th style={{ width: "10%" }}>Acciones</th>
+              <tr className="fw-normal">
+                <th className="fw-normal" style={{ width: "9%" }}>Fecha</th>
+                <th className="fw-normal" style={{ width: "23%" }}>Reparación</th>
+                <th className="fw-normal" style={{ width: "6%" }}>Detalle</th>
+                <th className="fw-normal" style={{ width: "10%" }}>Parte</th>
+                <th className="fw-normal" style={{ width: "9%" }}>Prioridad</th>
+                <th className="fw-normal" style={{ width: "9%" }}>Estado</th>
+                <th className="fw-normal" style={{ width: "15%" }}>Observaciones</th>
+                <th className="fw-normal" style={{ width: "7%" }}>Parada</th>
+                <th className="fw-normal" style={{ width: "6%" }}>Repuestos</th>
+                <th className="fw-normal" style={{ width: "10%" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -658,16 +658,16 @@ function DetalleRepuestos({ patente, marca, reparacion, onVolver, onGuardar }) {
       <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-            <tr>
-              <th style={{ width: 40 }}>#</th>
-              <th>Repuesto</th>
-              <th style={{ width: 110 }}>Cantidad</th>
-              <th style={{ width: 150 }}>Precio</th>
-              <th style={{ width: 200 }}>Proveedor</th>
-              <th style={{ width: 180 }}>Responsable</th>
-              <th style={{ width: 140 }}>Estado</th>
-              <th style={{ width: 220 }}>Observaciones</th>
-              <th style={{ width: 160 }}>Acciones</th>
+            <tr className="fw-normal">
+              <th className="fw-normal" style={{ width: 40 }}>#</th>
+              <th className="fw-normal">Repuesto</th>
+              <th className="fw-normal" style={{ width: 110 }}>Cantidad</th>
+              <th className="fw-normal" style={{ width: 150 }}>Precio</th>
+              <th className="fw-normal" style={{ width: 200 }}>Proveedor</th>
+              <th className="fw-normal" style={{ width: 180 }}>Responsable</th>
+              <th className="fw-normal" style={{ width: 140 }}>Estado</th>
+              <th className="fw-normal" style={{ width: 220 }}>Observaciones</th>
+              <th className="fw-normal" style={{ width: 160 }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
