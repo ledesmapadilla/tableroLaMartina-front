@@ -1131,19 +1131,23 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAl
           <Button variant="outline-dark" size="sm" onClick={exportarExcel}>
             Excel
           </Button>
-          <Button variant="outline-success" size="sm" onClick={onVolver}>
-            Volver
-          </Button>
         </div>
       </div>
 
-      {!readOnly && (
-        <div className="mb-4">
+      <div className="d-flex gap-2 mb-4">
+        {!readOnly && (
           <Button variant="outline-primary" size="sm" onClick={agregar}>
             Agregar repuesto
           </Button>
-        </div>
-      )}
+        )}
+        <Button
+          size="sm"
+          style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}
+          onClick={onVolver}
+        >
+          Volver a Reparaciones
+        </Button>
+      </div>
 
       <div style={{ maxHeight: "65vh", overflowY: "auto" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
@@ -1322,14 +1326,6 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAl
             </tfoot>
           )}
         </Table>
-      </div>
-      <div className="d-flex justify-content-end mt-4">
-        <Button
-          style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }}
-          onClick={onVolver}
-        >
-          Volver a Reparaciones
-        </Button>
       </div>
     </Container>
   );
