@@ -232,6 +232,13 @@ input[type="number"] {
   box-shadow: 3px 3px 8px rgba(0,0,0,0.35);
 }
 
+/* Prevenir saltos de layout y trabas en el scroll de las tablas */
+.table button:hover,
+.table .btn:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 /* ── Botones placa (ResumenCheckList) ── */
 .btn-placa {
   transition: transform 0.15s ease, box-shadow 0.15s ease !important;
