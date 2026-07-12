@@ -326,9 +326,9 @@ function ServicesUltimoService() {
                 <th className="fw-normal">Patente</th>
                 <th className="fw-normal">Responsable</th>
                 <th className="fw-normal">Fecha</th>
-                <th className="fw-normal">Km último service</th>
-                <th className="fw-normal">Km prox. service</th>
-                <th className="fw-normal">Km actuales</th>
+                <th className="fw-normal" style={{ whiteSpace: "normal", maxWidth: "80px" }}>Km último service</th>
+                <th className="fw-normal" style={{ whiteSpace: "normal", maxWidth: "80px" }}>Km prox. service</th>
+                <th className="fw-normal" style={{ whiteSpace: "normal", maxWidth: "80px" }}>Km actuales</th>
                 <th className="fw-normal" style={{ minWidth: "180px", whiteSpace: "normal" }}>Observaciones</th>
                 <th className="fw-normal">Estado</th>
               </tr>
