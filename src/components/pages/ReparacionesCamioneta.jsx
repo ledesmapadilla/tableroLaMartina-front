@@ -394,11 +394,12 @@ function ReparacionesCamioneta() {
       {/* Filtros */}
       <div className="d-flex gap-3 mb-3 align-items-center flex-wrap">
         {/* Filtro Reparacion */}
-        <div className="d-flex align-items-center gap-1" style={{ minWidth: 220 }}>
+        <div className="position-relative" style={{ width: 220 }}>
           <Form.Select
             size="sm"
             value={filtroReparacion}
             onChange={(e) => setFiltroReparacion(e.target.value)}
+            style={{ paddingRight: filtroReparacion ? "2.5rem" : "" }}
           >
             <option value="">Reparación (todas)</option>
             {reparacionesUnicas.map((r) => (
@@ -409,9 +410,16 @@ function ReparacionesCamioneta() {
             <Button
               variant="link"
               size="sm"
-              className="p-0 text-danger"
+              className="p-0 text-danger position-absolute"
               onClick={() => setFiltroReparacion("")}
-              style={{ textDecoration: "none", fontSize: "1.1rem" }}
+              style={{
+                right: "1.8rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                zIndex: 4,
+              }}
               title="Limpiar filtro"
             >
               <i className="bi bi-x-circle-fill"></i>
@@ -420,11 +428,12 @@ function ReparacionesCamioneta() {
         </div>
 
         {/* Filtro Responsable */}
-        <div className="d-flex align-items-center gap-1" style={{ minWidth: 220 }}>
+        <div className="position-relative" style={{ width: 220 }}>
           <Form.Select
             size="sm"
             value={filtroResponsable}
             onChange={(e) => setFiltroResponsable(e.target.value)}
+            style={{ paddingRight: filtroResponsable ? "2.5rem" : "" }}
           >
             <option value="">Responsable (todos)</option>
             {responsablesUnicos.map((r) => (
@@ -435,9 +444,16 @@ function ReparacionesCamioneta() {
             <Button
               variant="link"
               size="sm"
-              className="p-0 text-danger"
+              className="p-0 text-danger position-absolute"
               onClick={() => setFiltroResponsable("")}
-              style={{ textDecoration: "none", fontSize: "1.1rem" }}
+              style={{
+                right: "1.8rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                zIndex: 4,
+              }}
               title="Limpiar filtro"
             >
               <i className="bi bi-x-circle-fill"></i>
@@ -446,11 +462,12 @@ function ReparacionesCamioneta() {
         </div>
 
         {/* Filtro Estado (a la derecha) */}
-        <div className="d-flex align-items-center gap-1" style={{ minWidth: 220 }}>
+        <div className="position-relative" style={{ width: 220 }}>
           <Form.Select
             size="sm"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
+            style={{ paddingRight: filtroEstado !== "activas" ? "2.5rem" : "" }}
           >
             <option value="activas">Pendientes y en proceso</option>
             <option value="Pendiente">Pendiente</option>
@@ -462,9 +479,16 @@ function ReparacionesCamioneta() {
             <Button
               variant="link"
               size="sm"
-              className="p-0 text-danger"
+              className="p-0 text-danger position-absolute"
               onClick={() => setFiltroEstado("activas")}
-              style={{ textDecoration: "none", fontSize: "1.1rem" }}
+              style={{
+                right: "1.8rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                zIndex: 4,
+              }}
               title="Limpiar filtro"
             >
               <i className="bi bi-x-circle-fill"></i>
