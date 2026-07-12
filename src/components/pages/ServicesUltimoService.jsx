@@ -352,21 +352,21 @@ function ServicesUltimoService() {
                       >+ ult. service</button>
                     </td>
                     <td className="text-start" style={{ cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
-                      <span style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 8px", fontSize: "0.82rem", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>
+                      <span style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 10px", fontWeight: "600", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>
                         {c.patente}
                       </span>
-                      <span style={{ fontSize: "0.82rem" }}>{c.marca}</span>
+                      <span>{c.marca}</span>
                     </td>
                     <td>{c.responsable || "—"}</td>
                     <td>{reg ? formatFecha(reg.fecha) : "—"}</td>
                     <td className="fw-semibold">{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold">{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold">{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
-                    <td className="text-start text-muted" style={{ fontSize: "0.9rem", minWidth: "180px", whiteSpace: "normal", wordBreak: "break-word" }}>{reg?.observaciones || "—"}</td>
+                    <td className="text-start text-muted" style={{ minWidth: "180px", whiteSpace: "normal", wordBreak: "break-word" }}>{reg?.observaciones || "—"}</td>
                     <td>
                       <div className="d-flex flex-column align-items-center gap-1">
                         {estado
-                          ? <span style={{ display: "inline-block", backgroundColor: estado.bg, color: estado.color, borderRadius: "4px", padding: "5px 14px", fontWeight: "400", fontSize: "1rem", boxShadow: "2px 2px 5px rgba(0,0,0,0.3)" }}>{estado.label}</span>
+                          ? <span style={{ display: "inline-block", backgroundColor: estado.bg, color: estado.color, borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600", fontSize: "0.75rem", textTransform: "capitalize", minWidth: "80px" }}>{estado.label}</span>
                           : "—"}
                         {estado?.label === "Atrasado" && telefonoAviso && !c.serviceNotificado && (
                           <button
