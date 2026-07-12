@@ -6,7 +6,7 @@ import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
 
-const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const MESES_NOMBRE = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -35,9 +35,9 @@ function celdasMes(año, mes) {
   let offsetSet = false;
   for (let d = 1; d <= totalDias; d++) {
     const dow = new Date(año, mes, d).getDay();
-    const logicalDow = dow === 0 ? 6 : dow - 1;
+    if (dow === 0) continue;
     if (!offsetSet) {
-      for (let i = 0; i < logicalDow; i++) arr.push(null);
+      for (let i = 0; i < dow - 1; i++) arr.push(null);
       offsetSet = true;
     }
     arr.push(d);
@@ -199,10 +199,9 @@ function Visitas() {
       <div style={{ maxWidth: "860px", margin: "0 auto" }}>
 
         {/* Encabezados */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: isMobile ? "3px" : "4px", marginBottom: isMobile ? "3px" : "4px" }}>
           {DIAS.map((d) => {
             const isSab = d === "Sáb";
-            const isDom = d === "Dom";
             return (
               <div
                 key={d}
@@ -210,8 +209,8 @@ function Visitas() {
                   textAlign: "center",
                   fontWeight: "700",
                   fontSize: isMobile ? "0.7rem" : "0.82rem",
-                  color: isDom ? "#c53030" : isSab ? "#2b6cb0" : "#666",
-                  backgroundColor: isDom ? "#fff5f5" : isSab ? "#ebf8ff" : "transparent",
+                  color: isSab ? "#2b6cb0" : "#666",
+                  backgroundColor: isSab ? "#ebf8ff" : "transparent",
                   borderRadius: "4px",
                   padding: isMobile ? "2px 0" : "6px 0",
                   letterSpacing: "0.5px"
@@ -224,7 +223,7 @@ function Visitas() {
         </div>
 
         {/* Celdas */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: isMobile ? "3px" : "4px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: isMobile ? "3px" : "4px" }}>
           {dias.map((dia, idx) => {
             if (!dia) return <div key={`v-${idx}`} />;
             const key    = toKey(año, mes, dia);
@@ -233,28 +232,21 @@ function Visitas() {
             const dateObj = new Date(año, mes, dia);
             const dow = dateObj.getDay();
             const esSabado = dow === 6;
-            const esDomingo = dow === 0;
 
             const bgCell = esHoy
               ? "#eef6f6"
-              : esDomingo
-              ? "#fff5f5"
               : esSabado
               ? "#ebf8ff"
               : "#fff";
 
             const hoverBgCell = esHoy
               ? "#dbebeb"
-              : esDomingo
-              ? "#ffe3e3"
               : esSabado
               ? "#deeafd"
               : "#f0f6f6";
 
             const colorText = esHoy
               ? COLOR
-              : esDomingo
-              ? "#c53030"
               : esSabado
               ? "#2b6cb0"
               : "#333";
@@ -266,26 +258,48 @@ function Visitas() {
                 style={{
                   border: esHoy ? `2px solid ${COLOR}` : "1.5px solid #ddd",
                   borderRadius: isMobile ? "6px" : "8px",
-                  padding: isMobile ? "3px 2px" : "8px 7px",
-                  minHeight: isMobile ? "52px" : "88px",
+                  padding: isMobile ? "4px 3px" : "8px 6px",
+                  height: isMobile ? "64px" : "100px",
                   cursor: "pointer",
                   backgroundColor: bgCell,
                   transition: "background-color 0.15s",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-start",
+                  overflow: "hidden"
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = hoverBgCell)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bgCell)}
               >
-                <div style={{ fontWeight: esHoy ? "bold" : "normal", fontSize: isMobile ? "0.75rem" : "0.88rem", color: colorText, marginBottom: isMobile ? "2px" : "5px", textAlign: "center" }}>
+                <div style={{ fontWeight: esHoy ? "bold" : "normal", fontSize: isMobile ? "0.75rem" : "0.88rem", color: colorText, marginBottom: isMobile ? "1px" : "3px", textAlign: "center", flexShrink: 0 }}>
                   {dia}
                 </div>
-                {vDia.slice(0, 2).map((v, i) => (
-                  <div key={i} style={{ color: colorGrupo(v.grupo), fontWeight: "600", textAlign: "center", padding: isMobile ? "0 2px" : "2px 5px", fontSize: isMobile ? "0.58rem" : "0.68rem", marginBottom: isMobile ? "1px" : "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {v.grupo}
-                  </div>
-                ))}
-                {vDia.length > 2 && (
-                  <div style={{ fontSize: isMobile ? "0.58rem" : "0.68rem", color: "#888", textAlign: "center" }}>+{vDia.length - 2} más</div>
-                )}
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px", overflow: "hidden", flexGrow: 1 }}>
+                  {vDia.slice(0, 2).map((v, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        color: colorGrupo(v.grupo),
+                        fontWeight: "600",
+                        textAlign: "center",
+                        padding: "0 2px",
+                        fontSize: isMobile ? "0.58rem" : "0.68rem",
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                        lineHeight: "1.1",
+                        maxHeight: isMobile ? "14px" : "24px",
+                        overflow: "hidden"
+                      }}
+                    >
+                      {v.grupo}
+                    </div>
+                  ))}
+                  {vDia.length > 2 && (
+                    <div style={{ fontSize: isMobile ? "0.58rem" : "0.68rem", color: "#888", textAlign: "center", flexShrink: 0, marginTop: "auto" }}>
+                      +{vDia.length - 2} más
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
