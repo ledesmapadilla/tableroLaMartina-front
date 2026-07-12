@@ -207,7 +207,7 @@ function TractoresAltas() {
               <th className="fw-normal">Grupo</th>
               <th className="fw-normal">Supervisor</th>
               <th className="fw-normal">CC</th>
-              <th className="fw-normal">Descripción</th>
+              <th className="fw-normal" style={{ minWidth: "200px", whiteSpace: "normal" }}>Descripción</th>
               <th className="fw-normal">Acciones</th>
             </tr>
           </thead>
@@ -237,7 +237,7 @@ function TractoresAltas() {
                         {t.cc}
                       </span>
                     </td>
-                    <td>{t.descripcion || "-"}</td>
+                    <td style={{ minWidth: "200px", whiteSpace: "normal", wordBreak: "break-word" }}>{t.descripcion || "-"}</td>
                     <td>
                       <div className="d-flex justify-content-center gap-2">
                         <Button size="sm" onClick={() => abrirEditar(t)} style={{ backgroundColor: "#52735a", border: "none" }}>

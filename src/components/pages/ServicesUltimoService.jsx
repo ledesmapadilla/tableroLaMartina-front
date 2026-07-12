@@ -329,7 +329,7 @@ function ServicesUltimoService() {
                 <th className="fw-normal">Km último service</th>
                 <th className="fw-normal">Km prox. service</th>
                 <th className="fw-normal">Km actuales</th>
-                <th className="fw-normal">Observaciones</th>
+                <th className="fw-normal" style={{ minWidth: "180px", whiteSpace: "normal" }}>Observaciones</th>
                 <th className="fw-normal">Estado</th>
               </tr>
             </thead>
@@ -362,7 +362,7 @@ function ServicesUltimoService() {
                     <td className="fw-semibold">{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold">{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold">{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
-                    <td className="text-start text-muted" style={{ fontSize: "0.9rem" }}>{reg?.observaciones || "—"}</td>
+                    <td className="text-start text-muted" style={{ fontSize: "0.9rem", minWidth: "180px", whiteSpace: "normal", wordBreak: "break-word" }}>{reg?.observaciones || "—"}</td>
                     <td>
                       <div className="d-flex flex-column align-items-center gap-1">
                         {estado

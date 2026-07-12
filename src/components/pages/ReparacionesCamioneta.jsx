@@ -613,7 +613,7 @@ function ReparacionesCamioneta() {
                         f.fecha ? f.fecha.split("-").reverse().join("/") : "-"
                       )}
                     </td>
-                    <td className="text-start text-truncate" title={f.reparacion} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <td className="text-start" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
                       {editando ? (
                         <Form.Control
                           size="sm"

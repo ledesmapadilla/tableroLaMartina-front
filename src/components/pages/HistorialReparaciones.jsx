@@ -79,7 +79,7 @@ function HistorialReparaciones() {
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal">
                 <th className="fw-normal" style={{ width: "120px" }}>Fecha</th>
-                <th className="fw-normal">Reparación requerida</th>
+                <th className="fw-normal" style={{ minWidth: "200px", whiteSpace: "normal" }}>Reparación requerida</th>
                 <th className="fw-normal" style={{ width: "180px" }}>Responsable</th>
                 <th className="fw-normal" style={{ width: "120px" }}>Estado</th>
                 <th className="fw-normal" style={{ width: "100px" }}>Urgencia</th>
@@ -91,7 +91,7 @@ function HistorialReparaciones() {
               {historial.map((t) => (
                 <tr key={t._id}>
                   <td>{formatF(t.fecha)}</td>
-                  <td className="text-start">{t.descripcion}</td>
+                  <td className="text-start" style={{ minWidth: "200px", whiteSpace: "normal", wordBreak: "break-word" }}>{t.descripcion}</td>
                   <td>{t.responsable || respCamioneta || "—"}</td>
                   <td>
                     <Button
