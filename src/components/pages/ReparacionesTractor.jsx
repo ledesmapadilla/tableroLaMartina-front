@@ -263,13 +263,97 @@ function ReparacionesTractor() {
     }
   };
 
-  const verObservacion = (texto) =>
-    Swal.fire({
-      title: "Observaciones / Descripción",
-      text: texto,
-      confirmButtonText: "Cerrar",
-      confirmButtonColor: "#6c757d",
-    });
+  const handleSaveSubSection = async (tipo, arrayUObjeto) => {
+    const targetId = detalleSel?.id || observacionesSel || repuestosSel;
+    const fila = filas.find((f) => f.id === targetId);
+    if (!fila) return { ok: false };
+
+    const body = {
+      tractor: tractorId,
+      fecha: fila.fecha,
+      reparacion: fila.reparacion,
+      descripcion: tipo === "detalle" ? arrayUObjeto : fila.descripcion,
+      parte: fila.parte || "",
+      prioridad: fila.prioridad,
+      estado: fila.estado,
+      responsable: fila.responsable || "",
+      observaciones: tipo === "observaciones" ? arrayUObjeto : fila.observaciones,
+      maquinaParada: !!fila.maquinaParada,
+      repuestos: tipo === "repuestos"
+        ? arrayUObjeto.map((r) => ({
+            repuesto: r.repuesto,
+            cantidad: Number(r.cantidad) || 1,
+            precio: Number(r.precio) || 0,
+            proveedor: r.proveedor || "",
+            responsable: r.responsable || "",
+            estado: r.estado || "Pedido",
+            observaciones: r.observaciones || "",
+          }))
+        : (fila.repuestos || []).map((r) => ({
+            repuesto: r.repuesto,
+            cantidad: r.cantidad,
+            precio: r.precio,
+            proveedor: r.proveedor,
+            responsable: r.responsable,
+            estado: r.estado,
+            observaciones: r.observaciones,
+          })),
+    };
+
+    const isNew = String(fila.id).length !== 24;
+
+    if (isNew) {
+      setFilas((prev) =>
+        prev.map((f) => {
+          if (f.id === fila.id) {
+            if (tipo === "detalle") return { ...f, descripcion: arrayUObjeto };
+            if (tipo === "observaciones") return { ...f, observaciones: arrayUObjeto };
+            if (tipo === "repuestos") return { ...f, repuestos: arrayUObjeto };
+          }
+          return f;
+        })
+      );
+      return { ok: true };
+    }
+
+    try {
+      const res = await fetch(`/api/trabajos-tractor/${fila.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("No se pudo guardar la modificación.");
+      const saved = await res.json();
+
+      setFilas((prev) =>
+        prev.map((f) =>
+          f.id === fila.id
+            ? {
+                ...f,
+                descripcion: saved.descripcion || "",
+                observaciones: saved.observaciones || "",
+                repuestos: (saved.repuestos || []).map((sr) => ({
+                  id: sr._id,
+                  repuesto: sr.repuesto || "",
+                  cantidad: sr.cantidad || 1,
+                  precio: sr.precio || 0,
+                  proveedor: sr.proveedor || "",
+                  responsable: sr.responsable || "",
+                  estado: sr.estado || "Pedido",
+                  observaciones: sr.observaciones || "",
+                })),
+              }
+            : f
+        )
+      );
+      return { ok: true };
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+      return { ok: false };
+    }
+  };
 
   const reparacionesUnicas = useMemo(
     () => [...new Set(filas.map((f) => f.reparacion).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -372,105 +456,13 @@ function ReparacionesTractor() {
     document.body.removeChild(a);
   };
 
-  const handleSaveSubSection = async (tipo, arrayUObjeto) => {
-    const fila = filas.find((f) => f.id === (detalleSel || observacionesSel || repuestosSel));
-    if (!fila) return { ok: false };
-
-    const body = {
-      tractor: tractorId,
-      fecha: fila.fecha,
-      reparacion: fila.reparacion,
-      descripcion: tipo === "detalle" ? arrayUObjeto : fila.descripcion,
-      parte: fila.parte || "",
-      prioridad: fila.prioridad,
-      estado: fila.estado,
-      responsable: fila.responsable || "",
-      observaciones: tipo === "observaciones" ? arrayUObjeto : fila.observaciones,
-      maquinaParada: !!fila.maquinaParada,
-      repuestos: tipo === "repuestos"
-        ? arrayUObjeto.map((r) => ({
-            repuesto: r.repuesto,
-            cantidad: Number(r.cantidad) || 1,
-            precio: Number(r.precio) || 0,
-            proveedor: r.proveedor || "",
-            responsable: r.responsable || "",
-            estado: r.estado || "Pedido",
-            observaciones: r.observaciones || "",
-          }))
-        : (fila.repuestos || []).map((r) => ({
-            repuesto: r.repuesto,
-            cantidad: r.cantidad,
-            precio: r.precio,
-            proveedor: r.proveedor,
-            responsable: r.responsable,
-            estado: r.estado,
-            observaciones: r.observaciones,
-          })),
-    };
-
-    const isNew = String(fila.id).length !== 24;
-
-    if (isNew) {
-      setFilas((prev) =>
-        prev.map((f) => {
-          if (f.id === fila.id) {
-            if (tipo === "detalle") return { ...f, descripcion: arrayUObjeto };
-            if (tipo === "observaciones") return { ...f, observaciones: arrayUObjeto };
-            if (tipo === "repuestos") return { ...f, repuestos: arrayUObjeto };
-          }
-          return f;
-        })
-      );
-      return { ok: true };
-    }
-
-    try {
-      const res = await fetch(`/api/trabajos-tractor/${fila.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) throw new Error("No se pudo guardar la modificación.");
-      const saved = await res.json();
-
-      setFilas((prev) =>
-        prev.map((f) =>
-          f.id === fila.id
-            ? {
-                ...f,
-                descripcion: saved.descripcion || "",
-                observaciones: saved.observaciones || "",
-                repuestos: (saved.repuestos || []).map((sr) => ({
-                  id: sr._id,
-                  repuesto: sr.repuesto || "",
-                  cantidad: sr.cantidad || 1,
-                  precio: sr.precio || 0,
-                  proveedor: sr.proveedor || "",
-                  responsable: sr.responsable || "",
-                  estado: sr.estado || "Pedido",
-                  observaciones: sr.observaciones || "",
-                })),
-              }
-            : f
-        )
-      );
-      return { ok: true };
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-      return { ok: false };
-    }
-  };
-
   if (detalleSel) {
-    const fila = filas.find((f) => f.id === detalleSel);
-    const isEditMode = editandoId === detalleSel;
+    const isEditMode = editandoId === detalleSel.id;
     return (
       <DetalleReparacion
         cc={cc}
         descripcion={descripcion}
-        reparacion={fila}
+        reparacion={detalleSel}
         readOnly={!isEditMode}
         onVolver={() => setDetalleSel(null)}
         onGuardar={(texto) => handleSaveSubSection("detalle", texto)}
@@ -510,57 +502,140 @@ function ReparacionesTractor() {
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "1.5rem" }}>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <div className="d-flex align-items-center gap-3">
-          <h4 className="fw-bold mb-0">
-            Reparaciones Tractor: <span className="text-primary">{cc}</span>
-            {descripcion && <small className="text-muted ms-2">({descripcion})</small>}
-          </h4>
-          <Button size="sm" variant="success" onClick={agregar} disabled={editandoId != null}>
-            + Agregar Reparación
-          </Button>
-        </div>
-        <div className="d-flex gap-2">
-          <Button onClick={exportarExcel} disabled={filasFiltradas.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-            <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
-          </Button>
-          <Button onClick={() => navigate(`/tractores/grupo/${grupoId}`)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-        </div>
+    <Container className="py-4">
+      {/* Botones */}
+      <div className="d-flex justify-content-end gap-2 w-100 mb-4">
+        <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-arrow-left me-2"></i>Volver
+        </Button>
+        <Button onClick={() => navigate("/tractores")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-speedometer me-2"></i>Grupos
+        </Button>
+        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+          <i className="bi bi-house-fill me-2"></i>General
+        </Button>
+        <Button onClick={exportarExcel} disabled={filasFiltradas.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+          <i className="bi bi-file-earmark-excel me-2"></i>Excel
+        </Button>
+      </div>
+
+      {/* Título */}
+      <div className="text-center mb-4">
+        <h3 className="fw-bold mb-0">Reparaciones tractor: {cc}{descripcion ? ` - ${descripcion}` : ""}</h3>
+      </div>
+
+      {/* Agregar reparación */}
+      <div className="mb-4">
+        <Button variant="outline-primary" size="sm" onClick={agregar}>
+          <i className="bi bi-plus-lg me-1"></i>Agregar reparación
+        </Button>
       </div>
 
       {/* Filtros */}
-      <div className="d-flex gap-2 mb-3 bg-light p-2 rounded align-items-center" style={{ fontSize: "0.82rem" }}>
-        <span className="fw-semibold text-muted">Filtros:</span>
-        <div className="d-flex gap-1 align-items-center">
-          <label>Reparación:</label>
-          <Form.Select size="sm" value={filtroReparacion} onChange={(e) => setFiltroReparacion(e.target.value)} style={{ fontSize: "0.78rem", width: "160px" }}>
-            <option value="">Todas</option>
-            {reparacionesUnicas.map((r) => <option key={r} value={r}>{r}</option>)}
+      <div className="d-flex gap-3 mb-3 align-items-center flex-wrap">
+        {/* Filtro Reparacion */}
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroReparacion}
+            onChange={(e) => setFiltroReparacion(e.target.value)}
+            style={{ paddingRight: filtroReparacion ? "2.5rem" : "" }}
+          >
+            <option value="">Reparación (todas)</option>
+            {reparacionesUnicas.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
           </Form.Select>
+          {filtroReparacion && (
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 text-danger position-absolute"
+              onClick={() => setFiltroReparacion("")}
+              style={{
+                right: "1.8rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                zIndex: 4,
+              }}
+              title="Limpiar filtro"
+            >
+              <i className="bi bi-x-circle-fill"></i>
+            </Button>
+          )}
         </div>
-        <div className="d-flex gap-1 align-items-center">
-          <label>Responsable:</label>
-          <Form.Select size="sm" value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)} style={{ fontSize: "0.78rem", width: "140px" }}>
-            <option value="">Todos</option>
-            {responsablesUnicos.map((r) => <option key={r} value={r}>{r}</option>)}
+
+        {/* Filtro Responsable */}
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroResponsable}
+            onChange={(e) => setFiltroResponsable(e.target.value)}
+            style={{ paddingRight: filtroResponsable ? "2.5rem" : "" }}
+          >
+            <option value="">Responsable (todos)</option>
+            {responsablesUnicos.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
           </Form.Select>
+          {filtroResponsable && (
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 text-danger position-absolute"
+              onClick={() => setFiltroResponsable("")}
+              style={{
+                right: "1.8rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                zIndex: 4,
+              }}
+              title="Limpiar filtro"
+            >
+              <i className="bi bi-x-circle-fill"></i>
+            </Button>
+          )}
         </div>
-        <div className="d-flex gap-1 align-items-center">
-          <label>Estado:</label>
-          <Form.Select size="sm" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} style={{ fontSize: "0.78rem", width: "140px" }}>
-            <option value="">Todos</option>
+
+        {/* Filtro Estado */}
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            style={{ paddingRight: filtroEstado ? "2.5rem" : "" }}
+          >
+            <option value="">Estado (todos)</option>
             <option value="activas">Activas (Pendientes/Proceso)</option>
             <option value="Pendiente">Pendiente</option>
             <option value="En proceso">En proceso</option>
             <option value="Terminado">Terminado</option>
           </Form.Select>
+          {filtroEstado && (
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 text-danger position-absolute"
+              onClick={() => setFiltroEstado("")}
+              style={{
+                right: "1.8rem",
+                top: "50%",
+                transform: "translateY(-50%)",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                zIndex: 4,
+              }}
+              title="Limpiar filtro"
+            >
+              <i className="bi bi-x-circle-fill"></i>
+            </Button>
+          )}
         </div>
+
         <div className="ms-auto">
           {editandoId && (
             <Button
@@ -569,7 +644,7 @@ function ReparacionesTractor() {
               className="text-danger p-0"
               onClick={() => {
                 const isNew = String(editandoId).length !== 24;
-                if (isNew) setFilas((p) => p.filter((f) => f.id !== editandoId));
+                if (isNew) setFilas((p) => p.filter((fi) => fi.id !== editandoId));
                 setEditandoId(null);
               }}
             >
@@ -592,7 +667,7 @@ function ReparacionesTractor() {
                 <th className="fw-normal" style={{ width: "9%" }}>Prioridad</th>
                 <th className="fw-normal" style={{ width: "9%" }}>Estado</th>
                 <th className="fw-normal" style={{ width: "14%" }}>Responsable</th>
-                <th className="fw-normal" style={{ width: "6%" }}>Obs.</th>
+                <th className="fw-normal" style={{ width: "7%" }}>Observaciones</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Repuestos</th>
                 <th className="fw-normal" style={{ width: "10%" }}>Acciones</th>
               </tr>
@@ -643,7 +718,7 @@ function ReparacionesTractor() {
                               size="sm"
                               variant="outline-success"
                               style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setDetalleSel(f.id)}
+                              onClick={() => setDetalleSel(f)}
                             >
                               +
                             </Button>
@@ -655,13 +730,13 @@ function ReparacionesTractor() {
                               size="sm"
                               variant="outline-secondary"
                               style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setDetalleSel(f.id)}
+                              onClick={() => setDetalleSel(f)}
                             >
                               +
                             </Button>
                           );
                         }
-                        return <span className="text-muted">—</span>;
+                        return <span className="text-muted">-</span>;
                       })()}
                     </td>
                     <td>
@@ -670,17 +745,25 @@ function ReparacionesTractor() {
                           size="sm"
                           value={f.prioridad}
                           onChange={(e) => editar(f.id, "prioridad", e.target.value)}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
+                          style={{
+                            fontSize: "0.72rem",
+                            padding: "2px 4px",
+                            color: f.prioridad === "Crítico" ? "red" : "",
+                            fontWeight: f.prioridad === "Crítico" ? "bold" : ""
+                          }}
                         >
-                          {PRIORIDADES.map((p) => <option key={p} value={p}>{p}</option>)}
+                          {PRIORIDADES.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
                         </Form.Select>
                       ) : (
-                        <span style={{
-                          color: f.prioridad === "Crítico" ? "#dc3545" : f.prioridad === "Urgente" ? "#fd7e14" : "#212529",
-                          fontWeight: f.prioridad !== "Normal" ? "bold" : "normal"
-                        }}>
-                          {f.prioridad}
-                        </span>
+                        f.prioridad === "Crítico" ? (
+                          <span className="text-danger fw-semibold">Crítico</span>
+                        ) : (
+                          f.prioridad || "-"
+                        )
                       )}
                     </td>
                     <td>
@@ -691,61 +774,66 @@ function ReparacionesTractor() {
                           onChange={(e) => editar(f.id, "estado", e.target.value)}
                           style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                         >
-                          {ESTADOS.map((es) => <option key={es} value={es}>{es}</option>)}
+                          {ESTADOS.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
                         </Form.Select>
                       ) : (
-                        <span
-                          style={{
-                            display: "inline-block",
-                            backgroundColor: COLOR_ESTADO[f.estado] || "#6c757d",
-                            color: "#fff",
-                            borderRadius: "4px",
-                            padding: "2px 10px",
-                            fontWeight: "600",
-                            fontSize: "0.75rem",
-                            textTransform: "capitalize",
-                            minWidth: "80px",
-                            boxShadow: "3px 3px 6px rgba(0,0,0,0.3)"
-                          }}
-                        >
-                          {f.estado}
+                        <span style={{ color: COLOR_ESTADO[f.estado] || "#dee2e6", fontWeight: 600 }}>
+                          {f.estado || "-"}
                         </span>
                       )}
                     </td>
                     <td>
                       {editando ? (
-                        <div className="d-flex gap-1">
-                          {otroRespMain.has(f.id) ? (
+                        <>
+                          <Form.Select
+                            size="sm"
+                            value={
+                              responsablesAlta.includes(f.responsable)
+                                ? f.responsable
+                                : (f.responsable || otroRespMain.has(f.id)) ? "__otro__" : ""
+                            }
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === "__otro__") {
+                                setOtroRespMain((prev) => new Set(prev).add(f.id));
+                                editar(f.id, "responsable", "");
+                              } else {
+                                setOtroRespMain((prev) => { const n = new Set(prev); n.delete(f.id); return n; });
+                                editar(f.id, "responsable", v);
+                              }
+                            }}
+                            style={{ fontSize: "0.72rem", padding: "2px 4px" }}
+                          >
+                            <option value="">Seleccionar...</option>
+                            {responsablesAlta.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                            {RESPONSABLES.map((r) => (
+                              <option key={r} value={r}>
+                                {r}
+                              </option>
+                            ))}
+                            <option value="__otro__">Otro...</option>
+                          </Form.Select>
+                          {otroRespMain.has(f.id) && (
                             <Form.Control
                               size="sm"
+                              className="mt-1"
+                              placeholder="Escriba responsable..."
                               value={f.responsable}
                               onChange={(e) => editar(f.id, "responsable", e.target.value)}
-                              placeholder="Nombre..."
                               style={{ fontSize: "0.72rem", padding: "2px 4px" }}
                             />
-                          ) : (
-                            <Form.Select
-                              size="sm"
-                              value={f.responsable}
-                              onChange={(e) => {
-                                if (e.target.value === "__otro__") {
-                                  setOtroRespMain((p) => new Set(p).add(f.id));
-                                  editar(f.id, "responsable", "");
-                                } else {
-                                  editar(f.id, "responsable", e.target.value);
-                                }
-                              }}
-                              style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                            >
-                              <option value="">—</option>
-                              {responsablesAlta.map((r) => <option key={r} value={r}>{r}</option>)}
-                              {RESPONSABLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                              <option value="__otro__">Otro...</option>
-                            </Form.Select>
                           )}
-                        </div>
+                        </>
                       ) : (
-                        f.responsable || "—"
+                        f.responsable || "-"
                       )}
                     </td>
                     <td>
@@ -775,7 +863,7 @@ function ReparacionesTractor() {
                             </Button>
                           );
                         }
-                        return <span className="text-muted">—</span>;
+                        return <span className="text-muted">-</span>;
                       })()}
                     </td>
                     <td>
@@ -785,67 +873,44 @@ function ReparacionesTractor() {
                           return (
                             <Button
                               size="sm"
-                              variant="success"
-                              onClick={() => setRepuestosSel(f.id)}
+                              variant="outline-success"
                               style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setRepuestosSel(f.id)}
                             >
                               +
                             </Button>
                           );
                         }
-                        return (
-                          <Button
-                            size="sm"
-                            variant="outline-secondary"
-                            onClick={() => setRepuestosSel(f.id)}
-                            style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                          >
-                            +
-                          </Button>
-                        );
+                        if (editando) {
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline-secondary"
+                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
+                              onClick={() => setRepuestosSel(f.id)}
+                            >
+                              +
+                            </Button>
+                          );
+                        }
+                        return <span className="text-muted">-</span>;
                       })()}
                     </td>
                     <td>
-                      {editando ? (
-                        <div className="d-flex gap-1 justify-content-center">
-                          <Button size="sm" variant="success" onClick={finalizarEdicion} style={{ padding: "2px 6px", fontSize: "0.75rem" }}>
-                            Guardar
+                      <div className="d-flex gap-1 justify-content-center align-items-center flex-wrap">
+                        {editando ? (
+                          <Button size="sm" variant="outline-success" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={finalizarEdicion}>
+                            Listo
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                              const isNew = String(editandoId).length !== 24;
-                              if (isNew) setFilas((p) => p.filter((fi) => fi.id !== editandoId));
-                              setEditandoId(null);
-                            }}
-                            style={{ padding: "2px 6px", fontSize: "0.75rem" }}
-                          >
-                            No
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="d-flex gap-1 justify-content-center">
-                          <Button
-                            size="sm"
-                            variant="outline-primary"
-                            onClick={() => setEditandoId(f.id)}
-                            disabled={editandoId != null}
-                            style={{ padding: "2px 6px", fontSize: "0.75rem" }}
-                          >
+                        ) : (
+                          <Button size="sm" variant="outline-warning" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={() => setEditandoId(f.id)}>
                             Editar
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline-danger"
-                            onClick={() => borrar(f.id)}
-                            disabled={editandoId != null}
-                            style={{ padding: "2px 6px", fontSize: "0.75rem" }}
-                          >
-                            Borrar
-                          </Button>
-                        </div>
-                      )}
+                        )}
+                        <Button size="sm" variant="outline-danger" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={() => borrar(f.id)}>
+                          Borrar
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -854,13 +919,14 @@ function ReparacionesTractor() {
           </Table>
         </div>
       )}
-    </div>
+    </Container>
   );
 }
 
 // Sub-componentes
 function DetalleReparacion({ cc, descripcion, reparacion, readOnly, onVolver, onGuardar }) {
-  const [texto, setTexto] = useState(reparacion?.descripcion || "");
+  const r = reparacion || {};
+  const [texto, setTexto] = useState(r.descripcion || "");
 
   const handleGuardar = async () => {
     const res = await onGuardar(texto);
@@ -890,11 +956,11 @@ function DetalleReparacion({ cc, descripcion, reparacion, readOnly, onVolver, on
 
       <div className="border rounded p-3 mb-4 bg-light" style={{ borderTop: "4px solid #3a7070" }}>
         <Row>
-          <Item label="Fecha" value={formatF(reparacion?.fecha)} />
-          <Item label="Reparación" value={reparacion?.reparacion} />
-          <Item label="Prioridad" value={reparacion?.prioridad} />
-          <Item label="Estado" value={reparacion?.estado} />
-          <Item label="Responsable" value={reparacion?.responsable} />
+          <Item label="Fecha" value={formatF(r.fecha)} />
+          <Item label="Reparación" value={r.reparacion} />
+          <Item label="Prioridad" value={r.prioridad} />
+          <Item label="Estado" value={r.estado} />
+          <Item label="Responsable" value={r.responsable} />
         </Row>
       </div>
 
