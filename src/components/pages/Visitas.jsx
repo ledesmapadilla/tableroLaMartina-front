@@ -22,6 +22,7 @@ const GRUPOS = [
   { label: "NINGUNA",   color: "#777"    },
   { label: "Berdina",   color: "#7a3535" },
   { label: "San Pablo", color: "#5a6f40" },
+  { label: "Repuestos", color: "#8e44ad" },
 ];
 
 function colorGrupo(label) {
