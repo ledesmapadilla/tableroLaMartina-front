@@ -241,7 +241,7 @@ function ResumenReparaciones() {
       </div>
 
       <div className="mx-auto" style={{ width: "92%", maxHeight: "70vh", overflowY: "auto" }}>
-        <Table bordered size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap" }}>
+        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr className="fw-normal">
               <th className="fw-normal">Patente</th>
@@ -289,7 +289,7 @@ function ResumenReparaciones() {
                     <select
                       value={responsable}
                       onChange={(e) => cambiarResponsable(t._id, e.target.value)}
-                      style={{ padding: "2px 6px", borderRadius: "4px", border: "1px solid #aaa", fontSize: "0.85rem", cursor: "pointer", minWidth: "120px" }}
+                      style={{ padding: "2px 4px", borderRadius: "4px", border: "1px solid #aaa", fontSize: "0.72rem", cursor: "pointer", minWidth: "120px" }}
                     >
                       <option value="">— Sin asignar —</option>
                       {listaResponsables.map((r) => (

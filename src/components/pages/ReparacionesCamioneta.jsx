@@ -661,7 +661,12 @@ function ReparacionesCamioneta() {
                           size="sm"
                           value={f.prioridad}
                           onChange={(e) => editar(f.id, "prioridad", e.target.value)}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
+                          style={{
+                            fontSize: "0.72rem",
+                            padding: "2px 4px",
+                            color: f.prioridad === "Crítico" ? "red" : "",
+                            fontWeight: f.prioridad === "Crítico" ? "bold" : ""
+                          }}
                         >
                           {PRIORIDADES.map((p) => (
                             <option key={p} value={p}>
@@ -670,7 +675,11 @@ function ReparacionesCamioneta() {
                           ))}
                         </Form.Select>
                       ) : (
-                        f.prioridad || "-"
+                        f.prioridad === "Crítico" ? (
+                          <span className="text-danger fw-semibold">Crítico</span>
+                        ) : (
+                          f.prioridad || "-"
+                        )
                       )}
                     </td>
                     <td>
