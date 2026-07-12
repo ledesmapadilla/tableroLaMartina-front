@@ -77,7 +77,7 @@ function HistorialReparaciones() {
         <div style={{ width: "75%", maxHeight: "78vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <tr className="fw-normal">
+              <tr className="fw-normal align-middle">
                 <th className="fw-normal" style={{ width: "120px" }}>Fecha</th>
                 <th className="fw-normal" style={{ minWidth: "200px", whiteSpace: "normal" }}>Reparación requerida</th>
                 <th className="fw-normal" style={{ width: "180px" }}>Responsable</th>

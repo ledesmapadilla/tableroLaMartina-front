@@ -243,7 +243,7 @@ function ResumenReparaciones() {
       <div className="mx-auto" style={{ width: "92%", maxHeight: "calc(100vh - 230px)", overflowY: "auto" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-            <tr className="fw-normal">
+            <tr className="fw-normal align-middle">
               <th className="fw-normal">Patente</th>
               <th className="fw-normal">Marca</th>
               <th className="fw-normal text-start" style={{ minWidth: "150px", whiteSpace: "normal" }}>Reparación</th>

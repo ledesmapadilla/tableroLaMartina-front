@@ -320,7 +320,7 @@ function ServicesUltimoService() {
           <div style={{ width: "92%", maxHeight: "78vh", overflowY: "auto", overflowX: "auto", borderRadius: "4px", border: "1px solid #dee2e6" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <tr className="fw-normal">
+              <tr className="fw-normal align-middle">
                 <th className="fw-normal" style={{ width: "40px" }}>#</th>
                 <th className="fw-normal"></th>
                 <th className="fw-normal">Patente</th>

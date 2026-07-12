@@ -575,7 +575,7 @@ function ReparacionesCamioneta() {
         <div style={{ maxHeight: "calc(100vh - 190px)", overflowY: "auto" }}>
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <tr className="fw-normal">
+              <tr className="fw-normal align-middle">
                 <th className="fw-normal" style={{ width: "9%" }}>Fecha</th>
                 <th className="fw-normal" style={{ width: "30%" }}>Reparación</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Detalle</th>
