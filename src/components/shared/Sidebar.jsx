@@ -8,7 +8,7 @@ const links = [
   {
     to: "/camionetas",
     label: "Camionetas",
-    customIcon: <CamionetaIcon size="1rem" color="#fff" style={{ minWidth: "24px" }} />,
+    customIcon: <CamionetaIcon size="1.25rem" color="#fff" style={{ minWidth: "24px" }} />,
     submenu: [
       { to: "/camionetas/altas", label: "Alta Flota", icon: "bi bi-plus-circle-fill" },
     ],
@@ -16,7 +16,7 @@ const links = [
   {
     to: "/tractores",
     label: "Tractores",
-    customIcon: <TractorIcon size="1rem" color="#fff" style={{ minWidth: "24px" }} />,
+    customIcon: <TractorIcon size="1.25rem" color="#fff" style={{ minWidth: "24px" }} />,
     submenu: [
       { to: "/tractores/altas", label: "Alta Tractores", icon: "bi bi-plus-circle-fill" },
     ],
