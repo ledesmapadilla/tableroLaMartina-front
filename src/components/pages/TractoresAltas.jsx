@@ -26,11 +26,28 @@ const GRUPPO_COLORS = {
   6: "#777",
 };
 
+const selectActivo = { backgroundImage: "none" };
+const estiloX = {
+  position: "absolute",
+  right: "10px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  cursor: "pointer",
+  color: "#dc3545",
+  fontSize: "14px",
+  fontWeight: "900",
+  zIndex: 5,
+  userSelect: "none",
+};
+
 function TractoresAltas() {
   const navigate = useNavigate();
   const [tractores, setTractores] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [filtroCc, setFiltroCc] = useState("");
+  const [filtroSupervisor, setFiltroSupervisor] = useState("");
+  const [filtroGrupo, setFiltroGrupo] = useState("");
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
   const cargar = async () => {
@@ -175,31 +192,95 @@ function TractoresAltas() {
     URL.revokeObjectURL(url);
   };
 
+  const tractoresFiltrados = tractores.filter((t) => {
+    const matchCc = !filtroCc || (t.cc || "").toLowerCase().includes(filtroCc.toLowerCase());
+    const matchSupervisor = !filtroSupervisor || (t.supervisor || "").trim() === filtroSupervisor;
+    const matchGrupo = !filtroGrupo || (t.gruppo ?? 6) === Number(filtroGrupo);
+    return matchCc && matchSupervisor && matchGrupo;
+  });
+
   return (
     <Container className="py-4">
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
 
-      {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4 w-75 mx-auto">
-        <h3 className="fw-bold mb-0">Alta Tractores</h3>
-        <div className="d-flex gap-2">
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-          <Button onClick={exportarExcel} disabled={tractores.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-            <i className="bi bi-file-earmark-excel me-2"></i>Excel
-          </Button>
-          <Button onClick={abrirNuevo} style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
-            Nuevo Tractor
-          </Button>
+        {/* Encabezado */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h3 className="fw-bold mb-0">Alta Tractores</h3>
+          <div className="d-flex gap-2">
+            <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+              <i className="bi bi-arrow-left me-2"></i>Volver
+            </Button>
+            <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
+              <i className="bi bi-house-fill me-2"></i>General
+            </Button>
+            <Button onClick={exportarExcel} disabled={tractores.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+              <i className="bi bi-file-earmark-excel me-2"></i>Excel
+            </Button>
+            <Button onClick={abrirNuevo} style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
+              Nuevo Tractor
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Tabla */}
-      <div className="d-flex justify-content-center">
-        <div style={{ width: "75%", maxHeight: "78vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
+        {/* Filtros */}
+        <div className="d-flex gap-3 mb-3 align-items-center flex-wrap">
+          {/* Filtro CC */}
+          <div className="position-relative" style={{ width: "160px" }}>
+            <Form.Control
+              size="sm"
+              type="text"
+              placeholder="Buscar CC..."
+              value={filtroCc}
+              onChange={(e) => setFiltroCc(e.target.value)}
+              style={{ paddingRight: filtroCc ? "28px" : undefined }}
+            />
+            {filtroCc && (
+              <span onClick={() => setFiltroCc("")} style={estiloX}>X</span>
+            )}
+          </div>
+
+          {/* Filtro Supervisor */}
+          <div className="position-relative" style={{ width: "200px" }}>
+            <Form.Select
+              size="sm"
+              value={filtroSupervisor}
+              onChange={(e) => setFiltroSupervisor(e.target.value)}
+              style={filtroSupervisor ? selectActivo : {}}
+            >
+              <option value="">Supervisor (todos)</option>
+              {supervisoresExistentes.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </Form.Select>
+            {filtroSupervisor && (
+              <span onClick={() => setFiltroSupervisor("")} style={estiloX}>X</span>
+            )}
+          </div>
+
+          {/* Filtro Grupo */}
+          <div className="position-relative" style={{ width: "160px" }}>
+            <Form.Select
+              size="sm"
+              value={filtroGrupo}
+              onChange={(e) => setFiltroGrupo(e.target.value)}
+              style={filtroGrupo ? selectActivo : {}}
+            >
+              <option value="">Grupo (todos)</option>
+              <option value="1">Grupo 1</option>
+              <option value="2">Grupo 2</option>
+              <option value="3">Grupo 3</option>
+              <option value="4">Grupo 4</option>
+              <option value="5">Grupo 5</option>
+              <option value="6">Sin dueño</option>
+            </Form.Select>
+            {filtroGrupo && (
+              <span onClick={() => setFiltroGrupo("")} style={estiloX}>X</span>
+            )}
+          </div>
+        </div>
+
+        {/* Tabla */}
+        <div style={{ maxHeight: "78vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
         <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr className="fw-normal align-middle">
@@ -212,14 +293,14 @@ function TractoresAltas() {
             </tr>
           </thead>
           <tbody>
-            {tractores.length === 0 ? (
+            {tractoresFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={6} className="text-muted py-4">
-                  No hay tractores registrados
+                  No hay tractores que coincidan con los filtros
                 </td>
               </tr>
             ) : (
-              tractores.map((t, idx) => {
+              tractoresFiltrados.map((t, idx) => {
                 const gruppoNum = t.gruppo ?? 6;
                 const gruppoLabel = GRUPPO_LABELS[gruppoNum] || "Sin dueño";
                 const gruppoColor = GRUPPO_COLORS[gruppoNum] || "#777";
@@ -255,7 +336,6 @@ function TractoresAltas() {
           </tbody>
         </Table>
         </div>
-      </div>
 
       {/* Modal */}
       <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border border-dark">
@@ -343,6 +423,7 @@ function TractoresAltas() {
         </Form>
       </Modal>
 
+      </div>
     </Container>
   );
 }
