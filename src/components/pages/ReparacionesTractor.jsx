@@ -407,7 +407,7 @@ function ReparacionesTractor() {
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 22;
 
-    ws.mergeCells(2, 1, 2, 4);
+    ws.mergeCells(2, 1, 2, 3);
     const celdaFecha = ws.getCell("A2");
     celdaFecha.value = `Fecha: ${fechaHoy}`;
     celdaFecha.alignment = { horizontal: "left" };
@@ -528,8 +528,8 @@ function ReparacionesTractor() {
         <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
           <i className="bi bi-house-fill me-2"></i>General
         </Button>
-        <Button onClick={exportarExcel} disabled={filasFiltradas.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-          <i className="bi bi-file-earmark-excel me-2"></i>Excel
+        <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
+          <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
         </Button>
       </div>
 
@@ -1106,7 +1106,7 @@ function DetalleRepuestos({ cc, descripcion, reparacion, readOnly, responsablesA
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 22;
 
-    ws.mergeCells(2, 1, 2, 4);
+    ws.mergeCells(2, 1, 2, 3);
     const celdaFecha = ws.getCell("A2");
     celdaFecha.value = `Fecha: ${fechaHoy}`;
     celdaFecha.alignment = { horizontal: "left" };
@@ -1176,7 +1176,7 @@ function DetalleRepuestos({ cc, descripcion, reparacion, readOnly, responsablesA
               + Agregar Repuesto
             </Button>
           )}
-          <Button size="sm" onClick={exportarExcel} disabled={filas.length === 0} style={{ backgroundColor: "#1d6f42", borderColor: "#1d6f42", color: "#fff" }}>
+          <Button size="sm" onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", borderColor: "#1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
           </Button>
           <Button size="sm" onClick={onVolver} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>

@@ -123,7 +123,7 @@ function ResumenReparacionesTractores() {
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 22;
 
-    ws.mergeCells(2, 1, 2, 4);
+    ws.mergeCells(2, 1, 2, 3);
     const celdaFecha = ws.getCell("A2");
     celdaFecha.value = `Fecha: ${fechaHoy}`;
     celdaFecha.alignment = { horizontal: "left" };
