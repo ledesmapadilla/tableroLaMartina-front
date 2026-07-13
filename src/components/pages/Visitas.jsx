@@ -188,13 +188,12 @@ function Visitas() {
   });
 
   const añosDisponibles = [...new Set([
-    2025,
     2026,
     2027,
     2028,
     hoy.getFullYear(),
     ...Object.keys(visitas).map((k) => Number(k.split("-")[0]))
-  ])].filter(Boolean).sort((a, b) => a - b);
+  ])].filter((y) => y && y >= 2026).sort((a, b) => a - b);
 
   const getModalTitle = () => {
     if (!diaModal) return "";
