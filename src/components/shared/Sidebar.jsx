@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import TractorIcon from "./TractorIcon";
+import CamionetaIcon from "./CamionetaIcon";
 
 const links = [
   { to: "/", label: "Inicio", icon: "bi bi-house-fill", end: true },
   {
     to: "/camionetas",
     label: "Camionetas",
-    icon: "bi bi-truck-front-fill",
+    customIcon: <CamionetaIcon size="1rem" color="#fff" style={{ minWidth: "24px" }} />,
     submenu: [
       { to: "/camionetas/altas", label: "Alta Flota", icon: "bi bi-plus-circle-fill" },
     ],
