@@ -28,9 +28,9 @@ const GRUPOS = [
 
 const ITINERARIO = [
   { dia: "Día 1", manana: "Visita a Campo", tarde: "Visita San Pablo" },
-  { dia: "Día 2", manana: "Visita Berdina", tarde: "Repuestos Berdina" },
+  { dia: "Día 2", manana: "Visita a Campo", tarde: "Repuestos San Pablo" },
   { dia: "Día 3", manana: "Visita a Campo", tarde: "Visita a Campo" },
-  { dia: "Día 4", manana: "Visita a Campo", tarde: "Repuestos San Pablo" },
+  { dia: "Día 4", manana: "Visita Berdina", tarde: "Repuestos Berdina" },
   { dia: "Día 5", manana: "Visita a Campo", tarde: "Resumen semanal" }
 ];
 
@@ -355,10 +355,10 @@ function Visitas() {
                 <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
                   <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Día</th>
                   <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>
-                    <i className="bi bi-sun-fill text-warning me-1"></i>Mañana
+                    Mañana
                   </th>
                   <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>
-                    <i className="bi bi-sunset-fill me-1" style={{ color: "#fd7e14" }}></i>Tarde
+                    Tarde
                   </th>
                 </tr>
               </thead>
