@@ -54,7 +54,7 @@ function TractoresGrupo() {
       </div>
 
       <div className="text-center" style={{ marginTop: "3rem", marginBottom: "3rem" }}>
-        <h2 className="mb-1 fw-bold">Reparaciones Tractores — {infoGrupo.label}</h2>
+        <h2 className="mb-1 fw-bold">Reparaciones Tractores - {infoGrupo.label}</h2>
         <h5 className="text-muted fw-normal">Supervisor: {infoGrupo.supervisor}</h5>
       </div>
 
@@ -99,7 +99,7 @@ function TractoresGrupo() {
                   }}
                 />
               )}
-              <div style={{ fontSize: "1.2rem", fontWeight: "700", wordBreak: "break-all" }}>{t.cc}</div>
+              <div style={{ fontSize: "1.2rem", fontWeight: "700", wordBreak: "break-all" }}>CC {t.cc}</div>
               <div style={{ fontSize: "0.78rem", opacity: 0.85, marginTop: "4px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{t.descripcion || "Sin descripción"}</div>
             </div>
           );
