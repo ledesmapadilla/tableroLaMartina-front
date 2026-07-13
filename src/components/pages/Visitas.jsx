@@ -347,13 +347,22 @@ function Visitas() {
           <Button
             onClick={() => setMostrarItinerario(true)}
             style={{
-              backgroundColor: COLOR,
+              backgroundColor: "transparent",
               borderColor: COLOR,
-              color: "#fff",
+              color: COLOR,
               fontWeight: "bold",
               padding: isMobile ? "6px 12px" : "8px 16px",
               fontSize: isMobile ? "0.82rem" : "1rem",
-              width: "100%"
+              width: "100%",
+              transition: "all 0.2s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = COLOR;
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = COLOR;
             }}
           >
             <i className="bi bi-journal-text me-2"></i>Itinerario
@@ -361,13 +370,22 @@ function Visitas() {
           <Button
             onClick={() => setMostrarResumen(true)}
             style={{
-              backgroundColor: COLOR,
-              borderColor: COLOR,
-              color: "#fff",
+              backgroundColor: "transparent",
+              borderColor: "#2b6cb0",
+              color: "#2b6cb0",
               fontWeight: "bold",
               padding: isMobile ? "6px 12px" : "8px 16px",
               fontSize: isMobile ? "0.82rem" : "1rem",
-              width: "100%"
+              width: "100%",
+              transition: "all 0.2s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#2b6cb0";
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#2b6cb0";
             }}
           >
             <i className="bi bi-bar-chart-fill me-2"></i>Resumen
