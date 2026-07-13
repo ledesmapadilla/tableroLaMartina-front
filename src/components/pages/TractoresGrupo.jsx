@@ -4,7 +4,7 @@ import { Container, Button } from "react-bootstrap";
 
 const GRUPOS = {
   1: { label: "Grupo 1", supervisor: "Jorge Rosas", bg: "#4a6fa5" },
-  2: { label: "Grupo 2", supervisor: "Mario Bustos", bg: "#52735a" },
+  2: { label: "Grupo 2", supervisor: "Guillermo Bustos", bg: "#52735a" },
   3: { label: "Grupo 3", supervisor: "Carlos Chumiento", bg: "#9e8850" },
   4: { label: "Grupo 4", supervisor: "brandan alejandro", bg: "#6b5b7b" },
   5: { label: "Grupo 5", supervisor: "Elio Rojas", bg: "#7a5038" },

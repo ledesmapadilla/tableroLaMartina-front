@@ -4,7 +4,7 @@ import TractorIcon from "../shared/TractorIcon";
 
 const grupos = [
   { numero: 1, label: "Grupo 1", supervisor: "Jorge Rosas",        bg: "#4a6fa5" },
-  { numero: 2, label: "Grupo 2", supervisor: "Mario Bustos",       bg: "#52735a" },
+  { numero: 2, label: "Grupo 2", supervisor: "Guillermo Bustos",   bg: "#52735a" },
   { numero: 3, label: "Grupo 3", supervisor: "Carlos Chumiento",   bg: "#9e8850" },
   { numero: 4, label: "Grupo 4", supervisor: "brandan alejandro",  bg: "#6b5b7b" },
   { numero: 5, label: "Grupo 5", supervisor: "Elio Rojas",         bg: "#7a5038" },
