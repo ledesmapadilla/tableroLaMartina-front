@@ -395,7 +395,7 @@ function ReparacionesTractor() {
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = `Reparaciones Tractor: ${cc}${descripcion ? ` - ${descripcion}` : ""}`;
-    const columnas = ["Fecha", "Reparación", "Detalle", "Prioridad", "Estado", "Responsable", "Máquina Parada", "Observaciones", "Repuestos"];
+    const columnas = ["Fecha", "Reparación", "Detalle", "Prioridad", "Estado", "Responsable", "Observaciones", "Repuestos"];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparaciones");
@@ -435,7 +435,6 @@ function ReparacionesTractor() {
         t.prioridad || "-",
         t.estado || "-",
         t.responsable || "-",
-        t.maquinaParada ? "SÍ" : "NO",
         t.observaciones || "-",
         repsStr || "-",
       ]);
@@ -445,6 +444,7 @@ function ReparacionesTractor() {
       });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(7).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
     });
 
@@ -455,7 +455,6 @@ function ReparacionesTractor() {
       { width: 13 },
       { width: 13 },
       { width: 20 },
-      { width: 15 },
       { width: 35 },
       { width: 45 },
     ];
