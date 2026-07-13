@@ -72,6 +72,7 @@ function Visitas() {
   const [error, setError]   = useState(false);
   const [tractores, setTractores] = useState([]);
   const [mostrarItinerario, setMostrarItinerario] = useState(false);
+  const [mostrarResumen, setMostrarResumen] = useState(false);
 
   const retroceder = () => {
     if (año === 2026 && mes === 4) return;
@@ -167,6 +168,24 @@ function Visitas() {
   const keyModal    = diaModal ? toKey(año, mes, diaModal) : null;
   const visitasModal = keyModal ? (visitas[keyModal] ?? []) : [];
   const esMinimoMes = año === 2026 && mes === 4;
+
+  // Calcular cantidad de visitas por grupo en el mes seleccionado
+  const counts = {};
+  GRUPOS.forEach((g) => {
+    counts[g.label] = 0;
+  });
+  const targetPrefix = `${año}-${String(mes + 1).padStart(2, "0")}-`;
+  Object.entries(visitas).forEach(([key, list]) => {
+    if (key.startsWith(targetPrefix)) {
+      list.forEach((v) => {
+        if (counts[v.grupo] !== undefined) {
+          counts[v.grupo]++;
+        } else {
+          counts[v.grupo] = 1;
+        }
+      });
+    }
+  });
 
   const getModalTitle = () => {
     if (!diaModal) return "";
@@ -324,7 +343,7 @@ function Visitas() {
             );
           })}
         </div>
-        <div style={{ flexShrink: 0 }}>
+        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", gap: isMobile ? "6px" : "10px" }}>
           <Button
             onClick={() => setMostrarItinerario(true)}
             style={{
@@ -333,10 +352,25 @@ function Visitas() {
               color: "#fff",
               fontWeight: "bold",
               padding: isMobile ? "6px 12px" : "8px 16px",
-              fontSize: isMobile ? "0.82rem" : "1rem"
+              fontSize: isMobile ? "0.82rem" : "1rem",
+              width: "100%"
             }}
           >
             <i className="bi bi-journal-text me-2"></i>Itinerario
+          </Button>
+          <Button
+            onClick={() => setMostrarResumen(true)}
+            style={{
+              backgroundColor: COLOR,
+              borderColor: COLOR,
+              color: "#fff",
+              fontWeight: "bold",
+              padding: isMobile ? "6px 12px" : "8px 16px",
+              fontSize: isMobile ? "0.82rem" : "1rem",
+              width: "100%"
+            }}
+          >
+            <i className="bi bi-bar-chart-fill me-2"></i>Resumen
           </Button>
         </div>
       </div>
@@ -451,6 +485,61 @@ function Visitas() {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setMostrarItinerario(false)}>
+            Cerrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de Resumen Mensual */}
+      <Modal show={mostrarResumen} onHide={() => setMostrarResumen(false)} size="md" centered contentClassName="border border-dark">
+        <Modal.Header closeButton style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+          <Modal.Title className="fw-bold" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
+            <i className="bi bi-bar-chart-fill me-2"></i>Resumen de Visitas
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
+          <h5 className="text-center mb-3 fw-bold" style={{ color: "#3a7070" }}>
+            {MESES_NOMBRE[mes]} {año}
+          </h5>
+          <div className="table-responsive">
+            <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+              <thead>
+                <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
+                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GRUPOS.map((g, idx) => {
+                  const count = counts[g.label] || 0;
+                  return (
+                    <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
+                        <div className="d-flex align-items-center">
+                          <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
+                          <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
+                        </div>
+                      </td>
+                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
+                        {count}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ backgroundColor: "#eaeaea" }}>
+                  <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                    Total
+                  </td>
+                  <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                    {Object.values(counts).reduce((a, b) => a + b, 0)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setMostrarResumen(false)}>
             Cerrar
           </Button>
         </Modal.Footer>
