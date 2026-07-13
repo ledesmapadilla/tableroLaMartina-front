@@ -187,6 +187,15 @@ function Visitas() {
     }
   });
 
+  const añosDisponibles = [...new Set([
+    2025,
+    2026,
+    2027,
+    2028,
+    hoy.getFullYear(),
+    ...Object.keys(visitas).map((k) => Number(k.split("-")[0]))
+  ])].filter(Boolean).sort((a, b) => a - b);
+
   const getModalTitle = () => {
     if (!diaModal) return "";
     const dateObj = new Date(año, mes, diaModal);
@@ -209,16 +218,72 @@ function Visitas() {
       </div>
 
       {/* Navegación mes */}
-      <div className={`d-flex align-items-center justify-content-center ${isMobile ? "gap-3 mb-2" : "gap-4 mb-4"}`}>
+      <div className={`d-flex align-items-center justify-content-center ${isMobile ? "gap-2 mb-2" : "gap-3 mb-4"}`}>
         <button
           onClick={retroceder}
           style={{ ...estiloNavBtn, opacity: esMinimoMes ? 0.3 : 1, cursor: esMinimoMes ? "default" : "pointer" }}
         >
           <i className="bi bi-chevron-left"></i>
         </button>
-        <span style={{ fontSize: isMobile ? "1.1rem" : "1.5rem", fontWeight: "bold", minWidth: isMobile ? "150px" : "250px", textAlign: "center" }}>
-          {MESES_NOMBRE[mes]} {año}
-        </span>
+        <div className="d-flex gap-2 align-items-center justify-content-center" style={{ minWidth: isMobile ? "150px" : "250px" }}>
+          <Form.Select
+            value={mes}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (año === 2026 && val < 4) {
+                setMes(4);
+              } else {
+                setMes(val);
+              }
+            }}
+            style={{
+              fontSize: isMobile ? "0.9rem" : "1.2rem",
+              fontWeight: "bold",
+              color: "#333",
+              border: "1.5px solid #bbb",
+              borderRadius: "6px",
+              padding: isMobile ? "4px 8px" : "6px 12px",
+              width: isMobile ? "110px" : "140px",
+              cursor: "pointer",
+              backgroundColor: "#fff"
+            }}
+            size="sm"
+          >
+            {MESES_NOMBRE.map((mNombre, idx) => (
+              <option key={idx} value={idx} disabled={año === 2026 && idx < 4}>
+                {mNombre}
+              </option>
+            ))}
+          </Form.Select>
+          <Form.Select
+            value={año}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              if (val === 2026 && mes < 4) {
+                setMes(4);
+              }
+              setAño(val);
+            }}
+            style={{
+              fontSize: isMobile ? "0.9rem" : "1.2rem",
+              fontWeight: "bold",
+              color: "#333",
+              border: "1.5px solid #bbb",
+              borderRadius: "6px",
+              padding: isMobile ? "4px 8px" : "6px 12px",
+              width: isMobile ? "85px" : "100px",
+              cursor: "pointer",
+              backgroundColor: "#fff"
+            }}
+            size="sm"
+          >
+            {añosDisponibles.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </Form.Select>
+        </div>
         <button onClick={avanzar} style={estiloNavBtn}>
           <i className="bi bi-chevron-right"></i>
         </button>
@@ -516,9 +581,45 @@ function Visitas() {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
-          <h5 className="text-center mb-3 fw-bold" style={{ color: "#3a7070" }}>
-            {MESES_NOMBRE[mes]} {año}
-          </h5>
+          <div className="d-flex gap-2 justify-content-center mb-4">
+            <Form.Select
+              value={mes}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (año === 2026 && val < 4) {
+                  setMes(4);
+                } else {
+                  setMes(val);
+                }
+              }}
+              style={{ maxWidth: "160px", borderColor: COLOR, color: COLOR, fontWeight: "bold", cursor: "pointer" }}
+              size="sm"
+            >
+              {MESES_NOMBRE.map((nombre, idx) => (
+                <option key={idx} value={idx} disabled={año === 2026 && idx < 4}>
+                  {nombre}
+                </option>
+              ))}
+            </Form.Select>
+            <Form.Select
+              value={año}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                if (val === 2026 && mes < 4) {
+                  setMes(4);
+                }
+                setAño(val);
+              }}
+              style={{ maxWidth: "100px", borderColor: COLOR, color: COLOR, fontWeight: "bold", cursor: "pointer" }}
+              size="sm"
+            >
+              {añosDisponibles.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </Form.Select>
+          </div>
           <div className="table-responsive">
             <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
               <thead>
