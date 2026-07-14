@@ -8,8 +8,8 @@ const GRUPOS = {
   3: { label: "Grupo 3", supervisor: "Carlos Chumiento", bg: "#9e8850" },
   4: { label: "Grupo 4", supervisor: "brandan alejandro", bg: "#6b5b7b" },
   5: { label: "Grupo 5", supervisor: "Elio Rojas", bg: "#7a5038" },
-  6: { label: "Berdina", supervisor: "Berdina", bg: "#7a3535" },
-  7: { label: "San Pablo", supervisor: "San Pablo", bg: "#5a6f40" },
+  6: { label: "Berdina", supervisor: "Victor", bg: "#7a3535" },
+  7: { label: "San Pablo", supervisor: "Kevin", bg: "#5a6f40" },
 };
 
 function TractoresGrupo() {
