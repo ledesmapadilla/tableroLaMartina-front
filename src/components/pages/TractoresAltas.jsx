@@ -14,7 +14,8 @@ const GRUPPO_LABELS = {
   3: "Grupo 3",
   4: "Grupo 4",
   5: "Grupo 5",
-  6: "Sin dueño",
+  6: "Berdina",
+  7: "San Pablo",
 };
 
 const GRUPPO_COLORS = {
@@ -23,7 +24,8 @@ const GRUPPO_COLORS = {
   3: "#9e8850",
   4: "#6b5b7b",
   5: "#7a5038",
-  6: "#777",
+  6: "#7a3535",
+  7: "#5a6f40",
 };
 
 const selectActivo = { backgroundImage: "none" };
@@ -125,9 +127,20 @@ function TractoresAltas() {
     }
   };
 
-  const supervisoresExistentes = [...new Set(
-    tractores.map((t) => (t.supervisor || "").trim()).filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b));
+  const supervisoresExistentes = [...new Set([
+    "Victor",
+    "Kevin",
+    "Jorge Rosas",
+    "Mario Bustos",
+    "Guillermo Bustos",
+    "Carlos Chumiento",
+    "brandan alejandro",
+    "Elio Rojas",
+    "BERDINA",
+    "SP",
+    "ALBERDI",
+    ...tractores.map((t) => (t.supervisor || "").trim()).filter(Boolean)
+  ])].sort((a, b) => a.localeCompare(b));
 
   const exportarExcel = async () => {
     const titulo   = "Alta de Tractores";
@@ -271,7 +284,8 @@ function TractoresAltas() {
               <option value="3">Grupo 3</option>
               <option value="4">Grupo 4</option>
               <option value="5">Grupo 5</option>
-              <option value="6">Sin dueño</option>
+              <option value="6">Berdina</option>
+              <option value="7">San Pablo</option>
             </Form.Select>
             {filtroGrupo && (
               <span onClick={() => setFiltroGrupo("")} style={estiloX}>X</span>
@@ -388,15 +402,9 @@ function TractoresAltas() {
                       {...register("supervisor")}
                     />
                     <datalist id="supervisores-list">
-                      <option value="Jorge Rosas" />
-                      <option value="Mario Bustos" />
-                      <option value="Guillermo Bustos" />
-                      <option value="Carlos Chumiento" />
-                      <option value="brandan alejandro" />
-                      <option value="Elio Rojas" />
-                      <option value="BERDINA" />
-                      <option value="SP" />
-                      <option value="ALBERDI" />
+                      {supervisoresExistentes.map((s) => (
+                        <option key={s} value={s} />
+                      ))}
                     </datalist>
                   </>
                 )}
@@ -409,7 +417,8 @@ function TractoresAltas() {
                   <option value={3}>Grupo 3</option>
                   <option value={4}>Grupo 4</option>
                   <option value={5}>Grupo 5</option>
-                  <option value={6}>Sin dueño</option>
+                  <option value={6}>Berdina</option>
+                  <option value={7}>San Pablo</option>
                 </Form.Select>
               </Col>
             </Row>

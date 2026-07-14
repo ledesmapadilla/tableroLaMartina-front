@@ -8,7 +8,8 @@ const grupos = [
   { numero: 3, label: "Grupo 3", supervisor: "Carlos Chumiento",   bg: "#9e8850" },
   { numero: 4, label: "Grupo 4", supervisor: "brandan alejandro",  bg: "#6b5b7b" },
   { numero: 5, label: "Grupo 5", supervisor: "Elio Rojas",         bg: "#7a5038" },
-  { numero: 6, label: "Sin dueño", supervisor: "BERDINA / SP / ALBERDI", bg: "#777" },
+  { numero: 6, label: "Berdina", supervisor: "Berdina",            bg: "#7a3535" },
+  { numero: 7, label: "San Pablo", supervisor: "San Pablo",        bg: "#5a6f40" },
 ];
 
 function Tractores() {
@@ -29,7 +30,7 @@ function Tractores() {
       </div>
 
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem", overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 220px)", gap: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 220px)", gap: "1.5rem" }}>
           {grupos.map((g) => (
             <div
               key={g.numero}
