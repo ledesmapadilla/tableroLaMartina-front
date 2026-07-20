@@ -220,21 +220,56 @@ function ServicesUltimoService() {
   };
 
   const enviarAvisoWhatsapp = (c) => {
-    const numeros = [];
-    if (c.telefono?.trim()) numeros.push(c.telefono.trim());
-    if (telefonoAviso?.trim() && !numeros.includes(telefonoAviso.trim())) {
-      numeros.push(telefonoAviso.trim());
+    const telResp  = c.telefono?.trim();
+    const telAviso = telefonoAviso?.trim();
+    const texto    = encodeURIComponent(`El service de la camioneta ${c.patente} a cargo de ${c.responsable || "—"} ha vencido`);
+
+    if (telResp && telAviso && telResp !== telAviso) {
+      Swal.fire({
+        title: "Enviar aviso de service",
+        html: `Seleccioná a quién enviar el aviso de <b>${c.patente}</b>:`,
+        icon: "question",
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: `Responsable (${c.responsable || "Sin nombre"})`,
+        denyButtonText: `Número de aviso`,
+        cancelButtonText: `Enviar a ambos`,
+        confirmButtonColor: "#25d366",
+        denyButtonColor: "#4a6fa5",
+        cancelButtonColor: "#1d6f42",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
+          marcarWhatsapp(c._id, true);
+        } else if (result.isDenied) {
+          window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
+          marcarWhatsapp(c._id, true);
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+          window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
+          marcarWhatsapp(c._id, true);
+
+          setTimeout(() => {
+            Swal.fire({
+              title: "Segundo aviso",
+              html: `Se abrió el WhatsApp de <b>${c.responsable || "Responsable"}</b>.<br/><br/>Hacé clic en el botón para enviar el aviso al <b>número general</b> (${telAviso}).`,
+              icon: "info",
+              confirmButtonText: "Abrir 2do WhatsApp",
+              confirmButtonColor: "#25d366",
+            }).then((res2) => {
+              if (res2.isConfirmed) {
+                window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
+              }
+            });
+          }, 300);
+        }
+      });
+    } else {
+      const tel = telResp || telAviso;
+      if (tel) {
+        window.open(`https://wa.me/${tel}?text=${texto}`, "_blank");
+        marcarWhatsapp(c._id, true);
+      }
     }
-
-    if (numeros.length === 0) return;
-
-    const texto = encodeURIComponent(`El service de la camioneta ${c.patente} a cargo de ${c.responsable || "—"} ha vencido`);
-
-    numeros.forEach((tel) => {
-      window.open(`https://wa.me/${tel}?text=${texto}`, "_blank");
-    });
-
-    marcarWhatsapp(c._id, true);
   };
 
   const responsablesUnicos = camionetas
