@@ -222,7 +222,7 @@ function ServicesUltimoService() {
   const enviarAvisoWhatsapp = (c) => {
     const telResp  = c.telefono?.trim();
     const telAviso = telefonoAviso?.trim();
-    const texto    = encodeURIComponent(`El service de la camioneta ${c.patente} a cargo de ${c.responsable || "—"} ha vencido`);
+    const texto    = encodeURIComponent(`Hola. Mensaje automático: El service de la camioneta ${c.patente} a cargo de ${c.responsable || "—"} ha vencido`);
 
     if (telResp && telAviso && telResp !== telAviso) {
       Swal.fire({
