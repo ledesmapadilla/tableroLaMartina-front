@@ -127,7 +127,7 @@ function ServicesUltimoService() {
   };
 
   const exportarExcel = async () => {
-    const titulo   = "Último Service — Camionetas";
+    const titulo   = "Último Service - Camionetas";
     const columnas = ["Patente", "Vehículo", "Responsable", "Fecha", "Km último service", "Observaciones", "Estado"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -284,7 +284,7 @@ function ServicesUltimoService() {
       {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 2rem 0" }}>
         <div className="d-flex align-items-center gap-3">
-          <h3 className="fw-bold mb-0">Último service — Camionetas</h3>
+          <h3 className="fw-bold mb-0">Último service - Camionetas</h3>
           <div ref={dropAñoRef} style={{ position: "relative" }}>
             <button
               onClick={() => setDropAño((v) => !v)}
@@ -326,7 +326,7 @@ function ServicesUltimoService() {
       {/* Número de aviso WhatsApp */}
       <div className="d-flex align-items-center gap-2" style={{ padding: "0.5rem 2rem 0" }}>
         <i className="bi bi-whatsapp" style={{ color: "#25d366", fontSize: "1.1rem" }}></i>
-        <span style={{ fontSize: "0.85rem", color: "#555", whiteSpace: "nowrap" }}>Número de aviso:</span>
+        <span style={{ fontSize: "0.85rem", color: "#555", whiteSpace: "nowrap" }}>Número de aviso (Posleman):</span>
         <input
           type="text"
           value={telefonoAviso}

@@ -68,7 +68,7 @@ function HistorialReparaciones() {
 
       {/* Título */}
       <div className="text-center w-75 mx-auto" style={{ marginTop: "2rem", marginBottom: "1.5rem" }}>
-        <h3 className="fw-bold mb-0">Historial de reparaciones: {patente}{marca ? ` — ${marca}` : ""}</h3>
+        <h3 className="fw-bold mb-0">Historial de reparaciones: {patente}{marca ? ` - ${marca}` : ""}</h3>
         <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>Tareas en proceso y terminadas</p>
       </div>
 

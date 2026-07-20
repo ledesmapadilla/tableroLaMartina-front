@@ -203,7 +203,7 @@ function ServicesKilometros() {
   const cerrarKmModal = () => { setShowKmModal(false); setFiltroKm(""); setDropOpenKm(false); };
 
   const exportarExcel = async () => {
-    const titulo   = "Kilómetros — Camionetas";
+    const titulo   = "Kilómetros - Camionetas";
     const columnas = ["Patente", "Vehículo", "Responsable", ...MESES_CORTOS, "Estado service"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -292,7 +292,7 @@ function ServicesKilometros() {
       {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center" style={{ padding: "1rem 0 0", width: "80%", margin: "0 auto" }}>
         <div className="d-flex align-items-center gap-3">
-          <h3 className="fw-bold mb-0">Kilómetros — Camionetas</h3>
+          <h3 className="fw-bold mb-0">Kilómetros - Camionetas</h3>
           {/* Buscador por patente */}
           <div style={{ position: "relative" }}>
             <Form.Control

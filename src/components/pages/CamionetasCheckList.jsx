@@ -327,7 +327,7 @@ function CamionetasCheckList() {
         {/* Encabezado + Mes — sticky */}
         <div style={{ position: "sticky", top: 0, zIndex: 50, backgroundColor: "#fff", paddingTop: "1rem", paddingBottom: "0.5rem" }}>
           <div className="d-flex justify-content-between align-items-center mb-3 w-75 mx-auto">
-            <h3 className="fw-bold mb-0">Check List — Camionetas</h3>
+            <h3 className="fw-bold mb-0">Check List - Camionetas</h3>
             <div className="d-flex gap-2">
               <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
                 <i className="bi bi-arrow-left me-2"></i>Volver

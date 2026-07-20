@@ -57,7 +57,7 @@ function ResumenCheckList() {
   };
 
   const exportarExcel = async () => {
-    const titulo   = "Resumen Check List — Camionetas";
+    const titulo   = "Resumen Check List - Camionetas";
     const mesesCap = MESES.map((m) => m.charAt(0).toUpperCase() + m.slice(1));
     const columnas = ["Camioneta", "Responsable", ...mesesCap, "Promedio"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -130,7 +130,7 @@ function ResumenCheckList() {
 
       {/* Encabezado */}
       <div className="d-flex justify-content-between align-items-center mb-4 mx-auto" style={{ width: "92%" }}>
-        <h3 className="fw-bold mb-0">Resumen Check List — Camionetas</h3>
+        <h3 className="fw-bold mb-0">Resumen Check List - Camionetas</h3>
         <div className="d-flex gap-2">
           <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
