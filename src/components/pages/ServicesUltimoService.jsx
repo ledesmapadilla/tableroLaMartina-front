@@ -5,7 +5,8 @@ import { Button, Modal, Form, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import ExcelJS from "exceljs";
 
-const INTERVAL_KM = 10000;
+import { getIntervalKm, getEstado } from "../../utils/serviceHelpers";
+
 const AÑOS = Array.from({ length: 10 }, (_, i) => 2026 + i);
 
 const BTN_SRV = { padding: "4px 8px", borderRadius: "6px", border: "none", backgroundColor: "#999", color: "#fff", fontWeight: "bold", fontSize: "0.75rem", lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "2px 2px 6px rgba(0,0,0,0.35)", transition: "transform 0.15s ease, box-shadow 0.15s ease", whiteSpace: "nowrap" };
@@ -16,14 +17,6 @@ const formatFecha = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-};
-
-const getEstado = (odoActual, kmsService) => {
-  if (odoActual == null || kmsService == null) return null;
-  const diff = odoActual - kmsService;
-  if (diff >= INTERVAL_KM)        return { label: "Atrasado",       bg: "#8b4a4a", color: "#fff" };
-  if (diff >= INTERVAL_KM - 1000) return { label: "a 1.000 Km",     bg: "#b89840", color: "#333" };
-  return                                   { label: "Al día",         bg: "#52735a", color: "#fff" };
 };
 
 function ServicesUltimoService() {
@@ -160,7 +153,7 @@ function ServicesUltimoService() {
     camionetas.forEach((c) => {
       const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
       const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
-      const estado = getEstado(km?.kms, reg?.kms);
+      const estado = getEstado(km?.kms, reg?.kms, c.patente);
       const fila = ws.addRow([
         c.patente,
         c.marca,
@@ -393,7 +386,7 @@ function ServicesUltimoService() {
                 .map((c, idx) => {
                 const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
-                const estado = getEstado(km?.kms, reg?.kms);
+                const estado = getEstado(km?.kms, reg?.kms, c.patente);
                 return (
                   <tr key={c._id}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
@@ -414,7 +407,7 @@ function ServicesUltimoService() {
                     <td>{c.responsable || "—"}</td>
                     <td>{reg ? formatFecha(reg.fecha) : "—"}</td>
                     <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? reg.kms.toLocaleString("es-AR") : "—"}</td>
-                    <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? (reg.kms + INTERVAL_KM).toLocaleString("es-AR") : "—"}</td>
+                    <td className="fw-semibold" style={{ width: "80px" }}>{reg?.kms ? (reg.kms + getIntervalKm(c.patente, reg.kms, km?.kms)).toLocaleString("es-AR") : "—"}</td>
                     <td className="fw-semibold" style={{ width: "80px" }}>{km?.kms ? km.kms.toLocaleString("es-AR") : "—"}</td>
                     <td>
                       {(() => {

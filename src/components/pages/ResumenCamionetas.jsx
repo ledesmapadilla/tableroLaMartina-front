@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "react-bootstrap";
 
+import { getIntervalKm } from "../../utils/serviceHelpers";
+
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const MES_CAMPO = ["enero", null, "marzo", null, "mayo", null, "julio", null, "septiembre", null, "noviembre", null];
-const INTERVAL_KM = 10000;
 const INICIO_ANIO = 2026;
 const INICIO_MES  = 5;
 
@@ -36,19 +37,22 @@ function ResumenCamionetas() {
     setServiciosAtrasados(null);
     setUnidadesParadas(null);
     setTareasPendientes(null);
-    fetch("/api/camionetas").then((r) => r.json()).then((d) => { setCamionetas(d); setTotalCamionetas(d.length); }).catch(() => {});
     Promise.all([
+      fetch("/api/camionetas").then((r) => r.json()).catch(() => []),
       fetch("/api/services/ultimos").then((r) => r.json()).catch(() => []),
       fetch("/api/kilometros/ultimos").then((r) => r.json()).catch(() => []),
-    ]).then(([ultimos, ultimosKm]) => {
+    ]).then(([camsList, ultimos, ultimosKm]) => {
+      setCamionetas(camsList);
       const count = ultimosKm.filter((km) => {
         const camId = (km.camioneta?._id ?? km.camioneta)?.toString();
+        const camObj = camsList.find((c) => c._id?.toString() === camId);
         const srv = ultimos.find((u) => {
           const srvId = (u.camioneta?._id ?? u.camioneta)?.toString();
           return srvId === camId;
         });
         if (km.kms == null || srv?.kms == null) return false;
-        return km.kms - srv.kms >= INTERVAL_KM;
+        const interval = getIntervalKm(camObj?.patente, srv.kms, km.kms);
+        return km.kms - srv.kms >= interval;
       }).length;
       setServiciosAtrasados(count);
     }).catch(() => setServiciosAtrasados(0));

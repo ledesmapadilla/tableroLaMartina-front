@@ -5,18 +5,10 @@ import { Button, Modal, Form, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import ExcelJS from "exceljs";
 
-const INTERVAL_KM = 10000;
+import { getEstado } from "../../utils/serviceHelpers";
+
 const MESES_CORTOS = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const AÑOS = Array.from({ length: 10 }, (_, i) => 2026 + i);
-
-
-const getEstado = (odoActual, kmsService) => {
-  if (odoActual == null || kmsService == null) return null;
-  const diff = odoActual - kmsService;
-  if (diff >= INTERVAL_KM)        return { label: "Atrasado",   bg: "#8b4a4a", color: "#fff" };
-  if (diff >= INTERVAL_KM - 1000) return { label: "a 1.000 Km", bg: "#b89840", color: "#333" };
-  return                                   { label: "Al día",    bg: "#52735a", color: "#fff" };
-};
 
 const BTN_PLUS = { height: "26px", width: "26px", borderRadius: "6px", border: "none", backgroundColor: "#999", color: "#fff", fontWeight: "600", fontSize: "1rem", lineHeight: 1, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: "2px 2px 6px rgba(0,0,0,0.35)", transition: "transform 0.15s ease, box-shadow 0.15s ease" };
 const btnEnter = (e) => { e.currentTarget.style.transform = "scale(1.2)"; e.currentTarget.style.boxShadow = "3px 3px 10px rgba(0,0,0,0.5)"; };
@@ -368,7 +360,7 @@ function ServicesKilometros() {
                 .map((c, idx) => {
                 const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
                 const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
-                const estado = getEstado(ultimo?.kms, serv?.kms);
+                const estado = getEstado(ultimo?.kms, serv?.kms, c.patente);
                 return (
                   <tr key={c._id}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
