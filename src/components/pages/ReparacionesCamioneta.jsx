@@ -352,7 +352,7 @@ function ReparacionesCamioneta() {
     });
     ws.getRow(4).height = 18;
 
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
 
     filasFiltradas.forEach((t, idx) => {
       const repsStr = (t.repuestos || [])
@@ -1065,7 +1065,7 @@ function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAl
     });
     ws.getRow(4).height = 18;
 
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
 
     filas.forEach((r, idx) => {
       const fila = ws.addRow([

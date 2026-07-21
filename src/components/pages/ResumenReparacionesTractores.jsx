@@ -152,7 +152,7 @@ function ResumenReparacionesTractores() {
     });
     ws.getRow(4).height = 18;
 
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
 
     trabajosFiltrados.forEach((t, idx) => {
       const p = getPrioridad(t);

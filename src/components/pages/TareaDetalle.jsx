@@ -180,7 +180,7 @@ function TareaDetalle() {
       };
     });
 
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
     const filas = trabajosRealizados.length > 0 ? trabajosRealizados : [{ descripcion: "—" }];
     filas.forEach((tr, idx) => {
       const fila = ws.addRow([

@@ -436,7 +436,7 @@ function ReparacionesTractor() {
     });
     ws.getRow(4).height = 18;
 
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
 
     filasFiltradas.forEach((t, idx) => {
       const repsStr = (t.repuestos || [])
@@ -1152,7 +1152,7 @@ function DetalleRepuestos({ cc, descripcion, reparacion, readOnly, responsablesA
     });
     ws.getRow(4).height = 18;
 
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
 
     filas.forEach((r, idx) => {
       const fila = ws.addRow([
