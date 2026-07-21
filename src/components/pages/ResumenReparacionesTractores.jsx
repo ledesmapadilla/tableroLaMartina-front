@@ -131,15 +131,30 @@ function ResumenReparacionesTractores() {
 
     ws.addRow([]);
 
+    const thinBorder = {
+      top: { style: "thin", color: { argb: "FFE0E0E0" } },
+      left: { style: "thin", color: { argb: "FFE0E0E0" } },
+      bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
+      right: { style: "thin", color: { argb: "FFE0E0E0" } },
+    };
+
     const filaEnc = ws.addRow(columnas);
     filaEnc.eachCell((cell) => {
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFA0A0A0" } },
+        left: { style: "thin", color: { argb: "FFA0A0A0" } },
+        bottom: { style: "medium", color: { argb: "FF808080" } },
+        right: { style: "thin", color: { argb: "FFA0A0A0" } },
+      };
     });
-    ws.getRow(4).height = 16;
+    ws.getRow(4).height = 18;
 
-    trabajosFiltrados.forEach((t) => {
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+
+    trabajosFiltrados.forEach((t, idx) => {
       const p = getPrioridad(t);
       const responsable = t.responsable || t.tractor?.supervisor || "—";
       const fila = ws.addRow([
@@ -152,11 +167,18 @@ function ResumenReparacionesTractores() {
         getEstadoLabel(t.estado),
         responsable,
       ]);
-      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      const isOdd = idx % 2 === 1;
+      fila.eachCell({ includeEmpty: true }, (cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = thinBorder;
+        if (isOdd) cell.fill = zebraFill;
+      });
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
       if (p === "Crítico") {
-        fila.eachCell((cell) => { cell.font = { color: { argb: "FFCC0000" } }; });
+        fila.eachCell({ includeEmpty: true }, (cell) => {
+          cell.font = { color: { argb: "FFCC0000" }, bold: true };
+        });
       }
     });
 

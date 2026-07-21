@@ -415,15 +415,30 @@ function ReparacionesTractor() {
 
     ws.addRow([]);
 
+    const thinBorder = {
+      top: { style: "thin", color: { argb: "FFE0E0E0" } },
+      left: { style: "thin", color: { argb: "FFE0E0E0" } },
+      bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
+      right: { style: "thin", color: { argb: "FFE0E0E0" } },
+    };
+
     const filaEnc = ws.addRow(columnas);
     filaEnc.eachCell((cell) => {
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFA0A0A0" } },
+        left: { style: "thin", color: { argb: "FFA0A0A0" } },
+        bottom: { style: "medium", color: { argb: "FF808080" } },
+        right: { style: "thin", color: { argb: "FFA0A0A0" } },
+      };
     });
     ws.getRow(4).height = 18;
 
-    filasFiltradas.forEach((t) => {
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
+
+    filasFiltradas.forEach((t, idx) => {
       const repsStr = (t.repuestos || [])
         .map((r) => `${r.cantidad}x ${r.repuesto} (${pesos(r.precio)})`)
         .join(", ");
@@ -439,8 +454,11 @@ function ReparacionesTractor() {
         repsStr || "-",
       ]);
 
-      fila.eachCell((cell) => {
+      const isOdd = idx % 2 === 1;
+      fila.eachCell({ includeEmpty: true }, (cell) => {
         cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = thinBorder;
+        if (isOdd) cell.fill = zebraFill;
       });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
@@ -1113,13 +1131,28 @@ function DetalleRepuestos({ cc, descripcion, reparacion, readOnly, responsablesA
 
     ws.addRow([]);
 
+    const thinBorder = {
+      top: { style: "thin", color: { argb: "FFE0E0E0" } },
+      left: { style: "thin", color: { argb: "FFE0E0E0" } },
+      bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
+      right: { style: "thin", color: { argb: "FFE0E0E0" } },
+    };
+
     const filaEnc = ws.addRow(columnas);
     filaEnc.eachCell((cell) => {
       cell.font = { bold: true };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFA0A0A0" } },
+        left: { style: "thin", color: { argb: "FFA0A0A0" } },
+        bottom: { style: "medium", color: { argb: "FF808080" } },
+        right: { style: "thin", color: { argb: "FFA0A0A0" } },
+      };
     });
     ws.getRow(4).height = 18;
+
+    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF2F4F8" } };
 
     filas.forEach((r, idx) => {
       const fila = ws.addRow([
@@ -1132,8 +1165,11 @@ function DetalleRepuestos({ cc, descripcion, reparacion, readOnly, responsablesA
         r.estado || "-",
         r.observaciones || "-",
       ]);
-      fila.eachCell((cell) => {
+      const isOdd = idx % 2 === 1;
+      fila.eachCell({ includeEmpty: true }, (cell) => {
         cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = thinBorder;
+        if (isOdd) cell.fill = zebraFill;
       });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
