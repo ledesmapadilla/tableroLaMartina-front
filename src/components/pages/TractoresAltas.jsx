@@ -147,6 +147,8 @@ function TractoresAltas() {
   const encargadosExistentes = [...new Set([
     "Carlos Carro",
     "Tomas Marquez",
+    "Victor",
+    "Kevin",
     ...tractores.map((t) => (t.encargadoGral || "").trim()).filter(Boolean)
   ])].sort((a, b) => a.localeCompare(b));
 
