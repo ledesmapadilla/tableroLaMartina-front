@@ -145,6 +145,8 @@ function TractoresAltas() {
   ])].sort((a, b) => a.localeCompare(b));
 
   const encargadosExistentes = [...new Set([
+    "Carlos Carro",
+    "Tomas Marquez",
     ...tractores.map((t) => (t.encargadoGral || "").trim()).filter(Boolean)
   ])].sort((a, b) => a.localeCompare(b));
 
@@ -215,7 +217,7 @@ function TractoresAltas() {
 
   const tractoresFiltrados = tractores.filter((t) => {
     const matchCc = !filtroCc || (t.cc || "").toLowerCase().includes(filtroCc.toLowerCase());
-    const matchEncargado = !filtroEncargado || (t.encargadoGral || "").toLowerCase().includes(filtroEncargado.toLowerCase());
+    const matchEncargado = !filtroEncargado || (t.encargadoGral || "").trim() === filtroEncargado;
     const matchSupervisor = !filtroSupervisor || (t.supervisor || "").trim() === filtroSupervisor;
     const matchGrupo = !filtroGrupo || (t.gruppo ?? 6) === Number(filtroGrupo);
     return matchCc && matchEncargado && matchSupervisor && matchGrupo;
@@ -262,15 +264,18 @@ function TractoresAltas() {
           </div>
 
           {/* Filtro Encargado gral. */}
-          <div className="position-relative" style={{ width: "170px" }}>
-            <Form.Control
+          <div className="position-relative" style={{ width: "190px" }}>
+            <Form.Select
               size="sm"
-              type="text"
-              placeholder="Encargado gral..."
               value={filtroEncargado}
               onChange={(e) => setFiltroEncargado(e.target.value)}
-              style={{ paddingRight: filtroEncargado ? "28px" : undefined }}
-            />
+              style={filtroEncargado ? selectActivo : {}}
+            >
+              <option value="">Encargado (todos)</option>
+              {encargadosExistentes.map((e) => (
+                <option key={e} value={e}>{e}</option>
+              ))}
+            </Form.Select>
             {filtroEncargado && (
               <span onClick={() => setFiltroEncargado("")} style={estiloX}>X</span>
             )}
@@ -413,18 +418,12 @@ function TractoresAltas() {
               </Col>
               <Col md={4}>
                 <Form.Label className="fw-semibold">Encargado gral.</Form.Label>
-                <Form.Control
-                  list="encargados-list"
-                  placeholder="Nombre encargado"
-                  {...register("encargadoGral", {
-                    maxLength: { value: 100, message: "Máximo 100 caracteres" },
-                  })}
-                />
-                <datalist id="encargados-list">
+                <Form.Select {...register("encargadoGral")}>
+                  <option value="">— Seleccionar —</option>
                   {encargadosExistentes.map((e) => (
-                    <option key={e} value={e} />
+                    <option key={e} value={e}>{e}</option>
                   ))}
-                </datalist>
+                </Form.Select>
               </Col>
               <Col md={4}>
                 <Form.Label className="fw-semibold">Supervisor</Form.Label>
