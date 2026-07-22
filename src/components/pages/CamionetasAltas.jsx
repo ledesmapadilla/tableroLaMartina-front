@@ -53,7 +53,7 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
             backgroundColor: "#fff",
             border: "1px solid #000",
             borderRadius: "4px",
-            maxHeight: "180px",
+            maxHeight: "320px",
             overflowY: "auto",
             boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
             marginTop: "2px",
@@ -277,7 +277,7 @@ function CamionetasAltas() {
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <Modal.Body style={{ overflow: "visible", minHeight: "260px" }}>
+          <Modal.Body style={{ overflow: "visible", minHeight: "380px" }}>
             <Row className="g-3">
               <Col md={6}>
                 <Form.Label className="fw-semibold">Marca</Form.Label>
