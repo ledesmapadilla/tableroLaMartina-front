@@ -88,6 +88,20 @@ function CamionetasAltas() {
     }
   };
 
+  const responsablesExistentes = [...new Set([
+    "Zamorano",
+    "Mauricio",
+    "Nelson",
+    "Juan José",
+    "Nacho",
+    "Agustín",
+    "Carlos Carro",
+    "Tomas Marquez",
+    "Victor",
+    "Kevin",
+    ...camionetas.map((c) => (c.responsable || "").trim()).filter(Boolean)
+  ])].sort((a, b) => a.localeCompare(b));
+
   return (
     <Container className="py-4">
 
@@ -206,15 +220,35 @@ function CamionetasAltas() {
               </Col>
               <Col md={12}>
                 <Form.Label className="fw-semibold">Responsable</Form.Label>
-                <Form.Control
-                  placeholder="Nombre del responsable"
-                  {...register("responsable", {
-                    required: "El responsable es requerido",
-                    minLength: { value: 2, message: "Mínimo 2 caracteres" },
-                    maxLength: { value: 100, message: "Máximo 100 caracteres" },
-                  })}
-                  isInvalid={!!errors.responsable}
-                />
+                {editando ? (
+                  <Form.Select
+                    {...register("responsable", { required: "El responsable es requerido" })}
+                    isInvalid={!!errors.responsable}
+                  >
+                    <option value="">— Seleccionar responsable —</option>
+                    {responsablesExistentes.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </Form.Select>
+                ) : (
+                  <>
+                    <Form.Control
+                      list="responsables-list"
+                      placeholder="Seleccionar o escribir nombre"
+                      {...register("responsable", {
+                        required: "El responsable es requerido",
+                        minLength: { value: 2, message: "Mínimo 2 caracteres" },
+                        maxLength: { value: 100, message: "Máximo 100 caracteres" },
+                      })}
+                      isInvalid={!!errors.responsable}
+                    />
+                    <datalist id="responsables-list">
+                      {responsablesExistentes.map((r) => (
+                        <option key={r} value={r} />
+                      ))}
+                    </datalist>
+                  </>
+                )}
                 <Form.Control.Feedback type="invalid">{errors.responsable?.message}</Form.Control.Feedback>
               </Col>
               <Col md={6}>
