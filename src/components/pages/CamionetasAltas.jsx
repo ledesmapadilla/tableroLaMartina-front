@@ -1,17 +1,112 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useState, useRef } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col } from "react-bootstrap";
 
 const API = "/api/camionetas";
 
+function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }) {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filtered = options.filter((o) =>
+    o.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  return (
+    <div ref={containerRef} className="position-relative">
+      <Form.Control
+        placeholder="— Seleccionar o escribir responsable —"
+        value={open ? filter : (value || "")}
+        onFocus={() => {
+          setFilter("");
+          setOpen(true);
+        }}
+        onChange={(e) => {
+          setFilter(e.target.value);
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        isInvalid={isInvalid}
+        style={{ cursor: "pointer" }}
+      />
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            zIndex: 1060,
+            backgroundColor: "#fff",
+            border: "1px solid #000",
+            borderRadius: "4px",
+            maxHeight: "180px",
+            overflowY: "auto",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+            marginTop: "2px",
+          }}
+        >
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-muted" style={{ fontSize: "0.85rem" }}>
+              Sin coincidencias. Escribe para ingresar "{filter}"
+            </div>
+          ) : (
+            filtered.map((r) => (
+              <div
+                key={r}
+                className="px-3 py-2"
+                style={{
+                  cursor: "pointer",
+                  fontSize: "0.88rem",
+                  backgroundColor: value === r ? "#e9ecef" : "#fff",
+                  fontWeight: value === r ? "600" : "normal",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f3f5")}
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = value === r ? "#e9ecef" : "#fff")
+                }
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(r);
+                  setFilter("");
+                  setOpen(false);
+                }}
+              >
+                {r}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+      {isInvalid && errorMsg && (
+        <Form.Control.Feedback type="invalid" style={{ display: "block" }}>
+          {errorMsg}
+        </Form.Control.Feedback>
+      )}
+    </div>
+  );
+}
+
 function CamionetasAltas() {
   const navigate = useNavigate();
   const [camionetas, setCamionetas] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm();
+  const responsableValue = useWatch({ control, name: "responsable" });
 
   const cargar = async () => {
     try {
@@ -174,7 +269,7 @@ function CamionetasAltas() {
       </div>
 
       {/* Modal */}
-      <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border border-dark">
+      <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border border-dark overflow-visible">
         <Modal.Header closeButton>
           <Modal.Title>
             <i className="bi bi-truck-front-fill me-2 text-primary"></i>
@@ -182,7 +277,7 @@ function CamionetasAltas() {
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <Modal.Body>
+          <Modal.Body style={{ overflow: "visible", minHeight: "260px" }}>
             <Row className="g-3">
               <Col md={6}>
                 <Form.Label className="fw-semibold">Marca</Form.Label>
@@ -220,36 +315,17 @@ function CamionetasAltas() {
               </Col>
               <Col md={12}>
                 <Form.Label className="fw-semibold">Responsable</Form.Label>
-                {editando ? (
-                  <Form.Select
-                    {...register("responsable", { required: "El responsable es requerido" })}
-                    isInvalid={!!errors.responsable}
-                  >
-                    <option value="">— Seleccionar responsable —</option>
-                    {responsablesExistentes.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </Form.Select>
-                ) : (
-                  <>
-                    <Form.Control
-                      list="responsables-list"
-                      placeholder="Seleccionar o escribir nombre"
-                      {...register("responsable", {
-                        required: "El responsable es requerido",
-                        minLength: { value: 2, message: "Mínimo 2 caracteres" },
-                        maxLength: { value: 100, message: "Máximo 100 caracteres" },
-                      })}
-                      isInvalid={!!errors.responsable}
-                    />
-                    <datalist id="responsables-list">
-                      {responsablesExistentes.map((r) => (
-                        <option key={r} value={r} />
-                      ))}
-                    </datalist>
-                  </>
-                )}
-                <Form.Control.Feedback type="invalid">{errors.responsable?.message}</Form.Control.Feedback>
+                <input
+                  type="hidden"
+                  {...register("responsable", { required: "El responsable es requerido" })}
+                />
+                <SelectResponsableDown
+                  value={responsableValue}
+                  onChange={(val) => setValue("responsable", val, { shouldValidate: true })}
+                  options={responsablesExistentes}
+                  isInvalid={!!errors.responsable}
+                  errorMsg={errors.responsable?.message}
+                />
               </Col>
               <Col md={6}>
                 <Form.Label className="fw-semibold">
