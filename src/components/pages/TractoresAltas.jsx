@@ -48,6 +48,7 @@ function TractoresAltas() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
   const [filtroCc, setFiltroCc] = useState("");
+  const [filtroEncargado, setFiltroEncargado] = useState("");
   const [filtroSupervisor, setFiltroSupervisor] = useState("");
   const [filtroGrupo, setFiltroGrupo] = useState("");
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
@@ -66,7 +67,7 @@ function TractoresAltas() {
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ gruppo: 6 });
+    reset({ gruppo: 6, encargadoGral: "" });
     setShowModal(true);
   };
 
@@ -75,6 +76,7 @@ function TractoresAltas() {
     setValue("cc", t.cc);
     setValue("descripcion", t.descripcion || "");
     setValue("supervisor", t.supervisor || "");
+    setValue("encargadoGral", t.encargadoGral || "");
     setValue("gruppo", t.gruppo ?? 6);
     setShowModal(true);
   };
@@ -142,9 +144,13 @@ function TractoresAltas() {
     ...tractores.map((t) => (t.supervisor || "").trim()).filter(Boolean)
   ])].sort((a, b) => a.localeCompare(b));
 
+  const encargadosExistentes = [...new Set([
+    ...tractores.map((t) => (t.encargadoGral || "").trim()).filter(Boolean)
+  ])].sort((a, b) => a.localeCompare(b));
+
   const exportarExcel = async () => {
     const titulo   = "Alta de Tractores";
-    const columnas = ["#", "Grupo", "Supervisor", "CC", "Descripción"];
+    const columnas = ["#", "Encargado gral.", "Grupo", "Supervisor", "CC", "Descripción"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = new ExcelJS.Workbook();
@@ -178,17 +184,19 @@ function TractoresAltas() {
       const gruppoLabel = GRUPPO_LABELS[gruppoNum] || "Sin dueño";
       const fila = ws.addRow([
         idx + 1,
+        t.encargadoGral || "—",
         gruppoLabel,
         t.supervisor || "—",
         t.cc,
         t.descripcion || "—",
       ]);
       fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
-      fila.getCell(5).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(6).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
       { width: 6 },
+      { width: 22 },
       { width: 14 },
       { width: 24 },
       { width: 14 },
@@ -207,9 +215,10 @@ function TractoresAltas() {
 
   const tractoresFiltrados = tractores.filter((t) => {
     const matchCc = !filtroCc || (t.cc || "").toLowerCase().includes(filtroCc.toLowerCase());
+    const matchEncargado = !filtroEncargado || (t.encargadoGral || "").toLowerCase().includes(filtroEncargado.toLowerCase());
     const matchSupervisor = !filtroSupervisor || (t.supervisor || "").trim() === filtroSupervisor;
     const matchGrupo = !filtroGrupo || (t.gruppo ?? 6) === Number(filtroGrupo);
-    return matchCc && matchSupervisor && matchGrupo;
+    return matchCc && matchEncargado && matchSupervisor && matchGrupo;
   });
 
   return (
@@ -238,7 +247,7 @@ function TractoresAltas() {
         {/* Filtros */}
         <div className="d-flex gap-3 mb-3 align-items-center flex-wrap">
           {/* Filtro CC */}
-          <div className="position-relative" style={{ width: "160px" }}>
+          <div className="position-relative" style={{ width: "140px" }}>
             <Form.Control
               size="sm"
               type="text"
@@ -252,8 +261,23 @@ function TractoresAltas() {
             )}
           </div>
 
+          {/* Filtro Encargado gral. */}
+          <div className="position-relative" style={{ width: "170px" }}>
+            <Form.Control
+              size="sm"
+              type="text"
+              placeholder="Encargado gral..."
+              value={filtroEncargado}
+              onChange={(e) => setFiltroEncargado(e.target.value)}
+              style={{ paddingRight: filtroEncargado ? "28px" : undefined }}
+            />
+            {filtroEncargado && (
+              <span onClick={() => setFiltroEncargado("")} style={estiloX}>X</span>
+            )}
+          </div>
+
           {/* Filtro Supervisor */}
-          <div className="position-relative" style={{ width: "200px" }}>
+          <div className="position-relative" style={{ width: "180px" }}>
             <Form.Select
               size="sm"
               value={filtroSupervisor}
@@ -271,7 +295,7 @@ function TractoresAltas() {
           </div>
 
           {/* Filtro Grupo */}
-          <div className="position-relative" style={{ width: "160px" }}>
+          <div className="position-relative" style={{ width: "150px" }}>
             <Form.Select
               size="sm"
               value={filtroGrupo}
@@ -299,6 +323,7 @@ function TractoresAltas() {
           <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
             <tr className="fw-normal align-middle">
               <th className="fw-normal" style={{ width: "40px" }}>#</th>
+              <th className="fw-normal">Encargado gral.</th>
               <th className="fw-normal">Grupo</th>
               <th className="fw-normal">Supervisor</th>
               <th className="fw-normal">CC</th>
@@ -309,7 +334,7 @@ function TractoresAltas() {
           <tbody>
             {tractoresFiltrados.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-muted py-4">
+                <td colSpan={7} className="text-muted py-4">
                   No hay tractores que coincidan con los filtros
                 </td>
               </tr>
@@ -321,6 +346,7 @@ function TractoresAltas() {
                 return (
                   <tr key={t._id}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
+                    <td>{t.encargadoGral || "-"}</td>
                     <td>
                       <span style={{ display: "inline-block", backgroundColor: gruppoColor, color: "#fff", borderRadius: "4px", padding: "2px 10px" }}>
                         {gruppoLabel}
@@ -385,7 +411,22 @@ function TractoresAltas() {
                 />
                 <Form.Control.Feedback type="invalid">{errors.descripcion?.message}</Form.Control.Feedback>
               </Col>
-              <Col md={8}>
+              <Col md={4}>
+                <Form.Label className="fw-semibold">Encargado gral.</Form.Label>
+                <Form.Control
+                  list="encargados-list"
+                  placeholder="Nombre encargado"
+                  {...register("encargadoGral", {
+                    maxLength: { value: 100, message: "Máximo 100 caracteres" },
+                  })}
+                />
+                <datalist id="encargados-list">
+                  {encargadosExistentes.map((e) => (
+                    <option key={e} value={e} />
+                  ))}
+                </datalist>
+              </Col>
+              <Col md={4}>
                 <Form.Label className="fw-semibold">Supervisor</Form.Label>
                 {editando ? (
                   <Form.Select {...register("supervisor")}>
