@@ -48,7 +48,7 @@ function Camionetas() {
         {tarjetas.map((t) => (
           <div
             key={t.ruta}
-            className="d-flex flex-column align-items-center justify-content-center text-white"
+            className="d-flex flex-column align-items-center justify-content-center text-black"
             style={{
               backgroundColor: t.bg,
               borderRadius: "16px",

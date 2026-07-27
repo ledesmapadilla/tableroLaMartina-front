@@ -187,7 +187,7 @@ function ResumenCamionetas() {
                 <div style={{ display: "flex", flexDirection: "column", width: "52%" }}>
                   {esImpar && (
                     <div
-                      className="d-flex flex-column align-items-center justify-content-center text-white"
+                      className="d-flex flex-column align-items-center justify-content-center text-black"
                       style={{ flex: 1, fontSize: "1rem", fontWeight: "600", cursor: "pointer", transition: "background-color 0.15s", borderBottom: "1px solid #000", backgroundColor: clBg }}
                       onClick={() => navigate("/camionetas/checklist", { state: { mes: i + 1, anio } })}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = clBgHover)}
@@ -205,7 +205,7 @@ function ResumenCamionetas() {
                     const svBgHover = kmSinRelevar === null ? "rgba(74, 111, 165, 0.85)" : kmSinRelevar === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
                     return (
                       <div
-                        className="d-flex flex-column align-items-center justify-content-center text-white"
+                        className="d-flex flex-column align-items-center justify-content-center text-black"
                         style={{ flex: 1, fontSize: "1rem", fontWeight: "600", cursor: "pointer", transition: "background-color 0.15s", backgroundColor: svBg }}
                         onClick={() => navigate("/camionetas/services/kilometros", { state: { mes: i + 1, anio } })}
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = svBgHover)}
@@ -231,7 +231,7 @@ function ResumenCamionetas() {
             const bgHover = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.85)" : serviciosAtrasados === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
               <div
-                className="d-flex flex-column align-items-center justify-content-center text-white"
+                className="d-flex flex-column align-items-center justify-content-center text-black"
                 style={{ gridColumn: "2 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
                 onClick={() => navigate("/camionetas/services/ultimo-service")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
@@ -251,7 +251,7 @@ function ResumenCamionetas() {
             const bgHover = tareasPendientes === null ? "rgba(74, 111, 165, 0.85)" : tareasPendientes === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
               <div
-                className="d-flex flex-column align-items-center justify-content-center text-white"
+                className="d-flex flex-column align-items-center justify-content-center text-black"
                 style={{ gridColumn: "4 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
                 onClick={() => navigate("/camionetas/services/reparaciones")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
@@ -271,7 +271,7 @@ function ResumenCamionetas() {
             const bgHover = unidadesParadas === null ? "rgba(74, 111, 165, 0.85)" : unidadesParadas === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
               <div
-                className="d-flex flex-column align-items-center justify-content-center text-white"
+                className="d-flex flex-column align-items-center justify-content-center text-black"
                 style={{ gridColumn: "6 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
                 onClick={() => navigate("/camionetas/checklist")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
