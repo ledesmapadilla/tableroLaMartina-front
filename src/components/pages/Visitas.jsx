@@ -734,18 +734,8 @@ function Visitas() {
                     <div className="d-flex align-items-center gap-2 flex-wrap">
                       <strong style={{ color: colorGrupo(v.grupo), fontSize: "1rem" }}>{v.grupo}</strong>
                       {v.cc && (
-                        <span
-                          className="badge"
-                          style={{
-                            backgroundColor: "#3a7070",
-                            color: "#fff",
-                            fontSize: "0.82rem",
-                            fontWeight: "600",
-                            padding: "4px 8px",
-                            borderRadius: "4px"
-                          }}
-                        >
-                          <i className="bi bi-geo-alt-fill me-1"></i>CC: {v.cc}
+                        <span style={{ color: "#000", fontWeight: "normal", fontSize: "0.92rem" }}>
+                          ({v.cc})
                         </span>
                       )}
                     </div>
