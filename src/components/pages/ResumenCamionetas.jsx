@@ -195,7 +195,7 @@ function ResumenCamionetas() {
                     >
                       <span>Check List</span>
                       {info !== null && info.pendientes > 0 && (
-                        <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#ffe699", fontWeight: "600" }}>{info.pendientes} pendiente{info.pendientes > 1 ? "s" : ""}</span>
+                        <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#ffff00", fontWeight: "800", textShadow: "0px 1px 3px #000, 0px 0px 4px #000" }}>{info.pendientes} pendiente{info.pendientes > 1 ? "s" : ""}</span>
                       )}
                     </div>
                   )}
@@ -213,7 +213,7 @@ function ResumenCamionetas() {
                       >
                         <span>Kilometraje</span>
                         {kmSinRelevar !== null && kmSinRelevar > 0 && (
-                          <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#ffe699", fontWeight: "600" }}>
+                          <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#ffff00", fontWeight: "800", textShadow: "0px 1px 3px #000, 0px 0px 4px #000" }}>
                             {kmSinRelevar} sin relevar
                           </span>
                         )}
