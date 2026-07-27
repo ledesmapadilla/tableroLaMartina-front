@@ -244,23 +244,34 @@ function Visitas() {
     try {
       const nombreMes = MESES_NOMBRE[mes];
       const titulo = `Resumen de Visitas por Grupo - ${nombreMes} ${año}`;
+      const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
       const columnas = ["Grupo", "Cantidad de Visitas"];
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("Visitas por Grupo");
 
+      // Título sin relleno
       ws.mergeCells(1, 1, 1, 2);
       const celdaTitulo = ws.getCell("A1");
       celdaTitulo.value = titulo;
-      celdaTitulo.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
-      celdaTitulo.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
+      celdaTitulo.font = { bold: true, size: 14, color: { argb: "FF000000" } };
       celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-      ws.getRow(1).height = 28;
+      ws.getRow(1).height = 24;
+
+      // Fecha abajo del título
+      ws.mergeCells(2, 1, 2, 2);
+      const celdaFecha = ws.getCell("A2");
+      celdaFecha.value = `Fecha: ${fechaHoy}`;
+      celdaFecha.font = { italic: true, size: 10, color: { argb: "FF555555" } };
+      celdaFecha.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(2).height = 18;
+
+      ws.addRow([]); // Fila vacía
 
       const filaEncabezado = ws.addRow(columnas);
       filaEncabezado.height = 22;
       filaEncabezado.eachCell((cell) => {
         cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E5959" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
       });
 
@@ -302,23 +313,34 @@ function Visitas() {
     try {
       const nombreMes = MESES_NOMBRE[mes];
       const titulo = `Resumen de Visitas por Centro de Costo (CC) - ${nombreMes} ${año}`;
+      const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
       const columnas = ["Centro de Costo (CC)", "Descripción", "Cantidad de Visitas"];
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet("Visitas por CC");
 
+      // Título sin relleno
       ws.mergeCells(1, 1, 1, 3);
       const celdaTitulo = ws.getCell("A1");
       celdaTitulo.value = titulo;
-      celdaTitulo.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
-      celdaTitulo.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
+      celdaTitulo.font = { bold: true, size: 14, color: { argb: "FF000000" } };
       celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-      ws.getRow(1).height = 28;
+      ws.getRow(1).height = 24;
+
+      // Fecha abajo del título
+      ws.mergeCells(2, 1, 2, 3);
+      const celdaFecha = ws.getCell("A2");
+      celdaFecha.value = `Fecha: ${fechaHoy}`;
+      celdaFecha.font = { italic: true, size: 10, color: { argb: "FF555555" } };
+      celdaFecha.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(2).height = 18;
+
+      ws.addRow([]); // Fila vacía
 
       const filaEncabezado = ws.addRow(columnas);
       filaEncabezado.height = 22;
       filaEncabezado.eachCell((cell) => {
         cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E5959" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
       });
 
@@ -835,7 +857,7 @@ function Visitas() {
                   onClick={exportarExcelGrupos}
                 >
                   <i className="bi bi-file-earmark-excel-fill fs-6"></i>
-                  <span>Exportar Excel</span>
+                  <span>Excel</span>
                 </Button>
               </div>
               <div className="table-responsive">
@@ -888,7 +910,7 @@ function Visitas() {
                   onClick={exportarExcelCC}
                 >
                   <i className="bi bi-file-earmark-excel-fill fs-6"></i>
-                  <span>Exportar Excel</span>
+                  <span>Excel</span>
                 </Button>
               </div>
               <div className="table-responsive">
