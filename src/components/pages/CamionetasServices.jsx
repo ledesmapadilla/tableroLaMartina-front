@@ -5,22 +5,22 @@ const tarjetas = [
   {
     titulo: "Kilómetros",
     ruta: "/camionetas/services/kilometros",
-    bg: "rgba(74, 111, 165, 0.65)",
-    bgHover: "rgba(74, 111, 165, 0.85)",
+    bg: "rgba(74, 111, 165, 0.85)",
+    bgHover: "rgba(74, 111, 165, 0.65)",
     icono: "bi bi-speedometer2",
   },
   {
     titulo: "Último service",
     ruta: "/camionetas/services/ultimo-service",
-    bg: "rgba(45, 140, 75, 0.78)",
-    bgHover: "rgba(35, 115, 60, 0.92)",
+    bg: "rgba(35, 115, 60, 0.92)",
+    bgHover: "rgba(45, 140, 75, 0.78)",
     icono: "bi bi-calendar-check-fill",
   },
   {
     titulo: "Reparaciones",
     ruta: "/camionetas/services/reparaciones",
-    bg: "rgba(255, 30, 30, 0.75)",
-    bgHover: "rgba(255, 0, 0, 0.9)",
+    bg: "rgba(255, 0, 0, 0.9)",
+    bgHover: "rgba(255, 30, 30, 0.75)",
     icono: "bi bi-tools",
   },
 ];

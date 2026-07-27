@@ -5,22 +5,22 @@ const tarjetas = [
   {
     titulo: "Check List",
     ruta: "/camionetas/checklist",
-    bg: "rgba(74, 111, 165, 0.65)",
-    bgHover: "rgba(74, 111, 165, 0.85)",
+    bg: "rgba(74, 111, 165, 0.85)",
+    bgHover: "rgba(74, 111, 165, 0.65)",
     icono: "bi bi-clipboard2-check-fill",
   },
   {
     titulo: "Services",
     ruta: "/camionetas/services",
-    bg: "rgba(45, 140, 75, 0.78)",
-    bgHover: "rgba(35, 115, 60, 0.92)",
+    bg: "rgba(35, 115, 60, 0.92)",
+    bgHover: "rgba(45, 140, 75, 0.78)",
     icono: "bi bi-gear-fill",
   },
   {
     titulo: "Tablero de Control",
     ruta: "/camionetas/resumen",
-    bg: "rgba(107, 91, 123, 0.65)",
-    bgHover: "rgba(107, 91, 123, 0.85)",
+    bg: "rgba(107, 91, 123, 0.85)",
+    bgHover: "rgba(107, 91, 123, 0.65)",
     icono: "bi bi-speedometer",
   },
 ];
