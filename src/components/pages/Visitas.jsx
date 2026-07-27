@@ -148,6 +148,23 @@ function Visitas() {
 
   const agregarVisita = async () => {
     if (!form.grupo) { setError(true); return; }
+
+    const esGrupoConCC = ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"].includes(form.grupo);
+    if (esGrupoConCC && !form.cc) {
+      Swal.fire({
+        icon: "warning",
+        title: "Selección requerida",
+        text: "Debés seleccionar al menos un Centro de Costo o 'Ninguno' para este grupo.",
+      });
+      const gNum = getGruppoNumFromLabel(form.grupo);
+      const tractoresDelGrupo = tractores.filter(
+        (t) => gNum === null || (t.gruppo ?? 6) === gNum
+      );
+      setCcSeleccionadosTemp([]);
+      setCcModalOpen(true);
+      return;
+    }
+
     const key = toKey(año, mes, diaModal);
     try {
       const res = await fetch(API, {
@@ -847,19 +864,21 @@ function Visitas() {
             const tractoresDelGrupo = tractores.filter(
               (t) => gNum === null || (t.gruppo ?? 6) === gNum
             );
-            if (tractoresDelGrupo.length === 0) {
-              return <p className="text-muted text-center py-3">No hay tractores ni CCs registrados para este grupo</p>;
-            }
+            const opcionesCCModal = [
+              { cc: "Ninguno", descripcion: "Sin CC asignado" },
+              ...tractoresDelGrupo
+            ];
+
             return (
               <div className="d-flex flex-column gap-2">
                 <div className="d-flex justify-content-between align-items-center mb-2 px-1">
-                  <small className="text-muted">Marcar con tilde los CCs deseados:</small>
+                  <small className="text-muted">Marcar con tilde los CCs deseados (mínimo 1):</small>
                   <div className="d-flex gap-2">
                     <Button
                       variant="link"
                       size="sm"
                       className="p-0 text-decoration-none"
-                      onClick={() => setCcSeleccionadosTemp(tractoresDelGrupo.map((t) => t.cc))}
+                      onClick={() => setCcSeleccionadosTemp(opcionesCCModal.map((t) => t.cc))}
                     >
                       Marcar todos
                     </Button>
@@ -874,7 +893,7 @@ function Visitas() {
                     </Button>
                   </div>
                 </div>
-                {tractoresDelGrupo.map((t) => {
+                {opcionesCCModal.map((t) => {
                   const isChecked = ccSeleccionadosTemp.includes(t.cc);
                   return (
                     <div
@@ -897,7 +916,7 @@ function Visitas() {
                           style={{ pointerEvents: "none", transform: "scale(1.1)" }}
                         />
                         <div>
-                          <span className="fw-bold" style={{ color: "#3a7070", fontSize: "0.95rem" }}>
+                          <span className="fw-bold" style={{ color: t.cc === "Ninguno" ? "#777" : "#3a7070", fontSize: "0.95rem" }}>
                             {t.cc}
                           </span>
                           {t.descripcion && (
@@ -918,8 +937,16 @@ function Visitas() {
             Cancelar
           </Button>
           <Button
-            style={{ backgroundColor: "#3a7070", border: "none", color: "#fff" }}
+            style={{ backgroundColor: ccSeleccionadosTemp.length > 0 ? "#3a7070" : "#a0aec0", border: "none", color: "#fff" }}
             onClick={() => {
+              if (ccSeleccionadosTemp.length === 0) {
+                Swal.fire({
+                  icon: "warning",
+                  title: "Selección requerida",
+                  text: "Debés seleccionar al menos un Centro de Costo o 'Ninguno'.",
+                });
+                return;
+              }
               setForm((f) => ({ ...f, cc: ccSeleccionadosTemp.join(", ") }));
               setCcModalOpen(false);
             }}
