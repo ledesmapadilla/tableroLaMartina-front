@@ -19,8 +19,8 @@ const tarjetas = [
   {
     titulo: "Reparaciones",
     ruta: "/camionetas/services/reparaciones",
-    bg: "rgba(255, 0, 0, 0.9)",
-    bgHover: "rgba(255, 30, 30, 0.75)",
+    bg: "rgba(122, 53, 53, 0.85)",
+    bgHover: "rgba(122, 53, 53, 0.65)",
     icono: "bi bi-tools",
   },
 ];
@@ -48,7 +48,7 @@ function CamionetasServices() {
       {tarjetas.map((t) => (
         <div
           key={t.ruta}
-          className="d-flex flex-column align-items-center justify-content-center text-black"
+          className="d-flex flex-column align-items-center justify-content-center text-white"
           style={{
             backgroundColor: t.bg,
             borderRadius: "16px",
