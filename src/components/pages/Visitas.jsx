@@ -61,7 +61,18 @@ function toKey(año, mes, dia) {
   return `${año}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
-const formVacio = { grupo: "", observaciones: "" };
+const formVacio = { grupo: "", cc: "", observaciones: "" };
+
+function getGruppoNumFromLabel(grupoLabel) {
+  if (grupoLabel === "Grupo 1") return 1;
+  if (grupoLabel === "Grupo 2") return 2;
+  if (grupoLabel === "Grupo 3") return 3;
+  if (grupoLabel === "Grupo 4") return 4;
+  if (grupoLabel === "Grupo 5") return 5;
+  if (grupoLabel === "Berdina" || grupoLabel === "Repuestos B.") return 6;
+  if (grupoLabel === "San Pablo" || grupoLabel === "Repuestos SP.") return 7;
+  return null;
+}
 
 function Visitas() {
   const navigate = useNavigate();
@@ -124,7 +135,7 @@ function Visitas() {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fecha: key, grupo: form.grupo, observaciones: form.observaciones }),
+        body: JSON.stringify({ fecha: key, grupo: form.grupo, cc: form.cc, observaciones: form.observaciones }),
       });
       if (!res.ok) throw new Error();
       const nueva = await res.json();
@@ -375,7 +386,7 @@ function Visitas() {
                         overflow: "hidden"
                       }}
                     >
-                      {v.grupo}
+                      {v.grupo}{v.cc ? ` (${v.cc})` : ""}
                     </div>
                   ))}
                   {vDia.length > 2 && (
@@ -703,6 +714,7 @@ function Visitas() {
                 >
                   <span style={{ fontSize: "0.95rem" }}>
                     <strong style={{ color: colorGrupo(v.grupo) }}>{v.grupo}</strong>
+                    {v.cc ? <span className="fw-semibold text-dark ms-1">({v.cc})</span> : ""}
                     {v.observaciones ? <span className="text-muted"> — {v.observaciones}</span> : ""}
                   </span>
                   <button
@@ -724,7 +736,7 @@ function Visitas() {
             <Form.Label className="fw-semibold">Grupo *</Form.Label>
             <Form.Select
               value={form.grupo}
-              onChange={(e) => { setForm((f) => ({ ...f, grupo: e.target.value })); setError(false); }}
+              onChange={(e) => { setForm((f) => ({ ...f, grupo: e.target.value, cc: "" })); setError(false); }}
               isInvalid={error}
               autoFocus
             >
@@ -735,6 +747,30 @@ function Visitas() {
             </Form.Select>
             {error && <Form.Control.Feedback type="invalid">Seleccioná un grupo</Form.Control.Feedback>}
           </Form.Group>
+
+          {(() => {
+            const gruppoNumSel = getGruppoNumFromLabel(form.grupo);
+            const ccOpciones = form.grupo
+              ? tractores.filter((t) => gruppoNumSel === null || (t.gruppo ?? 6) === gruppoNumSel)
+              : [];
+            if (!form.grupo || ccOpciones.length === 0) return null;
+            return (
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold">Centro de Costo (CC)</Form.Label>
+                <Form.Select
+                  value={form.cc}
+                  onChange={(e) => setForm((f) => ({ ...f, cc: e.target.value }))}
+                >
+                  <option value="">— Seleccionar CC (opcional) —</option>
+                  {ccOpciones.map((t) => (
+                    <option key={t._id || t.cc} value={t.cc}>
+                      {t.cc}{t.descripcion ? ` — ${t.descripcion}` : ""}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            );
+          })()}
 
           <Form.Group className="mb-1">
             <Form.Label className="fw-semibold">Observaciones</Form.Label>
