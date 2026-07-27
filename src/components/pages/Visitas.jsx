@@ -14,16 +14,16 @@ const MESES_NOMBRE = [
 const COLOR = "#3a7070";
 
 const GRUPOS = [
-  { label: "Grupo 1",   color: "#4a6fa5" },
-  { label: "Grupo 2",   color: "#52735a" },
-  { label: "Grupo 3",   color: "#9e8850" },
-  { label: "Grupo 4",   color: "#6b5b7b" },
-  { label: "Grupo 5",   color: "#7a5038" },
-  { label: "NINGUNA",   color: "#777"    },
-  { label: "Berdina",   color: "#7a3535" },
-  { label: "San Pablo", color: "#5a6f40" },
-  { label: "Repuestos B.", color: "#8e44ad" },
-  { label: "Repuestos SP.", color: "#8e44ad" },
+  { label: "Grupo 1",       color: "#4a6fa5" },
+  { label: "Grupo 2",       color: "#52735a" },
+  { label: "Grupo 3",       color: "#9e8850" },
+  { label: "Grupo 4",       color: "#6b5b7b" },
+  { label: "Grupo 5",       color: "#7a5038" },
+  { label: "NINGUNA",       color: "#777777" },
+  { label: "Berdina",       color: "#7a3535" },
+  { label: "San Pablo",     color: "#5a6f40" },
+  { label: "Repuestos B.",  color: "#8e44ad" },
+  { label: "Repuestos SP.", color: "#d35400" },
 ];
 
 const ITINERARIO = [
@@ -35,7 +35,10 @@ const ITINERARIO = [
 ];
 
 function colorGrupo(label) {
-  return GRUPOS.find((g) => g.label === label)?.color ?? COLOR;
+  const l = (label || "").trim();
+  if (l === "Repuestos Berdina" || l === "Repuestos B.") return "#8e44ad";
+  if (l === "Repuestos San Pablo" || l === "Repuestos SP.") return "#d35400";
+  return GRUPOS.find((g) => g.label === l)?.color ?? COLOR;
 }
 
 function celdasMes(año, mes) {
@@ -340,7 +343,7 @@ function Visitas() {
                   border: esHoy ? `2px solid ${COLOR}` : "1.5px solid #ddd",
                   borderRadius: isMobile ? "6px" : "8px",
                   padding: isMobile ? "4px 3px" : "8px 6px",
-                  height: isMobile ? "64px" : "100px",
+                  height: isMobile ? "70px" : "105px",
                   cursor: "pointer",
                   backgroundColor: bgCell,
                   transition: "background-color 0.15s",
@@ -363,12 +366,12 @@ function Visitas() {
                         color: colorGrupo(v.grupo),
                         fontWeight: "600",
                         textAlign: "center",
-                        padding: "0 2px",
-                        fontSize: isMobile ? "0.58rem" : "0.68rem",
+                        padding: "0 1px",
+                        fontSize: isMobile ? "0.62rem" : "0.72rem",
                         whiteSpace: "normal",
                         wordBreak: "break-word",
-                        lineHeight: "1.1",
-                        maxHeight: isMobile ? "14px" : "24px",
+                        lineHeight: "1.15",
+                        maxHeight: isMobile ? "28px" : "36px",
                         overflow: "hidden"
                       }}
                     >
@@ -496,18 +499,25 @@ function Visitas() {
                         borderColor: "#bee3f8"
                       };
                     }
-                    if (t === "Repuestos San Pablo" || t === "Repuestos Berdina") {
+                    if (t === "Repuestos Berdina" || t === "Repuestos B.") {
+                      return {
+                        backgroundColor: "#f3e8ff",
+                        color: "#8e44ad",
+                        borderColor: "#e9d5ff"
+                      };
+                    }
+                    if (t === "Repuestos San Pablo" || t === "Repuestos SP.") {
                       return {
                         backgroundColor: "#fff5ed",
-                        color: "#a05820",
+                        color: "#d35400",
                         borderColor: "#ffe3d1"
                       };
                     }
                     if (t === "Resumen semanal") {
                       return {
-                        backgroundColor: "#f3e8ff",
-                        color: "#6b21a8",
-                        borderColor: "#e9d5ff"
+                        backgroundColor: "#e8f4f8",
+                        color: "#2c5282",
+                        borderColor: "#bee3f8"
                       };
                     }
                     return {
