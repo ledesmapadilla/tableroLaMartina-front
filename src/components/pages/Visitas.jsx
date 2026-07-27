@@ -134,7 +134,7 @@ function Visitas() {
     const grupoSel = e.target.value;
     setForm((f) => ({ ...f, grupo: grupoSel, cc: "" }));
     setError(false);
-    if (grupoSel) {
+    if (grupoSel && grupoSel !== "Repuestos B." && grupoSel !== "Repuestos SP.") {
       const gNum = getGruppoNumFromLabel(grupoSel);
       const tractoresDelGrupo = tractores.filter(
         (t) => gNum === null || (t.gruppo ?? 6) === gNum
@@ -778,11 +778,10 @@ function Visitas() {
           </Form.Group>
 
           {(() => {
+            if (!form.grupo || form.grupo === "Repuestos B." || form.grupo === "Repuestos SP.") return null;
             const gNum = getGruppoNumFromLabel(form.grupo);
-            const ccOpciones = form.grupo
-              ? tractores.filter((t) => gNum === null || (t.gruppo ?? 6) === gNum)
-              : [];
-            if (!form.grupo || ccOpciones.length === 0) return null;
+            const ccOpciones = tractores.filter((t) => gNum === null || (t.gruppo ?? 6) === gNum);
+            if (ccOpciones.length === 0) return null;
 
             return (
               <Form.Group className="mb-3">
