@@ -167,8 +167,8 @@ function ResumenCamionetas() {
           {MESES.map((mes, i) => {
             const info = getCheckListInfo(i);
             const esImpar = (i + 1) % 2 !== 0;
-            const clBg = info === null ? "rgba(74, 111, 165, 0.85)" : info.pendientes === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(139, 74, 74, 0.88)";
-            const clBgHover = info === null ? "rgba(74, 111, 165, 0.65)" : info.pendientes === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(139, 74, 74, 0.65)";
+            const clBg = info === null ? "rgba(74, 111, 165, 0.85)" : info.pendientes === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
+            const clBgHover = info === null ? "rgba(74, 111, 165, 0.65)" : info.pendientes === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
             return (
               <div key={mes} style={{ gridColumn: "span 2", backgroundColor: "rgba(74, 111, 165, 0.45)", borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", display: "flex", overflow: "hidden", userSelect: "none", backdropFilter: "blur(4px)" }}>
                 {/* Izquierda: mes */}
@@ -201,8 +201,8 @@ function ResumenCamionetas() {
                   )}
                   {(() => {
                     const kmSinRelevar = getKmSinRelevar(i);
-                    const svBg = kmSinRelevar === null ? "rgba(74, 111, 165, 0.85)" : kmSinRelevar === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(139, 74, 74, 0.88)";
-                    const svBgHover = kmSinRelevar === null ? "rgba(74, 111, 165, 0.65)" : kmSinRelevar === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(139, 74, 74, 0.65)";
+                    const svBg = kmSinRelevar === null ? "rgba(74, 111, 165, 0.85)" : kmSinRelevar === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
+                    const svBgHover = kmSinRelevar === null ? "rgba(74, 111, 165, 0.65)" : kmSinRelevar === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
                     return (
                       <div
                         className="d-flex flex-column align-items-center justify-content-center text-black"
@@ -227,8 +227,8 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 13: Services Atrasados */}
           {(() => {
-            const bg = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.85)" : serviciosAtrasados === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(139, 74, 74, 0.88)";
-            const bgHover = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.65)" : serviciosAtrasados === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(139, 74, 74, 0.65)";
+            const bg = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.85)" : serviciosAtrasados === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
+            const bgHover = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.65)" : serviciosAtrasados === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-black"
@@ -247,8 +247,8 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 14: Unidades con Tareas Pendientes */}
           {(() => {
-            const bg = tareasPendientes === null ? "rgba(74, 111, 165, 0.85)" : tareasPendientes === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(139, 74, 74, 0.88)";
-            const bgHover = tareasPendientes === null ? "rgba(74, 111, 165, 0.65)" : tareasPendientes === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(139, 74, 74, 0.65)";
+            const bg = tareasPendientes === null ? "rgba(74, 111, 165, 0.85)" : tareasPendientes === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
+            const bgHover = tareasPendientes === null ? "rgba(74, 111, 165, 0.65)" : tareasPendientes === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-black"
@@ -267,8 +267,8 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 15: Unidades Paradas */}
           {(() => {
-            const bg = unidadesParadas === null ? "rgba(74, 111, 165, 0.85)" : unidadesParadas === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(139, 74, 74, 0.88)";
-            const bgHover = unidadesParadas === null ? "rgba(74, 111, 165, 0.65)" : unidadesParadas === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(139, 74, 74, 0.65)";
+            const bg = unidadesParadas === null ? "rgba(74, 111, 165, 0.85)" : unidadesParadas === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
+            const bgHover = unidadesParadas === null ? "rgba(74, 111, 165, 0.65)" : unidadesParadas === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-black"
