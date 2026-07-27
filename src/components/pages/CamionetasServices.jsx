@@ -5,19 +5,22 @@ const tarjetas = [
   {
     titulo: "Kilómetros",
     ruta: "/camionetas/services/kilometros",
-    bg: "#4a6fa5",
+    bg: "rgba(74, 111, 165, 0.65)",
+    bgHover: "rgba(74, 111, 165, 0.85)",
     icono: "bi bi-speedometer2",
   },
   {
     titulo: "Último service",
     ruta: "/camionetas/services/ultimo-service",
-    bg: "#52735a",
+    bg: "rgba(82, 115, 90, 0.65)",
+    bgHover: "rgba(82, 115, 90, 0.85)",
     icono: "bi bi-calendar-check-fill",
   },
   {
     titulo: "Reparaciones",
     ruta: "/camionetas/services/reparaciones",
-    bg: "#7a3535",
+    bg: "rgba(122, 53, 53, 0.65)",
+    bgHover: "rgba(122, 53, 53, 0.85)",
     icono: "bi bi-tools",
   },
 ];
@@ -51,17 +54,18 @@ function CamionetasServices() {
             borderRadius: "16px",
             width: "250px",
             height: "250px",
-            boxShadow: "6px 6px 18px rgba(0,0,0,0.35)",
+            boxShadow: "6px 6px 18px rgba(0,0,0,0.25)",
             cursor: "pointer",
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease",
             userSelect: "none",
+            backdropFilter: "blur(4px)",
           }}
           onClick={() => navigate(t.ruta)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === "Enter" && navigate(t.ruta)}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.08)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.08)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.35)"; e.currentTarget.style.backgroundColor = t.bgHover; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.25)"; e.currentTarget.style.backgroundColor = t.bg; }}
         >
           <i className={t.icono} style={{ fontSize: "4rem" }}></i>
           <h2 className="fw-bold text-center mt-3">{t.titulo}</h2>

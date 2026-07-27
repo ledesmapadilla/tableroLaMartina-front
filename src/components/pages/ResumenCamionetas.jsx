@@ -167,16 +167,16 @@ function ResumenCamionetas() {
           {MESES.map((mes, i) => {
             const info = getCheckListInfo(i);
             const esImpar = (i + 1) % 2 !== 0;
-            const clBg = info === null ? "#4a6fa5" : info.pendientes === 0 ? "#52735a" : "#8b4a4a";
-            const clBgHover = info === null ? "#5a7fa8" : info.pendientes === 0 ? "#627d6a" : "#9e5a5a";
+            const clBg = info === null ? "rgba(74, 111, 165, 0.65)" : info.pendientes === 0 ? "rgba(82, 115, 90, 0.65)" : "rgba(139, 74, 74, 0.65)";
+            const clBgHover = info === null ? "rgba(74, 111, 165, 0.85)" : info.pendientes === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
-              <div key={mes} style={{ gridColumn: "span 2", backgroundColor: "#4a6fa5", borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", display: "flex", overflow: "hidden", userSelect: "none" }}>
+              <div key={mes} style={{ gridColumn: "span 2", backgroundColor: "rgba(74, 111, 165, 0.45)", borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", display: "flex", overflow: "hidden", userSelect: "none", backdropFilter: "blur(4px)" }}>
                 {/* Izquierda: mes */}
                 <div
                   className="d-flex align-items-center justify-content-center"
                   style={{ flex: 1, fontWeight: "600", fontSize: "1.1rem", cursor: "pointer", transition: "background-color 0.15s", padding: "4px", color: "#000" }}
                   onClick={() => navigate("/camionetas", { state: { mes: i + 1, anio } })}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.12)")}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.25)")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   {mes}
@@ -201,8 +201,8 @@ function ResumenCamionetas() {
                   )}
                   {(() => {
                     const kmSinRelevar = getKmSinRelevar(i);
-                    const svBg = kmSinRelevar === null ? "#4a6fa5" : kmSinRelevar === 0 ? "#52735a" : "#8b4a4a";
-                    const svBgHover = kmSinRelevar === null ? "#5a7fa8" : kmSinRelevar === 0 ? "#627d6a" : "#9e5a5a";
+                    const svBg = kmSinRelevar === null ? "rgba(74, 111, 165, 0.65)" : kmSinRelevar === 0 ? "rgba(82, 115, 90, 0.65)" : "rgba(139, 74, 74, 0.65)";
+                    const svBgHover = kmSinRelevar === null ? "rgba(74, 111, 165, 0.85)" : kmSinRelevar === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
                     return (
                       <div
                         className="d-flex flex-column align-items-center justify-content-center text-white"
@@ -227,12 +227,12 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 13: Services Atrasados */}
           {(() => {
-            const bg = serviciosAtrasados === null ? "#4a6fa5" : serviciosAtrasados === 0 ? "#52735a" : "#8b4a4a";
-            const bgHover = serviciosAtrasados === null ? "#5a7fa8" : serviciosAtrasados === 0 ? "#627d6a" : "#9e5a5a";
+            const bg = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.65)" : serviciosAtrasados === 0 ? "rgba(82, 115, 90, 0.65)" : "rgba(139, 74, 74, 0.65)";
+            const bgHover = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.85)" : serviciosAtrasados === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-white"
-                style={{ gridColumn: "2 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
+                style={{ gridColumn: "2 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
                 onClick={() => navigate("/camionetas/services/ultimo-service")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
@@ -247,12 +247,12 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 14: Unidades con Tareas Pendientes */}
           {(() => {
-            const bg = tareasPendientes === null ? "#4a6fa5" : tareasPendientes === 0 ? "#52735a" : "#8b4a4a";
-            const bgHover = tareasPendientes === null ? "#5a7fa8" : tareasPendientes === 0 ? "#627d6a" : "#9e5a5a";
+            const bg = tareasPendientes === null ? "rgba(74, 111, 165, 0.65)" : tareasPendientes === 0 ? "rgba(82, 115, 90, 0.65)" : "rgba(139, 74, 74, 0.65)";
+            const bgHover = tareasPendientes === null ? "rgba(74, 111, 165, 0.85)" : tareasPendientes === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-white"
-                style={{ gridColumn: "4 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
+                style={{ gridColumn: "4 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
                 onClick={() => navigate("/camionetas/services/reparaciones")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
@@ -267,12 +267,12 @@ function ResumenCamionetas() {
 
           {/* Tarjeta 15: Unidades Paradas */}
           {(() => {
-            const bg = unidadesParadas === null ? "#4a6fa5" : unidadesParadas === 0 ? "#52735a" : "#8b4a4a";
-            const bgHover = unidadesParadas === null ? "#5a7fa8" : unidadesParadas === 0 ? "#627d6a" : "#9e5a5a";
+            const bg = unidadesParadas === null ? "rgba(74, 111, 165, 0.65)" : unidadesParadas === 0 ? "rgba(82, 115, 90, 0.65)" : "rgba(139, 74, 74, 0.65)";
+            const bgHover = unidadesParadas === null ? "rgba(74, 111, 165, 0.85)" : unidadesParadas === 0 ? "rgba(82, 115, 90, 0.85)" : "rgba(139, 74, 74, 0.85)";
             return (
               <div
                 className="d-flex flex-column align-items-center justify-content-center text-white"
-                style={{ gridColumn: "6 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.3)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem" }}
+                style={{ gridColumn: "6 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
                 onClick={() => navigate("/camionetas/checklist")}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
