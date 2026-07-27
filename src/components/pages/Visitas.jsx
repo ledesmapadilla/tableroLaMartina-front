@@ -87,6 +87,8 @@ function Visitas() {
   const [tractores, setTractores] = useState([]);
   const [mostrarItinerario, setMostrarItinerario] = useState(false);
   const [mostrarResumen, setMostrarResumen] = useState(false);
+  const [ccModalOpen, setCcModalOpen] = useState(false);
+  const [ccSeleccionadosTemp, setCcSeleccionadosTemp] = useState([]);
 
   const retroceder = () => {
     if (año === 2026 && mes === 4) return;
@@ -126,6 +128,22 @@ function Visitas() {
     setDiaModal(dia);
     setForm(formVacio);
     setError(false);
+  };
+
+  const handleGrupoChange = (e) => {
+    const grupoSel = e.target.value;
+    setForm((f) => ({ ...f, grupo: grupoSel, cc: "" }));
+    setError(false);
+    if (grupoSel) {
+      const gNum = getGruppoNumFromLabel(grupoSel);
+      const tractoresDelGrupo = tractores.filter(
+        (t) => gNum === null || (t.gruppo ?? 6) === gNum
+      );
+      if (tractoresDelGrupo.length > 0) {
+        setCcSeleccionadosTemp([]);
+        setCcModalOpen(true);
+      }
+    }
   };
 
   const agregarVisita = async () => {
@@ -736,7 +754,7 @@ function Visitas() {
             <Form.Label className="fw-semibold">Grupo *</Form.Label>
             <Form.Select
               value={form.grupo}
-              onChange={(e) => { setForm((f) => ({ ...f, grupo: e.target.value, cc: "" })); setError(false); }}
+              onChange={handleGrupoChange}
               isInvalid={error}
               autoFocus
             >
@@ -749,25 +767,34 @@ function Visitas() {
           </Form.Group>
 
           {(() => {
-            const gruppoNumSel = getGruppoNumFromLabel(form.grupo);
+            const gNum = getGruppoNumFromLabel(form.grupo);
             const ccOpciones = form.grupo
-              ? tractores.filter((t) => gruppoNumSel === null || (t.gruppo ?? 6) === gruppoNumSel)
+              ? tractores.filter((t) => gNum === null || (t.gruppo ?? 6) === gNum)
               : [];
             if (!form.grupo || ccOpciones.length === 0) return null;
+
             return (
               <Form.Group className="mb-3">
                 <Form.Label className="fw-semibold">Centro de Costo (CC)</Form.Label>
-                <Form.Select
-                  value={form.cc}
-                  onChange={(e) => setForm((f) => ({ ...f, cc: e.target.value }))}
+                <Button
+                  variant="outline-secondary"
+                  className="w-100 text-start d-flex justify-content-between align-items-center"
+                  style={{ borderColor: "#ced4da", color: "#333", backgroundColor: "#fff" }}
+                  onClick={() => {
+                    const ccsActuales = form.cc ? form.cc.split(", ").map((s) => s.trim()).filter(Boolean) : [];
+                    setCcSeleccionadosTemp(ccsActuales);
+                    setCcModalOpen(true);
+                  }}
                 >
-                  <option value="">— Seleccionar CC (opcional) —</option>
-                  {ccOpciones.map((t) => (
-                    <option key={t._id || t.cc} value={t.cc}>
-                      {t.cc}{t.descripcion ? ` — ${t.descripcion}` : ""}
-                    </option>
-                  ))}
-                </Form.Select>
+                  <span>
+                    {form.cc ? (
+                      <span className="fw-bold text-dark">{form.cc}</span>
+                    ) : (
+                      <span className="text-muted">— Elegir CCs (con tilde) —</span>
+                    )}
+                  </span>
+                  <i className="bi bi-check2-square text-success fs-5 me-1"></i>
+                </Button>
               </Form.Group>
             );
           })()}
@@ -787,6 +814,107 @@ function Visitas() {
           <Button variant="secondary" onClick={() => setDiaModal(null)}>Cerrar</Button>
           <Button onClick={agregarVisita} style={{ backgroundColor: COLOR, border: "none", color: "#fff" }}>
             <i className="bi bi-save me-2"></i>Guardar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal de Selección de CCs con Tildes */}
+      <Modal
+        show={ccModalOpen}
+        onHide={() => setCcModalOpen(false)}
+        centered
+        size="md"
+        contentClassName="border border-dark"
+      >
+        <Modal.Header closeButton style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+          <Modal.Title className="fw-bold" style={{ fontSize: "1.1rem" }}>
+            <i className="bi bi-check2-square me-2"></i>Centros de Costo — {form.grupo}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          {(() => {
+            const gNum = getGruppoNumFromLabel(form.grupo);
+            const tractoresDelGrupo = tractores.filter(
+              (t) => gNum === null || (t.gruppo ?? 6) === gNum
+            );
+            if (tractoresDelGrupo.length === 0) {
+              return <p className="text-muted text-center py-3">No hay tractores ni CCs registrados para este grupo</p>;
+            }
+            return (
+              <div className="d-flex flex-column gap-2">
+                <div className="d-flex justify-content-between align-items-center mb-2 px-1">
+                  <small className="text-muted">Marcar con tilde los CCs deseados:</small>
+                  <div className="d-flex gap-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 text-decoration-none"
+                      onClick={() => setCcSeleccionadosTemp(tractoresDelGrupo.map((t) => t.cc))}
+                    >
+                      Marcar todos
+                    </Button>
+                    <span className="text-muted">|</span>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 text-decoration-none text-danger"
+                      onClick={() => setCcSeleccionadosTemp([])}
+                    >
+                      Desmarcar todos
+                    </Button>
+                  </div>
+                </div>
+                {tractoresDelGrupo.map((t) => {
+                  const isChecked = ccSeleccionadosTemp.includes(t.cc);
+                  return (
+                    <div
+                      key={t._id || t.cc}
+                      className={`p-2 px-3 rounded border d-flex align-items-center justify-content-between ${
+                        isChecked ? "border-success bg-light" : "bg-white"
+                      }`}
+                      style={{ cursor: "pointer", transition: "all 0.15s ease" }}
+                      onClick={() => {
+                        setCcSeleccionadosTemp((prev) =>
+                          prev.includes(t.cc) ? prev.filter((c) => c !== t.cc) : [...prev, t.cc]
+                        );
+                      }}
+                    >
+                      <div className="d-flex align-items-center gap-3">
+                        <Form.Check
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          style={{ pointerEvents: "none", transform: "scale(1.1)" }}
+                        />
+                        <div>
+                          <span className="fw-bold" style={{ color: "#3a7070", fontSize: "0.95rem" }}>
+                            {t.cc}
+                          </span>
+                          {t.descripcion && (
+                            <span className="text-muted ms-2 small">— {t.descripcion}</span>
+                          )}
+                        </div>
+                      </div>
+                      {isChecked && <i className="bi bi-check-circle-fill text-success fs-5"></i>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setCcModalOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            style={{ backgroundColor: "#3a7070", border: "none", color: "#fff" }}
+            onClick={() => {
+              setForm((f) => ({ ...f, cc: ccSeleccionadosTemp.join(", ") }));
+              setCcModalOpen(false);
+            }}
+          >
+            <i className="bi bi-check-lg me-1"></i>Confirmar ({ccSeleccionadosTemp.length})
           </Button>
         </Modal.Footer>
       </Modal>
