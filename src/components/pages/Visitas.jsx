@@ -87,6 +87,7 @@ function Visitas() {
   const [tractores, setTractores] = useState([]);
   const [mostrarItinerario, setMostrarItinerario] = useState(false);
   const [mostrarResumen, setMostrarResumen] = useState(false);
+  const [tabResumen, setTabResumen] = useState("grupos");
   const [ccModalOpen, setCcModalOpen] = useState(false);
   const [ccSeleccionadosTemp, setCcSeleccionadosTemp] = useState([]);
 
@@ -207,11 +208,13 @@ function Visitas() {
   const visitasModal = keyModal ? (visitas[keyModal] ?? []) : [];
   const esMinimoMes = año === 2026 && mes === 4;
 
-  // Calcular cantidad de visitas por grupo en el mes seleccionado
+  // Calcular cantidad de visitas por grupo y por CC en el mes seleccionado
   const counts = {};
   GRUPOS.forEach((g) => {
     counts[g.label] = 0;
   });
+
+  const countsCC = {};
   const targetPrefix = `${año}-${String(mes + 1).padStart(2, "0")}-`;
   Object.entries(visitas).forEach(([key, list]) => {
     if (key.startsWith(targetPrefix)) {
@@ -221,9 +224,20 @@ function Visitas() {
         } else {
           counts[v.grupo] = 1;
         }
+        if (v.cc) {
+          const ccs = v.cc.split(",").map((s) => s.trim()).filter(Boolean);
+          ccs.forEach((c) => {
+            countsCC[c] = (countsCC[c] || 0) + 1;
+          });
+        }
       });
     }
   });
+
+  const ccsOrdenados = [...new Set([
+    ...tractores.map((t) => t.cc).filter(Boolean),
+    ...Object.keys(countsCC)
+  ])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
   const añosDisponibles = [...new Set([
     2026,
@@ -618,14 +632,16 @@ function Visitas() {
       </Modal>
 
       {/* Modal de Resumen Mensual */}
-      <Modal show={mostrarResumen} onHide={() => setMostrarResumen(false)} size="md" centered contentClassName="border border-dark">
+      <Modal show={mostrarResumen} onHide={() => setMostrarResumen(false)} size="lg" centered contentClassName="border border-dark">
         <Modal.Header closeButton style={{ backgroundColor: "#3a7070", color: "#fff" }}>
           <Modal.Title className="fw-bold" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
-            <i className="bi bi-bar-chart-fill me-2"></i>Resumen de Visitas
+            <i className="bi bi-bar-chart-fill me-2"></i>Resumen Mensual
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
-          <div className="d-flex gap-2 justify-content-center mb-4">
+          
+          {/* Controles de Mes y Año */}
+          <div className="d-flex gap-2 justify-content-center mb-3">
             <Form.Select
               value={mes}
               onChange={(e) => {
@@ -664,42 +680,118 @@ function Visitas() {
               ))}
             </Form.Select>
           </div>
-          <div className="table-responsive">
-            <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
-                  <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {GRUPOS.map((g, idx) => {
-                  const count = counts[g.label] || 0;
-                  return (
-                    <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
-                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
-                        <div className="d-flex align-items-center">
-                          <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
-                          <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
-                        </div>
-                      </td>
-                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-                        {count}
-                      </td>
-                    </tr>
-                  );
-                })}
-                <tr style={{ backgroundColor: "#eaeaea" }}>
-                  <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
-                    Total
-                  </td>
-                  <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
-                    {Object.values(counts).reduce((a, b) => a + b, 0)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+
+          {/* Pestañas / Planillas (Visitas por Grupo vs Centros de Costo) */}
+          <div className="d-flex justify-content-center mb-4">
+            <div className="btn-group" role="group" style={{ width: isMobile ? "100%" : "auto" }}>
+              <button
+                type="button"
+                className={`btn ${tabResumen === "grupos" ? "btn-dark fw-bold" : "btn-outline-dark"}`}
+                onClick={() => setTabResumen("grupos")}
+                style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}
+              >
+                <i className="bi bi-people-fill me-2"></i>Visitas por Grupo
+              </button>
+              <button
+                type="button"
+                className={`btn ${tabResumen === "cc" ? "btn-dark fw-bold" : "btn-outline-dark"}`}
+                onClick={() => setTabResumen("cc")}
+                style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}
+              >
+                <i className="bi bi-geo-alt-fill me-2"></i>Visitas por CC
+              </button>
+            </div>
           </div>
+
+          {/* Planilla 1: Grupos */}
+          {tabResumen === "grupos" && (
+            <div className="table-responsive">
+              <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GRUPOS.map((g, idx) => {
+                    const count = counts[g.label] || 0;
+                    return (
+                      <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                        <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
+                          <div className="d-flex align-items-center">
+                            <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
+                            <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
+                          </div>
+                        </td>
+                        <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
+                          {count}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ backgroundColor: "#eaeaea" }}>
+                    <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                      Total
+                    </td>
+                    <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                      {Object.values(counts).reduce((a, b) => a + b, 0)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Planilla 2: Centros de Costo */}
+          {tabResumen === "cc" && (
+            <div className="table-responsive">
+              <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Centro de Costo (CC)</th>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ccsOrdenados.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="text-muted py-4">No hay visitas registradas con CC en este mes</td>
+                    </tr>
+                  ) : (
+                    ccsOrdenados.map((cc, idx) => {
+                      const count = countsCC[cc] || 0;
+                      const tracInfo = tractores.find((t) => t.cc === cc);
+                      return (
+                        <tr key={cc} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                          <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="fw-bold" style={{ fontSize: isMobile ? "0.85rem" : "0.95rem", color: "#3a7070" }}>{cc}</span>
+                              {tracInfo?.descripcion && (
+                                <span className="text-muted small">— {tracInfo.descripcion}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
+                            {count}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                  <tr style={{ backgroundColor: "#eaeaea" }}>
+                    <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                      Total
+                    </td>
+                    <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                      {Object.values(countsCC).reduce((a, b) => a + b, 0)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setMostrarResumen(false)}>
