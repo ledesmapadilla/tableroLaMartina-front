@@ -130,11 +130,34 @@ function Visitas() {
     setError(false);
   };
 
-  const handleGrupoChange = (e) => {
+  const handleGrupoChange = async (e) => {
     const grupoSel = e.target.value;
     setForm((f) => ({ ...f, grupo: grupoSel, cc: "" }));
     setError(false);
-    if (grupoSel && grupoSel !== "Repuestos B." && grupoSel !== "Repuestos SP." && grupoSel !== "NINGUNO") {
+
+    if (grupoSel === "Repuestos B." || grupoSel === "Repuestos SP.") {
+      const key = toKey(año, mes, diaModal);
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fecha: key, grupo: grupoSel, cc: "", observaciones: "" }),
+        });
+        if (!res.ok) throw new Error();
+        const nueva = await res.json();
+        setVisitas((prev) => ({ ...prev, [key]: [...(prev[key] ?? []), nueva] }));
+        setForm(formVacio);
+        setError(false);
+        setDiaModal(null);
+        Swal.fire({ icon: "success", title: "Visita registrada", timer: 1200, showConfirmButton: false });
+      } catch {
+        setError(true);
+        Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la visita" });
+      }
+      return;
+    }
+
+    if (grupoSel && grupoSel !== "NINGUNO") {
       const gNum = getGruppoNumFromLabel(grupoSel);
       const tractoresDelGrupo = tractores.filter(
         (t) => gNum === null || (t.gruppo ?? 6) === gNum
