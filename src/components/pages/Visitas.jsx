@@ -130,34 +130,16 @@ function Visitas() {
     setError(false);
   };
 
-  const handleGrupoChange = async (e) => {
+  const handleGrupoChange = (e) => {
     const grupoSel = e.target.value;
     setForm((f) => ({ ...f, grupo: grupoSel, cc: "" }));
     setError(false);
 
     if (grupoSel === "Repuestos B." || grupoSel === "Repuestos SP.") {
-      const key = toKey(año, mes, diaModal);
-      try {
-        const res = await fetch(API, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fecha: key, grupo: grupoSel, cc: "", observaciones: "" }),
-        });
-        if (!res.ok) throw new Error();
-        const nueva = await res.json();
-        setVisitas((prev) => ({ ...prev, [key]: [...(prev[key] ?? []), nueva] }));
-        setForm(formVacio);
-        setError(false);
-        setDiaModal(null);
-        Swal.fire({ icon: "success", title: "Visita registrada", timer: 1200, showConfirmButton: false });
-      } catch {
-        setError(true);
-        Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la visita" });
-      }
       return;
     }
 
-    if (grupoSel && grupoSel !== "NINGUNO") {
+    if (grupoSel) {
       const gNum = getGruppoNumFromLabel(grupoSel);
       const tractoresDelGrupo = tractores.filter(
         (t) => gNum === null || (t.gruppo ?? 6) === gNum
@@ -171,22 +153,6 @@ function Visitas() {
 
   const agregarVisita = async () => {
     if (!form.grupo) { setError(true); return; }
-
-    const esGrupoConCC = ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"].includes(form.grupo);
-    if (esGrupoConCC && !form.cc) {
-      Swal.fire({
-        icon: "warning",
-        title: "Selección requerida",
-        text: "Debés seleccionar al menos un Centro de Costo o 'Ninguno' para este grupo.",
-      });
-      const gNum = getGruppoNumFromLabel(form.grupo);
-      const tractoresDelGrupo = tractores.filter(
-        (t) => gNum === null || (t.gruppo ?? 6) === gNum
-      );
-      setCcSeleccionadosTemp([]);
-      setCcModalOpen(true);
-      return;
-    }
 
     const key = toKey(año, mes, diaModal);
     try {
@@ -960,21 +926,14 @@ function Visitas() {
             Cancelar
           </Button>
           <Button
-            style={{ backgroundColor: ccSeleccionadosTemp.length > 0 ? "#3a7070" : "#a0aec0", border: "none", color: "#fff" }}
+            style={{ backgroundColor: "#3a7070", border: "none", color: "#fff" }}
             onClick={() => {
-              if (ccSeleccionadosTemp.length === 0) {
-                Swal.fire({
-                  icon: "warning",
-                  title: "Selección requerida",
-                  text: "Debés seleccionar al menos un Centro de Costo o 'Ninguno'.",
-                });
-                return;
-              }
               setForm((f) => ({ ...f, cc: ccSeleccionadosTemp.join(", ") }));
               setCcModalOpen(false);
             }}
           >
-            <i className="bi bi-check-lg me-1"></i>Confirmar ({ccSeleccionadosTemp.length})
+            <i className="bi bi-check-lg me-1"></i>
+            {ccSeleccionadosTemp.length > 0 ? `Confirmar (${ccSeleccionadosTemp.length})` : "Confirmar (sin CC)"}
           </Button>
         </Modal.Footer>
       </Modal>
