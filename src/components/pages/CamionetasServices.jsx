@@ -19,8 +19,8 @@ const tarjetas = [
   {
     titulo: "Reparaciones",
     ruta: "/camionetas/services/reparaciones",
-    bg: "rgba(220, 20, 20, 0.7)",
-    bgHover: "rgba(220, 20, 20, 0.88)",
+    bg: "rgba(220, 20, 20, 0.88)",
+    bgHover: "rgba(200, 15, 15, 0.95)",
     icono: "bi bi-tools",
   },
 ];
