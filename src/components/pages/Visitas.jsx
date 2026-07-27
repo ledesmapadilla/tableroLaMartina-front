@@ -734,7 +734,7 @@ function Visitas() {
                     <div className="d-flex align-items-center gap-2 flex-wrap">
                       <strong style={{ color: colorGrupo(v.grupo), fontSize: "1rem" }}>{v.grupo}</strong>
                       {v.cc && (
-                        <span style={{ color: "#000", fontWeight: "normal", fontSize: "0.92rem" }}>
+                        <span style={{ color: "#000", fontWeight: "normal", fontSize: "0.78rem" }}>
                           ({v.cc})
                         </span>
                       )}
