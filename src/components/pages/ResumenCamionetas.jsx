@@ -188,7 +188,7 @@ function ResumenCamionetas() {
                   {esImpar && (
                     <div
                       className="d-flex flex-column align-items-center justify-content-center text-black"
-                      style={{ flex: 1, fontSize: "0.95rem", fontWeight: "500", cursor: "pointer", transition: "background-color 0.15s", borderBottom: "1px solid rgba(0,0,0,0.2)", backgroundColor: clBg }}
+                      style={{ flex: 1, fontSize: "0.95rem", fontWeight: "500", cursor: "pointer", transition: "background-color 0.15s", borderBottom: "2px solid #ffd700", backgroundColor: clBg }}
                       onClick={() => navigate("/camionetas/checklist", { state: { mes: i + 1, anio } })}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = clBgHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = clBg)}
