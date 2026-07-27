@@ -267,11 +267,11 @@ function Visitas() {
 
       ws.addRow([]); // Fila vacía
 
+      // Encabezados sin relleno
       const filaEncabezado = ws.addRow(columnas);
       filaEncabezado.height = 22;
       filaEncabezado.eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
+        cell.font = { bold: true, color: { argb: "FF000000" } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
       });
 
@@ -288,7 +288,6 @@ function Visitas() {
       rowTotal.height = 22;
       rowTotal.eachCell((cell) => {
         cell.font = { bold: true };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
       });
       rowTotal.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
       rowTotal.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
@@ -336,11 +335,11 @@ function Visitas() {
 
       ws.addRow([]); // Fila vacía
 
+      // Encabezados sin relleno
       const filaEncabezado = ws.addRow(columnas);
       filaEncabezado.height = 22;
       filaEncabezado.eachCell((cell) => {
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
+        cell.font = { bold: true, color: { argb: "FF000000" } };
         cell.alignment = { horizontal: "center", vertical: "middle" };
       });
 
@@ -360,7 +359,6 @@ function Visitas() {
       rowTotal.height = 22;
       rowTotal.eachCell((cell) => {
         cell.font = { bold: true };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
       });
       rowTotal.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
       rowTotal.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
@@ -777,8 +775,20 @@ function Visitas() {
       {/* Modal de Resumen Mensual */}
       <Modal show={mostrarResumen} onHide={() => setMostrarResumen(false)} size="lg" centered contentClassName="border border-dark">
         <Modal.Header closeButton style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-          <Modal.Title className="fw-bold" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
-            <i className="bi bi-bar-chart-fill me-2"></i>Resumen Mensual
+          <Modal.Title className="fw-bold d-flex align-items-center justify-content-between w-100 me-2" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
+            <span>
+              <i className="bi bi-bar-chart-fill me-2"></i>Resumen Mensual
+            </span>
+            <Button
+              variant="outline-light"
+              size="sm"
+              className="fw-bold border-0 text-white me-2"
+              style={{ backgroundColor: "transparent" }}
+              onClick={tabResumen === "grupos" ? exportarExcelGrupos : exportarExcelCC}
+              title="Descargar Excel"
+            >
+              <i className="bi bi-file-earmark-excel me-1 fs-6"></i>Excel
+            </Button>
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
@@ -848,35 +858,71 @@ function Visitas() {
 
           {/* Planilla 1: Grupos */}
           {tabResumen === "grupos" && (
-            <div className="d-flex flex-column gap-2">
-              <div className="d-flex justify-content-end mb-1">
-                <Button
-                  variant="success"
-                  size="sm"
-                  className="fw-bold d-flex align-items-center gap-1 shadow-sm"
-                  onClick={exportarExcelGrupos}
-                >
-                  <i className="bi bi-file-earmark-excel-fill fs-6"></i>
-                  <span>Excel</span>
-                </Button>
-              </div>
-              <div className="table-responsive">
-                <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
-                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+            <div className="table-responsive">
+              <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {GRUPOS.map((g, idx) => {
+                    const count = counts[g.label] || 0;
+                    return (
+                      <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                        <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
+                          <div className="d-flex align-items-center">
+                            <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
+                            <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
+                          </div>
+                        </td>
+                        <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
+                          {count}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ backgroundColor: "#eaeaea" }}>
+                    <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                      Total
+                    </td>
+                    <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                      {Object.values(counts).reduce((a, b) => a + b, 0)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Planilla 2: Centros de Costo */}
+          {tabResumen === "cc" && (
+            <div className="table-responsive">
+              <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Centro de Costo (CC)</th>
+                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ccsOrdenados.length === 0 ? (
+                    <tr>
+                      <td colSpan={2} className="text-muted py-4">No hay visitas registradas con CC en este mes</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {GRUPOS.map((g, idx) => {
-                      const count = counts[g.label] || 0;
+                  ) : (
+                    ccsOrdenados.map((cc, idx) => {
+                      const count = countsCC[cc] || 0;
+                      const tracInfo = tractores.find((t) => t.cc === cc);
                       return (
-                        <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                        <tr key={cc} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
                           <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
-                            <div className="d-flex align-items-center">
-                              <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
-                              <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="fw-bold" style={{ fontSize: isMobile ? "0.85rem" : "0.95rem", color: "#3a7070" }}>{cc}</span>
+                              {tracInfo?.descripcion && (
+                                <span className="text-muted small">— {tracInfo.descripcion}</span>
+                              )}
                             </div>
                           </td>
                           <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
@@ -884,80 +930,18 @@ function Visitas() {
                           </td>
                         </tr>
                       );
-                    })}
-                    <tr style={{ backgroundColor: "#eaeaea" }}>
-                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
-                        Total
-                      </td>
-                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
-                        {Object.values(counts).reduce((a, b) => a + b, 0)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Planilla 2: Centros de Costo */}
-          {tabResumen === "cc" && (
-            <div className="d-flex flex-column gap-2">
-              <div className="d-flex justify-content-end mb-1">
-                <Button
-                  variant="success"
-                  size="sm"
-                  className="fw-bold d-flex align-items-center gap-1 shadow-sm"
-                  onClick={exportarExcelCC}
-                >
-                  <i className="bi bi-file-earmark-excel-fill fs-6"></i>
-                  <span>Excel</span>
-                </Button>
-              </div>
-              <div className="table-responsive">
-                <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Centro de Costo (CC)</th>
-                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ccsOrdenados.length === 0 ? (
-                      <tr>
-                        <td colSpan={2} className="text-muted py-4">No hay visitas registradas con CC en este mes</td>
-                      </tr>
-                    ) : (
-                      ccsOrdenados.map((cc, idx) => {
-                        const count = countsCC[cc] || 0;
-                        const tracInfo = tractores.find((t) => t.cc === cc);
-                        return (
-                          <tr key={cc} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
-                            <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
-                              <div className="d-flex align-items-center gap-2">
-                                <span className="fw-bold" style={{ fontSize: isMobile ? "0.85rem" : "0.95rem", color: "#3a7070" }}>{cc}</span>
-                                {tracInfo?.descripcion && (
-                                  <span className="text-muted small">— {tracInfo.descripcion}</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-                              {count}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                    <tr style={{ backgroundColor: "#eaeaea" }}>
-                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
-                        Total
-                      </td>
-                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
-                        {Object.values(countsCC).reduce((a, b) => a + b, 0)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                    })
+                  )}
+                  <tr style={{ backgroundColor: "#eaeaea" }}>
+                    <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                      Total
+                    </td>
+                    <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                      {Object.values(countsCC).reduce((a, b) => a + b, 0)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
 
