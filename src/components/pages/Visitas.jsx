@@ -775,26 +775,14 @@ function Visitas() {
       {/* Modal de Resumen Mensual */}
       <Modal show={mostrarResumen} onHide={() => setMostrarResumen(false)} size="lg" centered contentClassName="border border-dark">
         <Modal.Header closeButton style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-          <Modal.Title className="fw-bold d-flex align-items-center justify-content-between w-100 me-2" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
-            <span>
-              <i className="bi bi-bar-chart-fill me-2"></i>Resumen Mensual
-            </span>
-            <Button
-              variant="outline-light"
-              size="sm"
-              className="fw-bold border-0 text-white me-2"
-              style={{ backgroundColor: "transparent" }}
-              onClick={tabResumen === "grupos" ? exportarExcelGrupos : exportarExcelCC}
-              title="Descargar Excel"
-            >
-              <i className="bi bi-file-earmark-excel me-1 fs-6"></i>Excel
-            </Button>
+          <Modal.Title className="fw-bold" style={{ fontSize: isMobile ? "1.1rem" : "1.25rem" }}>
+            <i className="bi bi-bar-chart-fill me-2"></i>Resumen Mensual
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
           
-          {/* Controles de Mes y Año */}
-          <div className="d-flex gap-2 justify-content-center mb-3">
+          {/* Controles de Mes, Año y Excel (a la altura del año, sin bg) */}
+          <div className="d-flex gap-2 justify-content-center align-items-center mb-3">
             <Form.Select
               value={mes}
               onChange={(e) => {
@@ -832,6 +820,16 @@ function Visitas() {
                 </option>
               ))}
             </Form.Select>
+            <Button
+              variant="outline-success"
+              size="sm"
+              className="fw-bold border-0 p-1 px-2 text-success"
+              style={{ backgroundColor: "transparent" }}
+              onClick={tabResumen === "grupos" ? exportarExcelGrupos : exportarExcelCC}
+              title="Descargar Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill me-1 fs-6"></i>Excel
+            </Button>
           </div>
 
           {/* Pestañas / Planillas (Visitas por Grupo vs Centros de Costo) */}
