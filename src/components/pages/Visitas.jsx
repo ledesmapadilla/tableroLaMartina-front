@@ -19,7 +19,7 @@ const GRUPOS = [
   { label: "Grupo 3",       color: "#9e8850" },
   { label: "Grupo 4",       color: "#6b5b7b" },
   { label: "Grupo 5",       color: "#7a5038" },
-  { label: "NINGUNA",       color: "#777777" },
+  { label: "NINGUNO",       color: "#777777" },
   { label: "Berdina",       color: "#7a3535" },
   { label: "San Pablo",     color: "#5a6f40" },
   { label: "Repuestos B.",  color: "#8e44ad" },
