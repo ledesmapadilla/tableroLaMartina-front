@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form } from "react-bootstrap";
 import Swal from "sweetalert2";
+import ExcelJS from "exceljs";
 import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
@@ -238,6 +239,126 @@ function Visitas() {
     ...tractores.map((t) => t.cc).filter(Boolean),
     ...Object.keys(countsCC)
   ])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const exportarExcelGrupos = async () => {
+    try {
+      const nombreMes = MESES_NOMBRE[mes];
+      const titulo = `Resumen de Visitas por Grupo - ${nombreMes} ${año}`;
+      const columnas = ["Grupo", "Cantidad de Visitas"];
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Visitas por Grupo");
+
+      ws.mergeCells(1, 1, 1, 2);
+      const celdaTitulo = ws.getCell("A1");
+      celdaTitulo.value = titulo;
+      celdaTitulo.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+      celdaTitulo.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
+      celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(1).height = 28;
+
+      const filaEncabezado = ws.addRow(columnas);
+      filaEncabezado.height = 22;
+      filaEncabezado.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E5959" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+
+      GRUPOS.forEach((g) => {
+        const count = counts[g.label] || 0;
+        const row = ws.addRow([g.label, count]);
+        row.height = 20;
+        row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+        row.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
+      });
+
+      const totalVal = Object.values(counts).reduce((a, b) => a + b, 0);
+      const rowTotal = ws.addRow(["Total", totalVal]);
+      rowTotal.height = 22;
+      rowTotal.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      });
+      rowTotal.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+      rowTotal.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
+
+      ws.getColumn(1).width = 25;
+      ws.getColumn(2).width = 20;
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Resumen_Visitas_Grupos_${nombreMes}_${año}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo exportar a Excel" });
+    }
+  };
+
+  const exportarExcelCC = async () => {
+    try {
+      const nombreMes = MESES_NOMBRE[mes];
+      const titulo = `Resumen de Visitas por Centro de Costo (CC) - ${nombreMes} ${año}`;
+      const columnas = ["Centro de Costo (CC)", "Descripción", "Cantidad de Visitas"];
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Visitas por CC");
+
+      ws.mergeCells(1, 1, 1, 3);
+      const celdaTitulo = ws.getCell("A1");
+      celdaTitulo.value = titulo;
+      celdaTitulo.font = { bold: true, size: 14, color: { argb: "FFFFFFFF" } };
+      celdaTitulo.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF3A7070" } };
+      celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(1).height = 28;
+
+      const filaEncabezado = ws.addRow(columnas);
+      filaEncabezado.height = 22;
+      filaEncabezado.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2E5959" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+
+      ccsOrdenados.forEach((cc) => {
+        const count = countsCC[cc] || 0;
+        const tracInfo = tractores.find((t) => t.cc === cc);
+        const desc = tracInfo?.descripcion || "-";
+        const row = ws.addRow([cc, desc, count]);
+        row.height = 20;
+        row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+        row.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+        row.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+      });
+
+      const totalVal = Object.values(countsCC).reduce((a, b) => a + b, 0);
+      const rowTotal = ws.addRow(["Total", "", totalVal]);
+      rowTotal.height = 22;
+      rowTotal.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEAEAEA" } };
+      });
+      rowTotal.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+      rowTotal.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+
+      ws.getColumn(1).width = 22;
+      ws.getColumn(2).width = 35;
+      ws.getColumn(3).width = 20;
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Resumen_Visitas_CC_${nombreMes}_${año}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo exportar a Excel" });
+    }
+  };
 
   const añosDisponibles = [...new Set([
     2026,
@@ -705,71 +826,35 @@ function Visitas() {
 
           {/* Planilla 1: Grupos */}
           {tabResumen === "grupos" && (
-            <div className="table-responsive">
-              <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
-                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {GRUPOS.map((g, idx) => {
-                    const count = counts[g.label] || 0;
-                    return (
-                      <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
-                        <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
-                          <div className="d-flex align-items-center">
-                            <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
-                            <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
-                          </div>
-                        </td>
-                        <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-                          {count}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr style={{ backgroundColor: "#eaeaea" }}>
-                    <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
-                      Total
-                    </td>
-                    <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
-                      {Object.values(counts).reduce((a, b) => a + b, 0)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Planilla 2: Centros de Costo */}
-          {tabResumen === "cc" && (
-            <div className="table-responsive">
-              <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
-                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Centro de Costo (CC)</th>
-                    <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ccsOrdenados.length === 0 ? (
-                    <tr>
-                      <td colSpan={2} className="text-muted py-4">No hay visitas registradas con CC en este mes</td>
+            <div className="d-flex flex-column gap-2">
+              <div className="d-flex justify-content-end mb-1">
+                <Button
+                  variant="success"
+                  size="sm"
+                  className="fw-bold d-flex align-items-center gap-1 shadow-sm"
+                  onClick={exportarExcelGrupos}
+                >
+                  <i className="bi bi-file-earmark-excel-fill fs-6"></i>
+                  <span>Exportar Excel</span>
+                </Button>
+              </div>
+              <div className="table-responsive">
+                <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Grupo</th>
+                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
                     </tr>
-                  ) : (
-                    ccsOrdenados.map((cc, idx) => {
-                      const count = countsCC[cc] || 0;
-                      const tracInfo = tractores.find((t) => t.cc === cc);
+                  </thead>
+                  <tbody>
+                    {GRUPOS.map((g, idx) => {
+                      const count = counts[g.label] || 0;
                       return (
-                        <tr key={cc} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                        <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
                           <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
-                            <div className="d-flex align-items-center gap-2">
-                              <span className="fw-bold" style={{ fontSize: isMobile ? "0.85rem" : "0.95rem", color: "#3a7070" }}>{cc}</span>
-                              {tracInfo?.descripcion && (
-                                <span className="text-muted small">— {tracInfo.descripcion}</span>
-                              )}
+                            <div className="d-flex align-items-center">
+                              <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
+                              <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
                             </div>
                           </td>
                           <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
@@ -777,18 +862,80 @@ function Visitas() {
                           </td>
                         </tr>
                       );
-                    })
-                  )}
-                  <tr style={{ backgroundColor: "#eaeaea" }}>
-                    <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
-                      Total
-                    </td>
-                    <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
-                      {Object.values(countsCC).reduce((a, b) => a + b, 0)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                    })}
+                    <tr style={{ backgroundColor: "#eaeaea" }}>
+                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                        Total
+                      </td>
+                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                        {Object.values(counts).reduce((a, b) => a + b, 0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Planilla 2: Centros de Costo */}
+          {tabResumen === "cc" && (
+            <div className="d-flex flex-column gap-2">
+              <div className="d-flex justify-content-end mb-1">
+                <Button
+                  variant="success"
+                  size="sm"
+                  className="fw-bold d-flex align-items-center gap-1 shadow-sm"
+                  onClick={exportarExcelCC}
+                >
+                  <i className="bi bi-file-earmark-excel-fill fs-6"></i>
+                  <span>Exportar Excel</span>
+                </Button>
+              </div>
+              <div className="table-responsive">
+                <table className="table table-bordered align-middle text-center" style={{ width: "100%", borderRadius: "8px", overflow: "hidden", borderCollapse: "separate", borderSpacing: "0", margin: "0" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#3a7070", color: "#fff" }}>
+                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Centro de Costo (CC)</th>
+                      <th style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #2e5959", fontWeight: "700", fontSize: isMobile ? "0.78rem" : "0.95rem" }}>Visitas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ccsOrdenados.length === 0 ? (
+                      <tr>
+                        <td colSpan={2} className="text-muted py-4">No hay visitas registradas con CC en este mes</td>
+                      </tr>
+                    ) : (
+                      ccsOrdenados.map((cc, idx) => {
+                        const count = countsCC[cc] || 0;
+                        const tracInfo = tractores.find((t) => t.cc === cc);
+                        return (
+                          <tr key={cc} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                            <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="fw-bold" style={{ fontSize: isMobile ? "0.85rem" : "0.95rem", color: "#3a7070" }}>{cc}</span>
+                                {tracInfo?.descripcion && (
+                                  <span className="text-muted small">— {tracInfo.descripcion}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
+                              {count}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                    <tr style={{ backgroundColor: "#eaeaea" }}>
+                      <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
+                        Total
+                      </td>
+                      <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", fontSize: isMobile ? "0.85rem" : "1rem", color: COLOR }}>
+                        {Object.values(countsCC).reduce((a, b) => a + b, 0)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
