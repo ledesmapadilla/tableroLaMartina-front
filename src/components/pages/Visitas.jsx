@@ -781,49 +781,51 @@ function Visitas() {
         </Modal.Header>
         <Modal.Body className={isMobile ? "p-2" : "p-4"} style={{ backgroundColor: "#fdfdfd" }}>
           
-          {/* Controles de Mes, Año y Excel (a la altura del año, sin bg) */}
-          <div className="d-flex gap-2 justify-content-center align-items-center mb-3">
-            <Form.Select
-              value={mes}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                if (año === 2026 && val < 4) {
-                  setMes(4);
-                } else {
-                  setMes(val);
-                }
-              }}
-              style={{ maxWidth: "160px", borderColor: COLOR, color: COLOR, fontWeight: "bold", cursor: "pointer" }}
-              size="sm"
-            >
-              {MESES_NOMBRE.map((nombre, idx) => (
-                <option key={idx} value={idx} disabled={año === 2026 && idx < 4}>
-                  {nombre}
-                </option>
-              ))}
-            </Form.Select>
-            <Form.Select
-              value={año}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                if (val === 2026 && mes < 4) {
-                  setMes(4);
-                }
-                setAño(val);
-              }}
-              style={{ maxWidth: "100px", borderColor: COLOR, color: COLOR, fontWeight: "bold", cursor: "pointer" }}
-              size="sm"
-            >
-              {añosDisponibles.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </Form.Select>
+          {/* Controles de Mes, Año y Excel (alineado a la derecha, sin bg) */}
+          <div className="d-flex align-items-center justify-content-center position-relative mb-3">
+            <div className="d-flex gap-2">
+              <Form.Select
+                value={mes}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (año === 2026 && val < 4) {
+                    setMes(4);
+                  } else {
+                    setMes(val);
+                  }
+                }}
+                style={{ maxWidth: "160px", borderColor: COLOR, color: COLOR, fontWeight: "bold", cursor: "pointer" }}
+                size="sm"
+              >
+                {MESES_NOMBRE.map((nombre, idx) => (
+                  <option key={idx} value={idx} disabled={año === 2026 && idx < 4}>
+                    {nombre}
+                  </option>
+                ))}
+              </Form.Select>
+              <Form.Select
+                value={año}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  if (val === 2026 && mes < 4) {
+                    setMes(4);
+                  }
+                  setAño(val);
+                }}
+                style={{ maxWidth: "100px", borderColor: COLOR, color: COLOR, fontWeight: "bold", cursor: "pointer" }}
+                size="sm"
+              >
+                {añosDisponibles.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </Form.Select>
+            </div>
             <Button
               variant="outline-success"
               size="sm"
-              className="fw-bold border-0 p-1 px-2 text-success"
+              className="fw-bold border-0 p-1 px-2 text-success position-absolute end-0"
               style={{ backgroundColor: "transparent" }}
               onClick={tabResumen === "grupos" ? exportarExcelGrupos : exportarExcelCC}
               title="Descargar Excel"
