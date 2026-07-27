@@ -404,7 +404,7 @@ function Visitas() {
                         overflow: "hidden"
                       }}
                     >
-                      {v.grupo}{v.cc ? ` (${v.cc})` : ""}
+                      {v.grupo}
                     </div>
                   ))}
                   {vDia.length > 2 && (
