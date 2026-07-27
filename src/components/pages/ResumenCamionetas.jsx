@@ -174,7 +174,7 @@ function ResumenCamionetas() {
                 {/* Izquierda: mes */}
                 <div
                   className="d-flex align-items-center justify-content-center"
-                  style={{ flex: 1, fontWeight: "700", fontSize: "1.1rem", cursor: "pointer", transition: "background-color 0.15s", padding: "4px", color: "#000" }}
+                  style={{ flex: 1, fontWeight: "600", fontSize: "1.1rem", cursor: "pointer", transition: "background-color 0.15s", padding: "4px", color: "#000" }}
                   onClick={() => navigate("/camionetas", { state: { mes: i + 1, anio } })}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.3)")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -188,14 +188,14 @@ function ResumenCamionetas() {
                   {esImpar && (
                     <div
                       className="d-flex flex-column align-items-center justify-content-center text-white"
-                      style={{ flex: 1, fontSize: "0.95rem", fontWeight: "600", cursor: "pointer", transition: "background-color 0.15s", borderBottom: "1px solid rgba(0,0,0,0.2)", backgroundColor: clBg }}
+                      style={{ flex: 1, fontSize: "0.95rem", fontWeight: "500", cursor: "pointer", transition: "background-color 0.15s", borderBottom: "1px solid rgba(0,0,0,0.2)", backgroundColor: clBg }}
                       onClick={() => navigate("/camionetas/checklist", { state: { mes: i + 1, anio } })}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = clBgHover)}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = clBg)}
                     >
                       <span>Check List</span>
                       {info !== null && info.pendientes > 0 && (
-                        <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#ffff00", fontWeight: "800", textShadow: "0px 1px 3px #000, 0px 0px 4px #000" }}>{info.pendientes} pendiente{info.pendientes > 1 ? "s" : ""}</span>
+                        <span style={{ fontSize: "0.75rem", marginTop: "1px", opacity: 0.9 }}>{info.pendientes} pendiente{info.pendientes > 1 ? "s" : ""}</span>
                       )}
                     </div>
                   )}
@@ -206,14 +206,14 @@ function ResumenCamionetas() {
                     return (
                       <div
                         className="d-flex flex-column align-items-center justify-content-center text-white"
-                        style={{ flex: 1, fontSize: "0.95rem", fontWeight: "600", cursor: "pointer", transition: "background-color 0.15s", backgroundColor: svBg }}
+                        style={{ flex: 1, fontSize: "0.95rem", fontWeight: "500", cursor: "pointer", transition: "background-color 0.15s", backgroundColor: svBg }}
                         onClick={() => navigate("/camionetas/services/kilometros", { state: { mes: i + 1, anio } })}
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = svBgHover)}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = svBg)}
                       >
                         <span>Kilometraje</span>
                         {kmSinRelevar !== null && kmSinRelevar > 0 && (
-                          <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#ffff00", fontWeight: "800", textShadow: "0px 1px 3px #000, 0px 0px 4px #000" }}>
+                          <span style={{ fontSize: "0.75rem", marginTop: "1px", opacity: 0.9 }}>
                             {kmSinRelevar} sin relevar
                           </span>
                         )}
@@ -237,9 +237,9 @@ function ResumenCamionetas() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "700", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>Services Atrasados</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Services Atrasados</span>
                 {serviciosAtrasados !== null && (
-                  <span style={{ fontSize: "2rem", fontWeight: "800", marginTop: "4px", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>{serviciosAtrasados}</span>
+                  <span style={{ fontSize: "2rem", fontWeight: "600", marginTop: "4px" }}>{serviciosAtrasados}</span>
                 )}
               </div>
             );
@@ -257,9 +257,9 @@ function ResumenCamionetas() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "700", textAlign: "center", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>Unidades con tareas pendientes</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: "600", textAlign: "center" }}>Unidades con tareas pendientes</span>
                 {tareasPendientes !== null && (
-                  <span style={{ fontSize: "2rem", fontWeight: "800", marginTop: "4px", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>{tareasPendientes}</span>
+                  <span style={{ fontSize: "2rem", fontWeight: "600", marginTop: "4px" }}>{tareasPendientes}</span>
                 )}
               </div>
             );
@@ -277,9 +277,9 @@ function ResumenCamionetas() {
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "700", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>Unidades Paradas</span>
+                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Unidades Paradas</span>
                 {unidadesParadas !== null && (
-                  <span style={{ fontSize: "2rem", fontWeight: "800", marginTop: "4px", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>{unidadesParadas}</span>
+                  <span style={{ fontSize: "2rem", fontWeight: "600", marginTop: "4px" }}>{unidadesParadas}</span>
                 )}
               </div>
             );
