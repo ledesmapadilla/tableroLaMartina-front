@@ -730,16 +730,37 @@ function Visitas() {
                     gap: "8px",
                   }}
                 >
-                  <span style={{ fontSize: "0.95rem" }}>
-                    <strong style={{ color: colorGrupo(v.grupo) }}>{v.grupo}</strong>
-                    {v.cc ? <span className="fw-semibold text-dark ms-1">({v.cc})</span> : ""}
-                    {v.observaciones ? <span className="text-muted"> — {v.observaciones}</span> : ""}
-                  </span>
+                  <div className="d-flex flex-column gap-1">
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <strong style={{ color: colorGrupo(v.grupo), fontSize: "1rem" }}>{v.grupo}</strong>
+                      {v.cc && (
+                        <span
+                          className="badge"
+                          style={{
+                            backgroundColor: "#3a7070",
+                            color: "#fff",
+                            fontSize: "0.82rem",
+                            fontWeight: "600",
+                            padding: "4px 8px",
+                            borderRadius: "4px"
+                          }}
+                        >
+                          <i className="bi bi-geo-alt-fill me-1"></i>CC: {v.cc}
+                        </span>
+                      )}
+                    </div>
+                    {v.observaciones && (
+                      <span className="text-muted ms-1" style={{ fontSize: "0.88rem" }}>
+                        {v.observaciones}
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => eliminarVisita(keyModal, i)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#8b4a4a", padding: "0 4px" }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#8b4a4a", padding: "4px 8px" }}
+                    title="Eliminar visita"
                   >
-                    <i className="bi bi-trash"></i>
+                    <i className="bi bi-trash fs-5"></i>
                   </button>
                 </div>
               ))}
