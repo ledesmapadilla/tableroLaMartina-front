@@ -284,37 +284,45 @@ function ReparacionesTractor() {
     const fila = filas.find((f) => f.id === targetId);
     if (!fila) return { ok: false };
 
+    let nuevoDiag = fila.diagnostico || "";
+    let nuevaDesc = fila.descripcion || "";
+    let nuevasObs = fila.observaciones || "";
+    let nuevosReps = fila.repuestos || [];
+
+    if (tipo === "detalle") {
+      if (typeof arrayUObjeto === "object" && arrayUObjeto !== null) {
+        nuevoDiag = arrayUObjeto.diagnostico ?? (fila.diagnostico || "");
+        nuevaDesc = arrayUObjeto.descripcion ?? (fila.descripcion || "");
+      } else {
+        nuevaDesc = arrayUObjeto || "";
+      }
+    } else if (tipo === "observaciones") {
+      nuevasObs = arrayUObjeto || "";
+    } else if (tipo === "repuestos") {
+      nuevosReps = arrayUObjeto || [];
+    }
+
     const body = {
       tractor: tractorId,
       fecha: fila.fecha,
       reparacion: fila.reparacion,
-      diagnostico: tipo === "detalle" ? (typeof arrayUObjeto === "object" ? (arrayUObjeto.diagnostico ?? fila.diagnostico) : fila.diagnostico) : fila.diagnostico,
-      descripcion: tipo === "detalle" ? (typeof arrayUObjeto === "object" ? (arrayUObjeto.descripcion ?? fila.descripcion) : arrayUObjeto) : fila.descripcion,
+      diagnostico: nuevoDiag,
+      descripcion: nuevaDesc,
       parte: fila.parte || "",
       prioridad: fila.prioridad,
       estado: fila.estado,
       responsable: fila.responsable || "",
-      observaciones: tipo === "observaciones" ? arrayUObjeto : fila.observaciones,
+      observaciones: nuevasObs,
       maquinaParada: !!fila.maquinaParada,
-      repuestos: tipo === "repuestos"
-        ? arrayUObjeto.map((r) => ({
-            repuesto: r.repuesto,
-            cantidad: Number(r.cantidad) || 1,
-            precio: Number(r.precio) || 0,
-            proveedor: r.proveedor || "",
-            responsable: r.responsable || "",
-            estado: r.estado || "Pedido",
-            observaciones: r.observaciones || "",
-          }))
-        : (fila.repuestos || []).map((r) => ({
-            repuesto: r.repuesto,
-            cantidad: r.cantidad,
-            precio: r.precio,
-            proveedor: r.proveedor,
-            responsable: r.responsable,
-            estado: r.estado,
-            observaciones: r.observaciones,
-          })),
+      repuestos: (nuevosReps || []).map((r) => ({
+        repuesto: r.repuesto,
+        cantidad: Number(r.cantidad) || 1,
+        precio: Number(r.precio) || 0,
+        proveedor: r.proveedor || "",
+        responsable: r.responsable || "",
+        estado: r.estado || "Pedido",
+        observaciones: r.observaciones || "",
+      })),
     };
 
     const isNew = String(fila.id).length !== 24;
@@ -323,9 +331,13 @@ function ReparacionesTractor() {
       setFilas((prev) =>
         prev.map((f) => {
           if (f.id === fila.id) {
-            if (tipo === "detalle") return { ...f, descripcion: arrayUObjeto };
-            if (tipo === "observaciones") return { ...f, observaciones: arrayUObjeto };
-            if (tipo === "repuestos") return { ...f, repuestos: arrayUObjeto };
+            return {
+              ...f,
+              diagnostico: nuevoDiag,
+              descripcion: nuevaDesc,
+              observaciones: nuevasObs,
+              repuestos: nuevosReps,
+            };
           }
           return f;
         })
@@ -348,6 +360,7 @@ function ReparacionesTractor() {
           f.id === fila.id
             ? {
                 ...f,
+                diagnostico: saved.diagnostico || "",
                 descripcion: saved.descripcion || "",
                 observaciones: saved.observaciones || "",
                 repuestos: (saved.repuestos || []).map((sr) => ({

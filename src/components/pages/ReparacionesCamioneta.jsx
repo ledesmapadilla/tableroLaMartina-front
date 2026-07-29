@@ -280,6 +280,112 @@ function ReparacionesCamioneta() {
     }
   };
 
+  const handleSaveSubSection = async (tipo, arrayUObjeto) => {
+    const targetId = detalleSel?.id || observacionesSel || repuestosSel;
+    const fila = filas.find((f) => f.id === targetId);
+    if (!fila) return { ok: false };
+
+    let nuevoDiag = fila.diagnostico || "";
+    let nuevaDesc = fila.descripcion || "";
+    let nuevasObs = fila.observaciones || "";
+    let nuevosReps = fila.repuestos || [];
+
+    if (tipo === "detalle") {
+      if (typeof arrayUObjeto === "object" && arrayUObjeto !== null) {
+        nuevoDiag = arrayUObjeto.diagnostico ?? (fila.diagnostico || "");
+        nuevaDesc = arrayUObjeto.descripcion ?? (fila.descripcion || "");
+      } else {
+        nuevaDesc = arrayUObjeto || "";
+      }
+    } else if (tipo === "observaciones") {
+      nuevasObs = arrayUObjeto || "";
+    } else if (tipo === "repuestos") {
+      nuevosReps = arrayUObjeto || [];
+    }
+
+    const body = {
+      camioneta: camionetaId,
+      fecha: fila.fecha,
+      reparacion: fila.reparacion,
+      diagnostico: nuevoDiag,
+      descripcion: nuevaDesc,
+      parte: fila.parte || "",
+      prioridad: fila.prioridad,
+      estado: fila.estado,
+      responsable: fila.responsable || "",
+      observaciones: nuevasObs,
+      maquinaParada: !!fila.maquinaParada,
+      repuestos: (nuevosReps || []).map((r) => ({
+        repuesto: r.repuesto,
+        cantidad: Number(r.cantidad) || 1,
+        precio: Number(r.precio) || 0,
+        proveedor: r.proveedor || "",
+        responsable: r.responsable || "",
+        estado: r.estado || "Pedido",
+        observaciones: r.observaciones || "",
+      })),
+    };
+
+    const isNew = String(fila.id).length !== 24;
+
+    if (isNew) {
+      setFilas((prev) =>
+        prev.map((f) => {
+          if (f.id === fila.id) {
+            return {
+              ...f,
+              diagnostico: nuevoDiag,
+              descripcion: nuevaDesc,
+              observaciones: nuevasObs,
+              repuestos: nuevosReps,
+            };
+          }
+          return f;
+        })
+      );
+      return { ok: true };
+    }
+
+    try {
+      const res = await fetch(`/api/trabajos-camioneta/${fila.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) throw new Error("No se pudo guardar la modificación.");
+      const saved = await res.json();
+
+      setFilas((prev) =>
+        prev.map((f) =>
+          f.id === fila.id
+            ? {
+                ...f,
+                diagnostico: saved.diagnostico || "",
+                descripcion: saved.descripcion || "",
+                observaciones: saved.observaciones || "",
+                repuestos: (saved.repuestos || []).map((sr) => ({
+                  id: sr._id,
+                  repuesto: sr.repuesto || "",
+                  cantidad: sr.cantidad || 1,
+                  precio: sr.precio || 0,
+                  proveedor: sr.proveedor || "",
+                  responsable: sr.responsable || "",
+                  estado: sr.estado || "Pedido",
+                  observaciones: sr.observaciones || "",
+                })),
+              }
+            : f
+        )
+      );
+      return { ok: true };
+    } catch (e) {
+      console.error(e);
+      Swal.fire({ icon: "error", title: "Error", text: e.message });
+      return { ok: false };
+    }
+  };
+
   const verObservacion = (texto) =>
     Swal.fire({
       title: "Observaciones / Descripción",
@@ -417,14 +523,7 @@ function ReparacionesCamioneta() {
         reparacion={detalleSel}
         readOnly={!isEditMode}
         onVolver={() => setDetalleSel(null)}
-        onGuardar={(datos) => {
-          const diag = typeof datos === "object" ? (datos.diagnostico || "") : "";
-          const desc = typeof datos === "object" ? (datos.descripcion || "") : datos;
-          setFilas((prev) =>
-            prev.map((f) => (f.id === detalleSel.id ? { ...f, diagnostico: diag, descripcion: desc } : f))
-          );
-          return { ok: true };
-        }}
+        onGuardar={(datos) => handleSaveSubSection("detalle", datos)}
       />
     );
   }
@@ -440,12 +539,7 @@ function ReparacionesCamioneta() {
         readOnly={!isEditMode}
         responsablesAlta={responsablesAlta}
         onVolver={() => setRepuestosSel(null)}
-        onGuardar={(reps) => {
-          setFilas((prev) =>
-            prev.map((f) => (f.id === repuestosSel ? { ...f, repuestos: reps } : f))
-          );
-          return { ok: true };
-        }}
+        onGuardar={(reps) => handleSaveSubSection("repuestos", reps)}
       />
     );
   }
@@ -460,12 +554,7 @@ function ReparacionesCamioneta() {
         reparacion={fila}
         readOnly={!isEditMode}
         onVolver={() => setObservacionesSel(null)}
-        onGuardar={(texto) => {
-          setFilas((prev) =>
-            prev.map((f) => (f.id === observacionesSel ? { ...f, observaciones: texto } : f))
-          );
-          return { ok: true };
-        }}
+        onGuardar={(obs) => handleSaveSubSection("observaciones", obs)}
       />
     );
   }
