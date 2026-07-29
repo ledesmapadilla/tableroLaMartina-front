@@ -920,7 +920,6 @@ function DetalleReparacion({ cc, descripcion, reparacion, readOnly, onVolver, on
   const [texto, setTexto] = useState(r.descripcion || "");
 
   const handleGuardar = async () => {
-    Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
     onVolver();
     onGuardar({ diagnostico, descripcion: texto });
   };
@@ -1010,7 +1009,6 @@ function DetalleObservaciones({ cc, descripcion, reparacion, readOnly, onVolver,
   const [texto, setTexto] = useState(reparacion?.observaciones || "");
 
   const handleGuardar = async () => {
-    Swal.fire({ icon: "success", title: "Observaciones guardadas", timer: 1200, showConfirmButton: false });
     onVolver();
     onGuardar(texto);
   };
