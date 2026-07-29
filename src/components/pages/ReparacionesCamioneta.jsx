@@ -867,34 +867,34 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
       </div>
 
       <div className="border rounded p-4 bg-white" style={{ borderTop: "4px solid #3a7070" }}>
-        <Row className="g-4 mb-3">
+        <Row className="g-4 mb-4">
           <Col md={6}>
-            <Form.Group>
-              <Form.Label className="fw-semibold">Diagnóstico</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={8}
-                placeholder={readOnly ? "Sin diagnóstico cargado." : "Escriba aquí el diagnóstico..."}
-                value={diagnostico}
-                onChange={(e) => setDiagnostico(e.target.value)}
-                disabled={readOnly}
-                style={{ fontSize: "0.9rem" }}
-              />
-            </Form.Group>
+            <div className="px-3 py-2 fw-bold text-white rounded-top" style={{ backgroundColor: "#3a7070", fontSize: "0.9rem" }}>
+              <i className="bi bi-clipboard2-pulse me-2"></i>DIAGNÓSTICO
+            </div>
+            <Form.Control
+              as="textarea"
+              rows={8}
+              placeholder={readOnly ? "Sin diagnóstico cargado." : "Escriba aquí el diagnóstico..."}
+              value={diagnostico}
+              onChange={(e) => setDiagnostico(e.target.value)}
+              disabled={readOnly}
+              style={{ fontSize: "0.9rem", borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTop: "none" }}
+            />
           </Col>
           <Col md={6}>
-            <Form.Group>
-              <Form.Label className="fw-semibold">Descripción Detallada del Trabajo</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={8}
-                placeholder={readOnly ? "Sin detalle cargado." : "Escriba aquí los detalles o descripción del trabajo realizado..."}
-                value={texto}
-                onChange={(e) => setTexto(e.target.value)}
-                disabled={readOnly}
-                style={{ fontSize: "0.9rem" }}
-              />
-            </Form.Group>
+            <div className="px-3 py-2 fw-bold text-white rounded-top" style={{ backgroundColor: "#2c2c2c", fontSize: "0.9rem" }}>
+              <i className="bi bi-tools me-2"></i>DESCRIPCIÓN DETALLADA DEL TRABAJO
+            </div>
+            <Form.Control
+              as="textarea"
+              rows={8}
+              placeholder={readOnly ? "Sin detalle cargado." : "Escriba aquí los detalles o descripción del trabajo realizado..."}
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              disabled={readOnly}
+              style={{ fontSize: "0.9rem", borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTop: "none" }}
+            />
           </Col>
         </Row>
 
