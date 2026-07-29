@@ -336,11 +336,12 @@ function ReparacionesTractor() {
     };
 
     const isNew = String(fila.id).length !== 24;
-    if (isNew) return { ok: true };
+    const url = isNew ? "/api/trabajos-tractor" : `/api/trabajos-tractor/${fila.id}`;
+    const method = isNew ? "POST" : "PUT";
 
     try {
-      const res = await fetch(`/api/trabajos-tractor/${fila.id}`, {
-        method: "PUT",
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
@@ -353,6 +354,7 @@ function ReparacionesTractor() {
           f.id === fila.id
             ? {
                 ...f,
+                id: saved._id,
                 diagnostico: saved.diagnostico || "",
                 descripcion: saved.descripcion || "",
                 observaciones: saved.observaciones || "",
