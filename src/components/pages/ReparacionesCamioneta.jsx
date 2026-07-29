@@ -515,13 +515,12 @@ function ReparacionesCamioneta() {
   };
 
   if (detalleSel) {
-    const isEditMode = editandoId === detalleSel.id;
     return (
       <DetalleReparacion
         patente={patente}
         marca={marca}
         reparacion={detalleSel}
-        readOnly={!isEditMode}
+        readOnly={false}
         onVolver={() => setDetalleSel(null)}
         onGuardar={(datos) => handleSaveSubSection("detalle", datos)}
       />
@@ -530,13 +529,12 @@ function ReparacionesCamioneta() {
 
   if (repuestosSel) {
     const fila = filas.find((f) => f.id === repuestosSel);
-    const isEditMode = editandoId === repuestosSel;
     return (
       <DetalleRepuestos
         patente={patente}
         marca={marca}
         reparacion={fila}
-        readOnly={!isEditMode}
+        readOnly={false}
         responsablesAlta={responsablesAlta}
         onVolver={() => setRepuestosSel(null)}
         onGuardar={(reps) => handleSaveSubSection("repuestos", reps)}
@@ -546,13 +544,12 @@ function ReparacionesCamioneta() {
 
   if (observacionesSel) {
     const fila = filas.find((f) => f.id === observacionesSel);
-    const isEditMode = editandoId === observacionesSel;
     return (
       <DetalleObservaciones
         patente={patente}
         marca={marca}
         reparacion={fila}
-        readOnly={!isEditMode}
+        readOnly={false}
         onVolver={() => setObservacionesSel(null)}
         onGuardar={(obs) => handleSaveSubSection("observaciones", obs)}
       />

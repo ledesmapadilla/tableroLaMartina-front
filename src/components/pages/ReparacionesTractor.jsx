@@ -504,13 +504,12 @@ function ReparacionesTractor() {
   };
 
   if (detalleSel) {
-    const isEditMode = editandoId === detalleSel.id;
     return (
       <DetalleReparacion
         cc={cc}
         descripcion={descripcion}
         reparacion={detalleSel}
-        readOnly={!isEditMode}
+        readOnly={false}
         onVolver={() => setDetalleSel(null)}
         onGuardar={(texto) => handleSaveSubSection("detalle", texto)}
       />
@@ -519,13 +518,12 @@ function ReparacionesTractor() {
 
   if (observacionesSel) {
     const fila = filas.find((f) => f.id === observacionesSel);
-    const isEditMode = editandoId === observacionesSel;
     return (
       <DetalleObservaciones
         cc={cc}
         descripcion={descripcion}
         reparacion={fila}
-        readOnly={!isEditMode}
+        readOnly={false}
         onVolver={() => setObservacionesSel(null)}
         onGuardar={(texto) => handleSaveSubSection("observaciones", texto)}
       />
@@ -534,13 +532,12 @@ function ReparacionesTractor() {
 
   if (repuestosSel) {
     const fila = filas.find((f) => f.id === repuestosSel);
-    const isEditMode = editandoId === repuestosSel;
     return (
       <DetalleRepuestos
         cc={cc}
         descripcion={descripcion}
         reparacion={fila}
-        readOnly={!isEditMode}
+        readOnly={false}
         responsablesAlta={responsablesAlta}
         onVolver={() => setRepuestosSel(null)}
         onGuardar={(lista) => handleSaveSubSection("repuestos", lista)}
