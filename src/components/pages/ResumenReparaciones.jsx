@@ -1,8 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Table, Button } from "react-bootstrap";
+import { Container, Table, Button, Form } from "react-bootstrap";
 import ExcelJS from "exceljs";
 import Swal from "sweetalert2";
+
+const selectActivo = { backgroundImage: "none" };
+const estiloX = {
+  position: "absolute",
+  right: "10px",
+  top: "50%",
+  transform: "translateY(-50%)",
+  cursor: "pointer",
+  color: "#dc3545",
+  fontSize: "14px",
+  fontWeight: "900",
+  zIndex: 5,
+  userSelect: "none",
+};
 
 const formatF = (iso) =>
   iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
@@ -225,40 +239,75 @@ function ResumenReparaciones() {
       </div>
 
       <div className="mx-auto mb-3 d-flex align-items-center gap-3 flex-wrap" style={{ width: "92%" }}>
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-semibold">Estado</span>
-          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
-            <option value="todos">Todas</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="terminada">Terminadas</option>
-          </select>
+        {/* Filtro Estado */}
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+            style={filtro !== "todos" ? selectActivo : {}}
+          >
+            <option value="todos">Estado (todos)</option>
+            <option value="pendiente">Pendientes y en proceso</option>
+            <option value="terminada">Terminados</option>
+          </Form.Select>
+          {filtro !== "todos" && (
+            <span onClick={() => setFiltro("todos")} style={estiloX}>X</span>
+          )}
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-semibold">Patente</span>
-          <select value={filtroPatente} onChange={(e) => setFiltroPatente(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
-            <option value="">Todas</option>
+
+        {/* Filtro Patente */}
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroPatente}
+            onChange={(e) => setFiltroPatente(e.target.value)}
+            style={filtroPatente ? selectActivo : {}}
+          >
+            <option value="">Patente (todas)</option>
             {listaPatentes.map((p) => (
               <option key={p.patente} value={p.patente}>{p.label}</option>
             ))}
-          </select>
+          </Form.Select>
+          {filtroPatente && (
+            <span onClick={() => setFiltroPatente("")} style={estiloX}>X</span>
+          )}
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-semibold">Prioridad</span>
-          <select value={filtroUrgencia} onChange={(e) => setFiltroUrgencia(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
-            <option value="">Todas</option>
+
+        {/* Filtro Prioridad */}
+        <div className="position-relative" style={{ width: 200 }}>
+          <Form.Select
+            size="sm"
+            value={filtroUrgencia}
+            onChange={(e) => setFiltroUrgencia(e.target.value)}
+            style={filtroUrgencia ? selectActivo : {}}
+          >
+            <option value="">Prioridad (todas)</option>
             <option value="Normal">Normal</option>
             <option value="Urgente">Urgente</option>
             <option value="Crítico">Crítico</option>
-          </select>
+          </Form.Select>
+          {filtroUrgencia && (
+            <span onClick={() => setFiltroUrgencia("")} style={estiloX}>X</span>
+          )}
         </div>
-        <div className="d-flex align-items-center gap-2">
-          <span className="fw-semibold">Responsable</span>
-          <select value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)} style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "0.9rem", cursor: "pointer" }}>
-            <option value="">Todos</option>
+
+        {/* Filtro Responsable */}
+        <div className="position-relative" style={{ width: 220 }}>
+          <Form.Select
+            size="sm"
+            value={filtroResponsable}
+            onChange={(e) => setFiltroResponsable(e.target.value)}
+            style={filtroResponsable ? selectActivo : {}}
+          >
+            <option value="">Responsable (todos)</option>
             {listaResponsablesFiltrada.map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
-          </select>
+          </Form.Select>
+          {filtroResponsable && (
+            <span onClick={() => setFiltroResponsable("")} style={estiloX}>X</span>
+          )}
         </div>
       </div>
 
