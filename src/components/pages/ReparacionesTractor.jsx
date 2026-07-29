@@ -234,6 +234,8 @@ function ReparacionesTractor() {
     };
 
     const isNew = String(fila.id).length !== 24;
+    const currentId = editandoId;
+    setEditandoId(null);
 
     try {
       const url = isNew ? "/api/trabajos-tractor" : `/api/trabajos-tractor/${fila.id}`;
@@ -252,7 +254,7 @@ function ReparacionesTractor() {
       
       setFilas((prev) =>
         prev.map((f) =>
-          f.id === editandoId
+          f.id === currentId
             ? {
                 ...f,
                 id: saved._id,
@@ -271,10 +273,11 @@ function ReparacionesTractor() {
         )
       );
 
-      setEditandoId(null);
-      Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
+      const Toast = Swal.mixin({ toast: true, position: "top-end", showConfirmButton: false, timer: 1000 });
+      Toast.fire({ icon: "success", title: "Guardado" });
     } catch (e) {
       console.error(e);
+      setEditandoId(currentId);
       Swal.fire({ icon: "error", title: "Error", text: e.message });
     }
   };
@@ -302,6 +305,14 @@ function ReparacionesTractor() {
       nuevosReps = arrayUObjeto || [];
     }
 
+    setFilas((prev) =>
+      prev.map((f) =>
+        f.id === fila.id
+          ? { ...f, diagnostico: nuevoDiag, descripcion: nuevaDesc, observaciones: nuevasObs, repuestos: nuevosReps }
+          : f
+      )
+    );
+
     const body = {
       tractor: tractorId,
       fecha: fila.fecha,
@@ -326,24 +337,7 @@ function ReparacionesTractor() {
     };
 
     const isNew = String(fila.id).length !== 24;
-
-    if (isNew) {
-      setFilas((prev) =>
-        prev.map((f) => {
-          if (f.id === fila.id) {
-            return {
-              ...f,
-              diagnostico: nuevoDiag,
-              descripcion: nuevaDesc,
-              observaciones: nuevasObs,
-              repuestos: nuevosReps,
-            };
-          }
-          return f;
-        })
-      );
-      return { ok: true };
-    }
+    if (isNew) return { ok: true };
 
     try {
       const res = await fetch(`/api/trabajos-tractor/${fila.id}`, {
@@ -377,6 +371,8 @@ function ReparacionesTractor() {
             : f
         )
       );
+      const Toast = Swal.mixin({ toast: true, position: "top-end", showConfirmButton: false, timer: 1000 });
+      Toast.fire({ icon: "success", title: "Guardado" });
       return { ok: true };
     } catch (e) {
       console.error(e);
@@ -926,11 +922,8 @@ function DetalleReparacion({ cc, descripcion, reparacion, readOnly, onVolver, on
   const [texto, setTexto] = useState(r.descripcion || "");
 
   const handleGuardar = async () => {
-    const res = await onGuardar({ diagnostico, descripcion: texto });
-    if (res?.ok) {
-      Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
-      onVolver();
-    }
+    onVolver();
+    onGuardar({ diagnostico, descripcion: texto });
   };
 
   const Item = ({ label, value }) => (
@@ -1018,11 +1011,8 @@ function DetalleObservaciones({ cc, descripcion, reparacion, readOnly, onVolver,
   const [texto, setTexto] = useState(reparacion?.observaciones || "");
 
   const handleGuardar = async () => {
-    const res = await onGuardar(texto);
-    if (res?.ok) {
-      Swal.fire({ icon: "success", title: "Observaciones guardadas", timer: 1200, showConfirmButton: false });
-      onVolver();
-    }
+    onVolver();
+    onGuardar(texto);
   };
 
   return (
