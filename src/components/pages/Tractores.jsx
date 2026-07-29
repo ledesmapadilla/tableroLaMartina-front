@@ -87,17 +87,15 @@ function Tractores() {
                 <div
                   className="text-center px-2 mt-2"
                   style={{
-                    opacity: 0.9,
-                    fontSize: "0.7rem",
+                    color: "#000",
+                    fontSize: "0.72rem",
+                    fontWeight: "600",
                     lineHeight: "1.25",
                     wordBreak: "break-word",
-                    backgroundColor: "rgba(0,0,0,0.18)",
-                    borderRadius: "6px",
-                    padding: "4px 8px",
                     width: "100%",
                   }}
                 >
-                  <strong style={{ opacity: 1 }}>CCs:</strong> {ccs}
+                  <strong>CCs:</strong> {ccs}
                 </div>
               </div>
             );
