@@ -122,23 +122,8 @@ function Tractores() {
             onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
           >
-            <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "2.4rem", color: "#fff" }}></i>
-            <h5 className="fw-bold text-center mt-2 mb-0">Resumen Reparaciones</h5>
-            <small className="text-center mt-1 px-2" style={{ opacity: 0.85, fontSize: "0.75rem" }}>Todos los grupos</small>
-            <div
-              className="text-center px-2 mt-2"
-              style={{
-                color: "#fff",
-                fontSize: "0.72rem",
-                fontWeight: "600",
-                lineHeight: "1.25",
-                wordBreak: "break-word",
-                width: "100%",
-                opacity: 0.9,
-              }}
-            >
-              Filtros y Excel
-            </div>
+            <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "2.8rem", color: "#fff" }}></i>
+            <h5 className="fw-bold text-center mt-3 mb-0">Resumen Reparaciones</h5>
           </div>
         </div>
       </div>
