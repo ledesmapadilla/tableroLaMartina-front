@@ -407,7 +407,7 @@ function ReparacionesTractor() {
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = `Reparaciones Tractor: ${cc}${descripcion ? ` - ${descripcion}` : ""}`;
-    const columnas = ["Fecha", "Reparación", "Detalle", "Prioridad", "Estado", "Responsable", "Observaciones", "Repuestos"];
+    const columnas = ["Fecha", "Reparación", "Diagnóstico", "Detalle", "Prioridad", "Estado", "Responsable", "Máquina Parada", "Observaciones", "Repuestos"];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparaciones");
@@ -419,7 +419,7 @@ function ReparacionesTractor() {
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 22;
 
-    ws.mergeCells(2, 1, 2, 3);
+    ws.mergeCells(2, 1, 2, 4);
     const celdaFecha = ws.getCell("A2");
     celdaFecha.value = `Fecha: ${fechaHoy}`;
     celdaFecha.alignment = { horizontal: "left" };
@@ -458,10 +458,12 @@ function ReparacionesTractor() {
       const fila = ws.addRow([
         t.fecha ? t.fecha.split("-").reverse().join("/") : "-",
         t.reparacion || "-",
+        t.diagnostico || "-",
         t.descripcion || "-",
         t.prioridad || "-",
         t.estado || "-",
         t.responsable || "-",
+        t.maquinaParada ? "SÍ" : "NO",
         t.observaciones || "-",
         repsStr || "-",
       ]);
@@ -474,19 +476,22 @@ function ReparacionesTractor() {
       });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(7).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(9).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
-      { width: 13 },
-      { width: 35 },
-      { width: 35 },
-      { width: 13 },
-      { width: 13 },
-      { width: 20 },
-      { width: 35 },
-      { width: 45 },
+      { width: 12 }, // Fecha
+      { width: 25 }, // Reparación
+      { width: 30 }, // Diagnóstico
+      { width: 30 }, // Detalle
+      { width: 12 }, // Prioridad
+      { width: 12 }, // Estado
+      { width: 18 }, // Responsable
+      { width: 15 }, // Máquina Parada
+      { width: 30 }, // Observaciones
+      { width: 35 }, // Repuestos
     ];
 
     const buf = await wb.xlsx.writeBuffer();

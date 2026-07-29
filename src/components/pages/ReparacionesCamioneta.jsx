@@ -416,7 +416,7 @@ function ReparacionesCamioneta() {
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = `Reparaciones Camioneta: ${patente}${marca ? ` - ${marca}` : ""}`;
-    const columnas = ["Fecha", "Reparación", "Detalle", "Prioridad", "Estado", "Responsable", "Máquina Parada", "Observaciones", "Repuestos"];
+    const columnas = ["Fecha", "Reparación", "Diagnóstico", "Detalle", "Prioridad", "Estado", "Responsable", "Máquina Parada", "Observaciones", "Repuestos"];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Reparaciones");
@@ -467,6 +467,7 @@ function ReparacionesCamioneta() {
       const fila = ws.addRow([
         t.fecha ? t.fecha.split("-").reverse().join("/") : "-",
         t.reparacion || "-",
+        t.diagnostico || "-",
         t.descripcion || "-",
         t.prioridad || "-",
         t.estado || "-",
@@ -484,13 +485,15 @@ function ReparacionesCamioneta() {
       });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(9).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
       { width: 12 }, // Fecha
       { width: 25 }, // Reparación
+      { width: 30 }, // Diagnóstico
       { width: 30 }, // Detalle
       { width: 12 }, // Prioridad
       { width: 12 }, // Estado
