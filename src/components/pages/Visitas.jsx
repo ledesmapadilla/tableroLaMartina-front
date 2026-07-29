@@ -25,6 +25,7 @@ const GRUPOS = [
   { label: "San Pablo",     color: "#5a6f40" },
   { label: "Repuestos B.",  color: "#8e44ad" },
   { label: "Repuestos SP.", color: "#d35400" },
+  { label: "Otro",          color: "#6c757d" },
 ];
 
 const ITINERARIO = [
@@ -39,7 +40,7 @@ function colorGrupo(label) {
   const l = (label || "").trim();
   if (l === "Repuestos Berdina" || l === "Repuestos B.") return "#8e44ad";
   if (l === "Repuestos San Pablo" || l === "Repuestos SP.") return "#d35400";
-  return GRUPOS.find((g) => g.label === l)?.color ?? COLOR;
+  return GRUPOS.find((g) => g.label === l)?.color ?? "#6c757d";
 }
 
 function celdasMes(año, mes) {
@@ -62,7 +63,7 @@ function toKey(año, mes, dia) {
   return `${año}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
-const formVacio = { grupo: "", cc: "", observaciones: "" };
+const formVacio = { grupo: "", otroGrupo: "", cc: "", observaciones: "" };
 
 function getGruppoNumFromLabel(grupoLabel) {
   if (grupoLabel === "Grupo 1") return 1;
@@ -133,7 +134,7 @@ function Visitas() {
   };
 
   const grupoRequiereCC = (grupoNombre) => {
-    if (!grupoNombre || grupoNombre === "Repuestos B." || grupoNombre === "Repuestos SP." || grupoNombre === "NINGUNO") {
+    if (!grupoNombre || grupoNombre === "Otro" || grupoNombre === "Repuestos B." || grupoNombre === "Repuestos SP." || grupoNombre === "NINGUNO") {
       return false;
     }
     const gNum = getGruppoNumFromLabel(grupoNombre);
@@ -145,17 +146,17 @@ function Visitas() {
 
   const handleCancelarCC = () => {
     if (!form.cc) {
-      setForm((f) => ({ ...f, grupo: "", cc: "" }));
+      setForm((f) => ({ ...f, grupo: "", otroGrupo: "", cc: "" }));
     }
     setCcModalOpen(false);
   };
 
   const handleGrupoChange = (e) => {
     const grupoSel = e.target.value;
-    setForm((f) => ({ ...f, grupo: grupoSel, cc: "" }));
+    setForm((f) => ({ ...f, grupo: grupoSel, otroGrupo: "", cc: "" }));
     setError(false);
 
-    if (grupoSel === "Repuestos B." || grupoSel === "Repuestos SP.") {
+    if (grupoSel === "Repuestos B." || grupoSel === "Repuestos SP." || grupoSel === "Otro") {
       return;
     }
 
@@ -174,6 +175,15 @@ function Visitas() {
   const agregarVisita = async () => {
     if (!form.grupo) { setError(true); return; }
 
+    let grupoFinal = form.grupo;
+    if (form.grupo === "Otro") {
+      if (!form.otroGrupo.trim()) {
+        setError(true);
+        return;
+      }
+      grupoFinal = form.otroGrupo.trim();
+    }
+
     if (grupoRequiereCC(form.grupo) && !form.cc) {
       setError(true);
       Swal.fire({
@@ -189,7 +199,7 @@ function Visitas() {
       const res = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fecha: key, grupo: form.grupo, cc: form.cc, observaciones: form.observaciones }),
+        body: JSON.stringify({ fecha: key, grupo: grupoFinal, cc: form.cc, observaciones: form.observaciones }),
       });
       if (!res.ok) throw new Error();
       const nueva = await res.json();
@@ -303,9 +313,14 @@ function Visitas() {
         cell.alignment = { horizontal: "center", vertical: "middle" };
       });
 
-      GRUPOS.forEach((g) => {
-        const count = counts[g.label] || 0;
-        const row = ws.addRow([g.label, count]);
+      const listaGruposFinal = [
+        ...GRUPOS.map((g) => g.label),
+        ...Object.keys(counts).filter((k) => !GRUPOS.some((g) => g.label === k))
+      ];
+
+      listaGruposFinal.forEach((grupoLabel) => {
+        const count = counts[grupoLabel] || 0;
+        const row = ws.addRow([grupoLabel, count]);
         row.height = 20;
         row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
         row.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
@@ -895,22 +910,28 @@ function Visitas() {
                   </tr>
                 </thead>
                 <tbody>
-                  {GRUPOS.map((g, idx) => {
-                    const count = counts[g.label] || 0;
-                    return (
-                      <tr key={g.label} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
-                        <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
-                          <div className="d-flex align-items-center">
-                            <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(g.label), marginRight: "8px", flexShrink: 0 }} />
-                            <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{g.label}</span>
-                          </div>
-                        </td>
-                        <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
-                          {count}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {(() => {
+                    const listaGruposFinal = [
+                      ...GRUPOS.map((g) => g.label),
+                      ...Object.keys(counts).filter((k) => !GRUPOS.some((g) => g.label === k))
+                    ];
+                    return listaGruposFinal.map((grupoLabel, idx) => {
+                      const count = counts[grupoLabel] || 0;
+                      return (
+                        <tr key={grupoLabel} style={{ backgroundColor: idx % 2 === 0 ? "#f9fbfb" : "#ffffff" }}>
+                          <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }}>
+                            <div className="d-flex align-items-center">
+                              <span style={{ display: "inline-block", width: "12px", height: "12px", borderRadius: "3px", backgroundColor: colorGrupo(grupoLabel), marginRight: "8px", flexShrink: 0 }} />
+                              <span className="fw-semibold" style={{ fontSize: isMobile ? "0.82rem" : "0.95rem" }}>{grupoLabel}</span>
+                            </div>
+                          </td>
+                          <td className="fw-bold" style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #dee2e6", color: count > 0 ? COLOR : "#888", fontSize: isMobile ? "0.85rem" : "1rem" }}>
+                            {count}
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                   <tr style={{ backgroundColor: "#eaeaea" }}>
                     <td style={{ padding: isMobile ? "6px 4px" : "12px", border: "1px solid #ccc", textAlign: "left", paddingLeft: isMobile ? "10px" : "20px" }} className="fw-bold">
                       Total
@@ -1045,7 +1066,7 @@ function Visitas() {
             <Form.Select
               value={form.grupo}
               onChange={handleGrupoChange}
-              isInvalid={error}
+              isInvalid={error && !form.grupo}
               autoFocus
             >
               <option value="">— Seleccionar —</option>
@@ -1053,8 +1074,28 @@ function Visitas() {
                 <option key={g.label} value={g.label}>{g.label}</option>
               ))}
             </Form.Select>
-            {error && <Form.Control.Feedback type="invalid">Seleccioná un grupo</Form.Control.Feedback>}
+            {error && !form.grupo && <Form.Control.Feedback type="invalid">Seleccioná un grupo</Form.Control.Feedback>}
           </Form.Group>
+
+          {form.grupo === "Otro" && (
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold">Nombre del Grupo *</Form.Label>
+              <Form.Control
+                type="text"
+                placeholder="Especificar grupo..."
+                value={form.otroGrupo || ""}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, otroGrupo: e.target.value }));
+                  setError(false);
+                }}
+                isInvalid={error && !form.otroGrupo.trim()}
+                autoFocus
+              />
+              {error && !form.otroGrupo.trim() && (
+                <Form.Control.Feedback type="invalid">Especificá el nombre del grupo</Form.Control.Feedback>
+              )}
+            </Form.Group>
+          )}
 
           {(() => {
             if (!form.grupo || form.grupo === "Repuestos B." || form.grupo === "Repuestos SP." || form.grupo === "NINGUNO") return null;
