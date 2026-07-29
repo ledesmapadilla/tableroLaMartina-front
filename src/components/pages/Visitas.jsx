@@ -132,6 +132,24 @@ function Visitas() {
     setError(false);
   };
 
+  const grupoRequiereCC = (grupoNombre) => {
+    if (!grupoNombre || grupoNombre === "Repuestos B." || grupoNombre === "Repuestos SP." || grupoNombre === "NINGUNO") {
+      return false;
+    }
+    const gNum = getGruppoNumFromLabel(grupoNombre);
+    const tractoresDelGrupo = tractores.filter(
+      (t) => gNum === null || (t.gruppo ?? 6) === gNum
+    );
+    return tractoresDelGrupo.length > 0;
+  };
+
+  const handleCancelarCC = () => {
+    if (!form.cc) {
+      setForm((f) => ({ ...f, grupo: "", cc: "" }));
+    }
+    setCcModalOpen(false);
+  };
+
   const handleGrupoChange = (e) => {
     const grupoSel = e.target.value;
     setForm((f) => ({ ...f, grupo: grupoSel, cc: "" }));
@@ -155,6 +173,16 @@ function Visitas() {
 
   const agregarVisita = async () => {
     if (!form.grupo) { setError(true); return; }
+
+    if (grupoRequiereCC(form.grupo) && !form.cc) {
+      setError(true);
+      Swal.fire({
+        icon: "warning",
+        title: "Centro de Costo requerido",
+        text: "Debes seleccionar al menos un Centro de Costo (CC) para registrar la visita de este grupo.",
+      });
+      return;
+    }
 
     const key = toKey(año, mes, diaModal);
     try {
@@ -1082,7 +1110,7 @@ function Visitas() {
       {/* Modal de Selección de CCs con Tildes */}
       <Modal
         show={ccModalOpen}
-        onHide={() => setCcModalOpen(false)}
+        onHide={handleCancelarCC}
         centered
         size="md"
         contentClassName="border border-dark"
@@ -1167,18 +1195,25 @@ function Visitas() {
           })()}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setCcModalOpen(false)}>
+          <Button variant="secondary" onClick={handleCancelarCC}>
             Cancelar
           </Button>
           <Button
-            style={{ backgroundColor: "#3a7070", border: "none", color: "#fff" }}
+            style={{
+              backgroundColor: ccSeleccionadosTemp.length > 0 ? "#3a7070" : "#a0a0a0",
+              border: "none",
+              color: "#fff",
+              cursor: ccSeleccionadosTemp.length > 0 ? "pointer" : "not-allowed"
+            }}
+            disabled={ccSeleccionadosTemp.length === 0}
             onClick={() => {
+              if (ccSeleccionadosTemp.length === 0) return;
               setForm((f) => ({ ...f, cc: ccSeleccionadosTemp.join(", ") }));
               setCcModalOpen(false);
             }}
           >
             <i className="bi bi-check-lg me-1"></i>
-            {ccSeleccionadosTemp.length > 0 ? `Confirmar (${ccSeleccionadosTemp.length})` : "Confirmar (sin CC)"}
+            {ccSeleccionadosTemp.length > 0 ? `Confirmar (${ccSeleccionadosTemp.length})` : "Seleccioná al menos 1 CC"}
           </Button>
         </Modal.Footer>
       </Modal>
