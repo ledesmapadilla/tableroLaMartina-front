@@ -110,7 +110,7 @@ function ResumenReparacionesTractores() {
 
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const titulo = "Resumen Reparaciones Tractores";
+    const titulo = "Resumen Reparaciones";
     const columnas = ["Centro de Costo (CC)", "Descripción", "Reparación", "Detalle", "Fecha", "Prioridad", "Estado", "Responsable"];
 
     const wb = new ExcelJS.Workbook();
@@ -207,7 +207,7 @@ function ResumenReparacionesTractores() {
     <Container className="pt-3 pb-2">
 
       <div className="d-flex justify-content-between align-items-center mb-3 mx-auto" style={{ width: "92%" }}>
-        <h3 className="fw-bold mb-0">Resumen Reparaciones Tractores</h3>
+        <h3 className="fw-bold mb-0">Resumen Reparaciones</h3>
         <div className="d-flex gap-2">
           <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
             <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
