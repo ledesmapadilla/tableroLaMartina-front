@@ -42,6 +42,7 @@ const filaVacia = (defaultResp = "") => ({
   id: crypto.randomUUID(),
   fecha: hoy(),
   reparacion: "",
+  diagnostico: "",
   descripcion: "",
   parte: "",
   prioridad: "Normal",
@@ -122,6 +123,7 @@ function ReparacionesCamioneta() {
           id: t._id,
           fecha: t.fecha ? t.fecha.split("T")[0] : "",
           reparacion: t.reparacion || t.descripcion || "",
+          diagnostico: t.diagnostico || "",
           descripcion: t.descripcion && t.reparacion ? t.descripcion : (t.detalle || ""),
           parte: t.parte || "",
           prioridad: t.prioridad || (t.urgencia === "alta" ? "Crítico" : t.urgencia === "media" ? "Urgente" : "Normal"),
@@ -213,6 +215,7 @@ function ReparacionesCamioneta() {
       camioneta: camionetaId,
       fecha: fila.fecha,
       reparacion: fila.reparacion,
+      diagnostico: fila.diagnostico || "",
       descripcion: fila.descripcion,
       parte: fila.parte || "",
       prioridad: fila.prioridad,
@@ -414,9 +417,11 @@ function ReparacionesCamioneta() {
         reparacion={detalleSel}
         readOnly={!isEditMode}
         onVolver={() => setDetalleSel(null)}
-        onGuardar={(texto) => {
+        onGuardar={(datos) => {
+          const diag = typeof datos === "object" ? (datos.diagnostico || "") : "";
+          const desc = typeof datos === "object" ? (datos.descripcion || "") : datos;
           setFilas((prev) =>
-            prev.map((f) => (f.id === detalleSel.id ? { ...f, descripcion: texto } : f))
+            prev.map((f) => (f.id === detalleSel.id ? { ...f, diagnostico: diag, descripcion: desc } : f))
           );
           return { ok: true };
         }}
@@ -610,7 +615,7 @@ function ReparacionesCamioneta() {
                     </td>
                     <td>
                       {(() => {
-                        const tieneDet = (f.descripcion || "").trim() !== "";
+                        const tieneDet = (f.descripcion || "").trim() !== "" || (f.diagnostico || "").trim() !== "";
                         if (tieneDet) {
                           return (
                             <Button
@@ -819,10 +824,11 @@ function ReparacionesCamioneta() {
 
 function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
   const r = reparacion || {};
+  const [diagnostico, setDiagnostico] = useState(r.diagnostico || "");
   const [texto, setTexto] = useState(r.descripcion || "");
 
   const handleGuardar = async () => {
-    const res = await onGuardar(texto);
+    const res = await onGuardar({ diagnostico, descripcion: texto });
     if (res?.ok) {
       Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
       onVolver();
@@ -861,18 +867,37 @@ function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onG
       </div>
 
       <div className="border rounded p-4 bg-white" style={{ borderTop: "4px solid #3a7070" }}>
-        <Form.Group className="mb-3">
-          <Form.Label className="fw-semibold">Descripción Detallada del Trabajo</Form.Label>
-          <Form.Control
-            as="textarea"
-            rows={8}
-            placeholder={readOnly ? "Sin detalle cargado." : "Escriba aquí los detalles o descripción del trabajo realizado..."}
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            disabled={readOnly}
-            style={{ fontSize: "0.9rem" }}
-          />
-        </Form.Group>
+        <Row className="g-4 mb-3">
+          <Col md={6}>
+            <Form.Group>
+              <Form.Label className="fw-semibold">Diagnóstico</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={8}
+                placeholder={readOnly ? "Sin diagnóstico cargado." : "Escriba aquí el diagnóstico..."}
+                value={diagnostico}
+                onChange={(e) => setDiagnostico(e.target.value)}
+                disabled={readOnly}
+                style={{ fontSize: "0.9rem" }}
+              />
+            </Form.Group>
+          </Col>
+          <Col md={6}>
+            <Form.Group>
+              <Form.Label className="fw-semibold">Descripción Detallada del Trabajo</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={8}
+                placeholder={readOnly ? "Sin detalle cargado." : "Escriba aquí los detalles o descripción del trabajo realizado..."}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                disabled={readOnly}
+                style={{ fontSize: "0.9rem" }}
+              />
+            </Form.Group>
+          </Col>
+        </Row>
+
         <div className="d-flex justify-content-end gap-2">
           {readOnly ? (
             <Button variant="secondary" size="sm" onClick={onVolver}>
