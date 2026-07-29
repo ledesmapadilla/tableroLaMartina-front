@@ -169,12 +169,12 @@ function ResumenReparacionesTractores() {
       ]);
       const isOdd = idx % 2 === 1;
       fila.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
         cell.border = thinBorder;
         if (isOdd) cell.fill = zebraFill;
       });
-      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
       if (p === "Crítico") {
         fila.eachCell({ includeEmpty: true }, (cell) => {
           cell.font = { color: { argb: "FFCC0000" }, bold: true };

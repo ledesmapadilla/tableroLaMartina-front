@@ -471,15 +471,15 @@ function ReparacionesTractor() {
 
       const isOdd = idx % 2 === 1;
       fila.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
         cell.border = thinBorder;
         if (isOdd) cell.fill = zebraFill;
       });
-      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(9).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(9).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
     });
 
     ws.columns = [
@@ -1196,12 +1196,12 @@ function DetalleRepuestos({ cc, descripcion, reparacion, readOnly, responsablesA
       ]);
       const isOdd = idx % 2 === 1;
       fila.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
         cell.border = thinBorder;
         if (isOdd) cell.fill = zebraFill;
       });
-      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
     });
 
     ws.columns = [
