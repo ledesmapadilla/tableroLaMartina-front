@@ -273,8 +273,7 @@ function ReparacionesTractor() {
         )
       );
 
-      const Toast = Swal.mixin({ toast: true, position: "top-end", showConfirmButton: false, timer: 1000 });
-      Toast.fire({ icon: "success", title: "Guardado" });
+      Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
     } catch (e) {
       console.error(e);
       setEditandoId(currentId);
@@ -371,8 +370,7 @@ function ReparacionesTractor() {
             : f
         )
       );
-      const Toast = Swal.mixin({ toast: true, position: "top-end", showConfirmButton: false, timer: 1000 });
-      Toast.fire({ icon: "success", title: "Guardado" });
+      Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
       return { ok: true };
     } catch (e) {
       console.error(e);
@@ -922,6 +920,7 @@ function DetalleReparacion({ cc, descripcion, reparacion, readOnly, onVolver, on
   const [texto, setTexto] = useState(r.descripcion || "");
 
   const handleGuardar = async () => {
+    Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
     onVolver();
     onGuardar({ diagnostico, descripcion: texto });
   };
@@ -1011,6 +1010,7 @@ function DetalleObservaciones({ cc, descripcion, reparacion, readOnly, onVolver,
   const [texto, setTexto] = useState(reparacion?.observaciones || "");
 
   const handleGuardar = async () => {
+    Swal.fire({ icon: "success", title: "Observaciones guardadas", timer: 1200, showConfirmButton: false });
     onVolver();
     onGuardar(texto);
   };
