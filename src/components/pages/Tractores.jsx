@@ -120,7 +120,7 @@ function Tractores() {
                     width: "100%",
                   }}
                 >
-                  <strong>CCs:</strong> {ccs}
+                  {ccs}
                 </div>
               </div>
             );
