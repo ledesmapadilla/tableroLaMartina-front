@@ -464,6 +464,27 @@ function ReparacionesTractor() {
     [filas]
   );
 
+  const toggleGlobalParada = async () => {
+    const nuevoEstadoParado = !estaParadoGlobal;
+    if (nuevoEstadoParado) {
+      const activa = filas.find((f) => f.estado !== "Terminado");
+      if (activa) {
+        await toggleMaquinaParada(activa.id);
+      } else {
+        const nueva = filaVacia(responsableDefault);
+        nueva.maquinaParada = true;
+        nueva.reparacion = "Unidad Parada";
+        setFilas((p) => [...p, nueva]);
+        setEditandoId(nueva.id);
+      }
+    } else {
+      const activasParadas = filas.filter((f) => f.maquinaParada && f.estado !== "Terminado");
+      for (const f of activasParadas) {
+        await toggleMaquinaParada(f.id);
+      }
+    }
+  };
+
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = `Reparaciones Tractor: ${cc}${descripcion ? ` - ${descripcion}` : ""}`;
@@ -624,19 +645,19 @@ function ReparacionesTractor() {
         </Button>
       </div>
 
-      {/* Título */}
-      <div className="text-center mb-4">
-        <h3 className="fw-bold mb-1">Reparaciones tractor: {cc}{descripcion ? ` - ${descripcion}` : ""}</h3>
-        <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
-          <span
-            className={`badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 ${
-              estaParadoGlobal ? "bg-danger text-white" : "bg-success text-white"
-            }`}
-            style={{ fontSize: "0.85rem", fontWeight: 600, boxShadow: "0 2px 4px rgba(0,0,0,0.15)" }}
-          >
-            <i className={`bi ${estaParadoGlobal ? "bi-record-circle-fill" : "bi-check-circle-fill"}`} style={{ fontSize: "1rem" }}></i>
-            {estaParadoGlobal ? "UNIDAD PARADA" : "UNIDAD OPERATIVA"}
-          </span>
+      {/* Título y Unidad Parada (estilo CheckList) */}
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <h3 className="fw-bold mb-0">Reparaciones tractor: {cc}{descripcion ? ` - ${descripcion}` : ""}</h3>
+        <div className="d-flex align-items-center gap-2">
+          <Form.Check
+            type="checkbox"
+            id="unidadParadaHeader"
+            label="Unidad parada"
+            className="fw-bold fs-5 mb-0"
+            style={{ cursor: "pointer" }}
+            checked={estaParadoGlobal}
+            onChange={toggleGlobalParada}
+          />
         </div>
       </div>
 
@@ -855,32 +876,15 @@ function ReparacionesTractor() {
                         </span>
                       )}
                     </td>
-                    <td>
-                      <div
-                        onClick={() => toggleMaquinaParada(f.id)}
-                        title={f.maquinaParada ? "Unidad parada: Sí (Clic para desmarcar)" : "Unidad parada: No (Clic para marcar)"}
-                        style={{
-                          cursor: "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "5px",
-                          userSelect: "none",
-                          padding: "2px 6px",
-                          borderRadius: "12px",
-                          backgroundColor: f.maquinaParada ? "rgba(220, 53, 69, 0.12)" : "transparent",
-                          transition: "all 0.2s ease"
-                        }}
-                      >
-                        {f.maquinaParada ? (
-                          <i className="bi bi-record-circle-fill text-danger" style={{ fontSize: "1.15rem" }}></i>
-                        ) : (
-                          <i className="bi bi-circle text-secondary" style={{ fontSize: "1.15rem", opacity: 0.5 }}></i>
-                        )}
-                        <span style={{ fontSize: "0.72rem", fontWeight: f.maquinaParada ? "bold" : "normal", color: f.maquinaParada ? "#dc3545" : "#6c757d" }}>
-                          {f.maquinaParada ? "Parada" : "No"}
-                        </span>
-                      </div>
+                    <td className="align-middle text-center">
+                      <Form.Check
+                        type="checkbox"
+                        id={`parada-${f.id}`}
+                        className="d-inline-block"
+                        style={{ cursor: "pointer", transform: "scale(1.2)" }}
+                        checked={!!f.maquinaParada}
+                        onChange={() => toggleMaquinaParada(f.id)}
+                      />
                     </td>
                     <td>
                       {editando ? (
