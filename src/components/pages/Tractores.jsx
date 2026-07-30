@@ -45,10 +45,10 @@ function Tractores() {
     return unicos.length > 0 ? unicos.join(", ") : "Sin CCs";
   };
 
-  const tieneTractorParadoGrupo = (grupoNum) => {
-    return tractores.some(
+  const getTractoresParadosGrupoCount = (grupoNum) => {
+    return tractores.filter(
       (t) => Number(t.gruppo ?? 6) === Number(grupoNum) && paradosIds.has(t._id?.toString())
-    );
+    ).length;
   };
 
   return (
@@ -69,7 +69,7 @@ function Tractores() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 230px)", gap: "1.5rem" }}>
           {gruposInfo.map((g) => {
             const ccs = getCCsPorGrupo(g.numero);
-            const tieneParado = tieneTractorParadoGrupo(g.numero);
+            const cantParados = getTractoresParadosGrupoCount(g.numero);
             return (
               <div
                 key={g.numero}
@@ -93,18 +93,29 @@ function Tractores() {
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
               >
-                {tieneParado && (
-                  <i
-                    className="bi bi-exclamation-triangle-fill"
+                {cantParados > 0 && (
+                  <div
                     style={{
                       position: "absolute",
                       top: "8px",
                       right: "10px",
-                      color: "#ff0000",
-                      fontSize: "1.2rem",
-                      filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))"
+                      display: "flex",
+                      gap: "3px",
+                      alignItems: "center"
                     }}
-                  />
+                  >
+                    {Array.from({ length: cantParados }).map((_, idx) => (
+                      <i
+                        key={idx}
+                        className="bi bi-exclamation-triangle-fill"
+                        style={{
+                          color: "#ff0000",
+                          fontSize: "1.15rem",
+                          filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))"
+                        }}
+                      />
+                    ))}
+                  </div>
                 )}
                 <TractorIcon size="2.4rem" color="#fff" />
                 <h5 className="fw-bold text-center mt-2 mb-0">{g.label}</h5>
@@ -148,20 +159,6 @@ function Tractores() {
             onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
           >
-            {paradosIds.size > 0 && (
-              <i
-                className="bi bi-exclamation-triangle-fill"
-                style={{
-                  position: "absolute",
-                  top: "8px",
-                  right: "10px",
-                  color: "#ff0000",
-                  fontSize: "1.2rem",
-                  filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))"
-                }}
-                title="Hay tractores fuera de servicio"
-              />
-            )}
             <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "2.8rem", color: "#fff" }}></i>
             <h5 className="fw-normal text-center mt-3 mb-0">Resumen Reparaciones</h5>
           </div>
