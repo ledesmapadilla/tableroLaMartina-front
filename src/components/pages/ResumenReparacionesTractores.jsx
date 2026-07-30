@@ -352,8 +352,11 @@ function ResumenReparacionesTractores() {
                   <td>
                     <span
                       onClick={() => t.tractor?._id && navigate(`/tractores/grupo/${t.tractor.gruppo || 6}/reparaciones/${t.tractor._id}`, { state: { cc: t.tractor.cc, descripcion: t.tractor.descripcion } })}
-                      style={{ display: "inline-block", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600", cursor: t.tractor?._id ? "pointer" : "default" }}
+                      style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600", cursor: t.tractor?._id ? "pointer" : "default" }}
                     >
+                      {t.maquinaParada && getEstadoLabel(t.estado) !== "Terminado" && (
+                        <i className="bi bi-exclamation-triangle-fill text-danger" style={{ fontSize: "0.85rem", color: "#ff4d4d" }} title="Tractor fuera de servicio" />
+                      )}
                       {t.tractor?.cc ?? "-"}
                     </span>
                   </td>

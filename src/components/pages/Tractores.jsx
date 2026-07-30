@@ -130,6 +130,7 @@ function Tractores() {
           <div
             className="d-flex flex-column align-items-center justify-content-center text-white"
             style={{
+              position: "relative",
               backgroundColor: "#2c3e50",
               borderRadius: "16px",
               width: "230px",
@@ -147,6 +148,20 @@ function Tractores() {
             onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
           >
+            {paradosIds.size > 0 && (
+              <i
+                className="bi bi-exclamation-triangle-fill"
+                style={{
+                  position: "absolute",
+                  top: "8px",
+                  right: "10px",
+                  color: "#ff0000",
+                  fontSize: "1.2rem",
+                  filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))"
+                }}
+                title="Hay tractores fuera de servicio"
+              />
+            )}
             <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "2.8rem", color: "#fff" }}></i>
             <h5 className="fw-bold text-center mt-3 mb-0">Resumen Reparaciones</h5>
           </div>
