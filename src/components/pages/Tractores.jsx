@@ -16,16 +16,20 @@ const gruposInfo = [
 function Tractores() {
   const navigate = useNavigate();
   const [tractores, setTractores] = useState([]);
+  const [paradosIds, setParadosIds] = useState(new Set());
 
   useEffect(() => {
-    fetch("/api/tractores")
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setTractores(data);
-        }
-      })
-      .catch((e) => console.error("Error al cargar tractores:", e));
+    Promise.all([
+      fetch("/api/tractores").then((r) => r.json()).catch(() => []),
+      fetch("/api/trabajos-tractor/parados/ids").then((r) => r.json()).catch(() => []),
+    ]).then(([tracsData, stopIdsData]) => {
+      if (Array.isArray(tracsData)) {
+        setTractores(tracsData);
+      }
+      if (Array.isArray(stopIdsData)) {
+        setParadosIds(new Set(stopIdsData));
+      }
+    });
   }, []);
 
   const getCCsPorGrupo = (grupoNum) => {
@@ -39,6 +43,12 @@ function Tractores() {
     );
 
     return unicos.length > 0 ? unicos.join(", ") : "Sin CCs";
+  };
+
+  const tieneTractorParadoGrupo = (grupoNum) => {
+    return tractores.some(
+      (t) => Number(t.gruppo ?? 6) === Number(grupoNum) && paradosIds.has(t._id?.toString())
+    );
   };
 
   return (
@@ -59,11 +69,13 @@ function Tractores() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 230px)", gap: "1.5rem" }}>
           {gruposInfo.map((g) => {
             const ccs = getCCsPorGrupo(g.numero);
+            const tieneParado = tieneTractorParadoGrupo(g.numero);
             return (
               <div
                 key={g.numero}
                 className="d-flex flex-column align-items-center justify-content-center text-white"
                 style={{
+                  position: "relative",
                   backgroundColor: g.bg,
                   borderRadius: "16px",
                   width: "230px",
@@ -81,6 +93,19 @@ function Tractores() {
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
               >
+                {tieneParado && (
+                  <i
+                    className="bi bi-exclamation-triangle-fill"
+                    style={{
+                      position: "absolute",
+                      top: "8px",
+                      right: "10px",
+                      color: "#ff0000",
+                      fontSize: "1.2rem",
+                      filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))"
+                    }}
+                  />
+                )}
                 <TractorIcon size="2.4rem" color="#fff" />
                 <h5 className="fw-bold text-center mt-2 mb-0">{g.label}</h5>
                 <small className="text-center mt-1 px-2" style={{ opacity: 0.85, fontSize: "0.75rem" }}>{g.supervisor}</small>
