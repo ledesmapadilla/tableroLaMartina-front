@@ -163,7 +163,7 @@ function Tractores() {
               />
             )}
             <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "2.8rem", color: "#fff" }}></i>
-            <h5 className="fw-bold text-center mt-3 mb-0">Resumen Reparaciones</h5>
+            <h5 className="fw-normal text-center mt-3 mb-0">Resumen Reparaciones</h5>
           </div>
         </div>
       </div>
