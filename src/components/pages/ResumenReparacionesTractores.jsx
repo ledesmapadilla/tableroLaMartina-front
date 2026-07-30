@@ -77,6 +77,20 @@ function ResumenReparacionesTractores() {
     }).catch(() => {});
   };
 
+  const toggleMaquinaParada = async (id) => {
+    const trabajo = trabajos.find((t) => t._id === id);
+    if (!trabajo) return;
+    const nuevoValor = !trabajo.maquinaParada;
+    setTrabajos((prev) => prev.map((t) => t._id === id ? { ...t, maquinaParada: nuevoValor } : t));
+    await fetch(`/api/trabajos-tractor/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maquinaParada: nuevoValor }),
+    }).catch(() => {
+      setTrabajos((prev) => prev.map((t) => t._id === id ? { ...t, maquinaParada: trabajo.maquinaParada } : t));
+    });
+  };
+
   const eliminar = async (id) => {
     const result = await Swal.fire({
       title: "¿Eliminar reparación?",
@@ -322,13 +336,14 @@ function ResumenReparacionesTractores() {
               <th className="fw-normal">Fecha</th>
               <th className="fw-normal">Prioridad</th>
               <th className="fw-normal">Estado</th>
+              <th className="fw-normal">Unidad Parada</th>
               <th className="fw-normal">Responsable</th>
               <th className="fw-normal"></th>
             </tr>
           </thead>
           <tbody>
             {trabajosFiltrados.length === 0 && (
-              <tr><td colSpan={9} className="text-muted py-3">Sin registros</td></tr>
+              <tr><td colSpan={10} className="text-muted py-3">Sin registros</td></tr>
             )}
             {trabajosFiltrados.map((t) => {
               const responsable = t.responsable || t.tractor?.supervisor || "";
@@ -355,6 +370,33 @@ function ResumenReparacionesTractores() {
                     <span style={{ display: "inline-block", backgroundColor: getEstadoColor(t.estado), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
                       {getEstadoLabel(t.estado)}
                     </span>
+                  </td>
+                  <td>
+                    <div
+                      onClick={() => toggleMaquinaParada(t._id)}
+                      title={t.maquinaParada ? "Unidad parada: Sí (Clic para desmarcar)" : "Unidad parada: No (Clic para marcar)"}
+                      style={{
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "4px",
+                        userSelect: "none",
+                        padding: "2px 6px",
+                        borderRadius: "12px",
+                        backgroundColor: t.maquinaParada ? "rgba(220, 53, 69, 0.12)" : "transparent",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {t.maquinaParada ? (
+                        <i className="bi bi-record-circle-fill text-danger" style={{ fontSize: "1.1rem" }}></i>
+                      ) : (
+                        <i className="bi bi-circle text-secondary" style={{ fontSize: "1.1rem", opacity: 0.5 }}></i>
+                      )}
+                      <span style={{ fontSize: "0.72rem", fontWeight: t.maquinaParada ? "bold" : "normal", color: t.maquinaParada ? "#dc3545" : "#6c757d" }}>
+                        {t.maquinaParada ? "Parada" : "No"}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <select

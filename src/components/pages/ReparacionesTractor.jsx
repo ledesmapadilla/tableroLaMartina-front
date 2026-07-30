@@ -205,6 +205,60 @@ function ReparacionesTractor() {
     }
   };
 
+  const toggleMaquinaParada = async (id) => {
+    const fila = filas.find((f) => f.id === id);
+    if (!fila) return;
+    const nuevoValor = !fila.maquinaParada;
+
+    setFilas((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, maquinaParada: nuevoValor } : f))
+    );
+
+    const isNew = String(id).length !== 24;
+    if (!isNew) {
+      try {
+        const body = {
+          tractor: tractorId,
+          fecha: fila.fecha,
+          reparacion: fila.reparacion,
+          diagnostico: fila.diagnostico || "",
+          descripcion: fila.descripcion,
+          parte: fila.parte || "",
+          prioridad: fila.prioridad,
+          estado: fila.estado,
+          responsable: fila.responsable || "",
+          observaciones: fila.observaciones || "",
+          maquinaParada: nuevoValor,
+          repuestos: (fila.repuestos || []).map((r) => ({
+            repuesto: r.repuesto,
+            cantidad: Number(r.cantidad) || 1,
+            precio: Number(r.precio) || 0,
+            proveedor: r.proveedor || "",
+            responsable: r.responsable || "",
+            estado: r.estado || "Pedido",
+            observaciones: r.observaciones || "",
+          })),
+        };
+
+        const res = await fetch(`/api/trabajos-tractor/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          throw new Error("No se pudo actualizar la maquina parada.");
+        }
+      } catch (e) {
+        console.error(e);
+        setFilas((prev) =>
+          prev.map((f) => (f.id === id ? { ...f, maquinaParada: fila.maquinaParada } : f))
+        );
+        Swal.fire({ icon: "error", title: "Error", text: e.message });
+      }
+    }
+  };
+
   const finalizarEdicion = async () => {
     const fila = filas.find((f) => f.id === editandoId);
     if (fila && !(fila.reparacion || "").trim()) {
@@ -405,6 +459,11 @@ function ReparacionesTractor() {
     [filas, filtroReparacion, filtroResponsable, filtroEstado, editandoId]
   );
 
+  const estaParadoGlobal = useMemo(
+    () => filas.some((f) => f.maquinaParada && f.estado !== "Terminado"),
+    [filas]
+  );
+
   const exportarExcel = async () => {
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
     const titulo = `Reparaciones Tractor: ${cc}${descripcion ? ` - ${descripcion}` : ""}`;
@@ -567,7 +626,18 @@ function ReparacionesTractor() {
 
       {/* Título */}
       <div className="text-center mb-4">
-        <h3 className="fw-bold mb-0">Reparaciones tractor: {cc}{descripcion ? ` - ${descripcion}` : ""}</h3>
+        <h3 className="fw-bold mb-1">Reparaciones tractor: {cc}{descripcion ? ` - ${descripcion}` : ""}</h3>
+        <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
+          <span
+            className={`badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 ${
+              estaParadoGlobal ? "bg-danger text-white" : "bg-success text-white"
+            }`}
+            style={{ fontSize: "0.85rem", fontWeight: 600, boxShadow: "0 2px 4px rgba(0,0,0,0.15)" }}
+          >
+            <i className={`bi ${estaParadoGlobal ? "bi-record-circle-fill" : "bi-check-circle-fill"}`} style={{ fontSize: "1rem" }}></i>
+            {estaParadoGlobal ? "UNIDAD PARADA" : "UNIDAD OPERATIVA"}
+          </span>
+        </div>
       </div>
 
       {/* Agregar reparación */}
@@ -659,21 +729,22 @@ function ReparacionesTractor() {
           <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: "0.78rem" }}>
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr className="fw-normal align-middle">
-                <th className="fw-normal" style={{ width: "9%" }}>Fecha</th>
-                <th className="fw-normal" style={{ width: "30%" }}>Reparación</th>
+                <th className="fw-normal" style={{ width: "8%" }}>Fecha</th>
+                <th className="fw-normal" style={{ width: "24%" }}>Reparación</th>
                 <th className="fw-normal" style={{ width: "6%" }}>Detalle</th>
-                <th className="fw-normal" style={{ width: "9%" }}>Prioridad</th>
-                <th className="fw-normal" style={{ width: "9%" }}>Estado</th>
-                <th className="fw-normal" style={{ width: "14%" }}>Responsable</th>
+                <th className="fw-normal" style={{ width: "8%" }}>Prioridad</th>
+                <th className="fw-normal" style={{ width: "8%" }}>Estado</th>
+                <th className="fw-normal" style={{ width: "10%" }}>Unidad Parada</th>
+                <th className="fw-normal" style={{ width: "12%" }}>Responsable</th>
                 <th className="fw-normal" style={{ width: "7%" }}>Observaciones</th>
-                <th className="fw-normal" style={{ width: "6%" }}>Repuestos</th>
+                <th className="fw-normal" style={{ width: "7%" }}>Repuestos</th>
                 <th className="fw-normal" style={{ width: "10%" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filasFiltradas.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-muted py-3">
+                  <td colSpan={10} className="text-muted py-3">
                     Sin reparaciones cargadas
                   </td>
                 </tr>
@@ -681,7 +752,7 @@ function ReparacionesTractor() {
               {filasFiltradas.map((f) => {
                 const editando = editandoId === f.id;
                 return (
-                  <tr key={f.id} style={{ height: "36px" }}>
+                  <tr key={f.id} style={{ height: "36px", backgroundColor: f.maquinaParada ? "rgba(220, 53, 69, 0.05)" : undefined }}>
                     <td>
                       {editando ? (
                         <Form.Control
@@ -783,6 +854,33 @@ function ReparacionesTractor() {
                           {f.estado || "-"}
                         </span>
                       )}
+                    </td>
+                    <td>
+                      <div
+                        onClick={() => toggleMaquinaParada(f.id)}
+                        title={f.maquinaParada ? "Unidad parada: Sí (Clic para desmarcar)" : "Unidad parada: No (Clic para marcar)"}
+                        style={{
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "5px",
+                          userSelect: "none",
+                          padding: "2px 6px",
+                          borderRadius: "12px",
+                          backgroundColor: f.maquinaParada ? "rgba(220, 53, 69, 0.12)" : "transparent",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        {f.maquinaParada ? (
+                          <i className="bi bi-record-circle-fill text-danger" style={{ fontSize: "1.15rem" }}></i>
+                        ) : (
+                          <i className="bi bi-circle text-secondary" style={{ fontSize: "1.15rem", opacity: 0.5 }}></i>
+                        )}
+                        <span style={{ fontSize: "0.72rem", fontWeight: f.maquinaParada ? "bold" : "normal", color: f.maquinaParada ? "#dc3545" : "#6c757d" }}>
+                          {f.maquinaParada ? "Parada" : "No"}
+                        </span>
+                      </div>
                     </td>
                     <td>
                       {editando ? (
