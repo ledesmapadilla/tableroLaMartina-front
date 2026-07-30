@@ -371,15 +371,32 @@ function ResumenReparacionesTractores() {
                       {getEstadoLabel(t.estado)}
                     </span>
                   </td>
-                  <td className="align-middle text-center">
-                    <Form.Check
-                      type="checkbox"
-                      id={`parada-resumen-${t._id}`}
-                      className="d-inline-block"
-                      style={{ cursor: "pointer", transform: "scale(1.2)" }}
-                      checked={!!t.maquinaParada}
-                      onChange={() => toggleMaquinaParada(t._id)}
-                    />
+                  <td>
+                    <div
+                      onClick={() => toggleMaquinaParada(t._id)}
+                      title={t.maquinaParada ? "Unidad parada: Sí (Clic para desmarcar)" : "Unidad parada: No (Clic para marcar)"}
+                      style={{
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "4px",
+                        userSelect: "none",
+                        padding: "2px 6px",
+                        borderRadius: "12px",
+                        backgroundColor: t.maquinaParada ? "rgba(220, 53, 69, 0.12)" : "transparent",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {t.maquinaParada ? (
+                        <i className="bi bi-record-circle-fill text-danger" style={{ fontSize: "1.1rem" }}></i>
+                      ) : (
+                        <i className="bi bi-circle text-secondary" style={{ fontSize: "1.1rem", opacity: 0.5 }}></i>
+                      )}
+                      <span style={{ fontSize: "0.72rem", fontWeight: t.maquinaParada ? "bold" : "normal", color: t.maquinaParada ? "#dc3545" : "#6c757d" }}>
+                        {t.maquinaParada ? "Parada" : "No"}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <select
