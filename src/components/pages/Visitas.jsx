@@ -80,8 +80,8 @@ function Visitas() {
   const navigate = useNavigate();
   const hoy = new Date();
 
-  const [año, setAño]       = useState(2026);
-  const [mes, setMes]       = useState(6); // Julio
+  const [año, setAño]       = useState(hoy.getFullYear());
+  const [mes, setMes]       = useState(hoy.getMonth());
   const [visitas, setVisitas] = useState({});
   const [diaModal, setDiaModal] = useState(null);
   const [form, setForm]     = useState(formVacio);
