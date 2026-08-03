@@ -472,13 +472,14 @@ function Visitas() {
               }
             }}
             style={{
-              fontSize: isMobile ? "0.9rem" : "1.2rem",
+              fontSize: isMobile ? "0.85rem" : "1.05rem",
               fontWeight: "bold",
               color: "#333",
               border: "1.5px solid #bbb",
               borderRadius: "6px",
-              padding: isMobile ? "4px 8px" : "6px 12px",
-              width: isMobile ? "110px" : "140px",
+              padding: isMobile ? "4px 26px 4px 8px" : "6px 30px 6px 12px",
+              backgroundSize: isMobile ? "11px 8px" : "12px 9px",
+              width: isMobile ? "118px" : "150px",
               cursor: "pointer",
               backgroundColor: "#fff"
             }}
@@ -500,13 +501,14 @@ function Visitas() {
               setAño(val);
             }}
             style={{
-              fontSize: isMobile ? "0.9rem" : "1.2rem",
+              fontSize: isMobile ? "0.85rem" : "1.05rem",
               fontWeight: "bold",
               color: "#333",
               border: "1.5px solid #bbb",
               borderRadius: "6px",
-              padding: isMobile ? "4px 8px" : "6px 12px",
-              width: isMobile ? "85px" : "100px",
+              padding: isMobile ? "4px 26px 4px 8px" : "6px 30px 6px 12px",
+              backgroundSize: isMobile ? "11px 8px" : "12px 9px",
+              width: isMobile ? "92px" : "108px",
               cursor: "pointer",
               backgroundColor: "#fff"
             }}
