@@ -220,47 +220,117 @@ function ServicesUltimoService() {
     if (telResp && telAviso && telResp !== telAviso) {
       Swal.fire({
         title: "Enviar aviso de service",
-        html: `Seleccioná a quién enviar el aviso de <b>${c.patente}</b>:`,
+        html: `
+          <p class="mb-3">Seleccioná a quién enviar el aviso de <b>${c.patente}</b>:</p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button id="swal-btn-resp" class="btn w-100 fw-semibold text-white" style="background-color: #25d366; padding: 8px 12px;">
+              <i class="bi bi-whatsapp me-2"></i>Responsable (${c.responsable || "Sin nombre"})
+            </button>
+            <button id="swal-btn-aviso" class="btn w-100 fw-semibold text-white" style="background-color: #4a6fa5; padding: 8px 12px;">
+              <i class="bi bi-whatsapp me-2"></i>Número de aviso
+            </button>
+            <button id="swal-btn-ambos" class="btn w-100 fw-semibold text-white" style="background-color: #1d6f42; padding: 8px 12px;">
+              <i class="bi bi-whatsapp me-2"></i>Enviar a ambos
+            </button>
+            <button id="swal-btn-informado" class="btn w-100 fw-semibold text-white" style="background-color: #6c757d; padding: 8px 12px;">
+              <i class="bi bi-check-circle me-2"></i>Informado
+            </button>
+          </div>
+        `,
         icon: "question",
+        showConfirmButton: false,
         showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: `Responsable (${c.responsable || "Sin nombre"})`,
-        denyButtonText: `Número de aviso`,
-        cancelButtonText: `Enviar a ambos`,
-        confirmButtonColor: "#25d366",
-        denyButtonColor: "#4a6fa5",
-        cancelButtonColor: "#1d6f42",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
-          marcarWhatsapp(c._id, true);
-        } else if (result.isDenied) {
-          window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
-          marcarWhatsapp(c._id, true);
-        } else if (result.dismiss === Swal.DismissReason.cancel) {
-          window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
-          marcarWhatsapp(c._id, true);
+        cancelButtonText: "Cancelar",
+        cancelButtonColor: "#888",
+        didOpen: () => {
+          const btnResp = document.getElementById("swal-btn-resp");
+          const btnAviso = document.getElementById("swal-btn-aviso");
+          const btnAmbos = document.getElementById("swal-btn-ambos");
+          const btnInformado = document.getElementById("swal-btn-informado");
 
-          setTimeout(() => {
-            Swal.fire({
-              title: "Segundo aviso",
-              html: `Se abrió el WhatsApp de <b>${c.responsable || "Responsable"}</b>.<br/><br/>Hacé clic en el botón para enviar el aviso al <b>número general</b> (${telAviso}).`,
-              icon: "info",
-              confirmButtonText: "Abrir 2do WhatsApp",
-              confirmButtonColor: "#25d366",
-            }).then((res2) => {
-              if (res2.isConfirmed) {
-                window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
-              }
-            });
-          }, 300);
-        }
+          if (btnResp) {
+            btnResp.onclick = () => {
+              Swal.close();
+              window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
+              marcarWhatsapp(c._id, true);
+            };
+          }
+          if (btnAviso) {
+            btnAviso.onclick = () => {
+              Swal.close();
+              window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
+              marcarWhatsapp(c._id, true);
+            };
+          }
+          if (btnAmbos) {
+            btnAmbos.onclick = () => {
+              Swal.close();
+              window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
+              marcarWhatsapp(c._id, true);
+
+              setTimeout(() => {
+                Swal.fire({
+                  title: "Segundo aviso",
+                  html: `Se abrió el WhatsApp de <b>${c.responsable || "Responsable"}</b>.<br/><br/>Hacé clic en el botón para enviar el aviso al <b>número general</b> (${telAviso}).`,
+                  icon: "info",
+                  confirmButtonText: "Abrir 2do WhatsApp",
+                  confirmButtonColor: "#25d366",
+                }).then((res2) => {
+                  if (res2.isConfirmed) {
+                    window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
+                  }
+                });
+              }, 300);
+            };
+          }
+          if (btnInformado) {
+            btnInformado.onclick = () => {
+              Swal.close();
+              marcarWhatsapp(c._id, true);
+            };
+          }
+        },
       });
     } else {
       const tel = telResp || telAviso;
       if (tel) {
-        window.open(`https://wa.me/${tel}?text=${texto}`, "_blank");
-        marcarWhatsapp(c._id, true);
+        Swal.fire({
+          title: "Enviar aviso de service",
+          html: `
+            <p class="mb-3">Seleccioná una opción para <b>${c.patente}</b>:</p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <button id="swal-btn-single-wa" class="btn w-100 fw-semibold text-white" style="background-color: #25d366; padding: 8px 12px;">
+                <i class="bi bi-whatsapp me-2"></i>Enviar WhatsApp
+              </button>
+              <button id="swal-btn-single-inf" class="btn w-100 fw-semibold text-white" style="background-color: #6c757d; padding: 8px 12px;">
+                <i class="bi bi-check-circle me-2"></i>Informado
+              </button>
+            </div>
+          `,
+          icon: "question",
+          showConfirmButton: false,
+          showCancelButton: true,
+          cancelButtonText: "Cancelar",
+          cancelButtonColor: "#888",
+          didOpen: () => {
+            const btnSingleWa = document.getElementById("swal-btn-single-wa");
+            const btnSingleInf = document.getElementById("swal-btn-single-inf");
+
+            if (btnSingleWa) {
+              btnSingleWa.onclick = () => {
+                Swal.close();
+                window.open(`https://wa.me/${tel}?text=${texto}`, "_blank");
+                marcarWhatsapp(c._id, true);
+              };
+            }
+            if (btnSingleInf) {
+              btnSingleInf.onclick = () => {
+                Swal.close();
+                marcarWhatsapp(c._id, true);
+              };
+            }
+          },
+        });
       }
     }
   };

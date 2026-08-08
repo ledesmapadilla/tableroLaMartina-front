@@ -32,17 +32,48 @@ function Tractores() {
     });
   }, []);
 
-  const getCCsPorGrupo = (grupoNum) => {
-    const list = tractores
-      .filter((t) => Number(t.gruppo ?? 6) === Number(grupoNum))
-      .map((t) => String(t.cc || "").replace(/^cc\s*/i, "").trim())
-      .filter(Boolean);
+  const renderCCsPorGrupo = (grupoNum) => {
+    const listForGrupo = tractores.filter(
+      (t) => Number(t.gruppo ?? 6) === Number(grupoNum)
+    );
 
-    const unicos = [...new Set(list)].sort((a, b) =>
+    if (listForGrupo.length === 0) return "Sin CCs";
+
+    const mapCC = new Map();
+    listForGrupo.forEach((t) => {
+      const clean = String(t.cc || "").replace(/^cc\s*/i, "").trim();
+      if (!clean) return;
+      const isParado = paradosIds.has(t._id?.toString());
+      if (!mapCC.has(clean)) {
+        mapCC.set(clean, isParado);
+      } else if (isParado) {
+        mapCC.set(clean, true);
+      }
+    });
+
+    const sortedCleanCCs = Array.from(mapCC.keys()).sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
     );
 
-    return unicos.length > 0 ? unicos.join(", ") : "Sin CCs";
+    if (sortedCleanCCs.length === 0) return "Sin CCs";
+
+    return sortedCleanCCs.map((ccStr, idx) => {
+      const estaParado = mapCC.get(ccStr);
+      return (
+        <span key={ccStr}>
+          <span
+            style={{
+              color: estaParado ? "#ff0000" : "#000",
+              fontWeight: estaParado ? "800" : "600",
+              textShadow: estaParado ? "0 0 3px #fff" : "none",
+            }}
+          >
+            {ccStr}
+          </span>
+          {idx < sortedCleanCCs.length - 1 ? ", " : ""}
+        </span>
+      );
+    });
   };
 
   const getTractoresParadosGrupoCount = (grupoNum) => {
@@ -68,7 +99,7 @@ function Tractores() {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem", overflow: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 230px)", gap: "1.5rem" }}>
           {gruposInfo.map((g) => {
-            const ccs = getCCsPorGrupo(g.numero);
+            const ccs = renderCCsPorGrupo(g.numero);
             const cantParados = getTractoresParadosGrupoCount(g.numero);
             return (
               <div
