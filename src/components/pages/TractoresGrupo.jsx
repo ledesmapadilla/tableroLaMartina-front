@@ -100,17 +100,7 @@ function TractoresGrupo() {
                   }}
                 />
               )}
-              <div
-                style={{
-                  fontSize: "1.2rem",
-                  fontWeight: "700",
-                  wordBreak: "break-all",
-                  color: estaParado ? "#ff4d4d" : "inherit",
-                  textShadow: estaParado ? "0 0 3px rgba(0,0,0,0.5)" : "none",
-                }}
-              >
-                {String(t.cc || "").replace(/^cc\s*/i, "").trim()}
-              </div>
+              <div style={{ fontSize: "1.2rem", fontWeight: "700", wordBreak: "break-all" }}>{String(t.cc || "").replace(/^cc\s*/i, "").trim()}</div>
               <div style={{ fontSize: "0.78rem", opacity: 0.85, marginTop: "4px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{t.descripcion || "Sin descripción"}</div>
             </div>
           );

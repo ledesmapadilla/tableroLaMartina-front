@@ -43,7 +43,7 @@ function Tractores() {
     listForGrupo.forEach((t) => {
       const clean = String(t.cc || "").replace(/^cc\s*/i, "").trim();
       if (!clean) return;
-      const isParado = paradosIds.has(t._id?.toString());
+      const isParado = paradosIds.has(t._id?.toString()) || paradosIds.has(t.cc?.toString());
       if (!mapCC.has(clean)) {
         mapCC.set(clean, isParado);
       } else if (isParado) {
@@ -63,9 +63,10 @@ function Tractores() {
         <span key={ccStr}>
           <span
             style={{
-              color: estaParado ? "#ff0000" : "#000",
+              color: estaParado ? "#ff3333" : "#ffffff",
               fontWeight: estaParado ? "800" : "600",
-              textShadow: estaParado ? "0 0 3px #fff" : "none",
+              fontSize: estaParado ? "0.8rem" : "0.72rem",
+              textShadow: estaParado ? "0 0 3px #000, 0 0 5px #ff0000" : "none",
             }}
           >
             {ccStr}
@@ -154,7 +155,7 @@ function Tractores() {
                 <div
                   className="text-center px-2 mt-2"
                   style={{
-                    color: "#000",
+                    color: "#fff",
                     fontSize: "0.72rem",
                     fontWeight: "600",
                     lineHeight: "1.25",
