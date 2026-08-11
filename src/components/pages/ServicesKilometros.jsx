@@ -62,6 +62,7 @@ function ServicesKilometros() {
   const [registros, setRegistros] = useState([]);
   const [ultimos, setUltimos] = useState([]);
   const [ultimosService, setUltimosService] = useState([]);
+  const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
 
   const [detalleReg, setDetalleReg] = useState(null);
   const [modalMes, setModalMes] = useState(null);
@@ -79,15 +80,23 @@ function ServicesKilometros() {
   const cargarRegistros = () =>
     fetch("/api/kilometros").then((r) => r.json()).then(setRegistros).catch(() => setRegistros([]));
 
+  const cargarParadas = () =>
+    fetch("/api/paradas/abiertas/ids")
+      .then((r) => r.json())
+      .then((ids) => setParadasAbiertas(new Set(ids)))
+      .catch(() => setParadasAbiertas(new Set()));
+
   const cargarUltimos = () => Promise.all([
     fetch("/api/kilometros/ultimos").then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
     fetch("/api/services/ultimos").then((r) => r.json()).then(setUltimosService).catch(() => setUltimosService([])),
+    cargarParadas(),
   ]);
 
   useEffect(() => {
     fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => setCamionetas([]));
     cargarRegistros();
     cargarUltimos();
+    cargarParadas();
   }, []);
 
   useEffect(() => {
@@ -226,6 +235,7 @@ function ServicesKilometros() {
     ws.getRow(4).height = 16;
 
     camionetas.forEach((c) => {
+      const estaParada = paradasAbiertas.has(c._id.toString());
       const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
       const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
       const estado = getEstado(ultimo?.kms, serv?.kms);
@@ -236,7 +246,12 @@ function ServicesKilometros() {
       });
       valores.push(estado?.label ?? "—");
       const fila = ws.addRow(valores);
-      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.eachCell((cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        if (estaParada) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8D7DA" } };
+        }
+      });
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
     });
 
@@ -358,11 +373,12 @@ function ServicesKilometros() {
               {camionetas
                 .filter((c) => c.patente.toLowerCase().includes(filtroPat.toLowerCase()))
                 .map((c, idx) => {
+                const estaParada = paradasAbiertas.has(c._id.toString());
                 const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
                 const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
                 const estado = getEstado(ultimo?.kms, serv?.kms, c.patente);
                 return (
-                  <tr key={c._id}>
+                  <tr key={c._id} className={estaParada ? "tr-parada" : ""}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                     <td className="text-start" style={{ cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
                       <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>

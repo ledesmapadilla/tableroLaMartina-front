@@ -25,6 +25,7 @@ function ServicesUltimoService() {
   const [camionetas, setCamionetas] = useState([]);
   const [ultimos, setUltimos] = useState([]);
   const [ultimosKm, setUltimosKm] = useState([]);
+  const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
   const [dropOpen, setDropOpen] = useState(false);
   const [filtro, setFiltro] = useState("");
   const dropRef = useRef(null);
@@ -52,14 +53,22 @@ function ServicesUltimoService() {
   const cargarCamionetas = () =>
     fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => {});
 
+  const cargarParadas = () =>
+    fetch("/api/paradas/abiertas/ids")
+      .then((r) => r.json())
+      .then((ids) => setParadasAbiertas(new Set(ids)))
+      .catch(() => setParadasAbiertas(new Set()));
+
   const cargarTabla = (anio) => Promise.all([
     fetch(`/api/services/ultimos/${anio}`).then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
     fetch("/api/kilometros/ultimos").then((r) => r.json()).then(setUltimosKm).catch(() => setUltimosKm([])),
+    cargarParadas(),
   ]);
 
   useEffect(() => {
     fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => setCamionetas([]));
     fetch("/api/config").then((r) => r.json()).then((cfg) => setTelefonoAviso(cfg.telefonoAviso ?? "")).catch(() => {});
+    cargarParadas();
   }, []);
 
   useEffect(() => {
@@ -108,7 +117,7 @@ function ServicesUltimoService() {
       });
       if (res.ok) {
         cerrarModal();
-        await Promise.all([cargarTabla(año), cargarCamionetas()]);
+        await Promise.all([cargarTabla(año), cargarCamionetas(), cargarParadas()]);
         Swal.fire({ icon: "success", title: "Service guardado", timer: 1500, showConfirmButton: false });
       } else {
         const err = await res.json();
@@ -151,6 +160,7 @@ function ServicesUltimoService() {
     ws.getRow(4).height = 16;
 
     camionetas.forEach((c) => {
+      const estaParada = paradasAbiertas.has(c._id.toString());
       const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
       const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
       const estado = getEstado(km?.kms, reg?.kms, c.patente);
@@ -163,7 +173,12 @@ function ServicesUltimoService() {
         reg?.observaciones || "—",
         estado?.label ?? "—",
       ]);
-      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
+      fila.eachCell((cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        if (estaParada) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8D7DA" } };
+        }
+      });
       fila.getCell(5).alignment = { horizontal: "left", vertical: "middle" };
     });
 
@@ -454,11 +469,12 @@ function ServicesUltimoService() {
               {camionetas
                 .filter((c) => c.patente.toLowerCase().includes(busquedaPatente.toLowerCase()))
                 .map((c, idx) => {
+                const estaParada = paradasAbiertas.has(c._id.toString());
                 const reg    = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const km     = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                 const estado = getEstado(km?.kms, reg?.kms, c.patente);
                 return (
-                  <tr key={c._id}>
+                  <tr key={c._id} className={estaParada ? "tr-parada" : ""}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                     <td className="text-center">
                       <button

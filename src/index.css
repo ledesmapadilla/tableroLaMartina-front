@@ -260,3 +260,14 @@ input[type="number"] {
   transform: scale(1.015);
   z-index: 1;
 }
+
+/* ── Camioneta Parada en tablas ── */
+tr.tr-parada,
+tr.tr-parada > td {
+  background-color: #f8d7da !important;
+}
+tr.tr-parada:hover,
+tr.tr-parada:hover > td {
+  background-color: #f1b0b7 !important;
+}
+
