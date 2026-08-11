@@ -378,10 +378,10 @@ function ServicesKilometros() {
                 const serv   = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
                 const estado = getEstado(ultimo?.kms, serv?.kms, c.patente);
                 return (
-                  <tr key={c._id} className={estaParada ? "tr-parada" : ""}>
+                  <tr key={c._id}>
                     <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
                     <td className="text-start" style={{ cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
-                      <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>
+                      <span style={{ display: "inline-block", backgroundColor: estaParada ? "#8b4a4a" : "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)", marginRight: "6px" }}>
                         {c.patente}
                       </span>
                       <span style={{ fontSize: "0.88rem" }}>{c.marca}</span>
