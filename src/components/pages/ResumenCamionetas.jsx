@@ -1,21 +1,34 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 
 import { getIntervalKm } from "../../utils/serviceHelpers";
 
-const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const MESES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
 const MES_CAMPO = ["enero", null, "marzo", null, "mayo", null, "julio", null, "septiembre", null, "noviembre", null];
 const INICIO_ANIO = 2026;
-const INICIO_MES  = 5;
+const INICIO_MES = 5;
 
 function ResumenCamionetas() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [anio, setAnio] = useState(() => Number(localStorage.getItem("tablero_anio")) || new Date().getFullYear());
+  const [anio, setAnio] = useState(() => Number(localStorage.getItem("tablero_anio")) || 2026);
   const [dropAnio, setDropAnio] = useState(false);
   const dropAnioRef = useRef(null);
-  const aniosOpciones = Array.from({ length: 10 }, (_, i) => 2026 + i);
+  const aniosOpciones = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
   const [programas, setProgramas] = useState([]);
   const [camionetas, setCamionetas] = useState([]);
@@ -26,7 +39,9 @@ function ResumenCamionetas() {
   const [tareasPendientes, setTareasPendientes] = useState(null);
 
   useEffect(() => {
-    const handler = (e) => { if (dropAnioRef.current && !dropAnioRef.current.contains(e.target)) setDropAnio(false); };
+    const handler = (e) => {
+      if (dropAnioRef.current && !dropAnioRef.current.contains(e.target)) setDropAnio(false);
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
@@ -41,24 +56,26 @@ function ResumenCamionetas() {
       fetch("/api/camionetas").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/services/ultimos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/kilometros/ultimos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([camsList, ultimos, ultimosKm]) => {
-      const safeCams = Array.isArray(camsList) ? camsList : [];
-      const safeUltimos = Array.isArray(ultimos) ? ultimos : [];
-      const safeUltimosKm = Array.isArray(ultimosKm) ? ultimosKm : [];
-      setCamionetas(safeCams);
-      const count = safeUltimosKm.filter((km) => {
-        const camId = (km.camioneta?._id ?? km.camioneta)?.toString();
-        const camObj = safeCams.find((c) => c._id?.toString() === camId);
-        const srv = safeUltimos.find((u) => {
-          const srvId = (u.camioneta?._id ?? u.camioneta)?.toString();
-          return srvId === camId;
-        });
-        if (km.kms == null || srv?.kms == null) return false;
-        const interval = getIntervalKm(camObj?.patente, srv.kms, km.kms);
-        return km.kms - srv.kms >= interval;
-      }).length;
-      setServiciosAtrasados(count);
-    }).catch(() => setServiciosAtrasados(0));
+    ])
+      .then(([camsList, ultimos, ultimosKm]) => {
+        const safeCams = Array.isArray(camsList) ? camsList : [];
+        const safeUltimos = Array.isArray(ultimos) ? ultimos : [];
+        const safeUltimosKm = Array.isArray(ultimosKm) ? ultimosKm : [];
+        setCamionetas(safeCams);
+        const count = safeUltimosKm.filter((km) => {
+          const camId = (km.camioneta?._id ?? km.camioneta)?.toString();
+          const camObj = safeCams.find((c) => c._id?.toString() === camId);
+          const srv = safeUltimos.find((u) => {
+            const srvId = (u.camioneta?._id ?? u.camioneta)?.toString();
+            return srvId === camId;
+          });
+          if (km.kms == null || srv?.kms == null) return false;
+          const interval = getIntervalKm(camObj?.patente, srv.kms, km.kms);
+          return km.kms - srv.kms >= interval;
+        }).length;
+        setServiciosAtrasados(count);
+      })
+      .catch(() => setServiciosAtrasados(0));
 
     fetch("/api/paradas/abiertas/count")
       .then((r) => (r.ok ? r.json() : { count: 0 }))
@@ -83,10 +100,12 @@ function ResumenCamionetas() {
         kms.forEach((km) => {
           let mesReg, anioReg;
           if (km.mes != null && km.anio != null) {
-            mesReg = km.mes; anioReg = km.anio;
+            mesReg = km.mes;
+            anioReg = km.anio;
           } else {
             const fecha = new Date(km.fecha);
-            mesReg = fecha.getUTCMonth() + 1; anioReg = fecha.getUTCFullYear();
+            mesReg = fecha.getUTCMonth() + 1;
+            anioReg = fecha.getUTCFullYear();
           }
           if (anioReg !== anio) return;
           const id = (km.camioneta?._id ?? km.camioneta)?.toString();
@@ -94,7 +113,9 @@ function ResumenCamionetas() {
           res[mesReg].add(id);
         });
         const resumen = {};
-        Object.keys(res).forEach((m) => { resumen[m] = Array.from(res[m]); });
+        Object.keys(res).forEach((m) => {
+          resumen[m] = Array.from(res[m]);
+        });
         setKmResumen(resumen);
       })
       .catch(() => setKmResumen({}));
@@ -112,7 +133,6 @@ function ResumenCamionetas() {
     if (anio > anioActual) return null;
     if (anio === anioActual && mesNumero > mesActual) return null;
     if (esAntesDeProgramar(anio, mesNumero)) return null;
-    // Cruzar contra camionetas activas para no contar registros de camionetas eliminadas
     const idsConRegistro = new Set(kmResumen[mesNumero] ?? []);
     const conRegistroActivas = camionetas.filter((c) => idsConRegistro.has(c._id?.toString())).length;
     return camionetas.length - conRegistroActivas;
@@ -128,7 +148,6 @@ function ResumenCamionetas() {
     if (anio > anioActual) return null;
     if (anio === anioActual && mesNumero > mesActual) return null;
     if (esAntesDeProgramar(anio, mesNumero)) return null;
-    // Cruzar contra camionetas activas para no contar docs "fantasma" de camionetas eliminadas
     const realizados = camionetas.filter((c) => {
       const prog = programas.find((p) => (p.camioneta?._id ?? p.camioneta)?.toString() === c._id?.toString());
       return prog?.[campo]?.estado === "realizado";
@@ -137,39 +156,142 @@ function ResumenCamionetas() {
     return { pendientes };
   };
 
+  const totalCams = camionetas.length;
+
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ position: "relative", display: "flex", alignItems: "center", padding: "0.8rem 1.5rem 0" }}>
-        <h3 className="fw-bold mb-0 w-100 text-center">Tablero de Control Camionetas</h3>
-        <div className="d-flex gap-2" style={{ position: "absolute", right: "1.5rem" }}>
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontSize: "0.85rem", padding: "3px 10px" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8f9fa",
+        height: "100%",
+        maxHeight: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {/* Barra de Cabecera Institucional */}
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            style={{
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#3b82f6",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+            }}
+          >
+            <i className="bi bi-speedometer2"></i>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white fs-6">Tablero de Control — Camionetas</span>
+            <span className="text-light opacity-75 small">• {totalCams} Unidades</span>
+          </div>
+        </div>
+
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          <button
+            onClick={() => navigate("/camionetas/preventivo")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-shield-check"></i>
+            <span>Preventivo</span>
+          </button>
+          <button
+            onClick={() => navigate("/camionetas")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-car-front-fill me-1"></i>
+            <span>Camionetas</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0.4rem 0.8rem", overflow: "hidden" }}>
-        {/* Selector de año */}
-        <div className="d-flex justify-content-start align-items-center" style={{ marginBottom: "0.8rem", width: "80%" }}>
+      {/* Contenedor Principal */}
+      <Container
+        fluid
+        className="px-4 py-3 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: "1180px", width: "100%", margin: "0 auto", overflowY: "auto" }}
+      >
+        {/* Selector de Año */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
           <div ref={dropAnioRef} style={{ position: "relative" }}>
             <button
               onClick={() => setDropAnio((v) => !v)}
-              style={{ width: "90px", textAlign: "center", fontWeight: "700", fontSize: "1.3rem", background: "rgba(0,0,0,0.08)", border: "1px solid rgba(0,0,0,0.3)", borderRadius: "6px", color: "#000", padding: "2px 8px", cursor: "pointer" }}
+              className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3 py-1.5 text-white shadow-sm"
+              style={{
+                backgroundColor: "#1e293b",
+                border: "1px solid #475569",
+                fontWeight: 600,
+                fontSize: "0.88rem",
+              }}
             >
-              {anio}
+              <i className="bi bi-calendar3"></i>
+              <span>Año {anio}</span>
+              <i className={`bi bi-chevron-${dropAnio ? "up" : "down"} small opacity-75`}></i>
             </button>
             {dropAnio && (
-              <div style={{ position: "absolute", top: "110%", left: 0, backgroundColor: "#fff", border: "2px solid #000", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.25)", zIndex: 200, overflow: "hidden", minWidth: "90px" }}>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "115%",
+                  left: 0,
+                  backgroundColor: "#fff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                  zIndex: 200,
+                  minWidth: "110px",
+                  overflow: "hidden",
+                }}
+              >
                 {aniosOpciones.map((a) => (
                   <div
                     key={a}
-                    onClick={() => { setAnio(a); localStorage.setItem("tablero_anio", a); setDropAnio(false); }}
-                    style={{ padding: "6px 14px", textAlign: "center", cursor: "pointer", fontWeight: a === anio ? "700" : "400", backgroundColor: a === anio ? "#e3eaf7" : "transparent", color: "#000", fontSize: "0.9rem" }}
-                    onMouseEnter={(e) => { if (a !== anio) e.currentTarget.style.backgroundColor = "#f0f0f0"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = a === anio ? "#e3eaf7" : "transparent"; }}
+                    onClick={() => {
+                      setAnio(a);
+                      localStorage.setItem("tablero_anio", a);
+                      setDropAnio(false);
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      cursor: "pointer",
+                      fontWeight: a === anio ? "700" : "400",
+                      backgroundColor: a === anio ? "#f1f5f9" : "transparent",
+                      color: a === anio ? "#1e293b" : "#334155",
+                      fontSize: "0.88rem",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (a !== anio) e.currentTarget.style.backgroundColor = "#f8fafc";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = a === anio ? "#f1f5f9" : "transparent";
+                    }}
                   >
                     {a}
                   </div>
@@ -177,135 +299,325 @@ function ResumenCamionetas() {
               </div>
             )}
           </div>
+
+          <span className="text-muted small">
+            Monitoreo preventivo y operativo mensual de la flota
+          </span>
         </div>
 
-        {/* Grid de meses + tarjeta 13 */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gridAutoRows: "1fr", gap: "0.3rem", flex: 1, maxHeight: "70vh", width: "80%" }}>
+        {/* Grid de los 12 Meses */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "12px",
+            marginBottom: "16px",
+          }}
+        >
           {MESES.map((mes, i) => {
             const info = getCheckListInfo(i);
             const esImpar = (i + 1) % 2 !== 0;
-            const clBg = info === null ? "rgba(74, 111, 165, 0.85)" : info.pendientes === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
-            const clBgHover = info === null ? "rgba(74, 111, 165, 0.65)" : info.pendientes === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
+
+            // Colores CheckList
+            const clIsPendiente = info !== null && info.pendientes > 0;
+            const clIsOk = info !== null && info.pendientes === 0;
+            const clBg = clIsPendiente ? "#fee2e2" : clIsOk ? "#dcfce7" : "#f1f5f9";
+            const clColor = clIsPendiente ? "#991b1b" : clIsOk ? "#166534" : "#64748b";
+            const clBorder = clIsPendiente ? "#fca5a5" : clIsOk ? "#86efac" : "#e2e8f0";
+
+            // Colores Kilometraje
+            const kmSinRelevar = getKmSinRelevar(i);
+            const kmIsPendiente = kmSinRelevar !== null && kmSinRelevar > 0;
+            const kmIsOk = kmSinRelevar !== null && kmSinRelevar === 0;
+            const kmBg = kmIsPendiente ? "#fee2e2" : kmIsOk ? "#dcfce7" : "#f1f5f9";
+            const kmColor = kmIsPendiente ? "#991b1b" : kmIsOk ? "#166534" : "#64748b";
+            const kmBorder = kmIsPendiente ? "#fca5a5" : kmIsOk ? "#86efac" : "#e2e8f0";
+
             return (
-              <div key={mes} style={{ gridColumn: "span 2", backgroundColor: "rgba(74, 111, 165, 0.45)", borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", display: "flex", overflow: "hidden", userSelect: "none", backdropFilter: "blur(4px)" }}>
-                {/* Izquierda: mes */}
+              <div
+                key={mes}
+                className="bg-white shadow-sm rounded-3 d-flex overflow-hidden"
+                style={{
+                  border: "1px solid #cbd5e1",
+                  minHeight: "78px",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                {/* Lado Izquierdo: Nombre del Mes */}
                 <div
-                  className="d-flex align-items-center justify-content-center"
-                  style={{ flex: 1, fontWeight: "600", fontSize: "1.1rem", cursor: "pointer", transition: "background-color 0.15s", padding: "4px", color: "#000" }}
+                  className="d-flex align-items-center justify-content-center p-2 text-white fw-bold"
+                  style={{
+                    width: "42%",
+                    backgroundColor: "#1e293b",
+                    fontSize: "0.92rem",
+                    cursor: "pointer",
+                    transition: "background-color 0.15s ease",
+                    letterSpacing: "0.3px",
+                  }}
                   onClick={() => navigate("/camionetas", { state: { mes: i + 1, anio } })}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.3)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#334155")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#1e293b")}
+                  title={`Ver camionetas para ${mes}`}
                 >
-                  {mes}
+                  <span>{mes}</span>
                 </div>
-                {/* Separador vertical */}
-                <div style={{ width: "1px", backgroundColor: "rgba(0,0,0,0.2)" }} />
-                {/* Derecha: check list (solo meses impares) + service */}
-                <div style={{ display: "flex", flexDirection: "column", width: "52%" }}>
-                  {esImpar && (
+
+                {/* Lado Derecho: Check List + Kilometraje */}
+                <div className="d-flex flex-column justify-content-between p-1.5" style={{ width: "58%", gap: "4px" }}>
+                  {/* Check List (solo meses impares) */}
+                  {esImpar ? (
                     <div
-                      className="d-flex flex-column align-items-center justify-content-center text-black"
-                      style={{ flex: 1, fontSize: "0.95rem", fontWeight: "500", cursor: "pointer", transition: "background-color 0.15s", borderBottom: "2px solid #fff", backgroundColor: clBg }}
+                      className="rounded-2 d-flex align-items-center justify-content-between px-2 py-1"
+                      style={{
+                        backgroundColor: clBg,
+                        color: clColor,
+                        border: `1px solid ${clBorder}`,
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
                       onClick={() => navigate("/camionetas/checklist", { state: { mes: i + 1, anio } })}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = clBgHover)}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = clBg)}
+                      title="Ir al Resumen de Check List"
                     >
-                      <span>Check List</span>
-                      {info !== null && info.pendientes > 0 && (
-                        <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#000" }}>{info.pendientes} pendiente{info.pendientes > 1 ? "s" : ""}</span>
+                      <span className="text-truncate">Check List</span>
+                      {clIsPendiente && (
+                        <span className="badge bg-danger rounded-pill px-1.5 py-0.5 ms-1" style={{ fontSize: "0.68rem" }}>
+                          {info.pendientes}
+                        </span>
                       )}
+                      {clIsOk && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.75rem" }}></i>}
+                    </div>
+                  ) : (
+                    <div
+                      className="rounded-2 d-flex align-items-center justify-content-center px-2 py-1 opacity-50"
+                      style={{
+                        backgroundColor: "#f8fafc",
+                        color: "#94a3b8",
+                        border: "1px dashed #cbd5e1",
+                        fontSize: "0.68rem",
+                      }}
+                    >
+                      <span>— Bimestral —</span>
                     </div>
                   )}
-                  {(() => {
-                    const kmSinRelevar = getKmSinRelevar(i);
-                    const svBg = kmSinRelevar === null ? "rgba(74, 111, 165, 0.85)" : kmSinRelevar === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
-                    const svBgHover = kmSinRelevar === null ? "rgba(74, 111, 165, 0.65)" : kmSinRelevar === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
-                    return (
-                      <div
-                        className="d-flex flex-column align-items-center justify-content-center text-black"
-                        style={{ flex: 1, fontSize: "0.95rem", fontWeight: "500", cursor: "pointer", transition: "background-color 0.15s", backgroundColor: svBg }}
-                        onClick={() => navigate("/camionetas/services/kilometros", { state: { mes: i + 1, anio } })}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = svBgHover)}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = svBg)}
-                      >
-                        <span>Kilometraje</span>
-                        {kmSinRelevar !== null && kmSinRelevar > 0 && (
-                          <span style={{ fontSize: "0.75rem", marginTop: "1px", color: "#000" }}>
-                            {kmSinRelevar} sin relevar
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })()}
+
+                  {/* Kilometraje */}
+                  <div
+                    className="rounded-2 d-flex align-items-center justify-content-between px-2 py-1"
+                    style={{
+                      backgroundColor: kmBg,
+                      color: kmColor,
+                      border: `1px solid ${kmBorder}`,
+                      fontSize: "0.72rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    onClick={() => navigate("/camionetas/services/kilometros", { state: { mes: i + 1, anio } })}
+                    title="Ir a Control de Kilómetros"
+                  >
+                    <span className="text-truncate">Kilómetros</span>
+                    {kmIsPendiente && (
+                      <span className="badge bg-danger rounded-pill px-1.5 py-0.5 ms-1" style={{ fontSize: "0.68rem" }}>
+                        {kmSinRelevar}
+                      </span>
+                    )}
+                    {kmIsOk && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.75rem" }}></i>}
+                  </div>
                 </div>
               </div>
             );
           })}
+        </div>
 
-          {/* Tarjeta 13: Services Atrasados */}
+        {/* Tarjetas KPI de Resumen Inferiores */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "14px",
+            marginTop: "auto",
+            paddingBottom: "8px",
+          }}
+        >
+          {/* Tarjeta 1: Services Atrasados */}
           {(() => {
-            const bg = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.85)" : serviciosAtrasados === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
-            const bgHover = serviciosAtrasados === null ? "rgba(74, 111, 165, 0.65)" : serviciosAtrasados === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
+            const hasAtrasados = serviciosAtrasados !== null && serviciosAtrasados > 0;
+            const bg = hasAtrasados ? "#fef2f2" : "#f0fdf4";
+            const border = hasAtrasados ? "#f87171" : "#86efac";
+            const iconBg = hasAtrasados ? "#fee2e2" : "#dcfce7";
+            const iconColor = hasAtrasados ? "#dc2626" : "#166534";
+            const countColor = hasAtrasados ? "#991b1b" : "#166534";
+
             return (
               <div
-                className="d-flex flex-column align-items-center justify-content-center text-black"
-                style={{ gridColumn: "2 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
+                className="shadow-sm rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer"
+                style={{
+                  backgroundColor: bg,
+                  border: `1.5px solid ${border}`,
+                  cursor: "pointer",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                }}
                 onClick={() => navigate("/camionetas/services/ultimo-service")}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                }}
+                title="Ver Control de Último Service"
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Services Atrasados</span>
-                {serviciosAtrasados !== null && (
-                  <span style={{ fontSize: "2rem", fontWeight: "600", marginTop: "4px" }}>{serviciosAtrasados}</span>
-                )}
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    backgroundColor: iconBg,
+                    color: iconColor,
+                    fontSize: "1.3rem",
+                  }}
+                >
+                  <i className="bi bi-calendar-x-fill"></i>
+                </div>
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem" }}>
+                    Services Atrasados
+                  </span>
+                  <div className="d-flex align-items-baseline gap-2">
+                    <span className="fw-bold fs-4" style={{ color: countColor }}>
+                      {serviciosAtrasados ?? "—"}
+                    </span>
+                    <span className="text-muted small" style={{ fontSize: "0.74rem" }}>
+                      {hasAtrasados ? "unidades vencidas" : "Al día"}
+                    </span>
+                  </div>
+                </div>
               </div>
             );
           })()}
 
-          {/* Tarjeta 14: Unidades con Tareas Pendientes */}
+          {/* Tarjeta 2: Tareas Pendientes */}
           {(() => {
-            const bg = tareasPendientes === null ? "rgba(74, 111, 165, 0.85)" : tareasPendientes === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
-            const bgHover = tareasPendientes === null ? "rgba(74, 111, 165, 0.65)" : tareasPendientes === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
+            const hasPendientes = tareasPendientes !== null && tareasPendientes > 0;
+            const bg = hasPendientes ? "#fffbeb" : "#f0fdf4";
+            const border = hasPendientes ? "#fcd34d" : "#86efac";
+            const iconBg = hasPendientes ? "#fef3c7" : "#dcfce7";
+            const iconColor = hasPendientes ? "#d97706" : "#166534";
+            const countColor = hasPendientes ? "#b45309" : "#166534";
+
             return (
               <div
-                className="d-flex flex-column align-items-center justify-content-center text-black"
-                style={{ gridColumn: "4 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
+                className="shadow-sm rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer"
+                style={{
+                  backgroundColor: bg,
+                  border: `1.5px solid ${border}`,
+                  cursor: "pointer",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                }}
                 onClick={() => navigate("/camionetas/services/reparaciones")}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                }}
+                title="Ver Planilla General de Reparaciones"
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "600", textAlign: "center" }}>Unidades con tareas pendientes</span>
-                {tareasPendientes !== null && (
-                  <span style={{ fontSize: "2rem", fontWeight: "600", marginTop: "4px" }}>{tareasPendientes}</span>
-                )}
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    backgroundColor: iconBg,
+                    color: iconColor,
+                    fontSize: "1.3rem",
+                  }}
+                >
+                  <i className="bi bi-tools"></i>
+                </div>
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem" }}>
+                    Tareas Pendientes
+                  </span>
+                  <div className="d-flex align-items-baseline gap-2">
+                    <span className="fw-bold fs-4" style={{ color: countColor }}>
+                      {tareasPendientes ?? "—"}
+                    </span>
+                    <span className="text-muted small" style={{ fontSize: "0.74rem" }}>
+                      {hasPendientes ? "por realizar" : "Al día"}
+                    </span>
+                  </div>
+                </div>
               </div>
             );
           })()}
 
-          {/* Tarjeta 15: Unidades Paradas */}
+          {/* Tarjeta 3: Unidades Paradas */}
           {(() => {
-            const bg = unidadesParadas === null ? "rgba(74, 111, 165, 0.85)" : unidadesParadas === 0 ? "rgba(35, 115, 60, 0.92)" : "rgba(255, 0, 0, 0.9)";
-            const bgHover = unidadesParadas === null ? "rgba(74, 111, 165, 0.65)" : unidadesParadas === 0 ? "rgba(45, 140, 75, 0.78)" : "rgba(255, 30, 30, 0.75)";
+            const hasParadas = unidadesParadas !== null && unidadesParadas > 0;
+            const bg = hasParadas ? "#fef2f2" : "#f0fdf4";
+            const border = hasParadas ? "#f87171" : "#86efac";
+            const iconBg = hasParadas ? "#fee2e2" : "#dcfce7";
+            const iconColor = hasParadas ? "#dc2626" : "#166534";
+            const countColor = hasParadas ? "#991b1b" : "#166534";
+
             return (
               <div
-                className="d-flex flex-column align-items-center justify-content-center text-black"
-                style={{ gridColumn: "6 / span 2", backgroundColor: bg, borderRadius: "8px", boxShadow: "2px 2px 6px rgba(0,0,0,0.25)", border: "2px solid #000", cursor: "pointer", transition: "background-color 0.15s", userSelect: "none", padding: "1rem", backdropFilter: "blur(4px)" }}
+                className="shadow-sm rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer"
+                style={{
+                  backgroundColor: bg,
+                  border: `1.5px solid ${border}`,
+                  cursor: "pointer",
+                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                }}
                 onClick={() => navigate("/camionetas/checklist")}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = bgHover)}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = bg)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                }}
+                title="Ver Resumen de Check List"
               >
-                <span style={{ fontSize: "1.2rem", fontWeight: "600" }}>Unidades Paradas</span>
-                {unidadesParadas !== null && (
-                  <span style={{ fontSize: "2rem", fontWeight: "600", marginTop: "4px" }}>{unidadesParadas}</span>
-                )}
+                <div
+                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    backgroundColor: iconBg,
+                    color: iconColor,
+                    fontSize: "1.3rem",
+                  }}
+                >
+                  <i className="bi bi-cone-striped"></i>
+                </div>
+                <div className="d-flex flex-column">
+                  <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem" }}>
+                    Unidades Paradas
+                  </span>
+                  <div className="d-flex align-items-baseline gap-2">
+                    <span className="fw-bold fs-4" style={{ color: countColor }}>
+                      {unidadesParadas ?? "—"}
+                    </span>
+                    <span className="text-muted small" style={{ fontSize: "0.74rem" }}>
+                      {hasParadas ? "fuera de servicio" : "Flota activa"}
+                    </span>
+                  </div>
+                </div>
               </div>
             );
           })()}
         </div>
-      </div>
+      </Container>
     </div>
   );
 }
 
 export default ResumenCamionetas;
-
