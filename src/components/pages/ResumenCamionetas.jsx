@@ -170,14 +170,15 @@ function ResumenCamionetas() {
         overflow: "hidden",
       }}
     >
-      {/* Barra de Cabecera Institucional */}
+      {/* Barra de Cabecera Institucional con Título Centrado */}
       <div
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
-        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
-        <div className="d-flex align-items-center gap-3">
+        {/* Lado Izquierdo: Icono e info */}
+        <div className="d-flex align-items-center gap-2.5">
           <div
-            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            className="rounded-3 d-flex align-items-center justify-content-center"
             style={{
               width: "34px",
               height: "34px",
@@ -189,10 +190,22 @@ function ResumenCamionetas() {
           >
             <i className="bi bi-speedometer2"></i>
           </div>
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-white fs-6">Tablero de Control — Camionetas</span>
-            <span className="text-light opacity-75 small">• {totalCams} Unidades</span>
-          </div>
+          <span className="text-light opacity-75 small">{totalCams} Unidades</span>
+        </div>
+
+        {/* Título Centrado */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+            textAlign: "center",
+            pointerEvents: "none",
+          }}
+        >
+          <span className="text-white fs-6 fw-bold" style={{ letterSpacing: "0.2px" }}>
+            Tablero de Control — Camionetas
+          </span>
         </div>
 
         {/* Botones de Navegación */}
@@ -232,390 +245,379 @@ function ResumenCamionetas() {
         </div>
       </div>
 
-      {/* Contenedor Principal */}
-      <Container
-        fluid
-        className="px-4 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "1180px", width: "100%", margin: "0 auto", overflowY: "auto" }}
+      {/* Contenedor Principal Centrado Verticalmente */}
+      <div
+        className="d-flex flex-column justify-content-center align-items-center flex-grow-1 px-4 py-3"
+        style={{ overflowY: "auto" }}
       >
-        {/* Selector de Año */}
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <div ref={dropAnioRef} style={{ position: "relative" }}>
-            <button
-              onClick={() => setDropAnio((v) => !v)}
-              className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3 py-1.5 text-white shadow-sm"
-              style={{
-                backgroundColor: "#1e293b",
-                border: "1px solid #475569",
-                fontWeight: 600,
-                fontSize: "0.88rem",
-              }}
-            >
-              <i className="bi bi-calendar3"></i>
-              <span>Año {anio}</span>
-              <i className={`bi bi-chevron-${dropAnio ? "up" : "down"} small opacity-75`}></i>
-            </button>
-            {dropAnio && (
-              <div
+        <div style={{ maxWidth: "1220px", width: "100%" }}>
+          {/* Selector de Año */}
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <div ref={dropAnioRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setDropAnio((v) => !v)}
+                className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3.5 py-1.5 text-white shadow-sm"
                 style={{
-                  position: "absolute",
-                  top: "115%",
-                  left: 0,
-                  backgroundColor: "#fff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "8px",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                  zIndex: 200,
-                  minWidth: "110px",
-                  overflow: "hidden",
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #475569",
+                  fontWeight: 600,
+                  fontSize: "0.9rem",
                 }}
               >
-                {aniosOpciones.map((a) => (
-                  <div
-                    key={a}
-                    onClick={() => {
-                      setAnio(a);
-                      localStorage.setItem("tablero_anio", a);
-                      setDropAnio(false);
-                    }}
-                    style={{
-                      padding: "8px 16px",
-                      cursor: "pointer",
-                      fontWeight: a === anio ? "700" : "400",
-                      backgroundColor: a === anio ? "#f1f5f9" : "transparent",
-                      color: a === anio ? "#1e293b" : "#334155",
-                      fontSize: "0.88rem",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (a !== anio) e.currentTarget.style.backgroundColor = "#f8fafc";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = a === anio ? "#f1f5f9" : "transparent";
-                    }}
-                  >
-                    {a}
-                  </div>
-                ))}
-              </div>
-            )}
+                <i className="bi bi-calendar3"></i>
+                <span>Año {anio}</span>
+                <i className={`bi bi-chevron-${dropAnio ? "up" : "down"} small opacity-75`}></i>
+              </button>
+              {dropAnio && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "115%",
+                    left: 0,
+                    backgroundColor: "#fff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                    zIndex: 200,
+                    minWidth: "110px",
+                    overflow: "hidden",
+                  }}
+                >
+                  {aniosOpciones.map((a) => (
+                    <div
+                      key={a}
+                      onClick={() => {
+                        setAnio(a);
+                        localStorage.setItem("tablero_anio", a);
+                        setDropAnio(false);
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        cursor: "pointer",
+                        fontWeight: a === anio ? "700" : "400",
+                        backgroundColor: a === anio ? "#f1f5f9" : "transparent",
+                        color: a === anio ? "#1e293b" : "#334155",
+                        fontSize: "0.88rem",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (a !== anio) e.currentTarget.style.backgroundColor = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = a === anio ? "#f1f5f9" : "transparent";
+                      }}
+                    >
+                      {a}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <span className="text-muted small fw-semibold">
+              Monitoreo operativo y preventivo mensual de la flota
+            </span>
           </div>
 
-          <span className="text-muted small">
-            Monitoreo preventivo y operativo mensual de la flota
-          </span>
-        </div>
+          {/* Grid de los 12 Meses (Tarjetas más grandes) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "14px",
+              marginBottom: "20px",
+            }}
+          >
+            {MESES.map((mes, i) => {
+              const info = getCheckListInfo(i);
+              const esImpar = (i + 1) % 2 !== 0;
 
-        {/* Grid de los 12 Meses */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: "12px",
-            marginBottom: "16px",
-          }}
-        >
-          {MESES.map((mes, i) => {
-            const info = getCheckListInfo(i);
-            const esImpar = (i + 1) % 2 !== 0;
+              // Colores CheckList
+              const clIsPendiente = info !== null && info.pendientes > 0;
+              const clIsOk = info !== null && info.pendientes === 0;
+              const clBg = clIsPendiente ? "#fee2e2" : clIsOk ? "#dcfce7" : "#f1f5f9";
+              const clColor = clIsPendiente ? "#991b1b" : clIsOk ? "#166534" : "#64748b";
+              const clBorder = clIsPendiente ? "#fca5a5" : clIsOk ? "#86efac" : "#e2e8f0";
 
-            // Colores CheckList
-            const clIsPendiente = info !== null && info.pendientes > 0;
-            const clIsOk = info !== null && info.pendientes === 0;
-            const clBg = clIsPendiente ? "#fee2e2" : clIsOk ? "#dcfce7" : "#f1f5f9";
-            const clColor = clIsPendiente ? "#991b1b" : clIsOk ? "#166534" : "#64748b";
-            const clBorder = clIsPendiente ? "#fca5a5" : clIsOk ? "#86efac" : "#e2e8f0";
+              // Colores Kilometraje
+              const kmSinRelevar = getKmSinRelevar(i);
+              const kmIsPendiente = kmSinRelevar !== null && kmSinRelevar > 0;
+              const kmIsOk = kmSinRelevar !== null && kmSinRelevar === 0;
+              const kmBg = kmIsPendiente ? "#fee2e2" : kmIsOk ? "#dcfce7" : "#f1f5f9";
+              const kmColor = kmIsPendiente ? "#991b1b" : kmIsOk ? "#166534" : "#64748b";
+              const kmBorder = kmIsPendiente ? "#fca5a5" : kmIsOk ? "#86efac" : "#e2e8f0";
 
-            // Colores Kilometraje
-            const kmSinRelevar = getKmSinRelevar(i);
-            const kmIsPendiente = kmSinRelevar !== null && kmSinRelevar > 0;
-            const kmIsOk = kmSinRelevar !== null && kmSinRelevar === 0;
-            const kmBg = kmIsPendiente ? "#fee2e2" : kmIsOk ? "#dcfce7" : "#f1f5f9";
-            const kmColor = kmIsPendiente ? "#991b1b" : kmIsOk ? "#166534" : "#64748b";
-            const kmBorder = kmIsPendiente ? "#fca5a5" : kmIsOk ? "#86efac" : "#e2e8f0";
-
-            return (
-              <div
-                key={mes}
-                className="bg-white shadow-sm rounded-3 d-flex overflow-hidden"
-                style={{
-                  border: "1px solid #cbd5e1",
-                  minHeight: "78px",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {/* Lado Izquierdo: Nombre del Mes */}
+              return (
                 <div
-                  className="d-flex align-items-center justify-content-center p-2 text-white fw-bold"
+                  key={mes}
+                  className="bg-white shadow-sm rounded-3 d-flex overflow-hidden"
                   style={{
-                    width: "42%",
-                    backgroundColor: "#1e293b",
-                    fontSize: "0.92rem",
-                    cursor: "pointer",
-                    transition: "background-color 0.15s ease",
-                    letterSpacing: "0.3px",
+                    border: "1px solid #cbd5e1",
+                    minHeight: "92px",
+                    transition: "all 0.2s ease",
                   }}
-                  onClick={() => navigate("/camionetas", { state: { mes: i + 1, anio } })}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#334155")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#1e293b")}
-                  title={`Ver camionetas para ${mes}`}
                 >
-                  <span>{mes}</span>
-                </div>
+                  {/* Lado Izquierdo: Nombre del Mes (Texto estático, no es botón) */}
+                  <div
+                    className="d-flex align-items-center justify-content-center text-white fw-bold user-select-none"
+                    style={{
+                      width: "40%",
+                      backgroundColor: "#1e293b",
+                      fontSize: "1rem",
+                      letterSpacing: "0.4px",
+                      textAlign: "center",
+                      padding: "8px 4px",
+                    }}
+                  >
+                    <span>{mes}</span>
+                  </div>
 
-                {/* Lado Derecho: Check List + Kilometraje */}
-                <div className="d-flex flex-column justify-content-between p-1.5" style={{ width: "58%", gap: "4px" }}>
-                  {/* Check List (solo meses impares) */}
-                  {esImpar ? (
+                  {/* Lado Derecho: Check List + Kilometraje */}
+                  <div
+                    className="d-flex flex-column justify-content-between p-2 flex-grow-1"
+                    style={{ gap: "6px" }}
+                  >
+                    {/* Check List (solo meses impares) */}
+                    {esImpar ? (
+                      <div
+                        className="rounded-2 d-flex align-items-center justify-content-between px-2.5 py-1.5"
+                        style={{
+                          backgroundColor: clBg,
+                          color: clColor,
+                          border: `1px solid ${clBorder}`,
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                        onClick={() => navigate("/camionetas/checklist", { state: { mes: i + 1, anio } })}
+                        title="Ir al Resumen de Check List"
+                      >
+                        <span className="text-truncate">Check List</span>
+                        {clIsPendiente && (
+                          <span className="badge bg-danger rounded-pill px-1.5 py-0.5 ms-1" style={{ fontSize: "0.7rem" }}>
+                            {info.pendientes}
+                          </span>
+                        )}
+                        {clIsOk && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.82rem" }}></i>}
+                      </div>
+                    ) : (
+                      <div
+                        className="rounded-2 d-flex align-items-center justify-content-center px-2.5 py-1.5 opacity-50"
+                        style={{
+                          backgroundColor: "#f8fafc",
+                          color: "#94a3b8",
+                          border: "1px dashed #cbd5e1",
+                          fontSize: "0.74rem",
+                        }}
+                      >
+                        <span>— Bimestral —</span>
+                      </div>
+                    )}
+
+                    {/* Kilometraje */}
                     <div
-                      className="rounded-2 d-flex align-items-center justify-content-between px-2 py-1"
+                      className="rounded-2 d-flex align-items-center justify-content-between px-2.5 py-1.5"
                       style={{
-                        backgroundColor: clBg,
-                        color: clColor,
-                        border: `1px solid ${clBorder}`,
-                        fontSize: "0.72rem",
+                        backgroundColor: kmBg,
+                        color: kmColor,
+                        border: `1px solid ${kmBorder}`,
+                        fontSize: "0.78rem",
                         fontWeight: 600,
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                       }}
-                      onClick={() => navigate("/camionetas/checklist", { state: { mes: i + 1, anio } })}
-                      title="Ir al Resumen de Check List"
+                      onClick={() => navigate("/camionetas/services/kilometros", { state: { mes: i + 1, anio } })}
+                      title="Ir a Control de Kilómetros"
                     >
-                      <span className="text-truncate">Check List</span>
-                      {clIsPendiente && (
-                        <span className="badge bg-danger rounded-pill px-1.5 py-0.5 ms-1" style={{ fontSize: "0.68rem" }}>
-                          {info.pendientes}
+                      <span className="text-truncate">Kilómetros</span>
+                      {kmIsPendiente && (
+                        <span className="badge bg-danger rounded-pill px-1.5 py-0.5 ms-1" style={{ fontSize: "0.7rem" }}>
+                          {kmSinRelevar}
                         </span>
                       )}
-                      {clIsOk && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.75rem" }}></i>}
+                      {kmIsOk && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.82rem" }}></i>}
                     </div>
-                  ) : (
-                    <div
-                      className="rounded-2 d-flex align-items-center justify-content-center px-2 py-1 opacity-50"
-                      style={{
-                        backgroundColor: "#f8fafc",
-                        color: "#94a3b8",
-                        border: "1px dashed #cbd5e1",
-                        fontSize: "0.68rem",
-                      }}
-                    >
-                      <span>— Bimestral —</span>
-                    </div>
-                  )}
-
-                  {/* Kilometraje */}
-                  <div
-                    className="rounded-2 d-flex align-items-center justify-content-between px-2 py-1"
-                    style={{
-                      backgroundColor: kmBg,
-                      color: kmColor,
-                      border: `1px solid ${kmBorder}`,
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onClick={() => navigate("/camionetas/services/kilometros", { state: { mes: i + 1, anio } })}
-                    title="Ir a Control de Kilómetros"
-                  >
-                    <span className="text-truncate">Kilómetros</span>
-                    {kmIsPendiente && (
-                      <span className="badge bg-danger rounded-pill px-1.5 py-0.5 ms-1" style={{ fontSize: "0.68rem" }}>
-                        {kmSinRelevar}
-                      </span>
-                    )}
-                    {kmIsOk && <i className="bi bi-check-circle-fill text-success" style={{ fontSize: "0.75rem" }}></i>}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
 
-        {/* Tarjetas KPI de Resumen Inferiores */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "14px",
-            marginTop: "auto",
-            paddingBottom: "8px",
-          }}
-        >
-          {/* Tarjeta 1: Services Atrasados */}
-          {(() => {
-            const hasAtrasados = serviciosAtrasados !== null && serviciosAtrasados > 0;
-            const bg = hasAtrasados ? "#fef2f2" : "#f0fdf4";
-            const border = hasAtrasados ? "#f87171" : "#86efac";
-            const iconBg = hasAtrasados ? "#fee2e2" : "#dcfce7";
-            const iconColor = hasAtrasados ? "#dc2626" : "#166534";
-            const countColor = hasAtrasados ? "#991b1b" : "#166534";
+          {/* Tarjetas KPI de Resumen Inferiores (Palabras y Contenidos Centrados con Rojo para Alertas) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "18px",
+            }}
+          >
+            {/* Tarjeta 1: Services Atrasados (Rojo para alertas) */}
+            {(() => {
+              const hasAtrasados = serviciosAtrasados !== null && serviciosAtrasados > 0;
+              const bg = hasAtrasados ? "#fee2e2" : "#f0fdf4";
+              const border = hasAtrasados ? "#ef4444" : "#86efac";
+              const iconBg = hasAtrasados ? "#fca5a5" : "#dcfce7";
+              const iconColor = hasAtrasados ? "#dc2626" : "#166534";
+              const countColor = hasAtrasados ? "#b91c1c" : "#166534";
 
-            return (
-              <div
-                className="shadow-sm rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer"
-                style={{
-                  backgroundColor: bg,
-                  border: `1.5px solid ${border}`,
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-                onClick={() => navigate("/camionetas/services/ultimo-service")}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                }}
-                title="Ver Control de Último Service"
-              >
+              return (
                 <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  className="shadow-sm rounded-3 p-3 d-flex flex-column align-items-center justify-content-center text-center cursor-pointer"
                   style={{
-                    width: "44px",
-                    height: "44px",
-                    backgroundColor: iconBg,
-                    color: iconColor,
-                    fontSize: "1.3rem",
+                    backgroundColor: bg,
+                    border: `1.5px solid ${border}`,
+                    cursor: "pointer",
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    minHeight: "125px",
                   }}
+                  onClick={() => navigate("/camionetas/services/ultimo-service")}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                  }}
+                  title="Ver Control de Último Service"
                 >
-                  <i className="bi bi-calendar-x-fill"></i>
-                </div>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem" }}>
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center mb-1.5"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      backgroundColor: iconBg,
+                      color: iconColor,
+                      fontSize: "1.25rem",
+                    }}
+                  >
+                    <i className="bi bi-calendar-x-fill"></i>
+                  </div>
+                  <span className="fw-semibold text-secondary mb-0.5" style={{ fontSize: "0.88rem" }}>
                     Services Atrasados
                   </span>
-                  <div className="d-flex align-items-baseline gap-2">
-                    <span className="fw-bold fs-4" style={{ color: countColor }}>
-                      {serviciosAtrasados ?? "—"}
-                    </span>
-                    <span className="text-muted small" style={{ fontSize: "0.74rem" }}>
-                      {hasAtrasados ? "unidades vencidas" : "Al día"}
-                    </span>
-                  </div>
+                  <span className="fw-bold fs-3 mb-0" style={{ color: countColor, lineHeight: 1.1 }}>
+                    {serviciosAtrasados ?? "—"}
+                  </span>
+                  <span className="text-muted small mt-1" style={{ fontSize: "0.76rem" }}>
+                    {hasAtrasados ? "unidades vencidas" : "Al día"}
+                  </span>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
-          {/* Tarjeta 2: Tareas Pendientes */}
-          {(() => {
-            const hasPendientes = tareasPendientes !== null && tareasPendientes > 0;
-            const bg = hasPendientes ? "#fffbeb" : "#f0fdf4";
-            const border = hasPendientes ? "#fcd34d" : "#86efac";
-            const iconBg = hasPendientes ? "#fef3c7" : "#dcfce7";
-            const iconColor = hasPendientes ? "#d97706" : "#166534";
-            const countColor = hasPendientes ? "#b45309" : "#166534";
+            {/* Tarjeta 2: Tareas Pendientes */}
+            {(() => {
+              const hasPendientes = tareasPendientes !== null && tareasPendientes > 0;
+              const bg = hasPendientes ? "#fffbeb" : "#f0fdf4";
+              const border = hasPendientes ? "#fcd34d" : "#86efac";
+              const iconBg = hasPendientes ? "#fef3c7" : "#dcfce7";
+              const iconColor = hasPendientes ? "#d97706" : "#166534";
+              const countColor = hasPendientes ? "#b45309" : "#166534";
 
-            return (
-              <div
-                className="shadow-sm rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer"
-                style={{
-                  backgroundColor: bg,
-                  border: `1.5px solid ${border}`,
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-                onClick={() => navigate("/camionetas/services/reparaciones")}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                }}
-                title="Ver Planilla General de Reparaciones"
-              >
+              return (
                 <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  className="shadow-sm rounded-3 p-3 d-flex flex-column align-items-center justify-content-center text-center cursor-pointer"
                   style={{
-                    width: "44px",
-                    height: "44px",
-                    backgroundColor: iconBg,
-                    color: iconColor,
-                    fontSize: "1.3rem",
+                    backgroundColor: bg,
+                    border: `1.5px solid ${border}`,
+                    cursor: "pointer",
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    minHeight: "125px",
                   }}
+                  onClick={() => navigate("/camionetas/services/reparaciones")}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                  }}
+                  title="Ver Planilla General de Reparaciones"
                 >
-                  <i className="bi bi-tools"></i>
-                </div>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem" }}>
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center mb-1.5"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      backgroundColor: iconBg,
+                      color: iconColor,
+                      fontSize: "1.25rem",
+                    }}
+                  >
+                    <i className="bi bi-tools"></i>
+                  </div>
+                  <span className="fw-semibold text-secondary mb-0.5" style={{ fontSize: "0.88rem" }}>
                     Tareas Pendientes
                   </span>
-                  <div className="d-flex align-items-baseline gap-2">
-                    <span className="fw-bold fs-4" style={{ color: countColor }}>
-                      {tareasPendientes ?? "—"}
-                    </span>
-                    <span className="text-muted small" style={{ fontSize: "0.74rem" }}>
-                      {hasPendientes ? "por realizar" : "Al día"}
-                    </span>
-                  </div>
+                  <span className="fw-bold fs-3 mb-0" style={{ color: countColor, lineHeight: 1.1 }}>
+                    {tareasPendientes ?? "—"}
+                  </span>
+                  <span className="text-muted small mt-1" style={{ fontSize: "0.76rem" }}>
+                    {hasPendientes ? "por realizar" : "Al día"}
+                  </span>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
-          {/* Tarjeta 3: Unidades Paradas */}
-          {(() => {
-            const hasParadas = unidadesParadas !== null && unidadesParadas > 0;
-            const bg = hasParadas ? "#fef2f2" : "#f0fdf4";
-            const border = hasParadas ? "#f87171" : "#86efac";
-            const iconBg = hasParadas ? "#fee2e2" : "#dcfce7";
-            const iconColor = hasParadas ? "#dc2626" : "#166534";
-            const countColor = hasParadas ? "#991b1b" : "#166534";
+            {/* Tarjeta 3: Unidades Paradas (Rojo para alertas) */}
+            {(() => {
+              const hasParadas = unidadesParadas !== null && unidadesParadas > 0;
+              const bg = hasParadas ? "#fee2e2" : "#f0fdf4";
+              const border = hasParadas ? "#ef4444" : "#86efac";
+              const iconBg = hasParadas ? "#fca5a5" : "#dcfce7";
+              const iconColor = hasParadas ? "#dc2626" : "#166534";
+              const countColor = hasParadas ? "#b91c1c" : "#166534";
 
-            return (
-              <div
-                className="shadow-sm rounded-3 p-3 d-flex align-items-center gap-3 cursor-pointer"
-                style={{
-                  backgroundColor: bg,
-                  border: `1.5px solid ${border}`,
-                  cursor: "pointer",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                }}
-                onClick={() => navigate("/camionetas/checklist")}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
-                }}
-                title="Ver Resumen de Check List"
-              >
+              return (
                 <div
-                  className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+                  className="shadow-sm rounded-3 p-3 d-flex flex-column align-items-center justify-content-center text-center cursor-pointer"
                   style={{
-                    width: "44px",
-                    height: "44px",
-                    backgroundColor: iconBg,
-                    color: iconColor,
-                    fontSize: "1.3rem",
+                    backgroundColor: bg,
+                    border: `1.5px solid ${border}`,
+                    cursor: "pointer",
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    minHeight: "125px",
                   }}
+                  onClick={() => navigate("/camionetas/checklist")}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+                  }}
+                  title="Ver Resumen de Check List"
                 >
-                  <i className="bi bi-cone-striped"></i>
-                </div>
-                <div className="d-flex flex-column">
-                  <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem" }}>
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center mb-1.5"
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      backgroundColor: iconBg,
+                      color: iconColor,
+                      fontSize: "1.25rem",
+                    }}
+                  >
+                    <i className="bi bi-cone-striped"></i>
+                  </div>
+                  <span className="fw-semibold text-secondary mb-0.5" style={{ fontSize: "0.88rem" }}>
                     Unidades Paradas
                   </span>
-                  <div className="d-flex align-items-baseline gap-2">
-                    <span className="fw-bold fs-4" style={{ color: countColor }}>
-                      {unidadesParadas ?? "—"}
-                    </span>
-                    <span className="text-muted small" style={{ fontSize: "0.74rem" }}>
-                      {hasParadas ? "fuera de servicio" : "Flota activa"}
-                    </span>
-                  </div>
+                  <span className="fw-bold fs-3 mb-0" style={{ color: countColor, lineHeight: 1.1 }}>
+                    {unidadesParadas ?? "—"}
+                  </span>
+                  <span className="text-muted small mt-1" style={{ fontSize: "0.76rem" }}>
+                    {hasParadas ? "fuera de servicio" : "Flota activa"}
+                  </span>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
+          </div>
         </div>
-      </Container>
+      </div>
     </div>
   );
 }
