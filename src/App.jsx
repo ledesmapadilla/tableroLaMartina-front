@@ -28,12 +28,14 @@ import Visitas from "./components/pages/Visitas";
 import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
 import CamionetaMenuReparaciones from "./components/pages/CamionetaMenuReparaciones";
 import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
+import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 
 function App() {
   return (
     <BrowserRouter>
       <div className="app-wrapper">
         <Sidebar />
+        <BotonTableroFlotante />
         <div className="layout-right">
           <main>
             <Routes>
