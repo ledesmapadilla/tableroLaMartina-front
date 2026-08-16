@@ -62,7 +62,7 @@ function ResumenCheckList() {
   };
 
   const getBadgeMes = (estado, puntuacion, camionetaParada) => {
-    if (estado !== "realizado") {
+    if (estado !== "realizado" || (!camionetaParada && (puntuacion == null || isNaN(puntuacion)))) {
       return {
         bg: "#f1f5f9",
         color: "#64748b",
@@ -152,8 +152,8 @@ function ResumenCheckList() {
     camionetas.forEach((c, idx) => {
       const estaParada = paradasAbiertas.has(c._id.toString());
       const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
-        .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
-        .map(({ puntuacion }) => puntuacion);
+        .filter(({ estado, puntuacion, camionetatParada }) => !camionetatParada && estado === "realizado" && puntuacion != null && !isNaN(puntuacion))
+        .map(({ puntuacion }) => Number(puntuacion));
       const promedio = puntuaciones.length > 0
         ? (puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length).toFixed(1)
         : "—";
@@ -161,10 +161,10 @@ function ResumenCheckList() {
       const valores = [c.patente, c.marca, c.responsable || "—"];
       MESES.forEach((mes) => {
         const { estado, puntuacion, camionetatParada } = getMes(c._id, mes);
-        if (estado === "realizado") {
-          if (camionetatParada) valores.push("Parada");
-          else if (puntuacion != null) valores.push(`Realizado (${puntuacion})`);
-          else valores.push("Realizado");
+        if (camionetatParada) {
+          valores.push("Parada");
+        } else if (estado === "realizado" && puntuacion != null && !isNaN(puntuacion)) {
+          valores.push(`Realizado (${puntuacion})`);
         } else {
           valores.push("Pendiente");
         }
@@ -292,8 +292,8 @@ function ResumenCheckList() {
           className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2"
           style={{ maxWidth: "1050px", width: "100%", margin: "0 auto" }}
         >
-          {/* Año, Buscador y Botón Excel a la izquierda */}
-          <div className="d-flex align-items-center gap-2.5 flex-wrap">
+          {/* Año y Buscador de Patente bien separados a la izquierda */}
+          <div className="d-flex align-items-center gap-4 flex-wrap">
             {/* Dropdown de Año */}
             <div ref={dropAñoRef} style={{ position: "relative" }}>
               <button
@@ -354,8 +354,8 @@ function ResumenCheckList() {
               )}
             </div>
 
-            {/* Buscador de Patente */}
-            <div style={{ position: "relative", width: "210px" }}>
+            {/* Buscador de Patente separado */}
+            <div style={{ position: "relative", width: "220px" }}>
               <i
                 className="bi bi-search text-muted"
                 style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "0.82rem" }}
@@ -389,8 +389,10 @@ function ResumenCheckList() {
                 </button>
               )}
             </div>
+          </div>
 
-            {/* Botón Excel */}
+          {/* Botón Excel a la derecha */}
+          <div className="d-flex align-items-center">
             <Button
               variant="success"
               size="sm"
@@ -452,8 +454,8 @@ function ResumenCheckList() {
                   const isEven = idx % 2 === 0;
 
                   const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
-                    .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
-                    .map(({ puntuacion }) => puntuacion);
+                    .filter(({ estado, puntuacion, camionetatParada }) => !camionetatParada && estado === "realizado" && puntuacion != null && !isNaN(puntuacion))
+                    .map(({ puntuacion }) => Number(puntuacion));
                   const promedio = puntuaciones.length > 0
                     ? (puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length).toFixed(1)
                     : null;
