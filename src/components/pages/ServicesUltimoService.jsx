@@ -729,9 +729,9 @@ function ServicesUltimoService() {
 
                       {/* Patente y Marca (sin palabra parada) */}
                       <td className="text-start" style={{ padding: "4px 8px" }}>
-                        <div className="d-flex align-items-center gap-1.5">
+                        <div className="d-flex align-items-center gap-2">
                           <span
-                            className="badge px-2 py-0.5 text-white shadow-sm"
+                            className="badge px-2 py-0.5 text-white shadow-sm me-1"
                             style={{
                               backgroundColor: estaParada ? "#991b1b" : "#0f172a",
                               border: "1px solid #475569",
