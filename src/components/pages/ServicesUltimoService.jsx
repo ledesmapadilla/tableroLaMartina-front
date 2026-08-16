@@ -32,6 +32,7 @@ function ServicesUltimoService() {
   const [guardandoTel, setGuardandoTel] = useState(false);
   const [busquedaPatente, setBusquedaPatente] = useState("");
   const [obsModalText, setObsModalText] = useState(null);
+  const [guardandoObs, setGuardandoObs] = useState(false);
 
   const {
     register,
@@ -275,6 +276,60 @@ function ServicesUltimoService() {
       /* silencioso */
     }
     setGuardandoTel(false);
+  };
+
+  const guardarObservacion = async () => {
+    if (!obsModalText) return;
+    setGuardandoObs(true);
+    try {
+      if (obsModalText.serviceId) {
+        const res = await fetch(`/api/services/${obsModalText.serviceId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ observaciones: obsModalText.texto }),
+        });
+        if (res.ok) {
+          setObsModalText(null);
+          await cargarTabla(año);
+          Swal.fire({
+            icon: "success",
+            title: "Observaciones guardadas",
+            timer: 1300,
+            showConfirmButton: false,
+            width: "300px",
+          });
+        } else {
+          Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar", width: "300px" });
+        }
+      } else {
+        const res = await fetch("/api/services", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            camioneta: obsModalText.camionetaId,
+            fecha: new Date().toISOString().split("T")[0],
+            observaciones: obsModalText.texto,
+          }),
+        });
+        if (res.ok) {
+          setObsModalText(null);
+          await Promise.all([cargarTabla(año), cargarCamionetas()]);
+          Swal.fire({
+            icon: "success",
+            title: "Observaciones guardadas",
+            timer: 1300,
+            showConfirmButton: false,
+            width: "300px",
+          });
+        } else {
+          Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar", width: "300px" });
+        }
+      }
+    } catch {
+      Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar", width: "300px" });
+    } finally {
+      setGuardandoObs(false);
+    }
   };
 
   const marcarWhatsapp = async (camionetaId, enviado) => {
@@ -776,18 +831,31 @@ function ServicesUltimoService() {
 
                       {/* Observaciones Modal */}
                       <td style={{ padding: "4px 2px" }}>
-                        {reg?.observaciones?.trim() ? (
-                          <button
-                            className="btn btn-sm btn-outline-secondary p-0 rounded-circle d-inline-flex align-items-center justify-content-center"
-                            style={{ width: "20px", height: "20px", fontSize: "0.68rem" }}
-                            onClick={() => setObsModalText({ patente: c.patente, texto: reg.observaciones })}
-                            title="Ver observaciones"
-                          >
-                            <i className="bi bi-chat-left-text"></i>
-                          </button>
-                        ) : (
-                          <span className="text-muted small" style={{ fontSize: "0.72rem" }}>—</span>
-                        )}
+                        <button
+                          className={`btn btn-sm p-0 rounded-circle d-inline-flex align-items-center justify-content-center ${
+                            reg?.observaciones?.trim()
+                              ? "btn-outline-primary"
+                              : "btn-outline-secondary"
+                          }`}
+                          style={{
+                            width: "22px",
+                            height: "22px",
+                            fontSize: "0.72rem",
+                            opacity: reg?.observaciones?.trim() ? 1 : 0.6,
+                          }}
+                          onClick={() =>
+                            setObsModalText({
+                              serviceId: reg?._id,
+                              camionetaId: c._id,
+                              patente: c.patente,
+                              marca: c.marca,
+                              texto: reg?.observaciones || "",
+                            })
+                          }
+                          title={reg?.observaciones?.trim() ? "Editar observaciones" : "Agregar observación"}
+                        >
+                          <i className={`bi ${reg?.observaciones?.trim() ? "bi-chat-left-text-fill" : "bi-plus"}`}></i>
+                        </button>
                       </td>
 
                       {/* Estado y WhatsApp */}
@@ -1013,19 +1081,44 @@ function ServicesUltimoService() {
         </Modal.Body>
       </Modal>
 
-      {/* Modal Observaciones */}
+      {/* Modal Observaciones Editable */}
       <Modal show={!!obsModalText} onHide={() => setObsModalText(null)} centered contentClassName="border rounded-4 shadow">
         <Modal.Header closeButton style={{ backgroundColor: "#1e293b", color: "#fff", borderTopLeftRadius: "15px", borderTopRightRadius: "15px", padding: "12px 18px" }}>
-          <Modal.Title className="fs-6 fw-bold mb-0">Observaciones — {obsModalText?.patente}</Modal.Title>
+          <div>
+            <Modal.Title className="fs-6 fw-bold mb-0">Observaciones</Modal.Title>
+            <div style={{ fontSize: "0.78rem", color: "#cbd5e1", marginTop: "2px" }}>
+              {obsModalText?.patente} {obsModalText?.marca ? `— ${obsModalText.marca}` : ""}
+            </div>
+          </div>
         </Modal.Header>
         <Modal.Body className="p-3 bg-white">
-          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "0.88rem", color: "#334155" }}>
-            {obsModalText?.texto || "Sin observaciones"}
-          </div>
+          <Form.Group>
+            <Form.Label className="fw-semibold small text-dark mb-1">Detalle / Novedades</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={4}
+              className="rounded-3"
+              style={{ fontSize: "0.86rem" }}
+              value={obsModalText?.texto ?? ""}
+              onChange={(e) => setObsModalText((prev) => ({ ...prev, texto: e.target.value }))}
+              placeholder="Escribir observaciones..."
+              autoFocus
+            />
+          </Form.Group>
         </Modal.Body>
-        <Modal.Footer className="py-2 px-3 border-top">
+        <Modal.Footer className="d-flex justify-content-end gap-2 py-2 px-3 border-top">
           <Button variant="outline-secondary" size="sm" onClick={() => setObsModalText(null)} className="rounded-3 px-3 py-1" style={{ fontSize: "0.8rem" }}>
-            Cerrar
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={guardarObservacion}
+            disabled={guardandoObs}
+            className="rounded-3 px-3.5 py-1 text-white"
+            style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.8rem" }}
+          >
+            <i className="bi bi-check-lg me-1"></i>{guardandoObs ? "Guardando..." : "Guardar"}
           </Button>
         </Modal.Footer>
       </Modal>
