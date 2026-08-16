@@ -29,7 +29,7 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
     <div ref={containerRef} className="position-relative">
       <Form.Control
         placeholder="— Seleccionar o escribir responsable —"
-        value={open ? filter : (value || "")}
+        value={open ? filter : value || ""}
         onFocus={() => {
           setFilter("");
           setOpen(true);
@@ -40,7 +40,8 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
           setOpen(true);
         }}
         isInvalid={isInvalid}
-        style={{ cursor: "pointer" }}
+        className="rounded-3"
+        style={{ fontSize: "0.85rem", cursor: "pointer" }}
       />
       {open && (
         <div
@@ -51,16 +52,16 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
             right: 0,
             zIndex: 1060,
             backgroundColor: "#fff",
-            border: "1px solid #000",
-            borderRadius: "4px",
-            maxHeight: "320px",
+            border: "1px solid #cbd5e1",
+            borderRadius: "8px",
+            maxHeight: "260px",
             overflowY: "auto",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-            marginTop: "2px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+            marginTop: "4px",
           }}
         >
           {filtered.length === 0 ? (
-            <div className="px-3 py-2 text-muted" style={{ fontSize: "0.85rem" }}>
+            <div className="px-3 py-2 text-muted" style={{ fontSize: "0.82rem" }}>
               Sin coincidencias. Escribe para ingresar "{filter}"
             </div>
           ) : (
@@ -70,13 +71,14 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
                 className="px-3 py-2"
                 style={{
                   cursor: "pointer",
-                  fontSize: "0.88rem",
-                  backgroundColor: value === r ? "#e9ecef" : "#fff",
+                  fontSize: "0.85rem",
+                  backgroundColor: value === r ? "#f1f5f9" : "#fff",
                   fontWeight: value === r ? "600" : "normal",
+                  color: value === r ? "#0f172a" : "#334155",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f3f5")}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = value === r ? "#e9ecef" : "#fff")
+                  (e.currentTarget.style.backgroundColor = value === r ? "#f1f5f9" : "#fff")
                 }
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -92,7 +94,7 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
         </div>
       )}
       {isInvalid && errorMsg && (
-        <Form.Control.Feedback type="invalid" style={{ display: "block" }}>
+        <Form.Control.Feedback type="invalid" style={{ display: "block", fontSize: "0.78rem" }}>
           {errorMsg}
         </Form.Control.Feedback>
       )}
@@ -103,9 +105,17 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
 function CamionetasAltas() {
   const navigate = useNavigate();
   const [camionetas, setCamionetas] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
-  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    control,
+    formState: { errors },
+  } = useForm();
   const responsableValue = useWatch({ control, name: "responsable" });
 
   const cargar = async () => {
@@ -118,7 +128,9 @@ function CamionetasAltas() {
     }
   };
 
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => {
+    cargar();
+  }, []);
 
   const abrirNuevo = () => {
     setEditando(null);
@@ -126,12 +138,21 @@ function CamionetasAltas() {
     setShowModal(true);
   };
 
+  const formatTelefono = (tel) => {
+    if (!tel) return "";
+    const str = String(tel).trim();
+    if (str.startsWith("549")) return str.slice(3);
+    if (str.startsWith("+549")) return str.slice(4);
+    if (str.startsWith("54")) return str.slice(2);
+    return str;
+  };
+
   const abrirEditar = (c) => {
     setEditando(c._id);
     setValue("marca", c.marca);
     setValue("patente", c.patente);
     setValue("responsable", c.responsable);
-    setValue("telefono", c.telefono ?? "");
+    setValue("telefono", formatTelefono(c.telefono));
     setShowModal(true);
   };
 
@@ -145,10 +166,14 @@ function CamionetasAltas() {
     try {
       const url = editando ? `${API}/${editando}` : API;
       const method = editando ? "PUT" : "POST";
+      const payload = {
+        ...data,
+        telefono: formatTelefono(data.telefono),
+      };
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         cerrarModal();
@@ -171,118 +196,333 @@ function CamionetasAltas() {
   const eliminar = async (id) => {
     const result = await Swal.fire({
       title: "¿Eliminar equipo?",
+      text: "Esta acción quitará la camioneta de la flota",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#7a4040",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
     });
     if (result.isConfirmed) {
       await fetch(`${API}/${id}`, { method: "DELETE" });
       cargar();
+      Swal.fire({ icon: "success", title: "Equipo eliminado", timer: 1200, showConfirmButton: false });
     }
   };
 
-  const responsablesExistentes = [...new Set([
-    "Zamorano",
-    "Mauricio",
-    "Nelson",
-    "Juan José",
-    "Nacho",
-    "Agustín",
-    "Carlos Carro",
-    "Tomas Marquez",
-    "Victor",
-    "Kevin",
-    ...camionetas.map((c) => (c.responsable || "").trim()).filter(Boolean)
-  ])].sort((a, b) => a.localeCompare(b));
+  const EXCLUIDOS = new Set([
+    "agustin",
+    "agustín",
+    "nacho",
+    "tomas marquez",
+    "tomás márquez",
+    "zamorano",
+    "nelson",
+    "mauricio",
+    "juan jose",
+    "juan josé",
+  ]);
+
+  const responsablesExistentes = [
+    ...new Set([
+      "Carlos Carro",
+      "Victor",
+      "Kevin",
+      ...camionetas
+        .map((c) => (c.responsable || "").trim())
+        .filter((r) => r && !EXCLUIDOS.has(r.toLowerCase())),
+    ]),
+  ].sort((a, b) => a.localeCompare(b));
+
+  const camionetasFiltradas = camionetas.filter((c) => {
+    const q = busqueda.toLowerCase().trim();
+    if (!q) return true;
+    const enMarca = (c.marca || "").toLowerCase().includes(q);
+    const enPatente = (c.patente || "").toLowerCase().includes(q);
+    const enResp = (c.responsable || "").toLowerCase().includes(q);
+    return enMarca || enPatente || enResp;
+  });
 
   return (
-    <Container className="py-4">
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8f9fa",
+        height: "100%",
+        maxHeight: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {/* Barra de Cabecera Institucional */}
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
+      >
+        {/* Lado Izquierdo: Icono e info */}
+        <div className="d-flex align-items-center gap-2">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            style={{
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#3b82f6",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+            }}
+          >
+            <i className="bi bi-car-front-fill"></i>
+          </div>
+          <span className="text-light opacity-75 small ms-1">{camionetas.length} Camionetas</span>
+        </div>
 
-      {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4 w-75 mx-auto">
-        <h3 className="fw-bold mb-0">Alta Flota</h3>
-        <div className="d-flex gap-2">
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-speedometer me-2"></i>Tablero
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-          <Button onClick={abrirNuevo} style={{ backgroundColor: "#000", border: "1px solid #000", color: "#fff" }}>
-            Nueva Camioneta
-          </Button>
+        {/* Título Centrado */}
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            textAlign: "center",
+            width: "max-content",
+            pointerEvents: "none",
+          }}
+        >
+          <span className="text-white fs-6 fw-normal" style={{ letterSpacing: "0.3px" }}>
+            Alta de Flota — Camionetas
+          </span>
+        </div>
+
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="d-flex justify-content-center">
-        <div style={{ width: "75%", maxHeight: "78vh", overflowY: "auto", border: "1px solid #dee2e6", borderRadius: "4px" }}>
-          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
-            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
+      {/* Contenedor Principal */}
+      <Container
+        fluid
+        className="px-4 py-3 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: "1020px", width: "100%", margin: "0 auto", overflow: "hidden" }}
+      >
+        {/* Barra de Búsqueda y Botón Nueva Camioneta */}
+        <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+          {/* Buscador rápido */}
+          <div style={{ position: "relative", width: "280px" }}>
+            <i
+              className="bi bi-search text-muted"
+              style={{
+                position: "absolute",
+                left: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontSize: "0.82rem",
+              }}
+            ></i>
+            <Form.Control
+              type="text"
+              placeholder="Buscar patente, marca, responsable..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              size="sm"
+              className="rounded-3 ps-4"
+              style={{ fontSize: "0.84rem", paddingRight: busqueda ? "28px" : undefined }}
+            />
+            {busqueda && (
+              <button
+                onClick={() => setBusqueda("")}
+                style={{
+                  position: "absolute",
+                  right: "8px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#94a3b8",
+                  fontSize: "0.9rem",
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* Botón Nueva Camioneta */}
+          <Button
+            variant="success"
+            size="sm"
+            onClick={abrirNuevo}
+            className="d-inline-flex align-items-center rounded-3 px-3 py-1.5 shadow-sm"
+            style={{
+              backgroundColor: "#15803d",
+              borderColor: "#15803d",
+              fontSize: "0.84rem",
+              fontWeight: 600,
+            }}
+          >
+            <span>Nueva Camioneta</span>
+          </Button>
+        </div>
+
+        {/* Tabla de Camionetas */}
+        <div
+          className="flex-grow-1 shadow-sm rounded-3 bg-white"
+          style={{
+            overflowY: "auto",
+            overflowX: "auto",
+            border: "1px solid #cbd5e1",
+          }}
+        >
+          <Table
+            hover
+            size="sm"
+            className="text-center align-middle mb-0"
+            style={{ whiteSpace: "nowrap", fontSize: "0.8rem", width: "100%" }}
+          >
+            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1e293b", color: "#fff" }}>
               <tr className="fw-normal align-middle">
-                <th className="fw-normal" style={{ width: "40px" }}>#</th>
-                <th className="fw-normal">Marca</th>
-                <th className="fw-normal">Patente</th>
-                <th className="fw-normal">Responsable</th>
-                <th className="fw-normal">Acciones</th>
+                <th style={{ width: "40px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 4px", fontWeight: "normal" }}>
+                  #
+                </th>
+                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left", fontWeight: "normal" }}>
+                  Marca / Modelo
+                </th>
+                <th style={{ width: "130px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                  Patente
+                </th>
+                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                  Responsable
+                </th>
+                <th style={{ width: "160px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                  Teléfono (Avisos)
+                </th>
+                <th style={{ width: "100px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody>
-              {camionetas.length === 0 ? (
+              {camionetasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-muted py-4">
-                    No hay equipos registrados
+                  <td colSpan={6} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
+                    {busqueda ? "No se encontraron camionetas con ese criterio" : "No hay equipos registrados en la flota"}
                   </td>
                 </tr>
               ) : (
-                camionetas.map((c, idx) => (
-                  <tr key={c._id}>
-                    <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
-                    <td>{c.marca}</td>
-                    <td>
-                      <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.35)" }}>
-                        {c.patente}
-                      </span>
-                    </td>
-                    <td>{c.responsable}</td>
-                    <td>
-                      <div className="d-flex justify-content-center gap-2">
-                        <Button size="sm" onClick={() => abrirEditar(c)} style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-                          <i className="bi bi-pencil"></i>
-                        </Button>
-                        <Button size="sm" onClick={() => eliminar(c._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
-                          <i className="bi bi-trash"></i>
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                camionetasFiltradas.map((c, idx) => {
+                  const isEven = idx % 2 === 0;
+                  return (
+                    <tr
+                      key={c._id}
+                      style={{
+                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
+                        borderBottom: "1px solid #e2e8f0",
+                        height: "44px",
+                      }}
+                    >
+                      <td className="text-muted" style={{ fontSize: "0.76rem" }}>
+                        {idx + 1}
+                      </td>
+                      <td className="text-start fw-semibold text-dark ps-3">
+                        {c.marca}
+                      </td>
+                      <td>
+                        <span
+                          className="badge px-2.5 py-1 text-white shadow-sm"
+                          style={{
+                            backgroundColor: "#0f172a",
+                            border: "1px solid #475569",
+                            fontSize: "0.82rem",
+                            letterSpacing: "1px",
+                            borderRadius: "6px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {c.patente}
+                        </span>
+                      </td>
+                      <td className="text-secondary fw-medium">
+                        {c.responsable || "—"}
+                      </td>
+                      <td>
+                        {c.telefono ? (
+                          <div className="d-flex align-items-center justify-content-center gap-1.5 text-success small fw-semibold">
+                            <i className="bi bi-whatsapp" style={{ color: "#25d366" }}></i>
+                            <span style={{ color: "#334155" }}>{formatTelefono(c.telefono)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted small">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="d-flex justify-content-center align-items-center gap-1.5">
+                          <button
+                            onClick={() => abrirEditar(c)}
+                            className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-1"
+                            style={{ width: "28px", height: "28px" }}
+                            title="Editar camioneta"
+                          >
+                            <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
+                          </button>
+                          <button
+                            onClick={() => eliminar(c._id)}
+                            className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
+                            style={{ width: "28px", height: "28px" }}
+                            title="Eliminar camioneta"
+                          >
+                            <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </Table>
         </div>
-      </div>
+      </Container>
 
-      {/* Modal */}
-      <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border border-dark overflow-visible">
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <i className="bi bi-car-front-fill me-2 text-primary"></i>
-            {editando ? "Editar Camioneta" : "Nueva Camioneta"}
+      {/* Modal Nueva / Editar Camioneta */}
+      <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border-0 shadow-lg rounded-4 overflow-visible">
+        <Modal.Header
+          closeButton
+          style={{ backgroundColor: "#1e293b", color: "#fff", borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
+            <i className="bi bi-car-front-fill text-info"></i>
+            <span>{editando ? "Editar Camioneta" : "Nueva Camioneta"}</span>
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit(onSubmit)}>
-          <Modal.Body style={{ overflow: "visible", minHeight: "380px" }}>
+          <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Row className="g-3">
               <Col md={6}>
-                <Form.Label className="fw-semibold">Marca</Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">Marca / Modelo</Form.Label>
                 <Form.Control
-                  placeholder="Ej: Ford"
+                  placeholder="Ej: Ford Ranger"
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem" }}
                   {...register("marca", {
                     required: "La marca es requerida",
                     minLength: { value: 2, message: "Mínimo 2 caracteres" },
@@ -290,12 +530,17 @@ function CamionetasAltas() {
                   })}
                   isInvalid={!!errors.marca}
                 />
-                <Form.Control.Feedback type="invalid">{errors.marca?.message}</Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                  {errors.marca?.message}
+                </Form.Control.Feedback>
               </Col>
+
               <Col md={6}>
-                <Form.Label className="fw-semibold">Patente</Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">Patente</Form.Label>
                 <Form.Control
                   placeholder="Ej: AB123CD"
+                  className="rounded-3 text-uppercase"
+                  style={{ fontSize: "0.85rem" }}
                   {...register("patente", {
                     required: "La patente es requerida",
                     pattern: {
@@ -311,10 +556,13 @@ function CamionetasAltas() {
                   })}
                   isInvalid={!!errors.patente}
                 />
-                <Form.Control.Feedback type="invalid">{errors.patente?.message}</Form.Control.Feedback>
+                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                  {errors.patente?.message}
+                </Form.Control.Feedback>
               </Col>
+
               <Col md={12}>
-                <Form.Label className="fw-semibold">Responsable</Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">Responsable habitual</Form.Label>
                 <input
                   type="hidden"
                   {...register("responsable", { required: "El responsable es requerido" })}
@@ -327,32 +575,49 @@ function CamionetasAltas() {
                   errorMsg={errors.responsable?.message}
                 />
               </Col>
-              <Col md={6}>
-                <Form.Label className="fw-semibold">
-                  <i className="bi bi-whatsapp me-1" style={{ color: "#25d366" }}></i>
-                  Teléfono responsable
+
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1 d-flex align-items-center gap-1.5">
+                  <i className="bi bi-whatsapp text-success"></i>
+                  <span>Teléfono para avisos automáticos</span>
                 </Form.Label>
                 <Form.Control
-                  placeholder="Ej: 5491123456789"
+                  placeholder="Ej: 3815123456"
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem" }}
                   {...register("telefono")}
                 />
-                <Form.Text className="text-muted">Con código de país, sin + ni espacios</Form.Text>
+                <Form.Text className="text-muted" style={{ fontSize: "0.74rem" }}>
+                  Sin 549, ingresar código de área y número (Ej: 3815123456).
+                </Form.Text>
               </Col>
             </Row>
           </Modal.Body>
-          <Modal.Footer>
-            <Button onClick={cerrarModal} style={{ backgroundColor: "#555", border: "none" }}>Cancelar</Button>
-            <Button type="submit" style={{ backgroundColor: "#4a6fa5", border: "none" }}>
-              <i className="bi bi-check-lg me-2"></i>Guardar
+          <Modal.Footer className="bg-light border-0 py-2.5 px-4" style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}>
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={cerrarModal}
+              className="rounded-3 px-3 py-1.5"
+              style={{ fontSize: "0.84rem" }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="success"
+              size="sm"
+              type="submit"
+              className="rounded-3 px-3.5 py-1.5 shadow-sm d-flex align-items-center gap-1.5"
+              style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
+            >
+              <i className="bi bi-check-lg"></i>
+              <span>Guardar</span>
             </Button>
           </Modal.Footer>
         </Form>
       </Modal>
-
-    </Container>
+    </div>
   );
 }
 
 export default CamionetasAltas;
-
-

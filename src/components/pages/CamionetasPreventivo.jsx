@@ -32,16 +32,6 @@ const tarjetas = [
     accentColor: "#f59e0b",
     icono: "bi bi-clipboard2-check-fill",
   },
-  {
-    id: "tablero",
-    titulo: "Tablero de Control",
-    subtitulo: "Métricas consolidadas anuales y mensuales",
-    ruta: "/camionetas/resumen",
-    bg: "linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)",
-    hoverBg: "linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)",
-    accentColor: "#a855f7",
-    icono: "bi bi-speedometer",
-  },
 ];
 
 function CamionetasPreventivo() {
@@ -113,16 +103,16 @@ function CamionetasPreventivo() {
         </div>
       </div>
 
-      {/* Contenedor de las 4 Tarjetas en Grid 2x2 */}
+      {/* Contenedor de las 3 Tarjetas en Grid horizontal */}
       <div
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
         style={{ overflow: "hidden" }}
       >
-        <div style={{ maxWidth: "960px", width: "100%" }}>
+        <div style={{ maxWidth: "1050px", width: "100%" }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(320px, 1fr))",
+              gridTemplateColumns: "repeat(3, minmax(260px, 1fr))",
               gap: "1.5rem",
               justifyContent: "center",
             }}
@@ -136,9 +126,9 @@ function CamionetasPreventivo() {
                   style={{
                     background: isHovered ? t.hoverBg : t.bg,
                     borderRadius: "20px",
-                    height: "calc((100vh - 150px) / 2.3)",
-                    minHeight: "210px",
-                    maxHeight: "265px",
+                    height: "calc(100vh - 280px)",
+                    minHeight: "240px",
+                    maxHeight: "320px",
                     boxShadow: isHovered
                       ? `0 18px 32px -8px rgba(0, 0, 0, 0.45), 0 0 18px ${t.accentColor}40`
                       : "0 8px 20px -4px rgba(0, 0, 0, 0.25)",
