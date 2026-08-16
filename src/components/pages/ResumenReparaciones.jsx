@@ -392,10 +392,10 @@ function ResumenReparaciones() {
           </button>
           <button
             onClick={() => navigate("/camionetas/services/reparaciones")}
-            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
             style={{ fontSize: "0.82rem" }}
           >
-            <i className="bi bi-tools"></i>
+            <i className="bi bi-tools me-1"></i>
             <span>Reparaciones</span>
           </button>
           <button

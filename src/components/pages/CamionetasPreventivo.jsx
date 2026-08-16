@@ -3,32 +3,39 @@ import { useNavigate } from "react-router-dom";
 
 const tarjetas = [
   {
-    id: "services",
-    titulo: "Services",
-    subtitulo: "Control de Km y último service",
-    badge: "Kilometraje & Intervalos",
-    ruta: "/camionetas/services",
+    id: "kilometros",
+    titulo: "Kilómetros",
+    subtitulo: "Registro y control de odómetros mensuales",
+    ruta: "/camionetas/services/kilometros",
+    bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    accentColor: "#3b82f6",
+    icono: "bi bi-speedometer2",
+  },
+  {
+    id: "ultimo-service",
+    titulo: "Último Service",
+    subtitulo: "Control de fechas e intervalos cada 10.000 Km",
+    ruta: "/camionetas/services/ultimo-service",
     bg: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
     hoverBg: "linear-gradient(135deg, #052e16 0%, #14532d 100%)",
     accentColor: "#10b981",
-    icono: "bi bi-gear-fill",
+    icono: "bi bi-calendar-check-fill",
   },
   {
     id: "checklist",
     titulo: "Check List",
     subtitulo: "Control bimestral de estado y novedades",
-    badge: "Control Bimestral",
     ruta: "/camionetas/checklist",
-    bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-    hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-    accentColor: "#3b82f6",
+    bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
+    hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
+    accentColor: "#f59e0b",
     icono: "bi bi-clipboard2-check-fill",
   },
   {
     id: "tablero",
     titulo: "Tablero de Control",
     subtitulo: "Métricas consolidadas anuales y mensuales",
-    badge: "Resumen General",
     ruta: "/camionetas/resumen",
     bg: "linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)",
     hoverBg: "linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)",
@@ -106,84 +113,72 @@ function CamionetasPreventivo() {
         </div>
       </div>
 
-      {/* Contenedor de Tarjetas (Services, Check List, Tablero de Control) */}
+      {/* Contenedor de las 4 Tarjetas en Grid 2x2 */}
       <div
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
         style={{ overflow: "hidden" }}
       >
-        <div
-          className="d-flex justify-content-center align-items-center"
-          style={{
-            gap: "2rem",
-            maxWidth: "1080px",
-            width: "100%",
-          }}
-        >
-          {tarjetas.map((t) => {
-            const isHovered = hoveredCard === t.id;
-            return (
-              <div
-                key={t.ruta}
-                className="card-seccion-preventivo d-flex flex-column align-items-center justify-content-center p-4 text-center"
-                style={{
-                  background: isHovered ? t.hoverBg : t.bg,
-                  borderRadius: "22px",
-                  width: "310px",
-                  height: "285px",
-                  boxShadow: isHovered
-                    ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
-                    : "0 10px 25px -4px rgba(0, 0, 0, 0.25)",
-                  border: `1px solid ${isHovered ? t.accentColor : "rgba(255, 255, 255, 0.12)"}`,
-                  cursor: "pointer",
-                  transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
-                  transform: isHovered ? "translateY(-5px) scale(1.02)" : "translateY(0) scale(1)",
-                  color: "#ffffff",
-                  userSelect: "none",
-                }}
-                onClick={() => navigate(t.ruta)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && navigate(t.ruta)}
-                onMouseEnter={() => setHoveredCard(t.id)}
-                onMouseLeave={() => setHoveredCard(null)}
-              >
+        <div style={{ maxWidth: "960px", width: "100%" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(320px, 1fr))",
+              gap: "1.5rem",
+              justifyContent: "center",
+            }}
+          >
+            {tarjetas.map((t) => {
+              const isHovered = hoveredCard === t.id;
+              return (
                 <div
-                  className="mb-3 d-flex align-items-center justify-content-center"
+                  key={t.ruta}
+                  className="card-seccion-preventivo d-flex flex-column align-items-center justify-content-center p-4 text-center"
                   style={{
-                    width: "68px",
-                    height: "68px",
-                    borderRadius: "18px",
-                    backgroundColor: "rgba(255, 255, 255, 0.1)",
-                    border: "1px solid rgba(255, 255, 255, 0.16)",
-                    boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
+                    background: isHovered ? t.hoverBg : t.bg,
+                    borderRadius: "20px",
+                    height: "calc((100vh - 150px) / 2.3)",
+                    minHeight: "210px",
+                    maxHeight: "265px",
+                    boxShadow: isHovered
+                      ? `0 18px 32px -8px rgba(0, 0, 0, 0.45), 0 0 18px ${t.accentColor}40`
+                      : "0 8px 20px -4px rgba(0, 0, 0, 0.25)",
+                    border: `1px solid ${isHovered ? t.accentColor : "rgba(255, 255, 255, 0.12)"}`,
+                    cursor: "pointer",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    transform: isHovered ? "translateY(-4px) scale(1.015)" : "translateY(0) scale(1)",
+                    color: "#ffffff",
+                    userSelect: "none",
                   }}
+                  onClick={() => navigate(t.ruta)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(t.ruta)}
+                  onMouseEnter={() => setHoveredCard(t.id)}
+                  onMouseLeave={() => setHoveredCard(null)}
                 >
-                  <i className={t.icono} style={{ fontSize: "2.3rem", color: t.accentColor }}></i>
+                  <div
+                    className="mb-2.5 d-flex align-items-center justify-content-center"
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      borderRadius: "16px",
+                      backgroundColor: "rgba(255, 255, 255, 0.1)",
+                      border: "1px solid rgba(255, 255, 255, 0.16)",
+                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    <i className={t.icono} style={{ fontSize: "2.1rem", color: t.accentColor }}></i>
+                  </div>
+
+                  <h3 className="h4 fw-bold mb-2 tracking-tight text-white">{t.titulo}</h3>
+
+                  <p className="small mb-0 text-light opacity-75 px-3" style={{ fontSize: "0.84rem", lineHeight: "1.35" }}>
+                    {t.subtitulo}
+                  </p>
                 </div>
-
-                <h3 className="fw-bold mb-1.5 tracking-tight text-white" style={{ fontSize: "1.35rem" }}>
-                  {t.titulo}
-                </h3>
-
-                <span
-                  className="badge px-3 py-1 mb-2 rounded-pill fw-semibold"
-                  style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.16)",
-                    border: "1px solid rgba(255, 255, 255, 0.22)",
-                    color: "#fff",
-                    fontSize: "0.72rem",
-                    letterSpacing: "0.4px",
-                  }}
-                >
-                  {t.badge}
-                </span>
-
-                <p className="small mb-0 text-light opacity-75 px-2" style={{ fontSize: "0.83rem", lineHeight: "1.35" }}>
-                  {t.subtitulo}
-                </p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
