@@ -115,7 +115,7 @@ function Visitas() {
   const [tractores, setTractores] = useState([]);
   const [mostrarItinerario, setMostrarItinerario] = useState(false);
   const [mostrarResumen, setMostrarResumen] = useState(false);
-  const [tabResumen, setTabResumen] = useState("grupos");
+  const [tabResumen, setTabResumen] = useState("general");
   const [ccModalOpen, setCcModalOpen] = useState(false);
   const [ccSeleccionadosTemp, setCcSeleccionadosTemp] = useState([]);
 
@@ -280,6 +280,105 @@ function Visitas() {
     }
   });
 
+  // Cálculo de Objetivos Teóricos según días hábiles del mes e Itinerario semanal
+  const totalDiasMes = new Date(año, mes + 1, 0).getDate();
+  let lunesCount = 0;
+  let martesCount = 0;
+  let miercolesCount = 0;
+  let juevesCount = 0;
+  let viernesCount = 0;
+
+  for (let d = 1; d <= totalDiasMes; d++) {
+    const dow = new Date(año, mes, d).getDay();
+    if (dow === 1) lunesCount++;
+    else if (dow === 2) martesCount++;
+    else if (dow === 3) miercolesCount++;
+    else if (dow === 4) juevesCount++;
+    else if (dow === 5) viernesCount++;
+  }
+
+  // 1- Visitas a Campo: Lunes (1) + Martes (1) + Miércoles (2) + Viernes (1)
+  const campoTeorico = lunesCount * 1 + martesCount * 1 + miercolesCount * 2 + viernesCount * 1;
+  // 2- Visitas a Talleres (San Pablo y Berdina): Lunes Tarde (1) + Jueves Mañana (1)
+  const talleresTeorico = lunesCount * 1 + juevesCount * 1;
+  // 3- Repuestos (San Pablo y Berdina): Martes Tarde (1) + Jueves Tarde (1)
+  const repuestosTeorico = martesCount * 1 + juevesCount * 1;
+  const totalTeorico = campoTeorico + talleresTeorico + repuestosTeorico;
+
+  // Conteo de lo hecho en el mes
+  let campoHecho = 0;
+  let talleresHecho = 0;
+  let repuestosHecho = 0;
+
+  const gruposTalleres = new Set([
+    "berdina",
+    "san pablo",
+    "reparaciones berdina",
+    "reparaciones san pablo",
+    "reparaciones s. pablo",
+  ]);
+  const gruposRepuestos = new Set([
+    "repuestos b.",
+    "repuestos berdina",
+    "repuestos sp.",
+    "repuestos san pablo",
+  ]);
+  const gruposIgnorados = new Set(["ninguno"]);
+
+  Object.entries(visitas).forEach(([key, list]) => {
+    if (key.startsWith(targetPrefix)) {
+      list.forEach((v) => {
+        const gLow = (v.grupo || "").trim().toLowerCase();
+        if (gruposIgnorados.has(gLow)) {
+          // Ninguno
+        } else if (gruposTalleres.has(gLow)) {
+          talleresHecho++;
+        } else if (gruposRepuestos.has(gLow)) {
+          repuestosHecho++;
+        } else {
+          campoHecho++;
+        }
+      });
+    }
+  });
+  const totalHecho = campoHecho + talleresHecho + repuestosHecho;
+
+  const filasGeneral = [
+    {
+      num: "1",
+      tipo: "Visitas a campo",
+      descripcion: "Grupos operativos a campo (Lun x1, Mar x1, Mié x2, Vie x1)",
+      icono: "bi-tree-fill",
+      color: "#0d9488",
+      bg: "#f0fdfa",
+      border: "#99f6e4",
+      teorico: campoTeorico,
+      hecho: campoHecho,
+    },
+    {
+      num: "2",
+      tipo: "Visitas a talleres",
+      descripcion: "San Pablo y Berdina (Lun tarde y Jue mañana)",
+      icono: "bi-tools",
+      color: "#166534",
+      bg: "#f0fdf4",
+      border: "#86efac",
+      teorico: talleresTeorico,
+      hecho: talleresHecho,
+    },
+    {
+      num: "3",
+      tipo: "Repuestos",
+      descripcion: "San Pablo y Berdina (Mar tarde y Jue tarde)",
+      icono: "bi-gear-wide-connected",
+      color: "#c2410c",
+      bg: "#fff7ed",
+      border: "#fed7aa",
+      teorico: repuestosTeorico,
+      hecho: repuestosHecho,
+    },
+  ];
+
   const ccsOrdenados = [
     ...new Set([...tractores.map((t) => t.cc).filter(Boolean), ...Object.keys(countsCC)]),
   ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -428,6 +527,88 @@ function Visitas() {
       const a = document.createElement("a");
       a.href = url;
       a.download = `Resumen_Visitas_CC_${nombreMes}_${año}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo exportar a Excel" });
+    }
+  };
+
+  const exportarExcelGeneral = async () => {
+    try {
+      const nombreMes = MESES_NOMBRE[mes];
+      const titulo = `Resumen General: Objetivos vs Realizados - ${nombreMes} ${año}`;
+      const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const columnas = ["Objetivo", "Teórico (Itinerario)", "Realizado (Hecho)", "Diferencia", "% Cumplimiento"];
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Resumen General");
+
+      ws.mergeCells(1, 1, 1, 5);
+      const celdaTitulo = ws.getCell("A1");
+      celdaTitulo.value = titulo;
+      celdaTitulo.font = { bold: true, size: 14 };
+      celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(1).height = 24;
+
+      ws.mergeCells(2, 1, 2, 5);
+      const celdaFecha = ws.getCell("A2");
+      celdaFecha.value = `Fecha: ${fechaHoy}`;
+      celdaFecha.font = { italic: true, size: 10, color: { argb: "FF555555" } };
+      celdaFecha.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(2).height = 18;
+
+      ws.addRow([]);
+
+      const filaEncabezado = ws.addRow(columnas);
+      filaEncabezado.height = 22;
+      filaEncabezado.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+
+      filasGeneral.forEach((r, idx) => {
+        const dif = r.hecho - r.teorico;
+        const pct = r.teorico > 0 ? `${Math.round((r.hecho / r.teorico) * 100)}%` : "—";
+        const row = ws.addRow([r.tipo, r.teorico, r.hecho, dif > 0 ? `+${dif}` : dif, pct]);
+        row.height = 20;
+        row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+        row.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
+        row.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+        row.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+        row.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+        if (idx % 2 === 1) {
+          row.eachCell((cell) => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+          });
+        }
+      });
+
+      const totalDif = totalHecho - totalTeorico;
+      const totalPct = totalTeorico > 0 ? `${Math.round((totalHecho / totalTeorico) * 100)}%` : "—";
+      const rowTotal = ws.addRow(["Total General", totalTeorico, totalHecho, totalDif > 0 ? `+${totalDif}` : totalDif, totalPct]);
+      rowTotal.height = 22;
+      rowTotal.eachCell((cell) => {
+        cell.font = { bold: true };
+      });
+      rowTotal.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+      rowTotal.getCell(2).alignment = { horizontal: "center", vertical: "middle" };
+      rowTotal.getCell(3).alignment = { horizontal: "center", vertical: "middle" };
+      rowTotal.getCell(4).alignment = { horizontal: "center", vertical: "middle" };
+      rowTotal.getCell(5).alignment = { horizontal: "center", vertical: "middle" };
+
+      ws.getColumn(1).width = 25;
+      ws.getColumn(2).width = 20;
+      ws.getColumn(3).width = 20;
+      ws.getColumn(4).width = 16;
+      ws.getColumn(5).width = 18;
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Resumen_General_Visitas_${nombreMes}_${año}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -1097,6 +1278,14 @@ function Visitas() {
             <div className="btn-group btn-group-sm" role="group">
               <button
                 type="button"
+                className={`btn ${tabResumen === "general" ? "btn-dark fw-bold" : "btn-outline-secondary"}`}
+                onClick={() => setTabResumen("general")}
+                style={{ fontSize: "0.82rem" }}
+              >
+                <i className="bi bi-speedometer2 me-1.5"></i>General
+              </button>
+              <button
+                type="button"
                 className={`btn ${tabResumen === "grupos" ? "btn-dark fw-bold" : "btn-outline-secondary"}`}
                 onClick={() => setTabResumen("grupos")}
                 style={{ fontSize: "0.82rem" }}
@@ -1118,13 +1307,183 @@ function Visitas() {
               size="sm"
               className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1 shadow-sm"
               style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.82rem", fontWeight: 600 }}
-              onClick={tabResumen === "grupos" ? exportarExcelGrupos : exportarExcelCC}
+              onClick={
+                tabResumen === "general"
+                  ? exportarExcelGeneral
+                  : tabResumen === "grupos"
+                  ? exportarExcelGrupos
+                  : exportarExcelCC
+              }
               title="Descargar Excel"
             >
               <i className="bi bi-file-earmark-excel-fill"></i>
               <span>Excel</span>
             </Button>
           </div>
+
+          {/* Solapa 1: Resumen General (Objetivos Teóricos vs Hecho) */}
+          {tabResumen === "general" && (
+            <div className="d-flex flex-column gap-3">
+              {/* Card de Objetivos Teóricos según Itinerario */}
+              <div
+                className="p-3 rounded-3 border shadow-sm"
+                style={{ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}
+              >
+                <h6
+                  className="fw-bold text-dark d-flex align-items-center gap-2 mb-2.5"
+                  style={{ fontSize: isMobile ? "0.85rem" : "0.92rem" }}
+                >
+                  <i className="bi bi-bullseye text-primary fs-5"></i>
+                  <span>Objetivos teóricos del mes (según Itinerario):</span>
+                </h6>
+                <div className="d-flex flex-column gap-2" style={{ fontSize: isMobile ? "0.78rem" : "0.85rem" }}>
+                  <div className="d-flex align-items-start gap-2">
+                    <span
+                      className="badge rounded-pill text-white px-2 py-0.5 mt-0.5"
+                      style={{ backgroundColor: "#0d9488", fontSize: "0.72rem" }}
+                    >
+                      1
+                    </span>
+                    <div>
+                      <strong className="text-dark">Visitas a campo:</strong>{" "}
+                      <span className="text-secondary">
+                        <strong>{campoTeorico}</strong> visitas teóricas en el mes ({lunesCount + martesCount + viernesCount + miercolesCount * 2} turnos semanales de Lunes x1, Martes x1, Miércoles x2 y Viernes x1).
+                      </span>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-start gap-2">
+                    <span
+                      className="badge rounded-pill text-white px-2 py-0.5 mt-0.5"
+                      style={{ backgroundColor: "#166534", fontSize: "0.72rem" }}
+                    >
+                      2
+                    </span>
+                    <div>
+                      <strong className="text-dark">Visitas a talleres:</strong>{" "}
+                      <span className="text-secondary">
+                        <strong>{talleresTeorico}</strong> visitas teóricas en el mes (suma de {lunesCount} a San Pablo + {juevesCount} a Berdina).
+                      </span>
+                    </div>
+                  </div>
+                  <div className="d-flex align-items-start gap-2">
+                    <span
+                      className="badge rounded-pill text-white px-2 py-0.5 mt-0.5"
+                      style={{ backgroundColor: "#c2410c", fontSize: "0.72rem" }}
+                    >
+                      3
+                    </span>
+                    <div>
+                      <strong className="text-dark">Repuestos:</strong>{" "}
+                      <span className="text-secondary">
+                        <strong>{repuestosTeorico}</strong> revisiones teóricas en el mes (suma de {martesCount} en San Pablo + {juevesCount} en Berdina).
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabla Comparativa: Lo Hecho vs Lo Teórico */}
+              <div className="table-responsive rounded-3 border shadow-sm" style={{ borderColor: "#cbd5e1" }}>
+                <table
+                  className="table table-hover align-middle text-center mb-0"
+                  style={{ fontSize: isMobile ? "0.76rem" : "0.85rem" }}
+                >
+                  <thead style={{ backgroundColor: "#1e293b", color: "#fff" }}>
+                    <tr>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left" }}>
+                        Objetivo
+                      </th>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "17%" }}>
+                        Teórico
+                      </th>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "17%" }}>
+                        Hecho
+                      </th>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "17%" }}>
+                        Diferencia
+                      </th>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "18%" }}>
+                        % Cumplido
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasGeneral.map((r, idx) => {
+                      const dif = r.hecho - r.teorico;
+                      const pct = r.teorico > 0 ? Math.round((r.hecho / r.teorico) * 100) : 0;
+                      return (
+                        <tr key={r.tipo} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
+                          <td className="text-start ps-3 py-2.5">
+                            <div className="d-flex align-items-center gap-2">
+                              <i className={`bi ${r.icono}`} style={{ color: r.color, fontSize: "0.95rem" }}></i>
+                              <div>
+                                <div className="fw-bold text-dark">{r.tipo}</div>
+                                <div className="text-muted small d-none d-sm-block" style={{ fontSize: "0.72rem" }}>
+                                  {r.descripcion}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="fw-bold text-secondary">{r.teorico}</td>
+                          <td className="fw-bold" style={{ color: r.hecho > 0 ? "#0f172a" : "#94a3b8" }}>
+                            {r.hecho}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                dif >= 0
+                                  ? "bg-success-subtle text-success border border-success-subtle"
+                                  : "bg-danger-subtle text-danger border border-danger-subtle"
+                              }`}
+                              style={{ fontSize: isMobile ? "0.7rem" : "0.78rem" }}
+                            >
+                              {dif > 0 ? `+${dif}` : dif}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className="fw-bold"
+                              style={{
+                                color: pct >= 100 ? "#15803d" : pct >= 50 ? "#d97706" : "#dc2626",
+                                fontSize: isMobile ? "0.72rem" : "0.82rem",
+                              }}
+                            >
+                              {pct}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr style={{ backgroundColor: "#f1f5f9" }}>
+                      <td className="fw-bold text-start ps-3 py-2 text-dark">
+                        <i className="bi bi-calculator me-1.5 text-primary"></i>Total General
+                      </td>
+                      <td className="fw-bold text-secondary">{totalTeorico}</td>
+                      <td className="fw-bold text-primary">{totalHecho}</td>
+                      <td>
+                        {(() => {
+                          const totalDif = totalHecho - totalTeorico;
+                          return (
+                            <span
+                              className={`badge ${totalDif >= 0 ? "bg-success text-white" : "bg-danger text-white"}`}
+                              style={{ fontSize: isMobile ? "0.7rem" : "0.78rem" }}
+                            >
+                              {totalDif > 0 ? `+${totalDif}` : totalDif}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td>
+                        <span className="fw-bold" style={{ color: "#1e293b", fontSize: isMobile ? "0.74rem" : "0.84rem" }}>
+                          {totalTeorico > 0 ? `${Math.round((totalHecho / totalTeorico) * 100)}%` : "0%"}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Tabla: Visitas por Grupo */}
           {tabResumen === "grupos" && (
