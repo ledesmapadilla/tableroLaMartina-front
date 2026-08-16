@@ -198,14 +198,16 @@ function ResumenCamionetas() {
           style={{
             position: "absolute",
             left: "50%",
-            transform: "translateX(-50%)",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
             textAlign: "center",
+            width: "max-content",
             pointerEvents: "none",
           }}
         >
-          <span className="text-white fs-6 fw-bold" style={{ letterSpacing: "0.2px" }}>
+          <h5 className="text-white mb-0 fw-bold" style={{ letterSpacing: "0.4px" }}>
             Tablero de Control — Camionetas
-          </span>
+          </h5>
         </div>
 
         {/* Botones de Navegación */}
@@ -506,14 +508,14 @@ function ResumenCamionetas() {
               );
             })()}
 
-            {/* Tarjeta 2: Tareas Pendientes */}
+            {/* Tarjeta 2: Tareas Pendientes (Rojo para alertas) */}
             {(() => {
               const hasPendientes = tareasPendientes !== null && tareasPendientes > 0;
-              const bg = hasPendientes ? "#fffbeb" : "#f0fdf4";
-              const border = hasPendientes ? "#fcd34d" : "#86efac";
-              const iconBg = hasPendientes ? "#fef3c7" : "#dcfce7";
-              const iconColor = hasPendientes ? "#d97706" : "#166534";
-              const countColor = hasPendientes ? "#b45309" : "#166534";
+              const bg = hasPendientes ? "#fee2e2" : "#f0fdf4";
+              const border = hasPendientes ? "#ef4444" : "#86efac";
+              const iconBg = hasPendientes ? "#fca5a5" : "#dcfce7";
+              const iconColor = hasPendientes ? "#dc2626" : "#166534";
+              const countColor = hasPendientes ? "#b91c1c" : "#166534";
 
               return (
                 <div
