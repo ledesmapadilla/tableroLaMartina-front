@@ -249,8 +249,9 @@ function CamionetasCheckList() {
 
   const abrirHistorial = () => {
     if (!camionetaId) return;
-    cargarParadas(camionetaId);
-    setShowHistorial(true);
+    navigate(`/camionetas/services/reparaciones/${camionetaId}/historial`, {
+      state: { soloParadas: true },
+    });
   };
 
   const abrirHistorialTareas = async () => {
@@ -331,9 +332,6 @@ function CamionetasCheckList() {
             <div className="d-flex gap-2">
               <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
                 <i className="bi bi-arrow-left me-2"></i>Volver
-              </Button>
-              <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-                <i className="bi bi-speedometer me-2"></i>Tablero
               </Button>
               <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
                 <i className="bi bi-house-fill me-2"></i>General

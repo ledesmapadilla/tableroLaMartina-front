@@ -57,6 +57,7 @@ function HistorialReparaciones() {
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todas"); // 'Todas' | 'Terminada' | 'En proceso' | 'Pendiente'
   const [filtroTaller, setFiltroTaller] = useState("Todos"); // 'Todos' | 'Taller Propio' | 'Tercero'
+  const [filtroSoloParadas, setFiltroSoloParadas] = useState(Boolean(state?.soloParadas || state?.maquinaParada));
 
   // Modal de Detalle
   const [trabajoSeleccionado, setTrabajoSeleccionado] = useState(null);
@@ -121,17 +122,19 @@ function HistorialReparaciones() {
         const enRep = (t.reparacion || "").toLowerCase().includes(q);
         const enDesc = (t.descripcion || "").toLowerCase().includes(q);
         const enResp = (t.responsable || "").toLowerCase().includes(q);
-        const enTaller = (t.nombreTaller || t.taller || "").toLowerCase().includes(q);
-        const enParte = (t.parte || "").toLowerCase().includes(q);
-        const enRepuestos = (t.repuestos || []).some((r) => (r.repuesto || "").toLowerCase().includes(q));
         if (!enDiag && !enRep && !enDesc && !enResp && !enTaller && !enParte && !enRepuestos) {
           return false;
         }
       }
 
+      // Filtro por Camioneta Parada
+      if (filtroSoloParadas && !t.maquinaParada) {
+        return false;
+      }
+
       return true;
     });
-  }, [trabajos, filtroEstado, filtroCategoria, filtroTaller, busqueda]);
+  }, [trabajos, filtroEstado, filtroCategoria, filtroTaller, busqueda, filtroSoloParadas]);
 
   // Contadores de tareas
   const pendientes = trabajos.filter((t) => (t.estado || "").toLowerCase() === "pendiente").length;
@@ -603,6 +606,26 @@ function HistorialReparaciones() {
                 )}
               </div>
             </div>
+
+            {/* Filtro Toggle Parada */}
+            <button
+              type="button"
+              onClick={() => setFiltroSoloParadas((v) => !v)}
+              className="btn btn-sm rounded-3 px-2.5 py-1 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm"
+              style={{
+                backgroundColor: filtroSoloParadas ? "#991b1b" : "#f1f5f9",
+                color: filtroSoloParadas ? "#fff" : "#475569",
+                border: filtroSoloParadas ? "1px solid #7f1d1d" : "1px solid #cbd5e1",
+                fontSize: "0.8rem",
+                height: "32px",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s ease",
+              }}
+              title={filtroSoloParadas ? "Mostrando solo trabajos con parada — clic para ver todos" : "Filtrar por trabajos con camioneta parada"}
+            >
+              <i className="bi bi-cone-striped"></i>
+              <span>{filtroSoloParadas ? "Solo Paradas (Activo)" : "Solo Paradas"}</span>
+            </button>
           </div>
         </Card>
 
