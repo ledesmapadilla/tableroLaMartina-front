@@ -78,22 +78,34 @@ function ServicesKilometros() {
   const editForm = useForm({ defaultValues: { fecha: "", responsable: "", kms: "", observaciones: "" } });
 
   const cargarRegistros = () =>
-    fetch("/api/kilometros").then((r) => r.json()).then(setRegistros).catch(() => setRegistros([]));
+    fetch("/api/kilometros")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setRegistros(Array.isArray(d) ? d : []))
+      .catch(() => setRegistros([]));
 
   const cargarParadas = () =>
     fetch("/api/paradas/abiertas/ids")
-      .then((r) => r.json())
-      .then((ids) => setParadasAbiertas(new Set(ids)))
+      .then((r) => (r.ok ? r.json() : []))
+      .then((ids) => setParadasAbiertas(new Set(Array.isArray(ids) ? ids : [])))
       .catch(() => setParadasAbiertas(new Set()));
 
   const cargarUltimos = () => Promise.all([
-    fetch("/api/kilometros/ultimos").then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
-    fetch("/api/services/ultimos").then((r) => r.json()).then(setUltimosService).catch(() => setUltimosService([])),
+    fetch("/api/kilometros/ultimos")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setUltimos(Array.isArray(d) ? d : []))
+      .catch(() => setUltimos([])),
+    fetch("/api/services/ultimos")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setUltimosService(Array.isArray(d) ? d : []))
+      .catch(() => setUltimosService([])),
     cargarParadas(),
   ]);
 
   useEffect(() => {
-    fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => setCamionetas([]));
+    fetch("/api/camionetas")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setCamionetas(Array.isArray(d) ? d : []))
+      .catch(() => setCamionetas([]));
     cargarRegistros();
     cargarUltimos();
     cargarParadas();

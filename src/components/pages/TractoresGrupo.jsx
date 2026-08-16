@@ -23,15 +23,15 @@ function TractoresGrupo() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/tractores").then((r) => r.json()).catch(() => []),
-      fetch("/api/trabajos-tractor/pendientes/ids").then((r) => r.json()).catch(() => []),
-      fetch("/api/trabajos-tractor/parados/ids").then((r) => r.json()).catch(() => []),
+      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/trabajos-tractor/pendientes/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([tracs, pendientesIds, stopIds]) => {
-      // Filtrar los tractores del grupo actual
-      const filtrados = (tracs || []).filter((t) => Number(t.gruppo) === Number(grupoId));
+      const safeTracs = Array.isArray(tracs) ? tracs : [];
+      const filtrados = safeTracs.filter((t) => Number(t.gruppo) === Number(grupoId));
       setTractores(filtrados);
-      setConTareaPendiente(new Set(pendientesIds));
-      setParadosIds(new Set(stopIds));
+      setConTareaPendiente(new Set(Array.isArray(pendientesIds) ? pendientesIds : []));
+      setParadosIds(new Set(Array.isArray(stopIds) ? stopIds : []));
     });
   }, [grupoId]);
 

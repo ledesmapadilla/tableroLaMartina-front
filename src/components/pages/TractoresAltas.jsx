@@ -56,7 +56,7 @@ function TractoresAltas() {
   const cargar = async () => {
     try {
       const res = await fetch(API);
-      const data = await res.json();
+      const data = res.ok ? await res.json() : [];
       setTractores(Array.isArray(data) ? data : []);
     } catch {
       setTractores([]);

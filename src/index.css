@@ -271,3 +271,35 @@ tr.tr-parada:hover > td {
   background-color: #f1b0b7 !important;
 }
 
+/* ── Estilos globales SweetAlert2 (Bordes Redondeados & Compactos) ── */
+.swal2-popup {
+  border-radius: 18px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 1.25rem 1.5rem !important;
+}
+
+.swal2-title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+}
+
+.swal2-html-container {
+  font-size: 0.88rem !important;
+  color: #64748b !important;
+}
+
+.swal2-confirm,
+.swal2-cancel {
+  border-radius: 10px !important;
+  font-size: 0.84rem !important;
+  padding: 0.45rem 1.1rem !important;
+  font-weight: 500 !important;
+}
+
+.swal2-icon {
+  transform: scale(0.85);
+  margin: 0.8rem auto 0.5rem auto !important;
+}
+

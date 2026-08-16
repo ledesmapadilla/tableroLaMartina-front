@@ -20,8 +20,8 @@ function Tractores() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/tractores").then((r) => r.json()).catch(() => []),
-      fetch("/api/trabajos-tractor/parados/ids").then((r) => r.json()).catch(() => []),
+      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([tracsData, stopIdsData]) => {
       if (Array.isArray(tracsData)) {
         setTractores(tracsData);

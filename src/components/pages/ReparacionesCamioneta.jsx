@@ -1,1431 +1,846 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Container, Button, Table, Form, Row, Col } from "react-bootstrap";
+import { Container, Card, Form, Button, Row, Col, Badge, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
-import ExcelJS from "exceljs";
 
-const formatF = (iso) =>
-  iso ? new Date(iso + "T12:00:00").toLocaleDateString("es-AR") : "-";
+// Formateo seguro de fechas sin desfase horario UTC
+const formatF = (iso) => {
+  if (!iso) return "-";
+  const str = typeof iso === "string" ? iso.split("T")[0] : new Date(iso).toISOString().split("T")[0];
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return str;
+};
 
-const PRIORIDADES = ["Normal", "Urgente", "Crítico"];
-const ESTADOS = ["Pendiente", "En proceso", "Terminado"];
-const COLOR_ESTADO = { Pendiente: "#6c757d", "En proceso": "#ffc107", Terminado: "#198754" };
+const hoyStr = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
-const RESPONSABLES = ["Zamorano", "Mauricio", "Nelson", "Juan José", "Nacho", "Agustín"];
+const ESTADOS = ["Pendiente", "En proceso", "Terminada"];
 const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
-const COLOR_ESTADO_REP = {
-  Pedido: "#0dcaf0",
-  Pendiente: "#6c757d",
-  "En taller": "#fd7e14",
-  Colocado: "#198754",
-};
-
-const pesos = (n) =>
-  (Number(n) || 0).toLocaleString("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 0,
-  });
-
-const InputMoneda = ({ value, onChange }) => (
-  <Form.Control
-    size="sm"
-    type="text"
-    inputMode="numeric"
-    value={Number(value) ? pesos(value) : ""}
-    onChange={(e) => onChange(Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
-  />
-);
-
-const hoy = () => new Date().toISOString().split("T")[0];
-const filaVacia = (defaultResp = "") => ({
-  id: crypto.randomUUID(),
-  fecha: hoy(),
-  reparacion: "",
-  diagnostico: "",
-  descripcion: "",
-  parte: "",
-  prioridad: "Normal",
-  color: "#3a7070",
-  estado: "Pendiente",
-  responsable: defaultResp,
-  maquinaParada: false,
-  observaciones: "",
-  repuestos: [],
-});
-
-const repuestoVacio = () => ({
-  id: crypto.randomUUID(),
-  repuesto: "",
-  cantidad: 1,
-  precio: 0,
-  proveedor: "",
-  responsable: "",
-  estado: "Pedido",
-  observaciones: "",
-});
-
-const selectActivo = { backgroundImage: "none" };
-const estiloX = {
-  position: "absolute",
-  right: "10px",
-  top: "50%",
-  transform: "translateY(-50%)",
-  cursor: "pointer",
-  color: "#dc3545",
-  fontSize: "14px",
-  fontWeight: "900",
-  zIndex: 5,
-  userSelect: "none",
-};
 
 function ReparacionesCamioneta() {
   const navigate = useNavigate();
   const { camionetaId } = useParams();
   const { state } = useLocation();
-  const patente = state?.patente ?? "-";
-  const marca   = state?.marca   ?? "";
 
-  const [filas, setFilas] = useState([]);
+  const [camioneta, setCamioneta] = useState(null);
+  const [trabajos, setTrabajos] = useState([]);
+  const [paradas, setParadas] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [editandoId, setEditandoId] = useState(null);
 
-  const [filtroReparacion, setFiltroReparacion] = useState("");
-  const [filtroResponsable, setFiltroResponsable] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("activas");
+  const [filtroEstado, setFiltroEstado] = useState("pendientes_en_proceso"); // 'pendientes_en_proceso' (por defecto) | 'Terminadas' | 'todas'
+  const [tareaSeleccionadaId, setTareaSeleccionadaId] = useState(null);
+  const [guardandoId, setGuardandoId] = useState(null);
 
-  const [detalleSel, setDetalleSel] = useState(null);
-  const [repuestosSel, setRepuestosSel] = useState(null);
-  const [observacionesSel, setObservacionesSel] = useState(null);
+  const patente = camioneta?.patente || state?.patente || "Camioneta";
+  const marca = camioneta?.marca || state?.marca || "";
 
-  const [responsablesAlta, setResponsablesAlta] = useState([]);
-  const [responsableDefault, setResponsableDefault] = useState("");
-  const [otroRespMain, setOtroRespMain] = useState(() => new Set());
-
-  // Cargar datos existentes y adaptarlos
-  useEffect(() => {
+  const cargarDatos = async () => {
     setCargando(true);
-    Promise.all([
-      fetch(`/api/trabajos-camioneta/${camionetaId}`).then((r) => r.json()),
-      fetch("/api/camionetas").then((r) => r.json())
-    ])
-      .then(([trabajosData, camionetasData]) => {
-        if (Array.isArray(camionetasData)) {
-          const currentCamioneta = camionetasData.find((c) => String(c._id) === String(camionetaId));
-          if (currentCamioneta?.responsable) {
-            setResponsableDefault(currentCamioneta.responsable);
-          }
-          const list = [...new Set(camionetasData.map((c) => c.responsable).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-          setResponsablesAlta(list);
-        }
+    try {
+      const [camsRes, trabRes, parRes] = await Promise.all([
+        fetch(`/api/camionetas/${camionetaId}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`/api/trabajos-camioneta/${camionetaId}`).then((r) => (r.ok ? r.json() : [])),
+        fetch(`/api/paradas/${camionetaId}`).then((r) => (r.ok ? r.json() : [])),
+      ]);
 
-        const items = (Array.isArray(trabajosData) ? trabajosData : []).map((t) => ({
-          id: t._id,
-          fecha: t.fecha ? t.fecha.split("T")[0] : "",
-          reparacion: t.reparacion || t.descripcion || "",
-          diagnostico: t.diagnostico || "",
-          descripcion: t.descripcion && t.reparacion ? t.descripcion : (t.detalle || ""),
-          parte: t.parte || "",
-          prioridad: t.prioridad || (t.urgencia === "alta" ? "Crítico" : t.urgencia === "media" ? "Urgente" : "Normal"),
-          estado: t.estado ? (t.estado === "terminada" ? "Terminado" : t.estado === "en proceso" ? "En proceso" : t.estado === "pendiente" ? "Pendiente" : t.estado) : "Pendiente",
-          responsable: t.responsable || "",
-          maquinaParada: !!t.maquinaParada,
-          observaciones: t.observaciones || "",
-          repuestos: (t.repuestos || []).map((r) => ({
-            id: r._id || crypto.randomUUID(),
-            repuesto: r.repuesto || r.nombre || "",
-            cantidad: r.cantidad || 1,
-            precio: r.precio || r.costo || 0,
-            proveedor: r.proveedor || "",
-            responsable: r.responsable || "",
-            estado: r.estado || "Pedido",
-            observaciones: r.observaciones || "",
-          })),
-        }));
-        setFilas(items);
-      })
-      .catch((e) => {
-        console.error("Error loading data:", e);
-        setFilas([]);
-      })
-      .finally(() => setCargando(false));
-  }, [camionetaId]);
-
-  // Manejar el cierre con Esc
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") setEditandoId(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const agregar = () => {
-    const nueva = filaVacia(responsableDefault);
-    setFilas((p) => [...p, nueva]);
-    setEditandoId(nueva.id);
+      if (camsRes) setCamioneta(camsRes);
+      const listaTrabajos = Array.isArray(trabRes) ? trabRes : [];
+      setTrabajos(listaTrabajos);
+      setParadas(Array.isArray(parRes) ? parRes : []);
+    } catch {
+      // noop
+    } finally {
+      setCargando(false);
+    }
   };
 
-  const editar = (id, campo, valor) =>
-    setFilas((p) => p.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)));
+  useEffect(() => {
+    cargarDatos();
+  }, [camionetaId]);
 
-  const borrar = async (id) => {
-    const { isConfirmed } = await Swal.fire({
-      title: "¿Eliminar reparación?",
+  // Verificar si la unidad está parada actualmente
+  const paradaAbierta = useMemo(() => {
+    return paradas.find((p) => !p.fechaArranque);
+  }, [paradas]);
+
+  const tieneTrabajoParada = useMemo(() => {
+    return trabajos.some((t) => t.maquinaParada && t.estado !== "Terminada" && t.estado !== "terminada");
+  }, [trabajos]);
+
+  const estaParada = Boolean(paradaAbierta || tieneTrabajoParada);
+
+  // Actualizar campo de la tarea seleccionada
+  const handleUpdateTarea = (id, campo, valor) => {
+    setTrabajos((prev) =>
+      prev.map((t) => (t._id === id ? { ...t, [campo]: valor } : t))
+    );
+  };
+
+  // Guardar tarea en backend con SweetAlert2
+  const handleGuardarTarea = async (tarea) => {
+    setGuardandoId(tarea._id);
+    try {
+      // Formateo seguro de fecha a mediodía para evitar cualquier corrimiento UTC
+      const fechaLimpia = tarea.fecha
+        ? `${String(tarea.fecha).split("T")[0]}T12:00:00.000Z`
+        : new Date().toISOString();
+
+      const payload = {
+        ...tarea,
+        fecha: fechaLimpia,
+      };
+
+      const res = await fetch(`/api/trabajos-camioneta/${tarea._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        setTareaSeleccionadaId(null);
+
+        const esTerminada =
+          tarea.estado === "Terminada" ||
+          tarea.estado === "terminada" ||
+          tarea.estado === "Terminado";
+
+        // Si la camioneta está parada y se termina la tarea, preguntar si se pone en servicio operativo
+        if (esTerminada && estaParada) {
+          const confirmAlta = await Swal.fire({
+            title: "¿Poner en servicio la unidad?",
+            text: "La reparación fue marcada como terminada.",
+            icon: "question",
+            width: "320px",
+            showCancelButton: true,
+            confirmButtonColor: "#10b981",
+            cancelButtonColor: "#64748b",
+            confirmButtonText: "Sí, poner en servicio",
+            cancelButtonText: "No, mantener parada",
+          });
+
+          if (confirmAlta.isConfirmed) {
+            const now = new Date().toISOString();
+            const promises = [];
+
+            if (paradaAbierta) {
+              promises.push(
+                fetch(`/api/paradas/${paradaAbierta._id}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ fechaArranque: now }),
+                })
+              );
+            }
+
+            trabajos
+              .filter((t) => t.maquinaParada)
+              .forEach((t) => {
+                promises.push(
+                  fetch(`/api/trabajos-camioneta/${t._id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ maquinaParada: false }),
+                  })
+                );
+              });
+
+            await Promise.all(promises);
+            Swal.fire({
+              icon: "success",
+              title: "¡Camioneta en servicio!",
+              width: "300px",
+              timer: 1500,
+              showConfirmButton: false,
+            });
+            cargarDatos();
+            return;
+          }
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Reparación guardada",
+          width: "300px",
+          timer: 1400,
+          showConfirmButton: false,
+        });
+        cargarDatos();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudieron guardar los cambios.",
+          width: "300px",
+          confirmButtonColor: "#1e293b",
+        });
+      }
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error de conexión",
+        width: "300px",
+        confirmButtonColor: "#1e293b",
+      });
+    } finally {
+      setGuardandoId(null);
+    }
+  };
+
+  // Repuestos: Agregar repuesto a la tarea
+  const handleAgregarRepuesto = (tareaId) => {
+    const nuevoRep = {
+      repuesto: "",
+      cantidad: 1,
+      precio: 0,
+      proveedor: "",
+      responsable: "",
+      estado: "Pedido",
+      observaciones: "",
+    };
+
+    setTrabajos((prev) =>
+      prev.map((t) => {
+        if (t._id === tareaId) {
+          const actual = Array.isArray(t.repuestos) ? t.repuestos : [];
+          return { ...t, repuestos: [...actual, nuevoRep] };
+        }
+        return t;
+      })
+    );
+  };
+
+  // Repuestos: Actualizar repuesto
+  const handleUpdateRepuesto = (tareaId, index, campo, valor) => {
+    setTrabajos((prev) =>
+      prev.map((t) => {
+        if (t._id === tareaId) {
+          const reps = [...(t.repuestos || [])];
+          reps[index] = { ...reps[index], [campo]: valor };
+          return { ...t, repuestos: reps };
+        }
+        return t;
+      })
+    );
+  };
+
+  // Repuestos: Eliminar repuesto con confirmación SweetAlert2
+  const handleEliminarRepuesto = async (tareaId, index) => {
+    const result = await Swal.fire({
+      title: "¿Desea borrar el repuesto?",
       icon: "warning",
+      width: "320px",
       showCancelButton: true,
-      confirmButtonColor: "#7a4040",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
       confirmButtonText: "Sí, borrar",
       cancelButtonText: "Cancelar",
     });
-    if (!isConfirmed) return;
 
-    const isNew = String(id).length !== 24;
+    if (!result.isConfirmed) return;
 
-    if (isNew) {
-      setFilas((p) => p.filter((f) => f.id !== id));
-      setEditandoId((prev) => (prev === id ? null : prev));
-      Swal.fire({ icon: "success", title: "Reparación eliminada", timer: 1500, showConfirmButton: false });
-      return;
-    }
+    setTrabajos((prev) =>
+      prev.map((t) => {
+        if (t._id === tareaId) {
+          const reps = [...(t.repuestos || [])];
+          reps.splice(index, 1);
+          return { ...t, repuestos: reps };
+        }
+        return t;
+      })
+    );
+
+    Swal.fire({
+      icon: "success",
+      title: "Repuesto borrado",
+      width: "280px",
+      timer: 1200,
+      showConfirmButton: false,
+    });
+  };
+
+  // Eliminar tarea de reparación desde el listado
+  const handleEliminarTarea = async (tareaId, e) => {
+    if (e) e.stopPropagation();
+    const result = await Swal.fire({
+      title: "¿Desea borrar la tarea?",
+      icon: "warning",
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/trabajos-camioneta/${id}`, {
+      const res = await fetch(`/api/trabajos-camioneta/${tareaId}`, {
         method: "DELETE",
       });
 
-      if (!res.ok) {
-        throw new Error("No se pudo eliminar la reparación de la base de datos.");
-      }
-
-      setFilas((p) => p.filter((f) => f.id !== id));
-      setEditandoId((prev) => (prev === id ? null : prev));
-      Swal.fire({ icon: "success", title: "Reparación eliminada", timer: 1500, showConfirmButton: false });
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-    }
-  };
-
-  const finalizarEdicion = async () => {
-    const fila = filas.find((f) => f.id === editandoId);
-    if (fila && !(fila.reparacion || "").trim()) {
-      return Swal.fire({ icon: "warning", title: "Atención", text: "La reparación es obligatoria." });
-    }
-
-    const body = {
-      camioneta: camionetaId,
-      fecha: fila.fecha,
-      reparacion: fila.reparacion,
-      diagnostico: fila.diagnostico || "",
-      descripcion: fila.descripcion,
-      parte: fila.parte || "",
-      prioridad: fila.prioridad,
-      estado: fila.estado,
-      responsable: fila.responsable || "",
-      observaciones: fila.observaciones,
-      maquinaParada: !!fila.maquinaParada,
-      repuestos: (fila.repuestos || []).map((r) => ({
-        repuesto: r.repuesto,
-        cantidad: Number(r.cantidad) || 1,
-        precio: Number(r.precio) || 0,
-        proveedor: r.proveedor || "",
-        responsable: r.responsable || "",
-        estado: r.estado || "Pedido",
-        observaciones: r.observaciones || "",
-      })),
-    };
-
-    const isNew = String(fila.id).length !== 24;
-    const currentId = editandoId;
-    setEditandoId(null);
-
-    try {
-      const url = isNew ? "/api/trabajos-camioneta" : `/api/trabajos-camioneta/${fila.id}`;
-      const method = isNew ? "POST" : "PUT";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        throw new Error("No se pudo guardar la reparación en la base de datos.");
-      }
-
-      const saved = await res.json();
-      
-      setFilas((prev) =>
-        prev.map((f) =>
-          f.id === currentId
-            ? {
-                ...f,
-                id: saved._id,
-                repuestos: (saved.repuestos || []).map((sr) => ({
-                  id: sr._id,
-                  repuesto: sr.repuesto || "",
-                  cantidad: sr.cantidad || 1,
-                  precio: sr.precio || 0,
-                  proveedor: sr.proveedor || "",
-                  responsable: sr.responsable || "",
-                  estado: sr.estado || "Pedido",
-                  observaciones: sr.observaciones || "",
-                })),
-              }
-            : f
-        )
-      );
-
-      Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
-    } catch (e) {
-      console.error(e);
-      setEditandoId(currentId);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-    }
-  };
-
-  const handleSaveSubSection = async (tipo, arrayUObjeto) => {
-    const targetId = detalleSel?.id || observacionesSel || repuestosSel;
-    const fila = filas.find((f) => f.id === targetId);
-    if (!fila) return { ok: false };
-
-    let nuevoDiag = fila.diagnostico || "";
-    let nuevaDesc = fila.descripcion || "";
-    let nuevasObs = fila.observaciones || "";
-    let nuevosReps = fila.repuestos || [];
-
-    if (tipo === "detalle") {
-      if (typeof arrayUObjeto === "object" && arrayUObjeto !== null) {
-        nuevoDiag = arrayUObjeto.diagnostico ?? (fila.diagnostico || "");
-        nuevaDesc = arrayUObjeto.descripcion ?? (fila.descripcion || "");
+      if (res.ok) {
+        const nuevosTrabajos = trabajos.filter((t) => t._id !== tareaId);
+        setTrabajos(nuevosTrabajos);
+        if (tareaSeleccionadaId === tareaId) {
+          setTareaSeleccionadaId(nuevosTrabajos[0]?._id || null);
+        }
+        Swal.fire({
+          icon: "success",
+          title: "Tarea borrada",
+          width: "280px",
+          timer: 1200,
+          showConfirmButton: false,
+        });
       } else {
-        nuevaDesc = arrayUObjeto || "";
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          width: "300px",
+          confirmButtonColor: "#1e293b",
+        });
       }
-    } else if (tipo === "observaciones") {
-      nuevasObs = arrayUObjeto || "";
-    } else if (tipo === "repuestos") {
-      nuevosReps = arrayUObjeto || [];
-    }
-
-    setFilas((prev) =>
-      prev.map((f) =>
-        f.id === fila.id
-          ? { ...f, diagnostico: nuevoDiag, descripcion: nuevaDesc, observaciones: nuevasObs, repuestos: nuevosReps }
-          : f
-      )
-    );
-
-    const body = {
-      camioneta: camionetaId,
-      fecha: fila.fecha,
-      reparacion: fila.reparacion,
-      diagnostico: nuevoDiag,
-      descripcion: nuevaDesc,
-      parte: fila.parte || "",
-      prioridad: fila.prioridad,
-      estado: fila.estado,
-      responsable: fila.responsable || "",
-      observaciones: nuevasObs,
-      maquinaParada: !!fila.maquinaParada,
-      repuestos: (nuevosReps || []).map((r) => ({
-        repuesto: r.repuesto,
-        cantidad: Number(r.cantidad) || 1,
-        precio: Number(r.precio) || 0,
-        proveedor: r.proveedor || "",
-        responsable: r.responsable || "",
-        estado: r.estado || "Pedido",
-        observaciones: r.observaciones || "",
-      })),
-    };
-
-    const isNew = String(fila.id).length !== 24;
-    const url = isNew ? "/api/trabajos-camioneta" : `/api/trabajos-camioneta/${fila.id}`;
-    const method = isNew ? "POST" : "PUT";
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error de conexión",
+        width: "300px",
+        confirmButtonColor: "#1e293b",
       });
-
-      if (!res.ok) throw new Error("No se pudo guardar la modificación.");
-      const saved = await res.json();
-
-      setFilas((prev) =>
-        prev.map((f) =>
-          f.id === fila.id
-            ? {
-                ...f,
-                id: saved._id,
-                diagnostico: saved.diagnostico || "",
-                descripcion: saved.descripcion || "",
-                observaciones: saved.observaciones || "",
-                repuestos: (saved.repuestos || []).map((sr) => ({
-                  id: sr._id,
-                  repuesto: sr.repuesto || "",
-                  cantidad: sr.cantidad || 1,
-                  precio: sr.precio || 0,
-                  proveedor: sr.proveedor || "",
-                  responsable: sr.responsable || "",
-                  estado: sr.estado || "Pedido",
-                  observaciones: sr.observaciones || "",
-                })),
-              }
-            : f
-        )
-      );
-      Swal.fire({ icon: "success", title: "Detalle guardado", timer: 1200, showConfirmButton: false });
-      return { ok: true };
-    } catch (e) {
-      console.error(e);
-      Swal.fire({ icon: "error", title: "Error", text: e.message });
-      return { ok: false };
     }
   };
 
-  const verObservacion = (texto) =>
-    Swal.fire({
-      title: "Observaciones / Descripción",
-      text: texto,
-      confirmButtonText: "Cerrar",
-      confirmButtonColor: "#6c757d",
-    });
-
-  const reparacionesUnicas = useMemo(
-    () => [...new Set(filas.map((f) => f.reparacion).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [filas]
-  );
-  const responsablesUnicos = useMemo(
-    () => [...new Set(filas.map((f) => f.responsable).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [filas]
-  );
-  const filasFiltradas = useMemo(
-    () =>
-      filas.filter(
-        (f) =>
-          f.id === editandoId ||
-          ((!filtroReparacion || f.reparacion === filtroReparacion) &&
-            (!filtroResponsable || f.responsable === filtroResponsable) &&
-            (filtroEstado === "" ||
-              (filtroEstado === "activas"
-                ? f.estado === "Pendiente" || f.estado === "En proceso"
-                : f.estado === filtroEstado)))
-      ),
-    [filas, filtroReparacion, filtroResponsable, filtroEstado, editandoId]
-  );
-
-  const exportarExcel = async () => {
-    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const titulo = `Reparaciones Camioneta: ${patente}${marca ? ` - ${marca}` : ""}`;
-    const columnas = ["Fecha", "Reparación", "Diagnóstico", "Detalle", "Prioridad", "Estado", "Responsable", "Máquina Parada", "Observaciones", "Repuestos"];
-
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Reparaciones");
-
-    ws.mergeCells(1, 1, 1, columnas.length);
-    const celdaTitulo = ws.getCell("A1");
-    celdaTitulo.value = titulo;
-    celdaTitulo.font = { bold: true, underline: true, size: 14 };
-    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 22;
-
-    ws.mergeCells(2, 1, 2, 4);
-    const celdaFecha = ws.getCell("A2");
-    celdaFecha.value = `Fecha: ${fechaHoy}`;
-    celdaFecha.alignment = { horizontal: "left" };
-    ws.getRow(2).height = 16;
-
-    ws.addRow([]);
-
-    const thinBorder = {
-      top: { style: "thin", color: { argb: "FFE0E0E0" } },
-      left: { style: "thin", color: { argb: "FFE0E0E0" } },
-      bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
-      right: { style: "thin", color: { argb: "FFE0E0E0" } },
-    };
-
-    const filaEnc = ws.addRow(columnas);
-    filaEnc.eachCell((cell) => {
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFA0A0A0" } },
-        left: { style: "thin", color: { argb: "FFA0A0A0" } },
-        bottom: { style: "medium", color: { argb: "FF808080" } },
-        right: { style: "thin", color: { argb: "FFA0A0A0" } },
-      };
-    });
-    ws.getRow(4).height = 18;
-
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
-
-    filasFiltradas.forEach((t, idx) => {
-      const repsStr = (t.repuestos || [])
-        .map((r) => `${r.cantidad}x ${r.repuesto} (${pesos(r.precio)})`)
-        .join(", ");
-
-      const fila = ws.addRow([
-        t.fecha ? t.fecha.split("-").reverse().join("/") : "-",
-        t.reparacion || "-",
-        t.diagnostico || "-",
-        t.descripcion || "-",
-        t.prioridad || "-",
-        t.estado || "-",
-        t.responsable || "-",
-        t.maquinaParada ? "SÍ" : "NO",
-        t.observaciones || "-",
-        repsStr || "-",
-      ]);
-
-      const isOdd = idx % 2 === 1;
-      fila.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        cell.border = thinBorder;
-        if (isOdd) cell.fill = zebraFill;
+  // Filtrado de tareas ordenadas por fecha y registro (más recientes arriba de todo)
+  const tareasFiltradas = useMemo(() => {
+    return [...trabajos]
+      .filter((t) => {
+        if (filtroEstado === "pendientes_en_proceso") {
+          return t.estado !== "Terminada" && t.estado !== "terminada" && t.estado !== "Terminado";
+        }
+        if (filtroEstado === "Terminadas") {
+          return t.estado === "Terminada" || t.estado === "terminada" || t.estado === "Terminado";
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = a.fecha ? new Date(a.fecha).getTime() : 0;
+        const dateB = b.fecha ? new Date(b.fecha).getTime() : 0;
+        if (dateB !== dateA) {
+          return dateB - dateA;
+        }
+        const createdA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const createdB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (createdB !== createdA) {
+          return createdB - createdA;
+        }
+        return String(b._id || "").localeCompare(String(a._id || ""));
       });
-      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(9).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-    });
+  }, [trabajos, filtroEstado]);
 
-    ws.columns = [
-      { width: 12 }, // Fecha
-      { width: 25 }, // Reparación
-      { width: 30 }, // Diagnóstico
-      { width: 30 }, // Detalle
-      { width: 12 }, // Prioridad
-      { width: 12 }, // Estado
-      { width: 18 }, // Responsable
-      { width: 15 }, // Máquina Parada
-      { width: 30 }, // Observaciones
-      { width: 35 }, // Repuestos
-    ];
-
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `reparaciones_${patente}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  if (detalleSel) {
-    return (
-      <DetalleReparacion
-        patente={patente}
-        marca={marca}
-        reparacion={detalleSel}
-        readOnly={false}
-        onVolver={() => setDetalleSel(null)}
-        onGuardar={(datos) => handleSaveSubSection("detalle", datos)}
-      />
-    );
-  }
-
-  if (repuestosSel) {
-    const fila = filas.find((f) => f.id === repuestosSel);
-    return (
-      <DetalleRepuestos
-        patente={patente}
-        marca={marca}
-        reparacion={fila}
-        readOnly={false}
-        responsablesAlta={responsablesAlta}
-        onVolver={() => setRepuestosSel(null)}
-        onGuardar={(reps) => handleSaveSubSection("repuestos", reps)}
-      />
-    );
-  }
-
-  if (observacionesSel) {
-    const fila = filas.find((f) => f.id === observacionesSel);
-    return (
-      <DetalleObservaciones
-        patente={patente}
-        marca={marca}
-        reparacion={fila}
-        readOnly={false}
-        onVolver={() => setObservacionesSel(null)}
-        onGuardar={(obs) => handleSaveSubSection("observaciones", obs)}
-      />
-    );
-  }
+  const tareaSeleccionada = useMemo(() => {
+    return trabajos.find((t) => t._id === tareaSeleccionadaId) || null;
+  }, [trabajos, tareaSeleccionadaId]);
 
   return (
-    <Container className="py-4">
-      {/* Botones */}
-      <div className="d-flex justify-content-end gap-2 w-100 mb-4">
-        <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-arrow-left me-2"></i>Volver
-        </Button>
-        <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-speedometer me-2"></i>Tablero
-        </Button>
-        <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-house-fill me-2"></i>General
-        </Button>
-        <Button onClick={exportarExcel} disabled={filasFiltradas.length === 0} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-          <i className="bi bi-file-earmark-excel me-2"></i>Excel
-        </Button>
-      </div>
-
-      {/* Título */}
-      <div className="text-center mb-4">
-        <h3 className="fw-bold mb-0">Reparaciones camioneta: {patente}{marca ? ` - ${marca}` : ""}</h3>
-      </div>
-
-      {/* Agregar reparación */}
-      <div className="mb-4">
-        <Button variant="outline-primary" size="sm" onClick={agregar}>
-          <i className="bi bi-plus-lg me-1"></i>Agregar reparación
-        </Button>
-      </div>
-
-      {/* Filtros */}
-      <div className="d-flex gap-3 mb-3 align-items-center flex-wrap">
-        {/* Filtro Reparacion */}
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroReparacion}
-            onChange={(e) => setFiltroReparacion(e.target.value)}
-            style={filtroReparacion ? selectActivo : {}}
-          >
-            <option value="">Reparación (todas)</option>
-            {reparacionesUnicas.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </Form.Select>
-          {filtroReparacion && (
-            <span onClick={() => setFiltroReparacion("")} style={estiloX}>X</span>
-          )}
-        </div>
-
-        {/* Filtro Responsable */}
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroResponsable}
-            onChange={(e) => setFiltroResponsable(e.target.value)}
-            style={filtroResponsable ? selectActivo : {}}
-          >
-            <option value="">Responsable (todos)</option>
-            {responsablesUnicos.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </Form.Select>
-          {filtroResponsable && (
-            <span onClick={() => setFiltroResponsable("")} style={estiloX}>X</span>
-          )}
-        </div>
-
-        {/* Filtro Estado (a la derecha) */}
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            style={filtroEstado !== "" ? selectActivo : {}}
-          >
-            <option value="activas">Pendientes y en proceso</option>
-            <option value="Pendiente">Pendiente</option>
-            <option value="En proceso">En proceso</option>
-            <option value="Terminado">Terminado</option>
-            <option value="">Todos</option>
-          </Form.Select>
-          {filtroEstado !== "" && (
-            <span onClick={() => setFiltroEstado("")} style={estiloX}>X</span>
-          )}
-        </div>
-      </div>
-
-      {cargando ? (
-        <div className="text-center py-5">Cargando reparaciones...</div>
-      ) : (
-        <div style={{ maxHeight: "calc(100vh - 190px)", overflowY: "auto" }}>
-          <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: "0.78rem" }}>
-            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-              <tr className="fw-normal align-middle">
-                <th className="fw-normal" style={{ width: "9%" }}>Fecha</th>
-                <th className="fw-normal" style={{ width: "30%" }}>Reparación</th>
-                <th className="fw-normal" style={{ width: "6%" }}>Detalle</th>
-                <th className="fw-normal" style={{ width: "9%" }}>Prioridad</th>
-                <th className="fw-normal" style={{ width: "9%" }}>Estado</th>
-                <th className="fw-normal" style={{ width: "14%" }}>Responsable</th>
-                <th className="fw-normal" style={{ width: "7%" }}>Observaciones</th>
-                <th className="fw-normal" style={{ width: "6%" }}>Repuestos</th>
-                <th className="fw-normal" style={{ width: "10%" }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filasFiltradas.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="text-muted py-3">
-                    Sin reparaciones cargadas
-                  </td>
-                </tr>
-              )}
-              {filasFiltradas.map((f) => {
-                const editando = editandoId === f.id;
-                return (
-                  <tr key={f.id} style={{ height: "36px" }}>
-                    <td>
-                      {editando ? (
-                        <Form.Control
-                          type="date"
-                          size="sm"
-                          value={f.fecha}
-                          onChange={(e) => editar(f.id, "fecha", e.target.value)}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                        />
-                      ) : (
-                        f.fecha ? f.fecha.split("-").reverse().join("/") : "-"
-                      )}
-                    </td>
-                    <td className="text-start" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
-                      {editando ? (
-                        <Form.Control
-                          size="sm"
-                          value={f.reparacion}
-                          onChange={(e) => editar(f.id, "reparacion", e.target.value)}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                        />
-                      ) : (
-                        f.reparacion || "-"
-                      )}
-                    </td>
-                    <td>
-                      {(() => {
-                        const tieneDet = (f.descripcion || "").trim() !== "" || (f.diagnostico || "").trim() !== "";
-                        if (tieneDet) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline-success"
-                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setDetalleSel(f)}
-                            >
-                              +
-                            </Button>
-                          );
-                        }
-                        if (editando) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setDetalleSel(f)}
-                            >
-                              +
-                            </Button>
-                          );
-                        }
-                        return <span className="text-muted">-</span>;
-                      })()}
-                    </td>
-                    <td>
-                      {editando ? (
-                        <Form.Select
-                          size="sm"
-                          value={f.prioridad}
-                          onChange={(e) => editar(f.id, "prioridad", e.target.value)}
-                          style={{
-                            fontSize: "0.72rem",
-                            padding: "2px 4px",
-                            color: f.prioridad === "Crítico" ? "red" : "",
-                            fontWeight: f.prioridad === "Crítico" ? "bold" : ""
-                          }}
-                        >
-                          {PRIORIDADES.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      ) : (
-                        f.prioridad === "Crítico" ? (
-                          <span className="text-danger fw-semibold">Crítico</span>
-                        ) : (
-                          f.prioridad || "-"
-                        )
-                      )}
-                    </td>
-                    <td>
-                      {editando ? (
-                        <Form.Select
-                          size="sm"
-                          value={f.estado}
-                          onChange={(e) => editar(f.id, "estado", e.target.value)}
-                          style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                        >
-                          {ESTADOS.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </Form.Select>
-                      ) : (
-                        <span style={{ color: COLOR_ESTADO[f.estado] || "#dee2e6", fontWeight: 600 }}>
-                          {f.estado || "-"}
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {editando ? (
-                        <>
-                          <Form.Select
-                            size="sm"
-                            value={
-                              responsablesAlta.includes(f.responsable)
-                                ? f.responsable
-                                : (f.responsable || otroRespMain.has(f.id)) ? "__otro__" : ""
-                            }
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              if (v === "__otro__") {
-                                setOtroRespMain((prev) => new Set(prev).add(f.id));
-                                editar(f.id, "responsable", "");
-                              } else {
-                                setOtroRespMain((prev) => { const n = new Set(prev); n.delete(f.id); return n; });
-                                editar(f.id, "responsable", v);
-                              }
-                            }}
-                            style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                          >
-                            <option value="">Seleccionar...</option>
-                            {responsablesAlta.map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
-                            ))}
-                            <option value="__otro__">Otro...</option>
-                          </Form.Select>
-                          {(otroRespMain.has(f.id) || (f.responsable && !responsablesAlta.includes(f.responsable))) && (
-                            <Form.Control
-                              size="sm"
-                              className="mt-1"
-                              placeholder="Nombre"
-                              value={f.responsable}
-                              onChange={(e) => editar(f.id, "responsable", e.target.value)}
-                              style={{ fontSize: "0.72rem", padding: "2px 4px" }}
-                            />
-                          )}
-                        </>
-                      ) : (
-                        f.responsable || "-"
-                      )}
-                    </td>
-                    <td>
-                      {(() => {
-                        const tieneObs = (f.observaciones || "").trim() !== "";
-                        if (tieneObs) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline-success"
-                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setObservacionesSel(f.id)}
-                            >
-                              +
-                            </Button>
-                          );
-                        }
-                        if (editando) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setObservacionesSel(f.id)}
-                            >
-                              +
-                            </Button>
-                          );
-                        }
-                        return <span className="text-muted">-</span>;
-                      })()}
-                    </td>
-                    <td>
-                      {(() => {
-                        const tieneReps = (f.repuestos || []).length > 0;
-                        if (tieneReps) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline-success"
-                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setRepuestosSel(f.id)}
-                            >
-                              +
-                            </Button>
-                          );
-                        }
-                        if (editando) {
-                          return (
-                            <Button
-                              size="sm"
-                              variant="outline-secondary"
-                              style={{ fontSize: "0.7rem", padding: "1px 6px" }}
-                              onClick={() => setRepuestosSel(f.id)}
-                            >
-                              +
-                            </Button>
-                          );
-                        }
-                        return <span className="text-muted">-</span>;
-                      })()}
-                    </td>
-                    <td>
-                      <div className="d-flex gap-1 justify-content-center align-items-center flex-wrap">
-                        {editando ? (
-                          <Button size="sm" variant="outline-success" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={finalizarEdicion}>
-                            Listo
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline-warning" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={() => setEditandoId(f.id)}>
-                            Editar
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline-danger" style={{ fontSize: "0.7rem", padding: "2px 6px" }} onClick={() => borrar(f.id)}>
-                          Borrar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </Table>
-        </div>
-      )}
-    </Container>
-  );
-}
-
-function DetalleReparacion({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
-  const r = reparacion || {};
-  const [diagnostico, setDiagnostico] = useState(r.diagnostico || "");
-  const [texto, setTexto] = useState(r.descripcion || "");
-
-  const handleGuardar = async () => {
-    onVolver();
-    onGuardar({ diagnostico, descripcion: texto });
-  };
-
-  const Item = ({ label, value }) => (
-    <Col xs={6} md={4} lg={2.4} className="mb-3">
-      <div className="text-muted small">{label}</div>
-      <div className="fw-semibold">{value || "-"}</div>
-    </Col>
-  );
-
-  return (
-    <Container className="py-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-bold mb-0">
-          Detalle de reparación - {patente} {marca}
-        </h4>
-        <Button onClick={onVolver} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-arrow-left me-2"></i>Volver
-        </Button>
-      </div>
-
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8f9fa",
+        height: "100%",
+        maxHeight: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {/* Barra de Cabecera Institucional */}
       <div
-        className="border rounded p-3 mb-4 bg-light"
-        style={{ borderTop: "4px solid #3a7070" }}
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
       >
-        <Row>
-          <Item label="Fecha" value={formatF(r.fecha)} />
-          <Item label="Reparación" value={r.reparacion} />
-          <Item label="Prioridad" value={r.prioridad} />
-          <Item label="Estado" value={r.estado} />
-          <Item label="Responsable" value={r.responsable} />
-        </Row>
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            style={{
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#f59e0b",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(245, 158, 11, 0.3)",
+            }}
+          >
+            <i className="bi bi-tools"></i>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white fs-6">Tareas</span>
+            <span className="text-light opacity-75 small">•</span>
+            <span
+              className="badge px-3 py-1 fw-bold text-white shadow-sm"
+              style={{
+                backgroundColor: "#0f172a",
+                border: "1px solid #475569",
+                fontSize: "0.92rem",
+                letterSpacing: "1.2px",
+                borderRadius: "8px",
+              }}
+            >
+              {patente}
+            </span>
+            {marca && <span className="text-light opacity-75 small">• {marca}</span>}
+          </div>
+        </div>
+
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          <button
+            onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}`)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-car-front-fill me-1"></i>
+            <span>Menú Camioneta</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
+        </div>
       </div>
 
-      <div className="border rounded p-4 bg-white" style={{ borderTop: "4px solid #3a7070" }}>
-        <Row className="g-4 mb-4">
-          <Col md={6}>
-            <div className="px-3 py-2 fw-bold text-white rounded-top" style={{ backgroundColor: "#3a7070", fontSize: "0.9rem" }}>
-              <i className="bi bi-clipboard2-pulse me-2"></i>DIAGNÓSTICO
-            </div>
-            <Form.Control
-              as="textarea"
-              rows={8}
-              placeholder={readOnly ? "Sin diagnóstico cargado." : "Escriba aquí el diagnóstico..."}
-              value={diagnostico}
-              onChange={(e) => setDiagnostico(e.target.value)}
-              disabled={readOnly}
-              style={{ fontSize: "0.9rem", borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTop: "none" }}
-            />
-          </Col>
-          <Col md={6}>
-            <div className="px-3 py-2 fw-bold text-white rounded-top" style={{ backgroundColor: "#2c2c2c", fontSize: "0.9rem" }}>
-              <i className="bi bi-tools me-2"></i>DESCRIPCIÓN DETALLADA DEL TRABAJO
-            </div>
-            <Form.Control
-              as="textarea"
-              rows={8}
-              placeholder={readOnly ? "Sin detalle cargado." : "Escriba aquí los detalles o descripción del trabajo realizado..."}
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              disabled={readOnly}
-              style={{ fontSize: "0.9rem", borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTop: "none" }}
-            />
-          </Col>
-        </Row>
-
-        <div className="d-flex justify-content-end gap-2">
-          {readOnly ? (
-            <Button variant="secondary" size="sm" onClick={onVolver}>
-              Cerrar
-            </Button>
+      {/* Banner de Estado de la Camioneta Centrado */}
+      <div
+        className="px-4 py-2 border-bottom flex-shrink-0 d-flex align-items-center justify-content-center"
+        style={{
+          backgroundColor: estaParada ? "#fef2f2" : "#f0fdf4",
+          borderColor: estaParada ? "#fecaca" : "#bbf7d0",
+        }}
+      >
+        <div className="d-flex align-items-center gap-2">
+          {estaParada ? (
+            <>
+              <i className="bi bi-exclamation-octagon-fill text-danger fs-5"></i>
+              <span className="text-danger fw-semibold" style={{ fontSize: "0.88rem" }}>
+                Unidad Parada
+              </span>
+            </>
           ) : (
             <>
-              <Button variant="secondary" size="sm" onClick={onVolver}>
-                Cancelar
-              </Button>
-              <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
-                Guardar
-              </Button>
+              <i className="bi bi-check-circle-fill text-success fs-5"></i>
+              <span className="text-success fw-semibold" style={{ fontSize: "0.88rem" }}>
+                Unidad Operativa en Servicio
+              </span>
             </>
           )}
         </div>
       </div>
-    </Container>
-  );
-}
 
-function DetalleObservaciones({ patente, marca, reparacion, readOnly, onVolver, onGuardar }) {
-  const [texto, setTexto] = useState(reparacion?.observaciones || "");
-
-  const handleGuardar = async () => {
-    onVolver();
-    onGuardar(texto);
-  };
-
-  return (
-    <Container className="py-4">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-bold mb-0">
-          Observaciones - {reparacion?.reparacion || "reparación"}
-          <small className="text-muted ms-2" style={{ fontSize: "1rem", fontWeight: 400 }}>
-            {patente} {marca}
-          </small>
-        </h4>
-        <Button onClick={onVolver} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-          <i className="bi bi-arrow-left me-2"></i>Volver
-        </Button>
-      </div>
-
-      <div className="border rounded p-4 bg-light" style={{ borderTop: "4px solid #3a7070" }}>
-        <Form.Group className="mb-3">
-          <Form.Label className="fw-semibold">Notas y Observaciones de la Reparación</Form.Label>
-          <Form.Control
-            as="textarea"
-            rows={8}
-            placeholder={readOnly ? "Sin observaciones cargadas." : "Escriba aquí las observaciones o notas detalladas de la reparación..."}
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            disabled={readOnly}
-            style={{ fontSize: "0.9rem" }}
-          />
-        </Form.Group>
-        <div className="d-flex justify-content-end gap-2">
-          {readOnly ? (
-            <Button variant="secondary" size="sm" onClick={onVolver}>
-              Cerrar
-            </Button>
-          ) : (
-            <>
-              <Button variant="secondary" size="sm" onClick={onVolver}>
-                Cancelar
-              </Button>
-              <Button size="sm" style={{ backgroundColor: "#3a7070", borderColor: "#3a7070", color: "#fff" }} onClick={handleGuardar}>
-                Guardar
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-    </Container>
-  );
-}
-
-function DetalleRepuestos({ patente, marca, reparacion, readOnly, responsablesAlta, onVolver, onGuardar }) {
-  const [filas, setFilas] = useState(
-    (reparacion?.repuestos || []).map((r) => ({ ...r, id: r.id || crypto.randomUUID() }))
-  );
-  const [editandoId, setEditandoId] = useState(null);
-  const [otroResp, setOtroResp] = useState(() => new Set());
-  const [nuevas, setNuevas] = useState(() => new Set());
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") setEditandoId(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const agregar = () => {
-    const nueva = repuestoVacio();
-    setFilas((p) => [...p, nueva]);
-    setEditandoId(nueva.id);
-    setNuevas((prev) => new Set(prev).add(nueva.id));
-  };
-
-  const editar = (id, campo, valor) =>
-    setFilas((p) => p.map((f) => (f.id === id ? { ...f, [campo]: valor } : f)));
-
-  const borrar = async (id) => {
-    const { isConfirmed } = await Swal.fire({
-      title: "¿Eliminar repuesto?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#7a4040",
-      confirmButtonText: "Sí, borrar",
-      cancelButtonText: "Cancelar",
-    });
-    if (!isConfirmed) return;
-    const nuevasLista = filas.filter((f) => f.id !== id);
-    const res = await onGuardar(nuevasLista);
-    if (res?.ok) {
-      setFilas(nuevasLista);
-      setEditandoId((prev) => (prev === id ? null : prev));
-      Swal.fire({ icon: "success", title: "Repuesto quitado", timer: 1200, showConfirmButton: false });
-    }
-  };
-
-  const finalizarEdicion = async () => {
-    const id = editandoId;
-    const fila = filas.find((f) => f.id === id);
-    if (fila) {
-      if (!(fila.repuesto || "").trim())
-        return Swal.fire({ icon: "warning", title: "Atención", text: "El repuesto es obligatorio." });
-      if (!(Number(fila.cantidad) > 0))
-        return Swal.fire({ icon: "warning", title: "Atención", text: "La cantidad es obligatoria." });
-      if (!(fila.responsable || "").trim())
-        return Swal.fire({ icon: "warning", title: "Atención", text: "El responsable es obligatorio." });
-    }
-    const esNueva = nuevas.has(id);
-    const res = await onGuardar(filas);
-    if (res?.ok) {
-      setEditandoId(null);
-      setNuevas((prev) => { const n = new Set(prev); n.delete(id); return n; });
-      Swal.fire({ icon: "success", title: esNueva ? "Repuesto agregado" : "Repuesto editado", timer: 1200, showConfirmButton: false });
-    }
-  };
-
-  const total = filas.reduce(
-    (s, f) => s + (Number(f.cantidad) || 0) * (Number(f.precio) || 0),
-    0
-  );
-
-  const exportarExcel = async () => {
-    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const titulo = `Repuestos - ${reparacion?.reparacion || "reparación"} (${patente} ${marca})`;
-    const columnas = ["#", "Repuesto", "Cantidad", "Precio", "Proveedor", "Responsable", "Estado", "Observaciones"];
-
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Repuestos");
-
-    ws.mergeCells(1, 1, 1, columnas.length);
-    const celdaTitulo = ws.getCell("A1");
-    celdaTitulo.value = titulo;
-    celdaTitulo.font = { bold: true, underline: true, size: 14 };
-    celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 22;
-
-    ws.mergeCells(2, 1, 2, 4);
-    const celdaFecha = ws.getCell("A2");
-    celdaFecha.value = `Fecha: ${fechaHoy}`;
-    celdaFecha.alignment = { horizontal: "left" };
-    ws.getRow(2).height = 16;
-
-    ws.addRow([]);
-
-    const thinBorder = {
-      top: { style: "thin", color: { argb: "FFE0E0E0" } },
-      left: { style: "thin", color: { argb: "FFE0E0E0" } },
-      bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
-      right: { style: "thin", color: { argb: "FFE0E0E0" } },
-    };
-
-    const filaEnc = ws.addRow(columnas);
-    filaEnc.eachCell((cell) => {
-      cell.font = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFA0A0A0" } },
-        left: { style: "thin", color: { argb: "FFA0A0A0" } },
-        bottom: { style: "medium", color: { argb: "FF808080" } },
-        right: { style: "thin", color: { argb: "FFA0A0A0" } },
-      };
-    });
-    ws.getRow(4).height = 18;
-
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
-
-    filas.forEach((r, idx) => {
-      const fila = ws.addRow([
-        idx + 1,
-        r.repuesto || "-",
-        Number(r.cantidad) || 0,
-        Number(r.precio) || 0,
-        r.proveedor || "-",
-        r.responsable || "-",
-        r.estado || "Pedido",
-        r.observaciones || "-",
-      ]);
-
-      const isOdd = idx % 2 === 1;
-      fila.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        cell.border = thinBorder;
-        if (isOdd) cell.fill = zebraFill;
-      });
-      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(8).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(4).numFmt = '"$"#,##0';
-    });
-
-    ws.columns = [
-      { width: 6 },  // #
-      { width: 25 }, // Repuesto
-      { width: 10 }, // Cantidad
-      { width: 15 }, // Precio
-      { width: 20 }, // Proveedor
-      { width: 18 }, // Responsable
-      { width: 14 }, // Estado
-      { width: 25 }, // Observaciones
-    ];
-
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `repuestos_${patente}.xlsx`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <Container className="py-4">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center" }} className="mb-4">
-        <div></div>
-        <h4 className="mb-0 text-center">
-          Repuestos - {reparacion?.reparacion || "reparación"}
-          <small className="text-muted ms-2" style={{ fontSize: "1rem", fontWeight: 400 }}>
-            {patente} {marca}
-          </small>
-        </h4>
-        <div className="d-flex gap-2 justify-content-end">
-          <Button variant="outline-dark" size="sm" onClick={exportarExcel}>
-            Excel
-          </Button>
-        </div>
-      </div>
-
-      <div className="d-flex gap-2 mb-4">
-        {!readOnly && (
-          <Button variant="outline-primary" size="sm" onClick={agregar}>
-            Agregar repuesto
-          </Button>
-        )}
-        <Button
-          size="sm"
-          style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}
-          onClick={onVolver}
+      {/* Cuerpo Principal: Master-Detail (Lista de Tareas a la Izq + Detalle de Taller a la Der) */}
+      <div className="flex-grow-1 p-3 d-flex gap-3" style={{ overflow: "hidden" }}>
+        {/* Panel Izquierdo: Lista de Tareas Cargadas */}
+        <div
+          className="d-flex flex-column bg-white rounded-4 shadow-sm border p-3 flex-shrink-0"
+          style={{ width: "370px", borderColor: "#cbd5e1", overflow: "hidden" }}
         >
-          Volver a Reparaciones
-        </Button>
-      </div>
+          {/* Cabecera de Lista */}
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <span className="fw-semibold text-dark small">Tareas Registradas ({trabajos.length})</span>
+          </div>
 
-      <div style={{ maxHeight: "78vh", overflowY: "auto" }}>
-        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ fontSize: "0.78rem" }}>
-          <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-            <tr className="fw-normal">
-              <th className="fw-normal" style={{ width: 40 }}>#</th>
-              <th className="fw-normal">Repuesto</th>
-              <th className="fw-normal" style={{ width: 65 }}>Cantidad</th>
-              <th className="fw-normal" style={{ width: 110 }}>Precio</th>
-              <th className="fw-normal" style={{ width: 140 }}>Proveedor</th>
-              <th className="fw-normal" style={{ width: 220 }}>Responsable</th>
-              <th className="fw-normal" style={{ width: 115 }}>Estado</th>
-              <th className="fw-normal" style={{ width: 180 }}>Observaciones</th>
-              {!readOnly && <th className="fw-normal" style={{ width: 120 }}>Acciones</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filas.length === 0 && (
-              <tr>
-                <td colSpan={readOnly ? 8 : 9} className="text-muted py-3">
-                  Sin repuestos cargados
-                </td>
-              </tr>
+          {/* Píldoras de Filtro (3 en una sola fila horizontal) */}
+          <div className="d-flex align-items-center gap-1.5 mb-3 pb-2.5 border-bottom flex-nowrap">
+            {[
+              { id: "pendientes_en_proceso", label: "Pendientes / En proceso" },
+              { id: "Terminadas", label: "Terminadas" },
+              { id: "todas", label: "Todas" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setFiltroEstado(f.id)}
+                className={`btn btn-sm rounded-pill px-2 py-1 text-nowrap flex-grow-1 text-center ${
+                  filtroEstado === f.id ? "btn-dark text-white shadow-sm" : "btn-light text-secondary border"
+                }`}
+                style={{ fontSize: "0.71rem", letterSpacing: "-0.2px" }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Lista scrolleable de tarjetas de tareas con espaciado cómodo */}
+          <div className="flex-grow-1 pe-1" style={{ overflowY: "auto" }}>
+            {tareasFiltradas.length === 0 && (
+              <div className="text-center py-4 text-muted small">
+                <i className="bi bi-clipboard2-check fs-2 d-block mb-1 opacity-50"></i>
+                No hay tareas con este filtro.
+              </div>
             )}
-            {filas.map((f, idx) => {
-              const editando = editandoId === f.id;
+
+            {tareasFiltradas.map((t) => {
+              const isSelected = tareaSeleccionada?._id === t._id;
+              const estado = t.estado || "Pendiente";
+              let badgeColor = "bg-secondary";
+              if (estado === "En proceso" || estado === "en proceso") badgeColor = "bg-warning text-dark";
+              if (estado === "Terminada" || estado === "terminada" || estado === "Terminado") badgeColor = "bg-success";
+
               return (
-                <tr key={f.id}>
-                  <td className="text-muted">{idx + 1}</td>
-                  <td className="text-start">
-                    {editando ? (
-                      <Form.Control
-                        size="sm"
-                        value={f.repuesto}
-                        onChange={(e) => editar(f.id, "repuesto", e.target.value)}
-                      />
-                    ) : (
-                      f.repuesto || "-"
-                    )}
-                  </td>
-                  <td>
-                    {editando ? (
-                      <Form.Control
-                        type="number"
-                        size="sm"
-                        value={f.cantidad}
-                        onChange={(e) => editar(f.id, "cantidad", e.target.value)}
-                      />
-                    ) : (
-                      Number(f.cantidad) || 0
-                    )}
-                  </td>
-                  <td>
-                    {editando ? (
-                      <InputMoneda
-                        value={f.precio}
-                        onChange={(v) => editar(f.id, "precio", v)}
-                      />
-                    ) : (
-                      pesos(f.precio)
-                    )}
-                  </td>
-                  <td>
-                    {editando ? (
-                      <Form.Control
-                        size="sm"
-                        value={f.proveedor}
-                        onChange={(e) => editar(f.id, "proveedor", e.target.value)}
-                      />
-                    ) : (
-                      f.proveedor || "-"
-                    )}
-                  </td>
-                  <td>
-                    {editando ? (
-                      <>
-                        <Form.Select
-                          size="sm"
-                          value={
-                            responsablesAlta.includes(f.responsable)
-                              ? f.responsable
-                              : (f.responsable || otroResp.has(f.id)) ? "__otro__" : ""
-                          }
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "__otro__") {
-                              setOtroResp((prev) => new Set(prev).add(f.id));
-                              editar(f.id, "responsable", "");
-                            } else {
-                              setOtroResp((prev) => { const n = new Set(prev); n.delete(f.id); return n; });
-                              editar(f.id, "responsable", v);
-                            }
-                          }}
-                        >
-                          <option value="">Seleccionar...</option>
-                          {responsablesAlta.map((r) => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                          <option value="__otro__">Otro...</option>
-                        </Form.Select>
-                        {(otroResp.has(f.id) || (f.responsable && !responsablesAlta.includes(f.responsable))) && (
-                          <Form.Control
-                            size="sm"
-                            className="mt-1"
-                            placeholder="Nombre"
-                            value={f.responsable}
-                            onChange={(e) => editar(f.id, "responsable", e.target.value)}
-                          />
-                        )}
-                      </>
-                    ) : (
-                      f.responsable || "-"
-                    )}
-                  </td>
-                  <td>
-                    {editando ? (
-                      <Form.Select
-                        size="sm"
-                        value={f.estado || "Pedido"}
-                        onChange={(e) => editar(f.id, "estado", e.target.value)}
-                      >
-                        {ESTADOS_REP.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    ) : (
-                      <span style={{ color: COLOR_ESTADO_REP[f.estado] || "#dee2e6", fontWeight: 600 }}>
-                        {f.estado || "-"}
+                <div
+                  key={t._id}
+                  onClick={() => setTareaSeleccionadaId(t._id)}
+                  className={`p-3 mb-2 rounded-3 border transition-all cursor-pointer ${
+                    isSelected ? "border-primary bg-primary-subtle shadow-sm" : "bg-light hover-bg-light"
+                  }`}
+                  style={{ cursor: "pointer", transition: "all 0.15s ease" }}
+                >
+                  {/* Fila superior con Fecha, Estado y Botón Borrar bien alineados */}
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <span className="small text-muted" style={{ fontSize: "0.75rem" }}>
+                      {formatF(t.fecha)}
+                    </span>
+                    <div className="d-flex align-items-center gap-2">
+                      <span className={`badge ${badgeColor} rounded-pill px-2 py-1 fw-normal`} style={{ fontSize: "0.68rem", fontWeight: "normal" }}>
+                        {estado}
                       </span>
-                    )}
-                  </td>
-                  <td className={editando ? "" : "text-start"}>
-                    {editando ? (
-                      <Form.Control
-                        size="sm"
-                        value={f.observaciones || ""}
-                        onChange={(e) => editar(f.id, "observaciones", e.target.value)}
-                      />
-                    ) : (
-                      f.observaciones || "-"
-                    )}
-                  </td>
-                  {!readOnly && (
-                    <td>
-                      <div className="d-flex gap-1 justify-content-center align-items-center">
-                        {editando ? (
-                          <Button size="sm" variant="outline-success" onClick={finalizarEdicion}>
-                            Listo
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline-warning" onClick={() => setEditandoId(f.id)}>
-                            Editar
-                          </Button>
-                        )}
-                        <Button size="sm" variant="outline-danger" onClick={() => borrar(f.id)}>
-                          Borrar
-                        </Button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
+                      <button
+                        type="button"
+                        onClick={(e) => handleEliminarTarea(t._id, e)}
+                        className="btn btn-sm btn-link text-danger p-0 ms-1 opacity-75 hover-opacity-100"
+                        title="Eliminar tarea"
+                        style={{ lineHeight: 1 }}
+                      >
+                        <i className="bi bi-trash3" style={{ fontSize: "0.85rem" }}></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="fw-semibold text-dark text-truncate small mb-1.5" title={t.diagnostico || t.descripcion}>
+                    {t.diagnostico || t.descripcion || "Reparación sin título"}
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: "0.72rem" }}>
+                    <span>{t.parte || "Mecánica general"}</span>
+                    {t.maquinaParada && <span className="text-danger fw-bold">🔴 Parada</span>}
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-          {filas.length > 0 && (
-            <tfoot>
-              <tr className="table-dark">
-                <td className="text-end" colSpan={3}>
-                  Total
-                </td>
-                <td>{pesos(total)}</td>
-                <td colSpan={readOnly ? 4 : 5} />
-              </tr>
-            </tfoot>
-          )}
-        </Table>
+          </div>
+        </div>
+
+        {/* Panel Derecho: Área de Diagnóstico y Plan de Reparación */}
+        {tareaSeleccionada ? (
+          <div
+            className="flex-grow-1 bg-white rounded-4 shadow-sm border p-4 d-flex flex-column"
+            style={{ borderColor: "#cbd5e1", overflowY: "auto" }}
+          >
+            {/* Cabecera de la Tarea Activa */}
+            <div className="d-flex flex-wrap align-items-center justify-content-between pb-3 mb-3 border-bottom gap-2">
+              <div>
+                <h5 className="text-dark mb-1 fs-5">
+                  Reparación
+                </h5>
+                <div className="small text-muted" style={{ fontSize: "0.82rem" }}>
+                  <div>Fecha de reporte: {formatF(tareaSeleccionada.fecha)}</div>
+                  <div className="mt-0.5">Categoría: <span className="fw-semibold text-dark">{tareaSeleccionada.parte || "Mecánica general"}</span></div>
+                </div>
+              </div>
+
+              {/* Botón Guardar */}
+              <div className="d-flex align-items-center gap-2">
+                <Button
+                  variant="dark"
+                  size="sm"
+                  className="rounded-3 px-3 py-1.5 d-flex align-items-center gap-1.5 shadow-sm"
+                  style={{ fontSize: "0.84rem" }}
+                  disabled={guardandoId === tareaSeleccionada._id}
+                  onClick={() => handleGuardarTarea(tareaSeleccionada)}
+                >
+                  {guardandoId === tareaSeleccionada._id ? (
+                    <span>Guardando...</span>
+                  ) : (
+                    <>
+                      <i className="bi bi-floppy-fill me-2"></i>
+                      <span>Guardar</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Fecha, Estado del Trabajo, Taller, Nombre Taller y Responsable */}
+            <Row className="g-3 mb-3">
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Fecha</Form.Label>
+                  <Form.Control
+                    type="date"
+                    max={hoyStr()}
+                    value={
+                      tareaSeleccionada.fecha
+                        ? typeof tareaSeleccionada.fecha === "string"
+                          ? tareaSeleccionada.fecha.split("T")[0]
+                          : new Date(tareaSeleccionada.fecha).toISOString().split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val && val > hoyStr()) {
+                        handleUpdateTarea(tareaSeleccionada._id, "fecha", hoyStr());
+                      } else {
+                        handleUpdateTarea(tareaSeleccionada._id, "fecha", val);
+                      }
+                    }}
+                    className="rounded-3 form-control-sm"
+                    style={{ fontSize: "0.85rem", height: "36px" }}
+                  />
+                </Form.Group>
+              </Col>
+
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
+                  <Form.Select
+                    value={tareaSeleccionada.estado || "Pendiente"}
+                    onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "estado", e.target.value)}
+                    className="rounded-3 form-select-sm"
+                    style={{ fontSize: "0.85rem", height: "36px" }}
+                  >
+                    <option value="Pendiente">🟡 Pendiente</option>
+                    <option value="En proceso">⚙️ En proceso</option>
+                    <option value="Terminada">🟢 Terminada</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Lugar / Taller</Form.Label>
+                  <div className="d-flex align-items-center" style={{ height: "36px" }}>
+                    <div
+                      className="d-inline-flex align-items-center justify-content-between gap-1 px-2.5 py-1 rounded-3 border bg-light w-100"
+                      style={{ fontSize: "0.82rem", height: "36px" }}
+                    >
+                      <span className={tareaSeleccionada.taller === "Tercero" ? "text-muted" : "fw-semibold text-dark"}>
+                        T. propio
+                      </span>
+                      <Form.Check
+                        type="switch"
+                        id="taller-toggle-switch"
+                        checked={tareaSeleccionada.taller === "Tercero"}
+                        onChange={(e) => {
+                          const esTercero = e.target.checked;
+                          handleUpdateTarea(tareaSeleccionada._id, "taller", esTercero ? "Tercero" : "Taller Propio");
+                        }}
+                        style={{ cursor: "pointer", marginBottom: 0, fontSize: "1rem" }}
+                      />
+                      <span className={tareaSeleccionada.taller === "Tercero" ? "fw-semibold text-dark" : "text-muted"}>
+                        Tercero
+                      </span>
+                    </div>
+                  </div>
+                </Form.Group>
+              </Col>
+
+              {tareaSeleccionada.taller === "Tercero" && (
+                <Col md={3}>
+                  <Form.Group>
+                    <Form.Label className="fw-semibold text-dark small mb-1">Nombre del taller</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={tareaSeleccionada.nombreTaller || ""}
+                      onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "nombreTaller", e.target.value)}
+                      placeholder="Nombre del taller"
+                      className="rounded-3 form-control-sm"
+                      style={{ fontSize: "0.85rem", height: "36px" }}
+                    />
+                  </Form.Group>
+                </Col>
+              )}
+
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 3 : 3}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={tareaSeleccionada.responsable || ""}
+                    onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "responsable", e.target.value)}
+                    className="rounded-3 form-control-sm"
+                    style={{ fontSize: "0.85rem", height: "36px" }}
+                    placeholder="Ej. Mecánico"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {/* Diagnóstico Detallado */}
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold text-dark small mb-1">Diagnóstico Detallado</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={tareaSeleccionada.diagnostico || ""}
+                onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "diagnostico", e.target.value)}
+                placeholder="Diagnóstico técnico del mecánico o análisis de la falla..."
+                className="rounded-3"
+                style={{ fontSize: "0.86rem" }}
+              />
+            </Form.Group>
+
+            {/* Reparaciones realizadas - Avance */}
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold text-dark small mb-1">Reparaciones realizadas - Avance</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={2}
+                value={tareaSeleccionada.reparacion || ""}
+                onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "reparacion", e.target.value)}
+                placeholder="Trabajo a realizar o avance de la reparación..."
+                className="rounded-3"
+                style={{ fontSize: "0.86rem" }}
+              />
+            </Form.Group>
+
+            {/* Sección de Repuestos Requeridos */}
+            <div className="border rounded-3 p-3 bg-light mb-3">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <div className="d-flex align-items-center gap-2">
+                  <i className="bi bi-box-seam-fill text-secondary"></i>
+                  <span className="fw-semibold text-dark small">Lista de Repuestos Requeridos</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  className="rounded-3 px-2 py-0.5"
+                  style={{ fontSize: "0.75rem" }}
+                  onClick={() => handleAgregarRepuesto(tareaSeleccionada._id)}
+                >
+                  <i className="bi bi-plus-lg me-1"></i>Agregar Repuesto
+                </Button>
+              </div>
+
+              {(!tareaSeleccionada.repuestos || tareaSeleccionada.repuestos.length === 0) ? (
+                <p className="text-muted small mb-0 py-1">No se han registrado repuestos requeridos para esta tarea.</p>
+              ) : (
+                <div className="table-responsive bg-white rounded-3 border">
+                  <Table size="sm" className="mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "35%" }}>Repuesto / Insumo</th>
+                        <th style={{ width: "15%" }}>Cantidad</th>
+                        <th style={{ width: "25%" }}>Estado</th>
+                        <th style={{ width: "20%" }}>Proveedor</th>
+                        <th style={{ width: "5%" }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tareaSeleccionada.repuestos.map((rep, idx) => (
+                        <tr key={idx}>
+                          <td>
+                            <Form.Control
+                              size="sm"
+                              type="text"
+                              value={rep.repuesto || ""}
+                              onChange={(e) => handleUpdateRepuesto(tareaSeleccionada._id, idx, "repuesto", e.target.value)}
+                              placeholder="Ej. Filtro de aceite"
+                              className="border-0 shadow-none p-1"
+                              style={{ fontSize: "0.8rem" }}
+                            />
+                          </td>
+                          <td>
+                            <Form.Control
+                              size="sm"
+                              type="number"
+                              min="1"
+                              value={rep.cantidad || 1}
+                              onChange={(e) => handleUpdateRepuesto(tareaSeleccionada._id, idx, "cantidad", Number(e.target.value))}
+                              className="border-0 shadow-none p-1"
+                              style={{ fontSize: "0.8rem", width: "60px" }}
+                            />
+                          </td>
+                          <td>
+                            <Form.Select
+                              size="sm"
+                              value={rep.estado || "Pedido"}
+                              onChange={(e) => handleUpdateRepuesto(tareaSeleccionada._id, idx, "estado", e.target.value)}
+                              className="border-0 shadow-none p-1"
+                              style={{ fontSize: "0.78rem" }}
+                            >
+                              {ESTADOS_REP.map((er) => (
+                                <option key={er} value={er}>{er}</option>
+                              ))}
+                            </Form.Select>
+                          </td>
+                          <td>
+                            <Form.Control
+                              size="sm"
+                              type="text"
+                              value={rep.proveedor || ""}
+                              onChange={(e) => handleUpdateRepuesto(tareaSeleccionada._id, idx, "proveedor", e.target.value)}
+                              placeholder="Proveedor"
+                              className="border-0 shadow-none p-1"
+                              style={{ fontSize: "0.8rem" }}
+                            />
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarRepuesto(tareaSeleccionada._id, idx)}
+                              className="btn btn-sm btn-link text-danger p-0"
+                              title="Eliminar repuesto"
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              )}
+            </div>
+
+            {/* Observaciones Generales */}
+            <Form.Group className="mb-0">
+              <Form.Label className="fw-semibold text-dark small mb-1">Observaciones / Notas Adicionales</Form.Label>
+              <Form.Control
+                type="text"
+                value={tareaSeleccionada.observaciones || ""}
+                onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "observaciones", e.target.value)}
+                placeholder="Comentarios sobre tiempos, entrega o pruebas finales..."
+                className="rounded-3"
+                style={{ fontSize: "0.85rem" }}
+              />
+            </Form.Group>
+          </div>
+        ) : (
+          <div className="flex-grow-1 bg-white rounded-4 shadow-sm border p-5 d-flex flex-column align-items-center justify-content-center text-muted" style={{ borderColor: "#cbd5e1" }}>
+            <i className="bi bi-tools fs-1 mb-2 opacity-50"></i>
+            <h5 className="fw-normal text-dark">Reparación</h5>
+            <p className="small mb-0 text-muted">Seleccione una tarea del listado para ver o registrar la reparación.</p>
+          </div>
+        )}
       </div>
-    </Container>
+    </div>
   );
 }
 

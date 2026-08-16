@@ -111,8 +111,8 @@ function CamionetasAltas() {
   const cargar = async () => {
     try {
       const res = await fetch(API);
-      const data = await res.json();
-      setCamionetas(data);
+      const data = res.ok ? await res.json() : [];
+      setCamionetas(Array.isArray(data) ? data : []);
     } catch {
       setCamionetas([]);
     }
@@ -272,7 +272,7 @@ function CamionetasAltas() {
       <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border border-dark overflow-visible">
         <Modal.Header closeButton>
           <Modal.Title>
-            <i className="bi bi-truck-front-fill me-2 text-primary"></i>
+            <i className="bi bi-car-front-fill me-2 text-primary"></i>
             {editando ? "Editar Camioneta" : "Nueva Camioneta"}
           </Modal.Title>
         </Modal.Header>

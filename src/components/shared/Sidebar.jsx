@@ -42,9 +42,22 @@ function Sidebar() {
 
   return (
     <nav className={`sidebar${hasOpen ? " sidebar--expanded" : ""}`}>
-      <div className="sidebar-brand">
-        <i className="bi bi-grid-3x3-gap-fill" style={{ fontSize: "1.4rem", minWidth: "24px" }}></i>
-        <span className="sidebar-label fw-bold">La Martina</span>
+      <div className="sidebar-brand d-flex align-items-center justify-content-center">
+        <img
+          src="/logo-la-martina.jpg"
+          alt="Logo"
+          style={{
+            height: "36px",
+            minWidth: "36px",
+            objectFit: "contain",
+            maskImage:
+              "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
+            maskComposite: "intersect",
+            WebkitMaskComposite: "destination-in",
+          }}
+        />
       </div>
 
       {links.map((link) =>

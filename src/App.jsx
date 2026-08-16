@@ -25,26 +25,11 @@ import TractoresGrupo from "./components/pages/TractoresGrupo";
 import ReparacionesTractor from "./components/pages/ReparacionesTractor";
 import ResumenReparacionesTractores from "./components/pages/ResumenReparacionesTractores";
 import Visitas from "./components/pages/Visitas";
+import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
+import CamionetaMenuReparaciones from "./components/pages/CamionetaMenuReparaciones";
+import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
 
 function App() {
-  if (isMobile) {
-    return (
-      <BrowserRouter>
-        <div className="app-wrapper">
-          <div className="layout-right">
-            <main>
-              <Routes>
-                <Route path="/visitas" element={<Visitas />} />
-                <Route path="*" element={<Navigate to="/visitas" replace />} />
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </div>
-      </BrowserRouter>
-    );
-  }
-
   return (
     <BrowserRouter>
       <div className="app-wrapper">
@@ -53,8 +38,10 @@ function App() {
           <main>
             <Routes>
               <Route path="/" element={<Inicio />} />
-              <Route path="/camionetas/resumen" element={<ResumenCamionetas />} />
               <Route path="/camionetas" element={<Camionetas />} />
+              <Route path="/camionetas/preventivo" element={<CamionetasPreventivo />} />
+              <Route path="/camionetas/reparaciones" element={<Navigate to="/camionetas/services/reparaciones" replace />} />
+              <Route path="/camionetas/resumen" element={<ResumenCamionetas />} />
               <Route path="/camionetas/altas" element={<CamionetasAltas />} />
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
               <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
@@ -70,7 +57,9 @@ function App() {
               <Route path="/camionetas/services/ultimo-service" element={<ServicesUltimoService />} />
               <Route path="/camionetas/services/reparaciones" element={<ServicesReparaciones />} />
               <Route path="/camionetas/services/reparaciones/resumen" element={<ResumenReparaciones />} />
-              <Route path="/camionetas/services/reparaciones/:camionetaId" element={<ReparacionesCamioneta />} />
+              <Route path="/camionetas/services/reparaciones/:camionetaId" element={<CamionetaMenuReparaciones />} />
+              <Route path="/camionetas/services/reparaciones/:camionetaId/reportar" element={<ReportarFallaCamioneta />} />
+              <Route path="/camionetas/services/reparaciones/:camionetaId/tareas" element={<ReparacionesCamioneta />} />
               <Route path="/camionetas/services/reparaciones/:camionetaId/tarea/:trabajoId" element={<TareaDetalle />} />
               <Route path="/camionetas/services/reparaciones/:camionetaId/historial" element={<HistorialReparaciones />} />
               <Route path="/visitas" element={<Visitas />} />

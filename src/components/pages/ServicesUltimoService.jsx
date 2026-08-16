@@ -51,23 +51,38 @@ function ServicesUltimoService() {
   const responsableVal = useWatch({ control, name: "responsable" });
 
   const cargarCamionetas = () =>
-    fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => {});
+    fetch("/api/camionetas")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setCamionetas(Array.isArray(d) ? d : []))
+      .catch(() => setCamionetas([]));
 
   const cargarParadas = () =>
     fetch("/api/paradas/abiertas/ids")
-      .then((r) => r.json())
-      .then((ids) => setParadasAbiertas(new Set(ids)))
+      .then((r) => (r.ok ? r.json() : []))
+      .then((ids) => setParadasAbiertas(new Set(Array.isArray(ids) ? ids : [])))
       .catch(() => setParadasAbiertas(new Set()));
 
   const cargarTabla = (anio) => Promise.all([
-    fetch(`/api/services/ultimos/${anio}`).then((r) => r.json()).then(setUltimos).catch(() => setUltimos([])),
-    fetch("/api/kilometros/ultimos").then((r) => r.json()).then(setUltimosKm).catch(() => setUltimosKm([])),
+    fetch(`/api/services/ultimos/${anio}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setUltimos(Array.isArray(d) ? d : []))
+      .catch(() => setUltimos([])),
+    fetch("/api/kilometros/ultimos")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setUltimosKm(Array.isArray(d) ? d : []))
+      .catch(() => setUltimosKm([])),
     cargarParadas(),
   ]);
 
   useEffect(() => {
-    fetch("/api/camionetas").then((r) => r.json()).then(setCamionetas).catch(() => setCamionetas([]));
-    fetch("/api/config").then((r) => r.json()).then((cfg) => setTelefonoAviso(cfg.telefonoAviso ?? "")).catch(() => {});
+    fetch("/api/camionetas")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setCamionetas(Array.isArray(d) ? d : []))
+      .catch(() => setCamionetas([]));
+    fetch("/api/config")
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((cfg) => setTelefonoAviso(cfg?.telefonoAviso ?? ""))
+      .catch(() => {});
     cargarParadas();
   }, []);
 

@@ -39,20 +39,22 @@ function ResumenCheckList() {
 
   useEffect(() => {
     fetch("/api/camionetas")
-      .then((r) => r.json())
-      .then(setCamionetas)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setCamionetas(Array.isArray(d) ? d : []))
       .catch(() => setCamionetas([]));
   }, []);
 
   useEffect(() => {
     fetch(`/api/programa-checklist/${año}`)
-      .then((r) => r.json())
-      .then(setProgramas)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setProgramas(Array.isArray(d) ? d : []))
       .catch(() => setProgramas([]));
   }, [año]);
 
   const getMes = (camionetaId, mes) => {
-    const prog = programas.find((p) => p.camioneta?._id === camionetaId);
+    const prog = Array.isArray(programas)
+      ? programas.find((p) => p.camioneta?._id === camionetaId)
+      : null;
     return prog?.[mes] ?? { estado: "pendiente", puntuacion: null };
   };
 
@@ -178,7 +180,7 @@ function ResumenCheckList() {
           style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "1rem", minWidth: "220px", cursor: "pointer" }}
         >
           <option value="">Todas las camionetas</option>
-          {camionetas.map((c) => (
+          {(Array.isArray(camionetas) ? camionetas : []).map((c) => (
             <option key={c._id} value={c._id}>{c.patente} — {c.marca}</option>
           ))}
         </select>
@@ -199,7 +201,7 @@ function ResumenCheckList() {
           </tr>
         </thead>
         <tbody>
-          {camionetas.filter((c) => !filtroCamioneta || c._id === filtroCamioneta).map((c, idx) => {
+          {(Array.isArray(camionetas) ? camionetas : []).filter((c) => !filtroCamioneta || c._id === filtroCamioneta).map((c, idx) => {
             const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
               .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
               .map(({ puntuacion }) => puntuacion);

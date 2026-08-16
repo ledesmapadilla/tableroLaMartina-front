@@ -117,8 +117,8 @@ function CamionetasCheckList() {
   // 1. Carga las camionetas
   useEffect(() => {
     fetch("/api/camionetas")
-      .then((r) => r.json())
-      .then(setCamionetas)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setCamionetas(Array.isArray(d) ? d : []))
       .catch(() => setCamionetas([]));
   }, []);
 
@@ -402,7 +402,7 @@ function CamionetasCheckList() {
               <Form.Label className="fw-semibold">Camioneta</Form.Label>
               <Form.Select style={{ width: "auto", appearance: "none", WebkitAppearance: "none", MozAppearance: "none", backgroundImage: "none", pointerEvents: "none", backgroundColor: "#e9ecef", cursor: "default" }} {...register("camioneta", { required: "Seleccioná una camioneta" })} value={camionetaId || ""} onChange={(e) => setValue("camioneta", e.target.value)} isInvalid={!!errors.camioneta}>
                 <option value="">— Seleccionar —</option>
-                {camionetas.map((c) => (
+                {(Array.isArray(camionetas) ? camionetas : []).map((c) => (
                   <option key={c._id} value={c._id}>{c.patente} — {c.marca}</option>
                 ))}
               </Form.Select>

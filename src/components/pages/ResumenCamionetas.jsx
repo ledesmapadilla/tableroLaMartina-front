@@ -38,15 +38,18 @@ function ResumenCamionetas() {
     setUnidadesParadas(null);
     setTareasPendientes(null);
     Promise.all([
-      fetch("/api/camionetas").then((r) => r.json()).catch(() => []),
-      fetch("/api/services/ultimos").then((r) => r.json()).catch(() => []),
-      fetch("/api/kilometros/ultimos").then((r) => r.json()).catch(() => []),
+      fetch("/api/camionetas").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/services/ultimos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/kilometros/ultimos").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([camsList, ultimos, ultimosKm]) => {
-      setCamionetas(camsList);
-      const count = ultimosKm.filter((km) => {
+      const safeCams = Array.isArray(camsList) ? camsList : [];
+      const safeUltimos = Array.isArray(ultimos) ? ultimos : [];
+      const safeUltimosKm = Array.isArray(ultimosKm) ? ultimosKm : [];
+      setCamionetas(safeCams);
+      const count = safeUltimosKm.filter((km) => {
         const camId = (km.camioneta?._id ?? km.camioneta)?.toString();
-        const camObj = camsList.find((c) => c._id?.toString() === camId);
-        const srv = ultimos.find((u) => {
+        const camObj = safeCams.find((c) => c._id?.toString() === camId);
+        const srv = safeUltimos.find((u) => {
           const srvId = (u.camioneta?._id ?? u.camioneta)?.toString();
           return srvId === camId;
         });
@@ -56,12 +59,26 @@ function ResumenCamionetas() {
       }).length;
       setServiciosAtrasados(count);
     }).catch(() => setServiciosAtrasados(0));
-    fetch("/api/paradas/abiertas/count").then((r) => r.json()).then((d) => setUnidadesParadas(d.count)).catch(() => setUnidadesParadas(0));
-    fetch("/api/trabajos-camioneta/pendientes/ids").then((r) => r.json()).then((ids) => setTareasPendientes(ids.length)).catch(() => setTareasPendientes(0));
-    fetch(`/api/programa-checklist/${anio}`).then((r) => r.json()).then(setProgramas).catch(() => setProgramas([]));
+
+    fetch("/api/paradas/abiertas/count")
+      .then((r) => (r.ok ? r.json() : { count: 0 }))
+      .then((d) => setUnidadesParadas(d && typeof d.count === "number" ? d.count : 0))
+      .catch(() => setUnidadesParadas(0));
+
+    fetch("/api/trabajos-camioneta/pendientes/ids")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((ids) => setTareasPendientes(Array.isArray(ids) ? ids.length : 0))
+      .catch(() => setTareasPendientes(0));
+
+    fetch(`/api/programa-checklist/${anio}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setProgramas(Array.isArray(d) ? d : []))
+      .catch(() => setProgramas([]));
+
     fetch("/api/kilometros")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((kms) => {
+        if (!Array.isArray(kms)) return;
         const res = {};
         kms.forEach((km) => {
           let mesReg, anioReg;

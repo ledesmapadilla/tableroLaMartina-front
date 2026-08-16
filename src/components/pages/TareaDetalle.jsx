@@ -72,7 +72,7 @@ function TareaDetalle() {
   /* ── Cargar lista de responsables (de las camionetas) ── */
   useEffect(() => {
     fetch("/api/camionetas")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         const arr = Array.isArray(data) ? data : [];
         const lista = [...new Set(

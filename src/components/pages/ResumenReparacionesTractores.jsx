@@ -56,14 +56,16 @@ function ResumenReparacionesTractores() {
 
   useEffect(() => {
     fetch("/api/trabajos-tractor")
-      .then((r) => r.json())
-      .then(setTrabajos)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setTrabajos(Array.isArray(data) ? data : []))
       .catch(() => setTrabajos([]));
 
     fetch("/api/tractores")
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : []))
       .then((tracs) => {
-        setListaResponsables([...new Set(tracs.map((t) => t.supervisor).filter(Boolean))].sort());
+        if (Array.isArray(tracs)) {
+          setListaResponsables([...new Set(tracs.map((t) => t.supervisor).filter(Boolean))].sort());
+        }
       })
       .catch(() => {});
   }, []);

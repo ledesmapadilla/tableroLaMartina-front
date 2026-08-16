@@ -3,30 +3,41 @@ import { useNavigate } from "react-router-dom";
 
 const tarjetas = [
   {
-    id: "kilometros",
-    titulo: "Kilómetros",
-    subtitulo: "Registro y control de odómetros mensuales",
-    badge: "Odómetros",
-    ruta: "/camionetas/services/kilometros",
-    bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-    hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-    accentColor: "#3b82f6",
-    icono: "bi bi-speedometer2",
-  },
-  {
-    id: "ultimo-service",
-    titulo: "Último Service",
-    subtitulo: "Control de fechas e intervalos cada 10.000 Km",
-    badge: "Intervalos & Alertas",
-    ruta: "/camionetas/services/ultimo-service",
+    id: "services",
+    titulo: "Services",
+    subtitulo: "Control de Km y último service",
+    badge: "Kilometraje & Intervalos",
+    ruta: "/camionetas/services",
     bg: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
     hoverBg: "linear-gradient(135deg, #052e16 0%, #14532d 100%)",
     accentColor: "#10b981",
-    icono: "bi bi-calendar-check-fill",
+    icono: "bi bi-gear-fill",
+  },
+  {
+    id: "checklist",
+    titulo: "Check List",
+    subtitulo: "Control bimestral de estado y novedades",
+    badge: "Control Bimestral",
+    ruta: "/camionetas/checklist",
+    bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    accentColor: "#3b82f6",
+    icono: "bi bi-clipboard2-check-fill",
+  },
+  {
+    id: "tablero",
+    titulo: "Tablero de Control",
+    subtitulo: "Métricas consolidadas anuales y mensuales",
+    badge: "Resumen General",
+    ruta: "/camionetas/resumen",
+    bg: "linear-gradient(135deg, #4c1d95 0%, #5b21b6 100%)",
+    hoverBg: "linear-gradient(135deg, #2e1065 0%, #4c1d95 100%)",
+    accentColor: "#a855f7",
+    icono: "bi bi-speedometer",
   },
 ];
 
-function CamionetasServices() {
+function CamionetasPreventivo() {
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
 
@@ -42,7 +53,7 @@ function CamionetasServices() {
         overflow: "hidden",
       }}
     >
-      {/* Barra de Cabecera Institucional */}
+      {/* Barra de Cabecera */}
       <div
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
@@ -53,16 +64,16 @@ function CamionetasServices() {
             style={{
               width: "34px",
               height: "34px",
-              backgroundColor: "#10b981",
+              backgroundColor: "#3b82f6",
               color: "#fff",
               fontSize: "1.15rem",
-              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
             }}
           >
-            <i className="bi bi-gear-fill"></i>
+            <i className="bi bi-shield-check"></i>
           </div>
           <div className="d-flex align-items-center gap-2">
-            <span className="text-white fs-6">Camionetas - Services</span>
+            <span className="text-white fs-6">Camionetas - Mantenimiento Preventivo</span>
           </div>
         </div>
 
@@ -75,14 +86,6 @@ function CamionetasServices() {
           >
             <i className="bi bi-arrow-left"></i>
             <span>Volver</span>
-          </button>
-          <button
-            onClick={() => navigate("/camionetas/preventivo")}
-            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-            style={{ fontSize: "0.82rem" }}
-          >
-            <i className="bi bi-shield-check"></i>
-            <span>Preventivo</span>
           </button>
           <button
             onClick={() => navigate("/camionetas")}
@@ -103,7 +106,7 @@ function CamionetasServices() {
         </div>
       </div>
 
-      {/* Contenedor de Tarjetas (Kilómetros y Último Service) */}
+      {/* Contenedor de Tarjetas (Services, Check List, Tablero de Control) */}
       <div
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
         style={{ overflow: "hidden" }}
@@ -111,8 +114,8 @@ function CamionetasServices() {
         <div
           className="d-flex justify-content-center align-items-center"
           style={{
-            gap: "2.5rem",
-            maxWidth: "880px",
+            gap: "2rem",
+            maxWidth: "1080px",
             width: "100%",
           }}
         >
@@ -121,12 +124,12 @@ function CamionetasServices() {
             return (
               <div
                 key={t.ruta}
-                className="card-seccion-services d-flex flex-column align-items-center justify-content-center p-4 text-center"
+                className="card-seccion-preventivo d-flex flex-column align-items-center justify-content-center p-4 text-center"
                 style={{
                   background: isHovered ? t.hoverBg : t.bg,
                   borderRadius: "22px",
-                  width: "360px",
-                  height: "290px",
+                  width: "310px",
+                  height: "285px",
                   boxShadow: isHovered
                     ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
                     : "0 10px 25px -4px rgba(0, 0, 0, 0.25)",
@@ -147,18 +150,18 @@ function CamionetasServices() {
                 <div
                   className="mb-3 d-flex align-items-center justify-content-center"
                   style={{
-                    width: "72px",
-                    height: "72px",
+                    width: "68px",
+                    height: "68px",
                     borderRadius: "18px",
                     backgroundColor: "rgba(255, 255, 255, 0.1)",
                     border: "1px solid rgba(255, 255, 255, 0.16)",
                     boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
                   }}
                 >
-                  <i className={t.icono} style={{ fontSize: "2.4rem", color: t.accentColor }}></i>
+                  <i className={t.icono} style={{ fontSize: "2.3rem", color: t.accentColor }}></i>
                 </div>
 
-                <h3 className="fw-bold mb-1.5 tracking-tight text-white" style={{ fontSize: "1.45rem" }}>
+                <h3 className="fw-bold mb-1.5 tracking-tight text-white" style={{ fontSize: "1.35rem" }}>
                   {t.titulo}
                 </h3>
 
@@ -168,14 +171,14 @@ function CamionetasServices() {
                     backgroundColor: "rgba(255, 255, 255, 0.16)",
                     border: "1px solid rgba(255, 255, 255, 0.22)",
                     color: "#fff",
-                    fontSize: "0.75rem",
+                    fontSize: "0.72rem",
                     letterSpacing: "0.4px",
                   }}
                 >
                   {t.badge}
                 </span>
 
-                <p className="small mb-0 text-light opacity-75 px-3" style={{ fontSize: "0.85rem", lineHeight: "1.35" }}>
+                <p className="small mb-0 text-light opacity-75 px-2" style={{ fontSize: "0.83rem", lineHeight: "1.35" }}>
                   {t.subtitulo}
                 </p>
               </div>
@@ -187,4 +190,4 @@ function CamionetasServices() {
   );
 }
 
-export default CamionetasServices;
+export default CamionetasPreventivo;

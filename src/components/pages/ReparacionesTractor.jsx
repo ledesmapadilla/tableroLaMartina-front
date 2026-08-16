@@ -106,8 +106,8 @@ function ReparacionesTractor() {
   useEffect(() => {
     setCargando(true);
     Promise.all([
-      fetch(`/api/trabajos-tractor/tractor/${tractorId}`).then((r) => r.json()),
-      fetch("/api/tractores").then((r) => r.json())
+      fetch(`/api/trabajos-tractor/tractor/${tractorId}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => [])
     ])
       .then(([trabajosData, tractoresData]) => {
         if (Array.isArray(tractoresData)) {
