@@ -606,7 +606,7 @@ function ServicesUltimoService() {
             <div className="d-flex align-items-center gap-2 bg-white px-3 py-1.5 rounded-3 border shadow-sm">
               <i className="bi bi-whatsapp text-success" style={{ fontSize: "1.1rem" }}></i>
               <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                Número de aviso:
+                J. Posleman:
               </span>
               <input
                 type="text"
@@ -649,33 +649,36 @@ function ServicesUltimoService() {
           </div>
         </div>
 
-        {/* Tabla de Último Service */}
+        {/* Tabla de Último Service (Ancho compactado y centrado) */}
         <div
           className="flex-grow-1 shadow-sm rounded-3 bg-white"
           style={{
             overflowY: "auto",
             overflowX: "auto",
             border: "1px solid #cbd5e1",
+            maxWidth: "1020px",
+            width: "100%",
+            margin: "0 auto",
           }}
         >
           <Table
             hover
             size="sm"
             className="text-center align-middle mb-0"
-            style={{ whiteSpace: "nowrap", fontSize: "0.8rem", width: "100%" }}
+            style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}
           >
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1e293b", color: "#fff" }}>
               <tr className="fw-normal align-middle">
-                <th style={{ width: "32px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>#</th>
-                <th style={{ width: "78px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Acción</th>
-                <th style={{ width: "160px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Patente</th>
-                <th style={{ width: "130px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>Responsable</th>
-                <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha</th>
-                <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Km Últ. Service</th>
-                <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Km Próx. Service</th>
-                <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Km Actuales</th>
-                <th style={{ width: "36px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 2px", fontWeight: "normal" }}>Obs.</th>
-                <th style={{ width: "120px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>Estado</th>
+                <th style={{ width: "30px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 2px", fontWeight: "normal" }}>#</th>
+                <th style={{ width: "70px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 2px", fontWeight: "normal" }}>Acción</th>
+                <th style={{ width: "140px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 6px", textAlign: "left", fontWeight: "normal" }}>Patente</th>
+                <th style={{ width: "120px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 6px", fontWeight: "normal" }}>Responsable</th>
+                <th style={{ width: "80px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Fecha</th>
+                <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Km Últ. Srv.</th>
+                <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Km Próx. Srv.</th>
+                <th style={{ width: "80px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Km Actuales</th>
+                <th style={{ width: "32px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 2px", fontWeight: "normal" }}>Obs.</th>
+                <th style={{ width: "110px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -873,140 +876,138 @@ function ServicesUltimoService() {
         <Modal.Header closeButton style={{ backgroundColor: "#1e293b", color: "#fff", borderTopLeftRadius: "15px", borderTopRightRadius: "15px", padding: "12px 18px" }}>
           <Modal.Title className="fs-6 fw-bold mb-0">Cargar Service</Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-3 bg-white">
-          <Form onSubmit={handleSubmit(onSubmit)}>
-            <Form.Group className="mb-2.5" style={{ maxWidth: "280px" }}>
-              <Form.Label className="fw-semibold small text-dark mb-1">Fecha</Form.Label>
-              <Form.Control
-                type="date"
-                size="sm"
-                className="rounded-3"
-                style={{ maxWidth: "220px" }}
-                {...register("fecha", { required: "Requerido" })}
-                isInvalid={!!errors.fecha}
-              />
-              <Form.Control.Feedback type="invalid">{errors.fecha?.message}</Form.Control.Feedback>
-            </Form.Group>
+        <Modal.Body className="p-4 bg-white">
+          <Form onSubmit={handleSubmit(onSubmit)} className="d-flex flex-column align-items-center">
+            <div style={{ width: "100%", maxWidth: "280px" }}>
+              <Form.Group className="mb-2.5">
+                <Form.Label className="fw-semibold small text-dark mb-1">Fecha</Form.Label>
+                <Form.Control
+                  type="date"
+                  size="sm"
+                  className="rounded-3"
+                  {...register("fecha", { required: "Requerido" })}
+                  isInvalid={!!errors.fecha}
+                />
+                <Form.Control.Feedback type="invalid">{errors.fecha?.message}</Form.Control.Feedback>
+              </Form.Group>
 
-            <Form.Group className="mb-2.5" style={{ maxWidth: "300px" }}>
-              <Form.Label className="fw-semibold small text-dark mb-1">Camioneta</Form.Label>
-              <Form.Select
-                size="sm"
-                className="rounded-3"
-                style={{ maxWidth: "260px" }}
-                {...register("camioneta", { required: "Seleccioná una camioneta" })}
-                isInvalid={!!errors.camioneta}
-              >
-                <option value="">— Seleccionar —</option>
-                {camionetas.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.patente} — {c.marca} {c.responsable ? `(${c.responsable})` : ""}
-                  </option>
-                ))}
-              </Form.Select>
-              <Form.Control.Feedback type="invalid">{errors.camioneta?.message}</Form.Control.Feedback>
-            </Form.Group>
-
-            <Form.Group className="mb-2.5" ref={dropRef} style={{ position: "relative", maxWidth: "300px" }}>
-              <Form.Label className="fw-semibold small text-dark mb-1">Responsable</Form.Label>
-              <input type="hidden" {...register("responsable")} />
-              <Form.Control
-                size="sm"
-                className="rounded-3"
-                style={{ maxWidth: "260px" }}
-                placeholder="— Seleccionar o escribir —"
-                value={dropOpen ? filtro : responsableVal}
-                onChange={(e) => {
-                  setFiltro(e.target.value);
-                  setValue("responsable", e.target.value);
-                }}
-                onFocus={() => {
-                  setFiltro(responsableVal);
-                  setDropOpen(true);
-                }}
-                autoComplete="off"
-              />
-              {dropOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "100%",
-                    left: 0,
-                    width: "260px",
-                    backgroundColor: "#fff",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                    zIndex: 1060,
-                    maxHeight: "180px",
-                    overflowY: "auto",
-                  }}
+              <Form.Group className="mb-2.5">
+                <Form.Label className="fw-semibold small text-dark mb-1">Camioneta</Form.Label>
+                <Form.Select
+                  size="sm"
+                  className="rounded-3"
+                  {...register("camioneta", { required: "Seleccioná una camioneta" })}
+                  isInvalid={!!errors.camioneta}
                 >
-                  {responsablesUnicos
-                    .filter((r) => r.toLowerCase().includes(filtro.toLowerCase()))
-                    .map((r) => (
-                      <div
-                        key={r}
-                        style={{
-                          padding: "6px 12px",
-                          cursor: "pointer",
-                          fontSize: "0.84rem",
-                          backgroundColor: responsableVal === r ? "#f1f5f9" : "transparent",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
-                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = responsableVal === r ? "#f1f5f9" : "transparent")}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setValue("responsable", r);
-                          setFiltro("");
-                          setDropOpen(false);
-                        }}
-                      >
-                        {r}
-                      </div>
-                    ))}
-                </div>
-              )}
-            </Form.Group>
+                  <option value="">— Seleccionar —</option>
+                  {camionetas.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.patente} — {c.marca} {c.responsable ? `(${c.responsable})` : ""}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Form.Control.Feedback type="invalid">{errors.camioneta?.message}</Form.Control.Feedback>
+              </Form.Group>
 
-            <Form.Group className="mb-2.5" style={{ maxWidth: "280px" }}>
-              <Form.Label className="fw-semibold small text-dark mb-1">Km Último Service</Form.Label>
-              <Form.Control
-                type="number"
-                size="sm"
-                className="rounded-3"
-                style={{ maxWidth: "220px" }}
-                {...register("kms", {
-                  validate: (v) => {
-                    if (!v && v !== 0) return true;
-                    const reg = ultimos.find((u) => (u.camioneta?._id?.toString() ?? u.camioneta?.toString()) === camionetaId);
-                    if (reg?.kms && Number(v) < reg.kms)
-                      return `No puede ser menor al valor actual (${reg.kms.toLocaleString("es-AR")} km)`;
-                    return true;
-                  },
-                })}
-                isInvalid={!!errors.kms}
-              />
-              <Form.Control.Feedback type="invalid">{errors.kms?.message}</Form.Control.Feedback>
-            </Form.Group>
+              <Form.Group className="mb-2.5" ref={dropRef} style={{ position: "relative" }}>
+                <Form.Label className="fw-semibold small text-dark mb-1">Responsable</Form.Label>
+                <input type="hidden" {...register("responsable")} />
+                <Form.Control
+                  size="sm"
+                  className="rounded-3"
+                  placeholder="— Seleccionar o escribir —"
+                  value={dropOpen ? filtro : responsableVal}
+                  onChange={(e) => {
+                    setFiltro(e.target.value);
+                    setValue("responsable", e.target.value);
+                  }}
+                  onFocus={() => {
+                    setFiltro(responsableVal);
+                    setDropOpen(true);
+                  }}
+                  autoComplete="off"
+                />
+                {dropOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      left: 0,
+                      width: "100%",
+                      backgroundColor: "#fff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "8px",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                      zIndex: 1060,
+                      maxHeight: "180px",
+                      overflowY: "auto",
+                    }}
+                  >
+                    {responsablesUnicos
+                      .filter((r) => r.toLowerCase().includes(filtro.toLowerCase()))
+                      .map((r) => (
+                        <div
+                          key={r}
+                          style={{
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                            fontSize: "0.84rem",
+                            backgroundColor: responsableVal === r ? "#f1f5f9" : "transparent",
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = responsableVal === r ? "#f1f5f9" : "transparent")}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setValue("responsable", r);
+                            setFiltro("");
+                            setDropOpen(false);
+                          }}
+                        >
+                          {r}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </Form.Group>
 
-            <Form.Group className="mb-3" style={{ maxWidth: "320px" }}>
-              <Form.Label className="fw-semibold small text-dark mb-1">Observaciones</Form.Label>
-              <Form.Control as="textarea" rows={2} size="sm" className="rounded-3" placeholder="Opcional..." {...register("observaciones")} />
-            </Form.Group>
+              <Form.Group className="mb-2.5">
+                <Form.Label className="fw-semibold small text-dark mb-1">Km Último Service</Form.Label>
+                <Form.Control
+                  type="number"
+                  size="sm"
+                  className="rounded-3"
+                  {...register("kms", {
+                    validate: (v) => {
+                      if (!v && v !== 0) return true;
+                      const reg = ultimos.find((u) => (u.camioneta?._id?.toString() ?? u.camioneta?.toString()) === camionetaId);
+                      if (reg?.kms && Number(v) < reg.kms)
+                        return `No puede ser menor al valor actual (${reg.kms.toLocaleString("es-AR")} km)`;
+                      return true;
+                    },
+                  })}
+                  isInvalid={!!errors.kms}
+                />
+                <Form.Control.Feedback type="invalid">{errors.kms?.message}</Form.Control.Feedback>
+              </Form.Group>
 
-            <div className="d-flex justify-content-end gap-2 pt-2 border-top">
-              <Button variant="outline-secondary" size="sm" onClick={cerrarModal} className="rounded-3 px-3 py-1" style={{ fontSize: "0.8rem" }}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="rounded-3 px-3.5 py-1 text-white"
-                style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.8rem" }}
-              >
-                <i className="bi bi-check-lg me-1"></i>Guardar
-              </Button>
+              <Form.Group className="mb-3">
+                <Form.Label className="fw-semibold small text-dark mb-1">Observaciones</Form.Label>
+                <Form.Control as="textarea" rows={2} size="sm" className="rounded-3" placeholder="Opcional..." {...register("observaciones")} />
+              </Form.Group>
+
+              <div className="d-flex justify-content-center gap-2 pt-2 border-top">
+                <Button variant="outline-secondary" size="sm" onClick={cerrarModal} className="rounded-3 px-3 py-1" style={{ fontSize: "0.8rem" }}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="rounded-3 px-3.5 py-1 text-white"
+                  style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.8rem" }}
+                >
+                  <i className="bi bi-check-lg me-1"></i>Guardar
+                </Button>
+              </div>
             </div>
           </Form>
         </Modal.Body>
