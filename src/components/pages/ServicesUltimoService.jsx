@@ -558,9 +558,12 @@ function ServicesUltimoService() {
       {/* Contenedor Principal */}
       <Container fluid className="px-4 py-3 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
         {/* Barra de Filtros, Teléfono y Acciones */}
-        <div className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-          {/* Año, Buscador y Teléfono WhatsApp */}
-          <div className="d-flex align-items-center gap-3 flex-wrap">
+        <div
+          className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2"
+          style={{ maxWidth: "1020px", width: "100%", margin: "0 auto" }}
+        >
+          {/* Año, Buscador, Teléfono WhatsApp y Excel */}
+          <div className="d-flex align-items-center gap-2.5 flex-wrap">
             {/* Dropdown de Año */}
             <div ref={dropAñoRef} style={{ position: "relative" }}>
               <button
@@ -681,10 +684,8 @@ function ServicesUltimoService() {
                 {guardandoTel ? "..." : "Guardar"}
               </button>
             </div>
-          </div>
 
-          {/* Botones de Acción a la Derecha */}
-          <div className="d-flex align-items-center gap-2">
+            {/* Botón Excel */}
             <Button
               variant="success"
               size="sm"

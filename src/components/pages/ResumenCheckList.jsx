@@ -1,67 +1,112 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Table, Button } from "react-bootstrap";
+import { Container, Table, Button, Form } from "react-bootstrap";
 import ExcelJS from "exceljs";
 
 const MESES = ["enero", "marzo", "mayo", "julio", "septiembre", "noviembre"];
 const AÑO_DESDE = 2026;
-const AÑOS = Array.from({ length: 10 }, (_, i) => AÑO_DESDE + i);
-
-const SOMBRA = "3px 3px 6px rgba(0,0,0,0.45)";
-
-const BTN_W = { minWidth: "90px", whiteSpace: "nowrap" };
-
-const getEstiloBtn = (estado, puntuacion, camionetatParada) => {
-  if (estado !== "realizado") return { ...BTN_W, backgroundColor: "#777", color: "#fff", border: "none", boxShadow: SOMBRA };
-  if (camionetatParada)       return { ...BTN_W, backgroundColor: "#8b4a4a", color: "#fff", border: "none", boxShadow: SOMBRA };
-  if (puntuacion <= 4)  return { ...BTN_W, backgroundColor: "#b87070", color: "#fff", border: "none", boxShadow: SOMBRA };
-  if (puntuacion <= 7)  return { ...BTN_W, backgroundColor: "#c8a800", color: "#fff", border: "none", boxShadow: SOMBRA };
-  return { ...BTN_W, backgroundColor: "#7aaa80", color: "#fff", border: "none", boxShadow: SOMBRA };
-};
+const AÑOS = Array.from({ length: 6 }, (_, i) => AÑO_DESDE + i);
 
 function ResumenCheckList() {
   const navigate = useNavigate();
-  const [año, setAño] = useState(new Date().getFullYear());
+  const [año, setAño] = useState(2026);
   const [camionetas, setCamionetas] = useState([]);
   const [programas, setProgramas] = useState([]);
-  const [dropdownAbierto, setDropdownAbierto] = useState(false);
-  const [filtroCamioneta, setFiltroCamioneta] = useState("");
-  const dropdownRef = useRef(null);
+  const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
+  const [dropAño, setDropAño] = useState(false);
+  const [filtroPatente, setFiltroPatente] = useState("");
+  const dropAñoRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
-        setDropdownAbierto(false);
+      if (dropAñoRef.current && !dropAñoRef.current.contains(e.target)) {
+        setDropAño(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  useEffect(() => {
+  const cargarCamionetas = () =>
     fetch("/api/camionetas")
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setCamionetas(Array.isArray(d) ? d : []))
       .catch(() => setCamionetas([]));
-  }, []);
 
-  useEffect(() => {
-    fetch(`/api/programa-checklist/${año}`)
+  const cargarParadas = () =>
+    fetch("/api/paradas/abiertas/ids")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((ids) => setParadasAbiertas(new Set(Array.isArray(ids) ? ids : [])))
+      .catch(() => setParadasAbiertas(new Set()));
+
+  const cargarProgramas = (a) =>
+    fetch(`/api/programa-checklist/${a}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setProgramas(Array.isArray(d) ? d : []))
       .catch(() => setProgramas([]));
+
+  useEffect(() => {
+    cargarCamionetas();
+    cargarParadas();
+  }, []);
+
+  useEffect(() => {
+    cargarProgramas(año);
   }, [año]);
 
   const getMes = (camionetaId, mes) => {
     const prog = Array.isArray(programas)
-      ? programas.find((p) => p.camioneta?._id === camionetaId)
+      ? programas.find((p) => p.camioneta?._id === camionetaId || p.camioneta === camionetaId)
       : null;
     return prog?.[mes] ?? { estado: "pendiente", puntuacion: null };
   };
 
+  const getBadgeMes = (estado, puntuacion, camionetaParada) => {
+    if (estado !== "realizado") {
+      return {
+        bg: "#f1f5f9",
+        color: "#64748b",
+        border: "1px solid #cbd5e1",
+        label: "Pendiente",
+      };
+    }
+    if (camionetaParada) {
+      return {
+        bg: "#fee2e2",
+        color: "#991b1b",
+        border: "1px solid #f87171",
+        label: "Parada",
+        icon: "bi bi-exclamation-triangle-fill",
+      };
+    }
+    if (puntuacion <= 4) {
+      return {
+        bg: "#fee2e2",
+        color: "#991b1b",
+        border: "1px solid #fca5a5",
+        label: `Realizado (${puntuacion})`,
+      };
+    }
+    if (puntuacion <= 7) {
+      return {
+        bg: "#fef3c7",
+        color: "#92400e",
+        border: "1px solid #fcd34d",
+        label: `Realizado (${puntuacion})`,
+      };
+    }
+    return {
+      bg: "#dcfce7",
+      color: "#166534",
+      border: "1px solid #86efac",
+      label: `Realizado (${puntuacion})`,
+    };
+  };
+
   const exportarExcel = async () => {
-    const titulo   = "Resumen Check List - Camionetas";
+    const titulo = `Resumen Check List - Flota de Camionetas (${año})`;
     const mesesCap = MESES.map((m) => m.charAt(0).toUpperCase() + m.slice(1));
-    const columnas = ["Camioneta", "Responsable", ...mesesCap, "Promedio"];
+    const columnas = ["Patente", "Vehículo", "Responsable", ...mesesCap, "Promedio"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = new ExcelJS.Workbook();
@@ -70,27 +115,42 @@ function ResumenCheckList() {
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
     celdaTitulo.value = titulo;
-    celdaTitulo.font  = { bold: true, underline: true, size: 14 };
+    celdaTitulo.font = { bold: true, size: 14, color: { argb: "FF1E293B" } };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 22;
+    ws.getRow(1).height = 28;
 
     ws.mergeCells(2, 1, 2, 3);
     const celdaFecha = ws.getCell("A2");
-    celdaFecha.value = `Fecha: ${fechaHoy}`;
-    celdaFecha.alignment = { horizontal: "left" };
-    ws.getRow(2).height = 16;
+    celdaFecha.value = `Generado el: ${fechaHoy}`;
+    celdaFecha.font = { italic: true, size: 10, color: { argb: "FF64748B" } };
+    celdaFecha.alignment = { horizontal: "left", vertical: "middle" };
+    ws.getRow(2).height = 18;
 
     ws.addRow([]);
 
     const filaEncabezado = ws.addRow(columnas);
     filaEncabezado.eachCell((cell) => {
-      cell.font      = { bold: true };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FF475569" } },
+        left: { style: "thin", color: { argb: "FF475569" } },
+        bottom: { style: "thin", color: { argb: "FF475569" } },
+        right: { style: "thin", color: { argb: "FF475569" } },
+      };
     });
-    ws.getRow(4).height = 16;
+    ws.getRow(4).height = 24;
 
-    camionetas.forEach((c) => {
+    const thinBorder = {
+      top: { style: "thin", color: { argb: "FFE2E8F0" } },
+      left: { style: "thin", color: { argb: "FFE2E8F0" } },
+      bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+      right: { style: "thin", color: { argb: "FFE2E8F0" } },
+    };
+
+    camionetas.forEach((c, idx) => {
+      const estaParada = paradasAbiertas.has(c._id.toString());
       const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
         .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
         .map(({ puntuacion }) => puntuacion);
@@ -98,161 +158,416 @@ function ResumenCheckList() {
         ? (puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length).toFixed(1)
         : "—";
 
-      const valores = [`${c.patente} — ${c.marca}`, c.responsable || "—"];
+      const valores = [c.patente, c.marca, c.responsable || "—"];
       MESES.forEach((mes) => {
-        const { estado, puntuacion } = getMes(c._id, mes);
-        valores.push(estado === "realizado" ? (puntuacion != null ? `Realizado (${puntuacion})` : "Realizado") : "Pendiente");
+        const { estado, puntuacion, camionetatParada } = getMes(c._id, mes);
+        if (estado === "realizado") {
+          if (camionetatParada) valores.push("Parada");
+          else if (puntuacion != null) valores.push(`Realizado (${puntuacion})`);
+          else valores.push("Realizado");
+        } else {
+          valores.push("Pendiente");
+        }
       });
       valores.push(promedio);
 
       const fila = ws.addRow(valores);
-      fila.eachCell((cell) => { cell.alignment = { horizontal: "center", vertical: "middle" }; });
-      fila.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+      fila.height = 20;
+
+      const isOdd = idx % 2 === 1;
+      const zebraBg = isOdd ? { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } } : undefined;
+
+      fila.eachCell({ includeEmpty: true }, (cell) => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = thinBorder;
+        if (estaParada) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+        } else if (zebraBg) {
+          cell.fill = zebraBg;
+        }
+      });
+      fila.getCell(1).font = { bold: true };
+      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
-      { width: 30 },
+      { width: 14 },
       { width: 22 },
-      ...MESES.map(() => ({ width: 18 })),
-      { width: 12 },
+      { width: 22 },
+      ...MESES.map(() => ({ width: 16 })),
+      { width: 14 },
     ];
 
     const buffer = await wb.xlsx.writeBuffer();
-    const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement("a");
-    a.href       = url;
-    a.download   = `checklist_${año}.xlsx`;
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `checklist_${año}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  const totalCams = camionetas.length;
+
   return (
-    <Container className="py-4">
-
-      {/* Encabezado */}
-      <div className="d-flex justify-content-between align-items-center mb-4 mx-auto" style={{ width: "92%" }}>
-        <h3 className="fw-bold mb-0">Resumen Check List - Camionetas</h3>
-        <div className="d-flex gap-2">
-          <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-            <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
-          </Button>
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/camionetas/resumen")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-speedometer me-2"></i>Tablero
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-        </div>
-      </div>
-
-      {/* Selector de año + filtro */}
-      <div className="d-flex justify-content-between align-items-center mb-4 mx-auto" style={{ width: "92%" }}>
-        <div ref={dropdownRef} style={{ position: "relative" }}>
-          <span
-            onClick={() => setDropdownAbierto((v) => !v)}
-            style={{ display: "inline-block", backgroundColor: "#666", color: "#fff", borderRadius: "4px", padding: "6px 28px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)", fontWeight: "bold", fontSize: "1.4rem", cursor: "pointer", userSelect: "none" }}
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8f9fa",
+        height: "100%",
+        maxHeight: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {/* Barra de Cabecera Institucional */}
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            style={{
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#3b82f6",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+            }}
           >
-            {año}
-          </span>
-          {dropdownAbierto && (
-            <div style={{ position: "absolute", top: "110%", left: 0, backgroundColor: "#fff", border: "1.5px solid #aaa", borderRadius: "6px", boxShadow: "3px 3px 10px rgba(0,0,0,0.25)", zIndex: 200, minWidth: "90px" }}>
-              {AÑOS.map((a) => (
-                <div
-                  key={a}
-                  onClick={() => { setAño(a); setDropdownAbierto(false); }}
-                  style={{ padding: "6px 18px", cursor: "pointer", fontWeight: a === año ? "bold" : "normal", backgroundColor: a === año ? "#e3f0ff" : "transparent", borderRadius: "4px" }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e3f0ff"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = a === año ? "#e3f0ff" : "transparent"}
-                >
-                  {a}
-                </div>
-              ))}
-            </div>
-          )}
+            <i className="bi bi-clipboard-check-fill"></i>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white fs-6">Resumen Check List</span>
+            <span className="text-light opacity-75 small">• {totalCams} Unidades</span>
+          </div>
         </div>
-        <select
-          value={filtroCamioneta}
-          onChange={(e) => setFiltroCamioneta(e.target.value)}
-          style={{ padding: "6px 12px", borderRadius: "4px", border: "1.5px solid #aaa", fontSize: "1rem", minWidth: "220px", cursor: "pointer" }}
-        >
-          <option value="">Todas las camionetas</option>
-          {(Array.isArray(camionetas) ? camionetas : []).map((c) => (
-            <option key={c._id} value={c._id}>{c.patente} — {c.marca}</option>
-          ))}
-        </select>
+
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          <button
+            onClick={() => navigate("/camionetas/preventivo")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-shield-check"></i>
+            <span>Preventivo</span>
+          </button>
+          <button
+            onClick={() => navigate("/camionetas")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-car-front-fill me-1"></i>
+            <span>Camionetas</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
+        </div>
       </div>
 
-      {/* Tabla */}
-      <div className="mx-auto" style={{ width: "92%", maxHeight: "calc(100vh - 190px)", overflowY: "auto" }}>
-      <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
-        <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-          <tr className="fw-normal align-middle">
-            <th className="fw-normal" style={{ width: "40px" }}>#</th>
-            <th className="fw-normal">Camioneta</th>
-            <th className="fw-normal">Responsable</th>
-            {MESES.map((m) => (
-              <th key={m} className="fw-normal" style={{ textTransform: "capitalize" }}>{m}</th>
-            ))}
-            <th className="fw-normal">Promedio</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(Array.isArray(camionetas) ? camionetas : []).filter((c) => !filtroCamioneta || c._id === filtroCamioneta).map((c, idx) => {
-            const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
-              .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
-              .map(({ puntuacion }) => puntuacion);
-            const promedio = puntuaciones.length > 0
-              ? (puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length).toFixed(1)
-              : null;
-            return (
-              <tr key={c._id} style={{ height: "42px" }}>
-                <td className="text-muted" style={{ fontSize: "0.8rem" }}>{idx + 1}</td>
-                <td className="fw-semibold text-start" style={{ padding: "4px 8px", cursor: "pointer" }} onClick={() => navigate("/camionetas/altas")}>
-                  <span style={{ display: "inline-block", backgroundColor: "#4a6fa5", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.45)", marginRight: "6px" }}>
-                    {c.patente}
-                  </span>
-                  <span style={{ fontSize: "0.88rem" }}>{c.marca}</span>
-                </td>
-                <td>{c.responsable || "—"}</td>
-                {MESES.map((mes) => {
-                  const { estado, puntuacion, camionetatParada } = getMes(c._id, mes);
+      {/* Contenedor Principal */}
+      <Container fluid className="px-4 py-3 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
+        {/* Barra de Filtros y Acciones */}
+        <div
+          className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2"
+          style={{ maxWidth: "1050px", width: "100%", margin: "0 auto" }}
+        >
+          {/* Año, Buscador y Botón Excel a la izquierda */}
+          <div className="d-flex align-items-center gap-2.5 flex-wrap">
+            {/* Dropdown de Año */}
+            <div ref={dropAñoRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setDropAño((v) => !v)}
+                className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3 py-1.5 text-white shadow-sm"
+                style={{
+                  backgroundColor: "#1e293b",
+                  border: "1px solid #475569",
+                  fontWeight: 600,
+                  fontSize: "0.88rem",
+                }}
+              >
+                <i className="bi bi-calendar3"></i>
+                <span>Año {año}</span>
+                <i className={`bi bi-chevron-${dropAño ? "up" : "down"} small opacity-75`}></i>
+              </button>
+              {dropAño && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "115%",
+                    left: 0,
+                    backgroundColor: "#fff",
+                    border: "1px solid #cbd5e1",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                    zIndex: 200,
+                    minWidth: "110px",
+                    overflow: "hidden",
+                  }}
+                >
+                  {AÑOS.map((a) => (
+                    <div
+                      key={a}
+                      onClick={() => {
+                        setAño(a);
+                        setDropAño(false);
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        cursor: "pointer",
+                        fontWeight: a === año ? "700" : "400",
+                        backgroundColor: a === año ? "#f1f5f9" : "transparent",
+                        color: a === año ? "#1e293b" : "#334155",
+                        fontSize: "0.88rem",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (a !== año) e.currentTarget.style.backgroundColor = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = a === año ? "#f1f5f9" : "transparent";
+                      }}
+                    >
+                      {a}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Buscador de Patente */}
+            <div style={{ position: "relative", width: "210px" }}>
+              <i
+                className="bi bi-search text-muted"
+                style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "0.82rem" }}
+              ></i>
+              <Form.Control
+                type="text"
+                placeholder="Buscar patente o marca..."
+                value={filtroPatente}
+                onChange={(e) => setFiltroPatente(e.target.value)}
+                size="sm"
+                className="rounded-3 ps-4"
+                style={{ fontSize: "0.84rem", paddingRight: filtroPatente ? "28px" : undefined }}
+              />
+              {filtroPatente && (
+                <button
+                  onClick={() => setFiltroPatente("")}
+                  style={{
+                    position: "absolute",
+                    right: "8px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "#94a3b8",
+                    fontSize: "0.9rem",
+                    padding: 0,
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Botón Excel */}
+            <Button
+              variant="success"
+              size="sm"
+              onClick={exportarExcel}
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
+              style={{
+                backgroundColor: "#15803d",
+                borderColor: "#15803d",
+                fontSize: "0.82rem",
+                fontWeight: 500,
+              }}
+              title="Exportar resumen a Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill"></i>
+              <span>Excel</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabla de Resumen Check List */}
+        <div
+          className="flex-grow-1 shadow-sm rounded-3 bg-white"
+          style={{
+            overflowY: "auto",
+            overflowX: "auto",
+            border: "1px solid #cbd5e1",
+            maxWidth: "1050px",
+            width: "100%",
+            margin: "0 auto",
+          }}
+        >
+          <Table
+            hover
+            size="sm"
+            className="text-center align-middle mb-0"
+            style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}
+          >
+            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1e293b", color: "#fff" }}>
+              <tr className="fw-normal align-middle">
+                <th style={{ width: "30px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>#</th>
+                <th style={{ width: "160px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Patente</th>
+                <th style={{ width: "130px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>Responsable</th>
+                {MESES.map((m) => (
+                  <th key={m} style={{ backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", textTransform: "capitalize", fontWeight: "normal" }}>
+                    {m}
+                  </th>
+                ))}
+                <th style={{ width: "80px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>Promedio</th>
+              </tr>
+            </thead>
+            <tbody>
+              {camionetas
+                .filter((c) => {
+                  const query = filtroPatente.toLowerCase();
+                  return c.patente.toLowerCase().includes(query) || (c.marca && c.marca.toLowerCase().includes(query));
+                })
+                .map((c, idx) => {
+                  const estaParada = paradasAbiertas.has(c._id.toString());
+                  const isEven = idx % 2 === 0;
+
+                  const puntuaciones = MESES.map((mes) => getMes(c._id, mes))
+                    .filter(({ estado, puntuacion }) => estado === "realizado" && puntuacion != null)
+                    .map(({ puntuacion }) => puntuacion);
+                  const promedio = puntuaciones.length > 0
+                    ? (puntuaciones.reduce((a, b) => a + b, 0) / puntuaciones.length).toFixed(1)
+                    : null;
+
                   return (
-                    <td key={mes}>
-                      <Button
-                        size="sm"
-                        className="btn-placa"
-                        style={getEstiloBtn(estado, puntuacion, camionetatParada)}
-                        onClick={() => navigate("/camionetas/checklist/form", { state: { mes, camionetaId: c._id } })}
+                    <tr
+                      key={c._id}
+                      style={{
+                        backgroundColor: estaParada ? "#fef2f2" : isEven ? "#ffffff" : "#f8fafc",
+                        borderBottom: "1px solid #e2e8f0",
+                        height: "40px",
+                      }}
+                    >
+                      <td className="text-muted" style={{ fontSize: "0.75rem", padding: "4px 2px" }}>
+                        {idx + 1}
+                      </td>
+
+                      {/* Patente y Marca (sin palabra parada) */}
+                      <td
+                        className="text-start"
+                        style={{ padding: "4px 8px", cursor: "pointer" }}
+                        onClick={() => navigate("/camionetas/altas")}
+                        title="Ver ficha de camioneta"
                       >
-                        {estado === "realizado"
-                          ? camionetatParada
-                            ? <i className="bi bi-exclamation-triangle-fill" style={{ fontSize: "1rem" }} />
-                            : <>Realizado {puntuacion != null && <span style={{ fontWeight: "bold", marginLeft: "4px" }}>({puntuacion})</span>}</>
-                          : "Pendiente"}
-                      </Button>
-                    </td>
+                        <div className="d-flex align-items-center gap-2">
+                          <span
+                            className="badge px-2 py-0.5 text-white shadow-sm me-1"
+                            style={{
+                              backgroundColor: estaParada ? "#991b1b" : "#0f172a",
+                              border: "1px solid #475569",
+                              fontSize: "0.78rem",
+                              letterSpacing: "1px",
+                              borderRadius: "5px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {c.patente}
+                          </span>
+                          <span className="text-muted small" style={{ fontSize: "0.76rem" }}>
+                            {c.marca}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Responsable */}
+                      <td style={{ color: "#334155", fontSize: "0.78rem", padding: "4px 6px" }}>{c.responsable || "—"}</td>
+
+                      {/* Meses */}
+                      {MESES.map((mes) => {
+                        const { estado, puntuacion, camionetatParada } = getMes(c._id, mes);
+                        const badgeInfo = getBadgeMes(estado, puntuacion, camionetatParada);
+
+                        return (
+                          <td key={mes} style={{ padding: "4px 3px" }}>
+                            <button
+                              onClick={() => navigate("/camionetas/checklist/form", { state: { mes, camionetaId: c._id } })}
+                              className="btn btn-sm py-0.5 px-2 rounded-2 shadow-sm d-inline-flex align-items-center justify-content-center gap-1"
+                              style={{
+                                backgroundColor: badgeInfo.bg,
+                                color: badgeInfo.color,
+                                border: badgeInfo.border,
+                                fontSize: "0.74rem",
+                                fontWeight: 600,
+                                minWidth: "85px",
+                                transition: "all 0.15s ease",
+                              }}
+                              title={`Abrir Check List de ${mes}`}
+                            >
+                              {badgeInfo.icon && <i className={badgeInfo.icon}></i>}
+                              <span>{badgeInfo.label}</span>
+                            </button>
+                          </td>
+                        );
+                      })}
+
+                      {/* Promedio */}
+                      <td style={{ padding: "4px 6px" }}>
+                        {promedio != null ? (
+                          <span
+                            className="badge py-1 px-2 text-white shadow-sm"
+                            style={{
+                              backgroundColor:
+                                Number(promedio) >= 8 ? "#15803d" : Number(promedio) >= 5 ? "#d97706" : "#dc2626",
+                              fontSize: "0.78rem",
+                              fontWeight: 700,
+                              borderRadius: "5px",
+                              minWidth: "38px",
+                            }}
+                          >
+                            {promedio}
+                          </span>
+                        ) : (
+                          <span className="text-muted small">—</span>
+                        )}
+                      </td>
+                    </tr>
                   );
                 })}
-                <td className="fw-bold" style={{ fontSize: "1rem" }}>
-                  {promedio != null
-                    ? <span style={{ display: "inline-block", backgroundColor: promedio >= 8 ? "#7aaa80" : promedio >= 5 ? "#c8a800" : "#b87070", color: "#fff", borderRadius: "4px", padding: "2px 12px", boxShadow: SOMBRA }}>{promedio}</span>
-                    : <span className="text-muted">—</span>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </Table>
-      </div>
-
-    </Container>
+              {camionetas.filter((c) => {
+                const query = filtroPatente.toLowerCase();
+                return c.patente.toLowerCase().includes(query) || (c.marca && c.marca.toLowerCase().includes(query));
+              }).length === 0 && (
+                <tr>
+                  <td colSpan={10} className="text-muted py-4">
+                    {filtroPatente ? `Sin resultados para "${filtroPatente}"` : "Sin datos"}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </div>
+      </Container>
+    </div>
   );
 }
 
 export default ResumenCheckList;
-
-
