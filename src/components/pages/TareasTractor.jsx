@@ -12,7 +12,7 @@ const GRUPOS = {
   7: { label: "San Pablo", supervisor: "Victor" },
 };
 
-function ReparacionesTractor() {
+function TareasTractor() {
   const navigate = useNavigate();
   const { grupoId, tractorId } = useParams();
   const { state } = useLocation();
@@ -20,7 +20,7 @@ function ReparacionesTractor() {
   const [tractor, setTractor] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  const infoGrupo = GRUPOS[grupoId] || { label: `Grupo ${grupoId}`, supervisor: "—" };
+  const infoGrupo = GRUPOS[grupoId] || { label: state?.grupoLabel || `Grupo ${grupoId}`, supervisor: "—" };
 
   useEffect(() => {
     fetch(`/api/tractores/${tractorId}`)
@@ -37,34 +37,24 @@ function ReparacionesTractor() {
 
   const tarjetas = [
     {
-      id: "reportar",
-      titulo: "Reporte Falla",
-      subtitulo: "Registrar novedades, problemas o mejoras requeridas",
-      ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/reportar`,
-      bg: "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
-      hoverBg: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",
-      accentColor: "#ef4444",
-      icono: "bi bi-megaphone-fill",
+      id: "vieja",
+      titulo: "Vieja",
+      subtitulo: "Planilla tradicional histórica con edición en tabla y exportación a Excel",
+      ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/tareas/vieja`,
+      bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+      hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+      accentColor: "#38bdf8",
+      icono: "bi bi-table",
     },
     {
-      id: "tareas",
-      titulo: "Tareas",
-      subtitulo: "Gestión de tareas, diagnósticos y repuestos",
-      ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/tareas`,
+      id: "nueva",
+      titulo: "Nueva",
+      subtitulo: "Gestión interactiva de tareas por tarjetas, diagnósticos y repuestos",
+      ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/tareas/nueva`,
       bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
       hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
       accentColor: "#f59e0b",
       icono: "bi bi-tools",
-    },
-    {
-      id: "historial",
-      titulo: "Historial",
-      subtitulo: "Registro histórico de reparaciones del tractor",
-      ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/historial`,
-      bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-      hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-      accentColor: "#3b82f6",
-      icono: "bi bi-clock-history",
     },
   ];
 
@@ -91,16 +81,16 @@ function ReparacionesTractor() {
             style={{
               width: "34px",
               height: "34px",
-              backgroundColor: "#4338ca",
+              backgroundColor: "#f59e0b",
               color: "#fff",
               fontSize: "1.15rem",
-              boxShadow: "0 2px 8px rgba(67, 56, 202, 0.3)",
+              boxShadow: "0 2px 8px rgba(245, 158, 11, 0.3)",
             }}
           >
-            <TractorIcon size="1.2rem" color="#fff" />
+            <i className="bi bi-tools"></i>
           </div>
           <div className="d-flex align-items-center gap-2">
-            <span className="text-light opacity-90 small">Tractor:</span>
+            <span className="text-light opacity-90 small">Tareas Tractor:</span>
             <span
               className="badge px-3 py-1 fw-bold text-white shadow-sm"
               style={{
@@ -113,14 +103,8 @@ function ReparacionesTractor() {
             >
               CC {cleanCC}
             </span>
-            <span className="text-light opacity-75 small">
-              • {infoGrupo.label}
-            </span>
-            {descripcion && (
-              <span className="text-light opacity-75 small">
-                • {descripcion}
-              </span>
-            )}
+            <span className="text-light opacity-75 small">• {infoGrupo.label}</span>
+            {descripcion && <span className="text-light opacity-75 small">• {descripcion}</span>}
           </div>
         </div>
 
@@ -135,20 +119,20 @@ function ReparacionesTractor() {
             <span>Volver</span>
           </button>
           <button
+            onClick={() => navigate(`/tractores/grupo/${grupoId}/reparaciones/${tractorId}`)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <TractorIcon size="1.05rem" color="#fff" />
+            <span>Menú Tractor</span>
+          </button>
+          <button
             onClick={() => navigate(`/tractores/grupo/${grupoId}`)}
             className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
             style={{ fontSize: "0.82rem" }}
           >
             <i className="bi bi-grid-fill"></i>
             <span>{infoGrupo.label}</span>
-          </button>
-          <button
-            onClick={() => navigate("/tractores")}
-            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
-            style={{ fontSize: "0.82rem" }}
-          >
-            <TractorIcon size="1.05rem" color="#fff" />
-            <span>Tractores</span>
           </button>
           <button
             onClick={() => navigate("/")}
@@ -161,7 +145,7 @@ function ReparacionesTractor() {
         </div>
       </div>
 
-      {/* Contenedor de las 3 Tarjetas (Reporte Falla, Tareas, Historial) */}
+      {/* Contenedor Central de las 2 Tarjetas (Vieja y Nueva) */}
       <div
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
         style={{ overflow: "hidden" }}
@@ -169,8 +153,8 @@ function ReparacionesTractor() {
         <div
           className="d-flex justify-content-center align-items-center"
           style={{
-            gap: "2rem",
-            maxWidth: "1080px",
+            gap: "2.5rem",
+            maxWidth: "840px",
             width: "100%",
           }}
         >
@@ -179,11 +163,11 @@ function ReparacionesTractor() {
             return (
               <div
                 key={t.id}
-                className="card-seccion-tractor-hub d-flex flex-column align-items-center justify-content-center p-4 text-center"
+                className="d-flex flex-column align-items-center justify-content-center p-4 text-center text-white"
                 style={{
                   background: isHovered ? t.hoverBg : t.bg,
                   borderRadius: "22px",
-                  width: "310px",
+                  width: "340px",
                   height: "285px",
                   boxShadow: isHovered
                     ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
@@ -192,7 +176,6 @@ function ReparacionesTractor() {
                   cursor: "pointer",
                   transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
                   transform: isHovered ? "translateY(-5px) scale(1.02)" : "translateY(0) scale(1)",
-                  color: "#ffffff",
                   userSelect: "none",
                 }}
                 onClick={() =>
@@ -227,12 +210,15 @@ function ReparacionesTractor() {
                 </div>
 
                 {/* Título */}
-                <h3 className="fw-bold mb-2 tracking-tight text-white" style={{ fontSize: "1.4rem" }}>
+                <h3 className="fw-bold mb-2 tracking-tight text-white" style={{ fontSize: "1.5rem" }}>
                   {t.titulo}
                 </h3>
 
                 {/* Subtítulo */}
-                <p className="small mb-0 text-light opacity-75 px-3" style={{ fontSize: "0.86rem", lineHeight: "1.35" }}>
+                <p
+                  className="small mb-0 text-light opacity-75 px-3"
+                  style={{ fontSize: "0.88rem", lineHeight: "1.35" }}
+                >
                   {t.subtitulo}
                 </p>
               </div>
@@ -244,4 +230,4 @@ function ReparacionesTractor() {
   );
 }
 
-export default ReparacionesTractor;
+export default TareasTractor;

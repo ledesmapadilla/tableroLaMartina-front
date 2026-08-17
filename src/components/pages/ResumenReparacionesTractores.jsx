@@ -1,178 +1,390 @@
 import { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { Container, Table, Button, Form } from "react-bootstrap";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "react-bootstrap";
 import ExcelJS from "exceljs";
 import Swal from "sweetalert2";
+import TractorIcon from "../shared/TractorIcon";
 
-const selectActivo = { backgroundImage: "none" };
-const estiloX = {
-  position: "absolute",
-  right: "10px",
-  top: "50%",
-  transform: "translateY(-50%)",
-  cursor: "pointer",
-  color: "#dc3545",
-  fontSize: "14px",
-  fontWeight: "900",
-  zIndex: 5,
-  userSelect: "none",
+// Formateo seguro de fechas sin desfase horario UTC
+const formatF = (iso) => {
+  if (!iso) return "-";
+  const str = typeof iso === "string" ? iso.split("T")[0] : new Date(iso).toISOString().split("T")[0];
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return str;
 };
 
-const formatF = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "-";
+const pesos = (n) =>
+  (Number(n) || 0).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  });
 
-const getPrioridad = (t) => {
-  return t.prioridad || "Normal";
+const CATEGORIAS = [
+  "Todas",
+  "Motor",
+  "Embrague",
+  "Transmisión / Caja",
+  "Frenos",
+  "Hidráulica",
+  "Dirección",
+  "Mecánica general",
+  "Electricidad / Luces",
+  "Neumáticos / Rodado",
+  "Chapa / Cabina",
+  "Toma de Fuerza / Levante",
+  "Service Programado",
+  "Otros",
+];
+
+const CATEGORIA_COLORES = {
+  Motor: { bg: "#fee2e2", text: "#991b1b", border: "#f87171" },
+  Embrague: { bg: "#ffedd5", text: "#9a3412", border: "#fb923c" },
+  "Transmisión / Caja": { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
+  Frenos: { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
+  Hidráulica: { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
+  Dirección: { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
+  "Mecánica general": { bg: "#e2e8f0", text: "#334155", border: "#94a3b8" },
+  "Electricidad / Luces": { bg: "#fef9c3", text: "#854d0e", border: "#facc15" },
+  "Neumáticos / Rodado": { bg: "#ccfbf1", text: "#115e59", border: "#2dd4bf" },
+  "Chapa / Cabina": { bg: "#fae8ff", text: "#86198f", border: "#e879f9" },
+  "Toma de Fuerza / Levante": { bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc" },
+  "Service Programado": { bg: "#dcfce7", text: "#166534", border: "#4ade80" },
+  Otros: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
 };
 
-const getPrioridadColor = (p) => {
-  if (p === "Crítico") return "#8b4a4a";
-  if (p === "Urgente") return "#c8a800";
-  return "#7aaa80";
-};
-
-const getEstadoLabel = (est) => {
-  const e = (est || "").trim().toLowerCase();
-  if (e === "terminada" || e === "terminado") return "Terminado";
-  if (e === "en proceso") return "En proceso";
+const estadoNormalizado = (estado) => {
+  if (!estado) return "Pendiente";
+  const lower = String(estado).toLowerCase().trim();
+  if (lower === "terminado" || lower === "terminada") return "Terminada";
+  if (lower === "en proceso") return "En proceso";
   return "Pendiente";
 };
 
-const getEstadoColor = (est) => {
-  const e = (est || "").trim().toLowerCase();
-  if (e === "terminada" || e === "terminado") return "#52735a";
-  if (e === "en proceso") return "#c8a800";
-  return "#8b4a4a";
+const GRUPOS = {
+  1: { label: "Grupo 1", supervisor: "Jorge Rosas", bgGradient: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)" },
+  2: { label: "Grupo 2", supervisor: "Guillermo Bustos", bgGradient: "linear-gradient(135deg, #065f46 0%, #047857 100%)" },
+  3: { label: "Grupo 3", supervisor: "Carlos Chumiento", bgGradient: "linear-gradient(135deg, #854d0e 0%, #a16207 100%)" },
+  4: { label: "Grupo 4", supervisor: "brandan alejandro", bgGradient: "linear-gradient(135deg, #581c87 0%, #6b21a8 100%)" },
+  5: { label: "Grupo 5", supervisor: "Elio Rojas", bgGradient: "linear-gradient(135deg, #9a3412 0%, #c2410c 100%)" },
+  6: { label: "Berdina", supervisor: "Kevin", bgGradient: "linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)" },
+  7: { label: "San Pablo", supervisor: "Victor", bgGradient: "linear-gradient(135deg, #3f6212 0%, #4d7c0f 100%)" },
 };
 
 function ResumenReparacionesTractores() {
   const navigate = useNavigate();
+  const { grupoId } = useParams();
+  const { state } = useLocation();
+
+  const esModoGrupo = Boolean(grupoId);
+  const infoGrupo = esModoGrupo
+    ? GRUPOS[grupoId] || { label: state?.grupoLabel || `Grupo ${grupoId}`, supervisor: "—" }
+    : null;
+
   const [trabajos, setTrabajos] = useState([]);
-  const [filtro, setFiltro] = useState("pendiente");
-  const [filtroCC, setFiltroCC] = useState("");
-  const [filtroUrgencia, setFiltroUrgencia] = useState("");
-  const [filtroResponsable, setFiltroResponsable] = useState("");
-  const [listaResponsables, setListaResponsables] = useState([]);
+  const [tractores, setTractores] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  // Filtros
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroTractor, setFiltroTractor] = useState("Todos");
+  const [filtroCategoria, setFiltroCategoria] = useState("Todas");
+  const [filtroTaller, setFiltroTaller] = useState("Todos");
+  const [filtroEstado, setFiltroEstado] = useState("Pendientes / En proceso");
+
+  // Modal de Detalle
+  const [trabajoSeleccionado, setTrabajoSeleccionado] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const cargarDatos = () => {
+    setCargando(true);
+    Promise.all([
+      fetch("/api/trabajos-tractor").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([trabs, tracs]) => {
+      setTrabajos(Array.isArray(trabs) ? trabs : []);
+      setTractores(Array.isArray(tracs) ? tracs : []);
+      setCargando(false);
+    });
+  };
 
   useEffect(() => {
-    fetch("/api/trabajos-tractor")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setTrabajos(Array.isArray(data) ? data : []))
-      .catch(() => setTrabajos([]));
+    cargarDatos();
+  }, [grupoId]);
 
-    fetch("/api/tractores")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((tracs) => {
-        if (Array.isArray(tracs)) {
-          setListaResponsables([...new Set(tracs.map((t) => t.supervisor).filter(Boolean))].sort());
+  const getTractorInfo = (t) => {
+    if (!t) return { cleanCC: "—", descripcion: "", grupoNum: 1, infoG: GRUPOS[1], tractorId: null };
+    const rawCC = String(t.tractor?.cc || t.tractor || "—").replace(/^cc\s*/i, "").trim();
+    const tracObj = tractores.find(
+      (tr) =>
+        String(tr.cc).replace(/^cc\s*/i, "").trim() === rawCC ||
+        String(tr._id) === String(t.tractor?._id || t.tractor)
+    );
+    const grupoNum = tracObj?.gruppo || t.tractor?.gruppo || 1;
+    const infoG = GRUPOS[grupoNum] || {
+      label: `Grupo ${grupoNum}`,
+      supervisor: tracObj?.supervisor || t.tractor?.supervisor || "—",
+    };
+    return {
+      cleanCC: rawCC,
+      descripcion: tracObj?.descripcion || t.tractor?.descripcion || "",
+      grupoNum,
+      infoG,
+      tractorId: tracObj?._id || t.tractor?._id,
+    };
+  };
+
+  // Lista de tractores (CC) para el filtro
+  const listaTractores = useMemo(() => {
+    const map = new Map();
+    const tracsFiltrados = esModoGrupo
+      ? tractores.filter((t) => Number(t.gruppo) === Number(grupoId))
+      : tractores;
+
+    tracsFiltrados.forEach((t) => {
+      if (t.cc) {
+        const clean = String(t.cc).replace(/^cc\s*/i, "").trim();
+        const gNum = t.gruppo || 1;
+        const gInfo = GRUPOS[gNum] || { label: `Grupo ${gNum}` };
+        if (esModoGrupo) {
+          map.set(clean, `CC ${clean}${t.descripcion ? ` - ${t.descripcion}` : ""}`);
+        } else {
+          map.set(clean, `CC ${clean} • ${gInfo.label}${t.descripcion ? ` (${t.descripcion})` : ""}`);
         }
-      })
-      .catch(() => {});
-  }, []);
-
-  const cambiarResponsable = async (id, responsable) => {
-    setTrabajos((prev) => prev.map((t) => t._id === id ? { ...t, responsable } : t));
-    await fetch(`/api/trabajos-tractor/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ responsable }),
-    }).catch(() => {});
-  };
-
-  const toggleMaquinaParada = async (id) => {
-    const trabajo = trabajos.find((t) => t._id === id);
-    if (!trabajo) return;
-    const nuevoValor = !trabajo.maquinaParada;
-    setTrabajos((prev) => prev.map((t) => t._id === id ? { ...t, maquinaParada: nuevoValor } : t));
-    await fetch(`/api/trabajos-tractor/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ maquinaParada: nuevoValor }),
-    }).catch(() => {
-      setTrabajos((prev) => prev.map((t) => t._id === id ? { ...t, maquinaParada: trabajo.maquinaParada } : t));
+      }
     });
+
+    trabajos.forEach((t) => {
+      const tractorInfo = getTractorInfo(t);
+      if (esModoGrupo && Number(tractorInfo.grupoNum) !== Number(grupoId)) return;
+      if (tractorInfo.cleanCC && tractorInfo.cleanCC !== "—" && !map.has(tractorInfo.cleanCC)) {
+        if (esModoGrupo) {
+          map.set(tractorInfo.cleanCC, `CC ${tractorInfo.cleanCC}`);
+        } else {
+          map.set(tractorInfo.cleanCC, `CC ${tractorInfo.cleanCC} • ${tractorInfo.infoG.label}`);
+        }
+      }
+    });
+
+    return Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: "base" }))
+      .map(([clean, label]) => ({ clean, label }));
+  }, [tractores, trabajos, esModoGrupo, grupoId]);
+
+  // Filtrado y Ordenamiento: Por Tractor (CC) y dentro de cada tractor por Fecha descendente
+  const trabajosFiltrados = useMemo(() => {
+    return trabajos
+      .filter((t) => {
+        const tractorInfo = getTractorInfo(t);
+
+        // Si estamos en modo de un grupo específico, filtrar solo ese grupo
+        if (esModoGrupo && Number(tractorInfo.grupoNum) !== Number(grupoId)) {
+          return false;
+        }
+
+        // Filtro por Tractor
+        if (filtroTractor !== "Todos") {
+          if (tractorInfo.cleanCC !== filtroTractor) return false;
+        }
+
+        // Filtro por Estado
+        if (filtroEstado === "Pendientes / En proceso" || filtroEstado === "Pendiente / En proceso") {
+          const est = estadoNormalizado(t.estado);
+          if (est !== "Pendiente" && est !== "En proceso") return false;
+        } else if (filtroEstado !== "Todas") {
+          const est = estadoNormalizado(t.estado);
+          if (filtroEstado !== est) return false;
+        }
+
+        // Filtro por Categoría
+        if (filtroCategoria !== "Todas") {
+          const parte = t.parte || "Otros";
+          if (parte !== filtroCategoria) return false;
+        }
+
+        // Filtro por Taller
+        if (filtroTaller !== "Todos") {
+          if (filtroTaller === "Taller Propio" && t.taller === "Tercero") return false;
+          if (filtroTaller === "Tercero" && t.taller !== "Tercero") return false;
+        }
+
+        // Buscador por texto
+        if (busqueda.trim()) {
+          const q = busqueda.toLowerCase().trim();
+          const enCC = tractorInfo.cleanCC.toLowerCase().includes(q) || `cc ${tractorInfo.cleanCC}`.toLowerCase().includes(q);
+          const enDescTractor = (tractorInfo.descripcion || "").toLowerCase().includes(q);
+          const enDiag = (t.diagnostico || "").toLowerCase().includes(q);
+          const enRep = (t.reparacion || "").toLowerCase().includes(q);
+          const enDesc = (t.descripcion || "").toLowerCase().includes(q);
+          const enResp = (t.responsable || tractorInfo.infoG.supervisor || "").toLowerCase().includes(q);
+          const enTaller = (t.nombreTaller || t.taller || "").toLowerCase().includes(q);
+          const enParte = (t.parte || "").toLowerCase().includes(q);
+          const enRepuestos = (t.repuestos || []).some((r) =>
+            (r.repuesto || "").toLowerCase().includes(q) || (r.proveedor || "").toLowerCase().includes(q)
+          );
+          if (!enCC && !enDescTractor && !enDiag && !enRep && !enDesc && !enResp && !enTaller && !enParte && !enRepuestos) {
+            return false;
+          }
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const tractorInfoA = getTractorInfo(a);
+        const tractorInfoB = getTractorInfo(b);
+
+        // Si estamos en modo global, primero ordenar por Grupo numérico si corresponde
+        if (!esModoGrupo && tractorInfoA.grupoNum !== tractorInfoB.grupoNum) {
+          return tractorInfoA.grupoNum - tractorInfoB.grupoNum;
+        }
+
+        // Ordenar por Tractor (CC natural / numérico)
+        const comp = tractorInfoA.cleanCC.localeCompare(tractorInfoB.cleanCC, undefined, { numeric: true, sensitivity: "base" });
+        if (comp !== 0) return comp;
+
+        // Dentro de cada tractor, ordenar por Fecha descendente
+        const fA = a.fecha ? new Date(a.fecha).getTime() : 0;
+        const fB = b.fecha ? new Date(b.fecha).getTime() : 0;
+        return fB - fA;
+      });
+  }, [trabajos, tractores, esModoGrupo, grupoId, filtroTractor, filtroEstado, filtroCategoria, filtroTaller, busqueda]);
+
+  // Mapa de intercalación de 2 tonos para etiquetas por tractor
+  const tractorColorMap = useMemo(() => {
+    const map = new Map();
+    let currentTone = 0;
+    let lastCC = null;
+
+    trabajosFiltrados.forEach((t) => {
+      const cc = getTractorInfo(t).cleanCC;
+      if (lastCC !== null && cc !== lastCC) {
+        currentTone = (currentTone + 1) % 2;
+      }
+      if (!map.has(cc)) {
+        map.set(cc, currentTone);
+      }
+      lastCC = cc;
+    });
+    return map;
+  }, [trabajosFiltrados]);
+
+  const abrirDetalle = (t) => {
+    setTrabajoSeleccionado(t);
+    setShowModal(true);
   };
 
-  const eliminar = async (id) => {
+  // Eliminar trabajo
+  const handleEliminarTrabajo = async (trabajoId) => {
     const result = await Swal.fire({
-      title: "¿Eliminar reparación?",
+      title: "¿Eliminar registro?",
+      text: "Esta acción no se puede deshacer.",
       icon: "warning",
+      width: "320px",
       showCancelButton: true,
-      confirmButtonColor: "#7a4040",
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Sí, borrar",
       cancelButtonText: "Cancelar",
     });
+
     if (!result.isConfirmed) return;
-    await fetch(`/api/trabajos-tractor/${id}`, { method: "DELETE" }).catch(() => {});
-    setTrabajos((prev) => prev.filter((t) => t._id !== id));
+
+    try {
+      const res = await fetch(`/api/trabajos-tractor/${trabajoId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        Swal.fire({
+          icon: "success",
+          title: "Registro eliminado",
+          width: "300px",
+          timer: 1400,
+          showConfirmButton: false,
+        });
+        cargarDatos();
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo eliminar el registro.",
+          width: "300px",
+          confirmButtonColor: "#1e293b",
+        });
+      }
+    } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Error de conexión con el servidor.",
+        width: "300px",
+        confirmButtonColor: "#1e293b",
+      });
+    }
   };
 
-  const listaResponsablesFiltrada = [...new Set(
-    trabajos
-      .filter((t) => {
-        const estLower = (t.estado || "").trim().toLowerCase();
-        return estLower !== "terminada" && estLower !== "terminado";
-      })
-      .map((t) => t.responsable || t.tractor?.supervisor || "")
-      .filter(Boolean)
-  )].sort();
-
-  const listaCCs = [...new Map(
-    trabajos
-      .filter((t) => t.tractor?.cc)
-      .map((t) => [t.tractor.cc, { cc: t.tractor.cc, label: `${t.tractor.cc} - ${t.tractor.descripcion || ""}` }])
-  ).values()].sort((a, b) => a.cc.localeCompare(b.cc));
-
-  const trabajosFiltrados = trabajos
-    .filter((t) => {
-      if (filtro !== "todos") {
-        const estLower = (t.estado || "").trim().toLowerCase();
-        const esTerminada = estLower === "terminada" || estLower === "terminado";
-        if (filtro === "terminada" && !esTerminada) return false;
-        if (filtro === "pendiente" && esTerminada) return false;
-      }
-      if (filtroCC && t.tractor?.cc !== filtroCC) return false;
-      if (filtroUrgencia && getPrioridad(t) !== filtroUrgencia) return false;
-      if (filtroResponsable && (t.responsable || t.tractor?.supervisor || "") !== filtroResponsable) return false;
-      return true;
-    })
-    .sort((a, b) => (a.tractor?.cc ?? "").localeCompare(b.tractor?.cc ?? ""));
-
+  // Exportar Excel
   const exportarExcel = async () => {
-    const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const titulo = "Resumen Reparaciones";
-    const columnas = ["Centro de Costo (CC)", "Descripción", "Reparación", "Detalle", "Fecha", "Prioridad", "Estado", "Responsable"];
-
     const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet("Reparaciones");
+    const ws = wb.addWorksheet("Planilla General Reparaciones");
+
+    const titulo = esModoGrupo
+      ? `PLANILLA DE REPARACIONES - ${infoGrupo.label.toUpperCase()} (${infoGrupo.supervisor.toUpperCase()})`
+      : "PLANILLA GENERAL DE REPARACIONES - MAQUINARIA Y TRACTORES";
+    const fechaHoy = formatF(new Date().toISOString());
+
+    const columnas = esModoGrupo
+      ? [
+          "Tractor",
+          "Descripción",
+          "Fecha",
+          "Categoría",
+          "Diagnóstico",
+          "Reparación Realizada",
+          "Estado",
+          "Taller",
+          "Responsable",
+          "Repuestos Utilizados",
+          "Observaciones",
+        ]
+      : [
+          "Tractor",
+          "Descripción",
+          "Grupo / Supervisor",
+          "Fecha",
+          "Categoría",
+          "Diagnóstico",
+          "Reparación Realizada",
+          "Estado",
+          "Taller",
+          "Responsable",
+          "Repuestos Utilizados",
+          "Observaciones",
+        ];
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
     celdaTitulo.value = titulo;
-    celdaTitulo.font = { bold: true, underline: true, size: 14 };
+    celdaTitulo.font = { bold: true, size: 14, color: { argb: "FF000000" } };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 22;
+    ws.getRow(1).height = 28;
 
-    ws.mergeCells(2, 1, 2, 3);
+    ws.mergeCells(2, 1, 2, 4);
     const celdaFecha = ws.getCell("A2");
     celdaFecha.value = `Fecha: ${fechaHoy}`;
-    celdaFecha.alignment = { horizontal: "left" };
-    ws.getRow(2).height = 16;
+    celdaFecha.font = { bold: true, size: 11, color: { argb: "FF000000" } };
+    celdaFecha.alignment = { horizontal: "left", vertical: "middle" };
+    ws.getRow(2).height = 18;
 
     ws.addRow([]);
 
-    const thinBorder = {
-      top: { style: "thin", color: { argb: "FFE0E0E0" } },
-      left: { style: "thin", color: { argb: "FFE0E0E0" } },
-      bottom: { style: "thin", color: { argb: "FFE0E0E0" } },
-      right: { style: "thin", color: { argb: "FFE0E0E0" } },
-    };
-
     const filaEnc = ws.addRow(columnas);
     filaEnc.eachCell((cell) => {
-      cell.font = { bold: true };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9D9D9" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
       cell.border = {
         top: { style: "thin", color: { argb: "FFA0A0A0" } },
         left: { style: "thin", color: { argb: "FFA0A0A0" } },
@@ -180,254 +392,1104 @@ function ResumenReparacionesTractores() {
         right: { style: "thin", color: { argb: "FFA0A0A0" } },
       };
     });
-    ws.getRow(4).height = 18;
-
-    const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE0E5EC" } };
+    ws.getRow(4).height = 20;
 
     trabajosFiltrados.forEach((t, idx) => {
-      const p = getPrioridad(t);
-      const responsable = t.responsable || t.tractor?.supervisor || "—";
-      const fila = ws.addRow([
-        t.tractor?.cc ?? "-",
-        t.tractor?.descripcion ?? "-",
-        t.reparacion || "-",
-        t.descripcion || "-",
-        formatF(t.fecha),
-        p,
-        getEstadoLabel(t.estado),
-        responsable,
-      ]);
-      const isOdd = idx % 2 === 1;
-      fila.eachCell({ includeEmpty: true }, (cell) => {
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-        cell.border = thinBorder;
-        if (isOdd) cell.fill = zebraFill;
+      const proxTrabajo = trabajosFiltrados[idx + 1];
+      const tractorInfo = getTractorInfo(t);
+      const ccActual = tractorInfo.cleanCC;
+      const ccProx = proxTrabajo ? getTractorInfo(proxTrabajo).cleanCC : null;
+      const esCambioTractor = !proxTrabajo || (ccActual !== ccProx);
+
+      const repList = (t.repuestos || [])
+        .map((r) => `${r.repuesto || "Repuesto"} (x${r.cantidad || 1}) - ${pesos(r.precio)}`)
+        .join(", ");
+
+      const tallerStr =
+        t.taller === "Tercero" ? `Tercero: ${t.nombreTaller || "Externo"}` : t.taller || "Taller Propio";
+
+      const valoresFila = esModoGrupo
+        ? [
+            `CC ${ccActual}`,
+            tractorInfo.descripcion || "-",
+            formatF(t.fecha),
+            t.parte || "Mecánica general",
+            t.diagnostico || t.descripcion || "-",
+            t.reparacion || t.descripcion || "-",
+            estadoNormalizado(t.estado),
+            tallerStr,
+            t.responsable || infoGrupo.supervisor || "-",
+            repList || "-",
+            t.observaciones || "-",
+          ]
+        : [
+            `CC ${ccActual}`,
+            tractorInfo.descripcion || "-",
+            `${tractorInfo.infoG.label} (${tractorInfo.infoG.supervisor})`,
+            formatF(t.fecha),
+            t.parte || "Mecánica general",
+            t.diagnostico || t.descripcion || "-",
+            t.reparacion || t.descripcion || "-",
+            estadoNormalizado(t.estado),
+            tallerStr,
+            t.responsable || tractorInfo.infoG.supervisor || "-",
+            repList || "-",
+            t.observaciones || "-",
+          ];
+
+      const fila = ws.addRow(valoresFila);
+
+      const bottomBorder = esCambioTractor
+        ? { style: "medium", color: { argb: "FF1E293B" } }
+        : { style: "thin", color: { argb: "FFE2E8F0" } };
+
+      const colIndicesTexto = esModoGrupo ? [5, 6, 10, 11] : [6, 7, 11, 12];
+
+      fila.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFE2E8F0" } },
+          left: { style: "thin", color: { argb: "FFE2E8F0" } },
+          bottom: bottomBorder,
+          right: { style: "thin", color: { argb: "FFE2E8F0" } },
+        };
+        if (colIndicesTexto.includes(colNumber)) {
+          cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+        } else {
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+        }
       });
-      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      if (p === "Crítico") {
-        fila.eachCell({ includeEmpty: true }, (cell) => {
-          cell.font = { color: { argb: "FFCC0000" }, bold: true };
-        });
-      }
     });
 
-    ws.columns = [
-      { width: 22 }, // CC
-      { width: 25 }, // Descripción
-      { width: 22 }, // Reparación
-      { width: 40 }, // Detalle
-      { width: 14 }, // Fecha
-      { width: 12 }, // Prioridad
-      { width: 12 }, // Estado
-      { width: 20 }, // Responsable
-    ];
+    ws.columns = esModoGrupo
+      ? [
+          { width: 14 }, // Tractor CC
+          { width: 25 }, // Descripción
+          { width: 14 }, // Fecha
+          { width: 20 }, // Categoría
+          { width: 35 }, // Diagnóstico
+          { width: 35 }, // Reparación
+          { width: 14 }, // Estado
+          { width: 24 }, // Taller
+          { width: 20 }, // Responsable
+          { width: 35 }, // Repuestos
+          { width: 30 }, // Observaciones
+        ]
+      : [
+          { width: 14 }, // Tractor CC
+          { width: 22 }, // Descripción
+          { width: 25 }, // Grupo / Supervisor
+          { width: 14 }, // Fecha
+          { width: 20 }, // Categoría
+          { width: 35 }, // Diagnóstico
+          { width: 35 }, // Reparación
+          { width: 14 }, // Estado
+          { width: 24 }, // Taller
+          { width: 20 }, // Responsable
+          { width: 35 }, // Repuestos
+          { width: 30 }, // Observaciones
+        ];
 
     const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reparaciones_tractores_${filtro}.xlsx`;
+    const nombreArchivo = esModoGrupo
+      ? `Planilla_Reparaciones_${infoGrupo.label.replace(/\s+/g, "_")}_${fechaHoy.replace(/\//g, "-")}.xlsx`
+      : `Planilla_Reparaciones_General_Tractores_${fechaHoy.replace(/\//g, "-")}.xlsx`;
+    a.download = nombreArchivo;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <Container className="pt-3 pb-2">
-
-      <div className="d-flex justify-content-between align-items-center mb-3 mx-auto" style={{ width: "92%" }}>
-        <h3 className="fw-normal mb-0">Resumen Reparaciones</h3>
-        <div className="d-flex gap-2">
-          <Button onClick={exportarExcel} style={{ backgroundColor: "#1d6f42", border: "1px solid #1d6f42", color: "#fff" }}>
-            <i className="bi bi-file-earmark-excel-fill me-2"></i>Excel
-          </Button>
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/tractores")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-speedometer me-2"></i>Grupos
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
-        </div>
-      </div>
-
-      <div className="mx-auto mb-3 d-flex align-items-center gap-3 flex-wrap" style={{ width: "92%" }}>
-        {/* Filtro Estado */}
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-            style={filtro !== "todos" ? selectActivo : {}}
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8f9fa",
+        minHeight: "100%",
+        overflowY: "auto",
+      }}
+    >
+      {/* Barra de Cabecera Institucional Fuera de la Tabla */}
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            style={{
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#10b981",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+            }}
           >
-            <option value="todos">Estado (todos)</option>
-            <option value="pendiente">Pendientes y en proceso</option>
-            <option value="terminada">Terminados</option>
-          </Form.Select>
-          {filtro !== "todos" && (
-            <span onClick={() => setFiltro("todos")} style={estiloX}>X</span>
-          )}
-        </div>
-
-        {/* Filtro Centro de Costo */}
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroCC}
-            onChange={(e) => setFiltroCC(e.target.value)}
-            style={filtroCC ? selectActivo : {}}
-          >
-            <option value="">Centro de Costo (todos)</option>
-            {listaCCs.map((p) => (
-              <option key={p.cc} value={p.cc}>{p.label}</option>
-            ))}
-          </Form.Select>
-          {filtroCC && (
-            <span onClick={() => setFiltroCC("")} style={estiloX}>X</span>
-          )}
-        </div>
-
-        {/* Filtro Prioridad */}
-        <div className="position-relative" style={{ width: 200 }}>
-          <Form.Select
-            size="sm"
-            value={filtroUrgencia}
-            onChange={(e) => setFiltroUrgencia(e.target.value)}
-            style={filtroUrgencia ? selectActivo : {}}
-          >
-            <option value="">Prioridad (todas)</option>
-            <option value="Normal">Normal</option>
-            <option value="Urgente">Urgente</option>
-            <option value="Crítico">Crítico</option>
-          </Form.Select>
-          {filtroUrgencia && (
-            <span onClick={() => setFiltroUrgencia("")} style={estiloX}>X</span>
-          )}
-        </div>
-
-        {/* Filtro Responsable */}
-        <div className="position-relative" style={{ width: 220 }}>
-          <Form.Select
-            size="sm"
-            value={filtroResponsable}
-            onChange={(e) => setFiltroResponsable(e.target.value)}
-            style={filtroResponsable ? selectActivo : {}}
-          >
-            <option value="">Responsable (todos)</option>
-            {listaResponsablesFiltrada.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </Form.Select>
-          {filtroResponsable && (
-            <span onClick={() => setFiltroResponsable("")} style={estiloX}>X</span>
-          )}
-        </div>
-      </div>
-
-      <div className="mx-auto" style={{ width: "92%", maxHeight: "calc(100vh - 165px)", overflowY: "auto" }}>
-        <Table striped bordered hover size="sm" className="text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.78rem" }}>
-          <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 1 }}>
-            <tr className="fw-normal align-middle">
-              <th className="fw-normal">Centro de Costo (CC)</th>
-              <th className="fw-normal">Descripción</th>
-              <th className="fw-normal text-start" style={{ minWidth: "150px", whiteSpace: "normal" }}>Reparación</th>
-              <th className="fw-normal text-start" style={{ minWidth: "200px", whiteSpace: "normal" }}>Detalle</th>
-              <th className="fw-normal">Fecha</th>
-              <th className="fw-normal">Prioridad</th>
-              <th className="fw-normal">Estado</th>
-              <th className="fw-normal">Unidad Parada</th>
-              <th className="fw-normal">Responsable</th>
-              <th className="fw-normal"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {trabajosFiltrados.length === 0 && (
-              <tr><td colSpan={10} className="text-muted py-3">Sin registros</td></tr>
+            <i className="bi bi-table"></i>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white fs-6">
+              {esModoGrupo ? "Planilla de Reparaciones" : "Planilla General de Reparaciones"}
+            </span>
+            <span className="text-light opacity-75 small">•</span>
+            {esModoGrupo ? (
+              <>
+                <span
+                  className="badge px-3 py-1 fw-bold text-white shadow-sm"
+                  style={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #475569",
+                    fontSize: "0.92rem",
+                    letterSpacing: "0.5px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  {infoGrupo.label}
+                </span>
+                <span className="text-light opacity-75 small">• Supervisor: {infoGrupo.supervisor}</span>
+              </>
+            ) : (
+              <span className="text-light opacity-75 small">Todos los Tractores</span>
             )}
-            {trabajosFiltrados.map((t) => {
-              const responsable = t.responsable || t.tractor?.supervisor || "";
-              return (
-                <tr key={t._id}>
-                  <td>
-                    <span
-                      onClick={() => t.tractor?._id && navigate(`/tractores/grupo/${t.tractor.gruppo || 6}/reparaciones/${t.tractor._id}`, { state: { cc: t.tractor.cc, descripcion: t.tractor.descripcion } })}
-                      style={{ display: "inline-flex", alignItems: "center", gap: "4px", backgroundColor: "#52735a", color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", fontWeight: "600", cursor: t.tractor?._id ? "pointer" : "default" }}
-                    >
-                      {t.maquinaParada && getEstadoLabel(t.estado) !== "Terminado" && (
-                        <i className="bi bi-exclamation-triangle-fill text-danger" style={{ fontSize: "0.85rem", color: "#ff4d4d" }} title="Tractor fuera de servicio" />
-                      )}
-                      {t.tractor?.cc ?? "-"}
-                    </span>
-                  </td>
-                  <td>{t.tractor?.descripcion ?? "-"}</td>
-                  <td className="text-start" style={{ paddingLeft: "12px", minWidth: "150px", whiteSpace: "normal", wordBreak: "break-word" }}>{t.reparacion || "-"}</td>
-                  <td className="text-start" style={{ paddingLeft: "12px", minWidth: "200px", whiteSpace: "normal", wordBreak: "break-word" }}>{t.descripcion || "-"}</td>
-                  <td>{formatF(t.fecha)}</td>
-                  <td>
-                    <span style={{ display: "inline-block", backgroundColor: getPrioridadColor(getPrioridad(t)), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "60px" }}>
-                      {getPrioridad(t)}
-                    </span>
-                  </td>
-                  <td>
-                    <span style={{ display: "inline-block", backgroundColor: getEstadoColor(t.estado), color: "#fff", borderRadius: "4px", padding: "2px 10px", boxShadow: "3px 3px 6px rgba(0,0,0,0.3)", textTransform: "capitalize", minWidth: "80px" }}>
-                      {getEstadoLabel(t.estado)}
-                    </span>
-                  </td>
-                  <td>
-                    <div
-                      onClick={() => toggleMaquinaParada(t._id)}
-                      title={t.maquinaParada ? "Unidad parada: Sí (Clic para desmarcar)" : "Unidad parada: No (Clic para marcar)"}
-                      style={{
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "4px",
-                        userSelect: "none",
-                        padding: "2px 6px",
-                        borderRadius: "12px",
-                        backgroundColor: t.maquinaParada ? "rgba(220, 53, 69, 0.12)" : "transparent",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      {t.maquinaParada ? (
-                        <i className="bi bi-record-circle-fill text-danger" style={{ fontSize: "1.1rem" }}></i>
-                      ) : (
-                        <i className="bi bi-circle text-secondary" style={{ fontSize: "1.1rem", opacity: 0.5 }}></i>
-                      )}
-                      <span style={{ fontSize: "0.72rem", fontWeight: t.maquinaParada ? "bold" : "normal", color: t.maquinaParada ? "#dc3545" : "#6c757d" }}>
-                        {t.maquinaParada ? "Parada" : "No"}
+          </div>
+        </div>
+
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          {esModoGrupo ? (
+            <button
+              onClick={() => navigate(`/tractores/grupo/${grupoId}`)}
+              className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+              style={{ fontSize: "0.82rem" }}
+            >
+              <i className="bi bi-grid-fill"></i>
+              <span>{infoGrupo.label}</span>
+            </button>
+          ) : null}
+          <button
+            onClick={() => navigate("/tractores/reparaciones")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <TractorIcon size="1.05rem" color="#fff" />
+            <span>Reparaciones</span>
+          </button>
+          <button
+            onClick={() => navigate("/tractores")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-grid-fill"></i>
+            <span>Tractores</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
+        </div>
+      </div>
+
+      <Container fluid className="px-4 py-3">
+        {/* Fila Superior: Título Centrado en la Página y Botón Excel a la derecha */}
+        <div className="position-relative d-flex align-items-center justify-content-center mb-3">
+          <div className="text-center">
+            {esModoGrupo ? (
+              <div className="d-flex align-items-center justify-content-center gap-2">
+                <h5 className="fw-bold text-dark mb-0 fs-5">{infoGrupo.label}</h5>
+                <span className="text-muted small">• Supervisor: {infoGrupo.supervisor}</span>
+              </div>
+            ) : (
+              <div className="d-flex align-items-center justify-content-center gap-2">
+                <h5 className="fw-bold text-dark mb-0 fs-5">Planilla General — Todos los Grupos</h5>
+                <span className="text-muted small">• Maquinaria Completa</span>
+              </div>
+            )}
+          </div>
+
+          <div className="position-absolute end-0">
+            <Button
+              variant="success"
+              size="sm"
+              onClick={exportarExcel}
+              disabled={trabajosFiltrados.length === 0}
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
+              style={{ fontSize: "0.82rem", backgroundColor: "#15803d", borderColor: "#15803d" }}
+              title="Exportar a Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill"></i>
+              <span>Excel</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Barra de Filtros */}
+        <Card
+          className="shadow-sm border-0 rounded-3 px-3 py-2 bg-white"
+          style={{ marginBottom: "18px" }}
+        >
+          <div className="d-flex align-items-center justify-content-between w-100 flex-nowrap gap-3">
+            {/* Buscador de Texto */}
+            <div style={{ width: "260px" }}>
+              <div className="input-group input-group-sm">
+                <span
+                  className="input-group-text bg-light border-end-0 text-muted"
+                  style={{ padding: "3px 9px", height: "32px" }}
+                >
+                  <i className="bi bi-search" style={{ fontSize: "0.8rem" }}></i>
+                </span>
+                <Form.Control
+                  type="text"
+                  placeholder="Buscar tractor, falla, taller..."
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  className={`border-start-0 ps-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 8px",
+                    color: busqueda ? "#dc2626" : "#1e293b",
+                    fontWeight: busqueda ? "700" : "normal",
+                  }}
+                />
+                {busqueda && (
+                  <button
+                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+                    type="button"
+                    onClick={() => setBusqueda("")}
+                    title="Limpiar búsqueda"
+                    style={{ padding: "0 7px", height: "32px" }}
+                  >
+                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Filtro por Tractor (CC) */}
+            <div className="d-flex align-items-center gap-2">
+              <span
+                className="fw-bold text-dark small flex-shrink-0 me-1"
+                style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
+              >
+                Tractor:
+              </span>
+              <div className="input-group input-group-sm" style={{ width: "165px" }}>
+                <Form.Select
+                  size="sm"
+                  value={filtroTractor}
+                  onChange={(e) => setFiltroTractor(e.target.value)}
+                  className={`rounded-3 ${filtroTractor !== "Todos" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroTractor !== "Todos" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroTractor !== "Todos" ? "700" : "normal",
+                  }}
+                >
+                  <option value="Todos">Todos</option>
+                  {listaTractores.map((trac) => (
+                    <option key={trac.clean} value={trac.clean}>
+                      {trac.label}
+                    </option>
+                  ))}
+                </Form.Select>
+                {filtroTractor !== "Todos" && (
+                  <button
+                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+                    type="button"
+                    onClick={() => setFiltroTractor("Todos")}
+                    title="Limpiar filtro tractor"
+                    style={{ padding: "0 6px", height: "32px" }}
+                  >
+                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Filtro por Categoría */}
+            <div className="d-flex align-items-center gap-2">
+              <span
+                className="fw-bold text-dark small flex-shrink-0 me-1"
+                style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
+              >
+                Categoría:
+              </span>
+              <div className="input-group input-group-sm" style={{ width: "175px" }}>
+                <Form.Select
+                  size="sm"
+                  value={filtroCategoria}
+                  onChange={(e) => setFiltroCategoria(e.target.value)}
+                  className={`rounded-3 ${filtroCategoria !== "Todas" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroCategoria !== "Todas" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroCategoria !== "Todas" ? "700" : "normal",
+                  }}
+                >
+                  {CATEGORIAS.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </Form.Select>
+                {filtroCategoria !== "Todas" && (
+                  <button
+                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+                    type="button"
+                    onClick={() => setFiltroCategoria("Todas")}
+                    title="Limpiar filtro categoría"
+                    style={{ padding: "0 6px", height: "32px" }}
+                  >
+                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Filtro por Taller */}
+            <div className="d-flex align-items-center gap-2">
+              <span
+                className="fw-bold text-dark small flex-shrink-0 me-1"
+                style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
+              >
+                Taller:
+              </span>
+              <div className="input-group input-group-sm" style={{ width: "155px" }}>
+                <Form.Select
+                  size="sm"
+                  value={filtroTaller}
+                  onChange={(e) => setFiltroTaller(e.target.value)}
+                  className={`rounded-3 ${filtroTaller !== "Todos" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroTaller !== "Todos" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroTaller !== "Todos" ? "700" : "normal",
+                  }}
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Taller Propio">Taller Propio</option>
+                  <option value="Tercero">Tercero</option>
+                </Form.Select>
+                {filtroTaller !== "Todos" && (
+                  <button
+                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+                    type="button"
+                    onClick={() => setFiltroTaller("Todos")}
+                    title="Limpiar filtro taller"
+                    style={{ padding: "0 6px", height: "32px" }}
+                  >
+                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Filtro por Estado */}
+            <div className="d-flex align-items-center gap-2">
+              <span
+                className="fw-bold text-dark small flex-shrink-0 me-1"
+                style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
+              >
+                Estado:
+              </span>
+              <div className="input-group input-group-sm" style={{ width: "205px" }}>
+                <Form.Select
+                  size="sm"
+                  value={filtroEstado}
+                  onChange={(e) => setFiltroEstado(e.target.value)}
+                  className={`rounded-3 ${filtroEstado !== "Todas" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroEstado !== "Todas" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroEstado !== "Todas" ? "700" : "normal",
+                  }}
+                >
+                  <option value="Pendientes / En proceso">Pendientes / En proceso</option>
+                  <option value="Todas">Todas</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="En proceso">En proceso</option>
+                  <option value="Terminada">Terminada</option>
+                </Form.Select>
+                {filtroEstado !== "Todas" && (
+                  <button
+                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+                    type="button"
+                    onClick={() => setFiltroEstado("Todas")}
+                    title="Limpiar filtro estado"
+                    style={{ padding: "0 6px", height: "32px" }}
+                  >
+                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Estilos CSS para separación de tractores y hover */}
+        <style>{`
+          .tabla-general-reparaciones {
+            width: 100%;
+            border-collapse: collapse !important;
+          }
+          .tabla-general-reparaciones th {
+            border: none !important;
+            border-bottom: 2px solid #0f172a !important;
+          }
+          .tabla-general-reparaciones tr.fila-mismo-tractor td {
+            border-bottom: 1px solid #e2e8f0 !important;
+            border-top: none !important;
+          }
+          .tabla-general-reparaciones tr.fila-cambio-tractor td {
+            border-bottom: 3px solid #1e293b !important;
+            border-top: none !important;
+          }
+          .tabla-general-reparaciones tbody tr:hover {
+            background-color: #f1f5f9 !important;
+          }
+        `}</style>
+
+        {/* Contenedor de la Tabla */}
+        <div
+          className="shadow-sm bg-white"
+          style={{
+            borderRadius: "10px",
+            border: "1px solid #cbd5e1",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              maxHeight: "calc(100vh - 230px)",
+              minHeight: "300px",
+              overflowY: "auto",
+              overflowX: "auto",
+            }}
+          >
+            <table
+              className="tabla-general-reparaciones align-middle mb-0"
+              style={{
+                fontSize: "0.81rem",
+              }}
+            >
+              <thead
+                style={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 2,
+                }}
+              >
+                <tr className="align-middle">
+                  <th
+                    style={{
+                      width: "115px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Tractor
+                  </th>
+                  <th
+                    style={{
+                      width: "95px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Fecha
+                  </th>
+                  <th
+                    style={{
+                      width: "145px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Categoría
+                  </th>
+                  <th
+                    style={{
+                      minWidth: "210px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Diagnóstico
+                  </th>
+                  <th
+                    style={{
+                      minWidth: "220px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Reparación Realizada
+                  </th>
+                  <th
+                    style={{
+                      width: "135px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Taller
+                  </th>
+                  <th
+                    style={{
+                      width: "105px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Repuestos
+                  </th>
+                  <th
+                    style={{
+                      width: "105px",
+                      padding: "8px 10px",
+                      textAlign: "center",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Estado
+                  </th>
+                  <th
+                    style={{
+                      width: "125px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Responsable
+                  </th>
+                  <th
+                    style={{
+                      width: "60px",
+                      padding: "8px 6px",
+                      textAlign: "center",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Acción
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {cargando ? (
+                  <tr>
+                    <td colSpan={10} className="text-center py-4 text-muted">
+                      <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                      Cargando planilla de reparaciones...
+                    </td>
+                  </tr>
+                ) : trabajosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="text-center py-4 text-muted">
+                      <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
+                      No se encontraron reparaciones registradas con los filtros seleccionados.
+                    </td>
+                  </tr>
+                ) : (
+                  trabajosFiltrados.map((t, idx) => {
+                    const estiloCat = CATEGORIA_COLORES[t.parte] || CATEGORIA_COLORES["Otros"];
+                    const est = estadoNormalizado(t.estado);
+                    const esTerminada = est === "Terminada";
+                    const esEnProceso = est === "En proceso";
+                    const tractorInfo = getTractorInfo(t);
+
+                    // Detectar si la siguiente fila pertenece a un tractor diferente
+                    const proxTrabajo = trabajosFiltrados[idx + 1];
+                    const ccActual = tractorInfo.cleanCC;
+                    const ccProx = proxTrabajo ? getTractorInfo(proxTrabajo).cleanCC : null;
+                    const esCambioTractor = !proxTrabajo || (ccActual !== ccProx);
+
+                    // 2 tonos intercalados de fondo de badge según tractor
+                    const tonoIndex = tractorColorMap.get(ccActual) ?? 0;
+                    const bgBadge = tonoIndex === 0 ? "#1e293b" : "#475569";
+                    const borderBadge = tonoIndex === 0 ? "#0f172a" : "#334155";
+
+                    return (
+                      <tr
+                        key={t._id}
+                        className={esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"}
+                      >
+                        {/* Tractor / CC */}
+                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                          <span
+                            className="badge px-2 py-0.5 fw-bold text-white shadow-sm"
+                            style={{
+                              backgroundColor: bgBadge,
+                              border: `1px solid ${borderBadge}`,
+                              fontSize: "0.74rem",
+                              cursor: tractorInfo.tractorId ? "pointer" : "default",
+                              letterSpacing: "0.4px",
+                            }}
+                            onClick={() => {
+                              if (tractorInfo.tractorId) {
+                                navigate(`/tractores/grupo/${tractorInfo.grupoNum}/reparaciones/${tractorInfo.tractorId}`, {
+                                  state: { cc: `CC ${tractorInfo.cleanCC}`, descripcion: tractorInfo.descripcion },
+                                });
+                              }
+                            }}
+                            title="Ir al menú de reparaciones de este tractor"
+                          >
+                            CC {tractorInfo.cleanCC}
+                          </span>
+                          {tractorInfo.descripcion && (
+                            <div
+                              className="text-muted text-truncate"
+                              style={{
+                                fontSize: "0.62rem",
+                                lineHeight: "1.1",
+                                marginTop: "2px",
+                                maxWidth: "100px",
+                                marginInline: "auto",
+                              }}
+                              title={tractorInfo.descripcion}
+                            >
+                              {tractorInfo.descripcion}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Fecha */}
+                        <td
+                          className="fw-semibold text-dark text-center"
+                          style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                        >
+                          {formatF(t.fecha)}
+                        </td>
+
+                        {/* Categoría */}
+                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                          <span
+                            className="badge fw-medium px-2 py-0.5"
+                            style={{
+                              backgroundColor: estiloCat.bg,
+                              color: estiloCat.text,
+                              border: `1px solid ${estiloCat.border}`,
+                              fontSize: "0.72rem",
+                              borderRadius: "5px",
+                            }}
+                          >
+                            {t.parte || "Mecánica general"}
+                          </span>
+                        </td>
+
+                        {/* Diagnóstico (clicable para ver detalle) */}
+                        <td style={{ padding: "4px 8px" }}>
+                          <div
+                            className="fw-medium text-dark text-truncate"
+                            style={{ maxWidth: "230px", cursor: "pointer" }}
+                            title={t.diagnostico || t.descripcion || "—"}
+                            onClick={() => abrirDetalle(t)}
+                          >
+                            {t.diagnostico || t.descripcion || "—"}
+                          </div>
+                          {t.maquinaParada && (
+                            <span
+                              className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0 mt-0.5"
+                              style={{ fontSize: "0.64rem" }}
+                            >
+                              <i className="bi bi-exclamation-triangle-fill me-1"></i>Parada
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Reparación Realizada */}
+                        <td style={{ padding: "4px 8px" }}>
+                          <div
+                            className="text-secondary text-truncate"
+                            style={{ maxWidth: "240px", cursor: "pointer" }}
+                            title={t.reparacion || t.descripcion || "—"}
+                            onClick={() => abrirDetalle(t)}
+                          >
+                            {t.reparacion || t.descripcion || <span className="text-muted fst-italic">Sin detalle de avance</span>}
+                          </div>
+                        </td>
+
+                        {/* Taller */}
+                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                          {t.taller === "Tercero" ? (
+                            <span
+                              className="badge px-1.5 py-0.5 fw-medium"
+                              style={{
+                                backgroundColor: "#fed7aa",
+                                color: "#9a3412",
+                                border: "1px solid #f97316",
+                                fontSize: "0.71rem",
+                              }}
+                            >
+                              <i className="bi bi-building me-1"></i>
+                              {t.nombreTaller || "Tercero"}
+                            </span>
+                          ) : (
+                            <span
+                              className="badge px-1.5 py-0.5 fw-medium"
+                              style={{
+                                backgroundColor: "#f0fdf4",
+                                color: "#166534",
+                                border: "1px solid #bbf7d0",
+                                fontSize: "0.71rem",
+                              }}
+                            >
+                              <i className="bi bi-wrench me-1"></i>T. Propio
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Repuestos */}
+                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                          {t.repuestos && t.repuestos.length > 0 ? (
+                            <span
+                              className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5 cursor-pointer"
+                              style={{ fontSize: "0.71rem", cursor: "pointer" }}
+                              onClick={() => abrirDetalle(t)}
+                              title="Ver repuestos utilizados"
+                            >
+                              <i className="bi bi-box-seam me-1"></i>
+                              {t.repuestos.length}
+                            </span>
+                          ) : (
+                            <span className="text-muted small fst-italic">—</span>
+                          )}
+                        </td>
+
+                        {/* Estado */}
+                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                          <span
+                            className="badge px-1.5 py-0.5 fw-semibold"
+                            style={{
+                              backgroundColor: esTerminada ? "#dcfce7" : esEnProceso ? "#fef3c7" : "#fee2e2",
+                              color: esTerminada ? "#15803d" : esEnProceso ? "#b45309" : "#b91c1c",
+                              border: `1px solid ${
+                                esTerminada ? "#86efac" : esEnProceso ? "#fde047" : "#fca5a5"
+                              }`,
+                              fontSize: "0.72rem",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            {esTerminada ? "Terminada" : esEnProceso ? "En proceso" : "Pendiente"}
+                          </span>
+                        </td>
+
+                        {/* Responsable */}
+                        <td className="text-center" style={{ padding: "4px 8px", fontSize: "0.76rem" }}>
+                          <span className="text-dark fw-medium" title={t.responsable || tractorInfo.infoG.supervisor || "—"}>
+                            {t.responsable || tractorInfo.infoG.supervisor || "—"}
+                          </span>
+                        </td>
+
+                        {/* Acción */}
+                        <td className="text-center" style={{ padding: "4px 6px" }}>
+                          <div className="d-inline-flex align-items-center gap-1">
+                            <Button
+                              variant="outline-dark"
+                              size="sm"
+                              className="p-0 d-inline-flex align-items-center justify-content-center rounded-2"
+                              style={{ width: "22px", height: "22px", fontSize: "0.72rem" }}
+                              onClick={() => abrirDetalle(t)}
+                              title="Ver ficha completa"
+                            >
+                              <i className="bi bi-eye"></i>
+                            </Button>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="p-0 d-inline-flex align-items-center justify-content-center rounded-2"
+                              style={{ width: "22px", height: "22px", fontSize: "0.72rem" }}
+                              onClick={() => handleEliminarTrabajo(t._id)}
+                              title="Eliminar trabajo"
+                            >
+                              <i className="bi bi-trash3-fill"></i>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Container>
+
+      {/* Modal de Detalle Completo de la Reparación */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
+        {trabajoSeleccionado && (
+          <>
+            <Modal.Header
+              closeButton
+              closeVariant="white"
+              data-bs-theme="dark"
+              style={{ backgroundColor: "#1e293b", color: "#fff", borderBottom: "none" }}
+            >
+              <Modal.Title className="fs-6 d-flex align-items-center gap-2">
+                <i className="bi bi-tools text-warning"></i>
+                <span>
+                  Ficha de Reparación - CC {getTractorInfo(trabajoSeleccionado).cleanCC} ({formatF(trabajoSeleccionado.fecha)})
+                </span>
+              </Modal.Title>
+            </Modal.Header>
+
+            <Modal.Body className="p-4 bg-light">
+              {/* Tarjeta de Resumen Rápido */}
+              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                <Row className="g-3">
+                  <Col sm={3}>
+                    {(() => {
+                      const info = getTractorInfo(trabajoSeleccionado);
+                      return (
+                        <>
+                          <div className="text-muted small">Tractor</div>
+                          <div className="fw-bold text-dark fs-6">
+                            CC {info.cleanCC}
+                          </div>
+                          <div className="text-muted small">
+                            {info.infoG.label} ({info.infoG.supervisor})
+                          </div>
+                          {info.descripcion && (
+                            <div className="text-muted small">{info.descripcion}</div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </Col>
+                  <Col sm={3}>
+                    <div className="text-muted small">Categoría</div>
+                    <div>
+                      <Badge
+                        bg="light"
+                        className="text-dark border"
+                        style={{ fontSize: "0.8rem", fontWeight: "600" }}
+                      >
+                        {trabajoSeleccionado.parte || "Mecánica general"}
+                      </Badge>
+                    </div>
+                  </Col>
+                  <Col sm={3}>
+                    <div className="text-muted small">Estado</div>
+                    <div>
+                      <span
+                        className="badge px-2 py-1 fw-semibold"
+                        style={{
+                          backgroundColor:
+                            estadoNormalizado(trabajoSeleccionado.estado) === "Terminada"
+                              ? "#d1fae5"
+                              : estadoNormalizado(trabajoSeleccionado.estado) === "En proceso"
+                              ? "#fef3c7"
+                              : "#fee2e2",
+                          color:
+                            estadoNormalizado(trabajoSeleccionado.estado) === "Terminada"
+                              ? "#065f46"
+                              : estadoNormalizado(trabajoSeleccionado.estado) === "En proceso"
+                              ? "#92400e"
+                              : "#991b1b",
+                          border: `1px solid ${
+                            estadoNormalizado(trabajoSeleccionado.estado) === "Terminada"
+                              ? "#a7f3d0"
+                              : estadoNormalizado(trabajoSeleccionado.estado) === "En proceso"
+                              ? "#fde68a"
+                              : "#fca5a5"
+                          }`,
+                        }}
+                      >
+                        {estadoNormalizado(trabajoSeleccionado.estado)}
                       </span>
                     </div>
-                  </td>
-                  <td>
-                    <select
-                      value={responsable}
-                      onChange={(e) => cambiarResponsable(t._id, e.target.value)}
-                      style={{ padding: "2px 4px", borderRadius: "4px", border: "1px solid #aaa", fontSize: "0.72rem", cursor: "pointer", minWidth: "120px" }}
-                    >
-                      <option value="">— Sin asignar —</option>
-                      {listaResponsables.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <Button size="sm" onClick={() => eliminar(t._id)} style={{ backgroundColor: "#7a4040", border: "none" }}>
-                      <i className="bi bi-trash"></i>
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      </div>
+                  </Col>
+                  <Col sm={3}>
+                    <div className="text-muted small">Lugar / Taller</div>
+                    <div className="fw-semibold text-dark">
+                      {trabajoSeleccionado.taller === "Tercero"
+                        ? `Tercero (${trabajoSeleccionado.nombreTaller || "Externo"})`
+                        : "Taller Propio"}
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
 
-    </Container>
+              {/* Diagnóstico */}
+              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="fw-bold text-dark">
+                    <i className="bi bi-clipboard2-pulse me-2 text-primary"></i>Diagnóstico Técnico
+                  </div>
+                  {trabajoSeleccionado.maquinaParada && (
+                    <span className="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">
+                      <i className="bi bi-exclamation-triangle-fill me-1"></i>Tractor Parado
+                    </span>
+                  )}
+                </div>
+                <div className="text-dark small" style={{ whiteSpace: "pre-wrap" }}>
+                  {trabajoSeleccionado.diagnostico || trabajoSeleccionado.descripcion || "Sin diagnóstico especificado."}
+                </div>
+              </Card>
+
+              {/* Reparaciones Realizadas / Avance */}
+              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                <div className="fw-bold text-dark mb-2">
+                  <i className="bi bi-check2-square me-2 text-success"></i>Detalle de Reparación Realizada / Avance
+                </div>
+                <div className="text-dark small" style={{ whiteSpace: "pre-wrap" }}>
+                  {trabajoSeleccionado.reparacion || trabajoSeleccionado.descripcion || <span className="text-muted fst-italic">Sin avance asentado.</span>}
+                </div>
+              </Card>
+
+              {/* Repuestos e Insumos */}
+              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <div className="fw-bold text-dark">
+                    <i className="bi bi-box-seam me-2 text-warning"></i>Repuestos Utilizados
+                  </div>
+                  {trabajoSeleccionado.repuestos?.length > 0 && (
+                    <span className="text-muted small">
+                      {trabajoSeleccionado.repuestos.length} {trabajoSeleccionado.repuestos.length === 1 ? "ítem" : "ítems"}
+                    </span>
+                  )}
+                </div>
+
+                {trabajoSeleccionado.repuestos && trabajoSeleccionado.repuestos.length > 0 ? (
+                  <div className="table-responsive">
+                    <Table size="sm" className="mb-0 align-middle" style={{ fontSize: "0.82rem" }}>
+                      <thead className="table-light">
+                        <tr>
+                          <th>Repuesto</th>
+                          <th className="text-center">Cant.</th>
+                          <th className="text-end">Precio Unit.</th>
+                          <th className="text-end">Subtotal</th>
+                          <th>Proveedor</th>
+                          <th className="text-center">Estado</th>
+                          <th>Observaciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trabajoSeleccionado.repuestos.map((r, rIdx) => (
+                          <tr key={rIdx}>
+                            <td className="fw-semibold">{r.repuesto || "Repuesto"}</td>
+                            <td className="text-center">{r.cantidad || 1}</td>
+                            <td className="text-end">{pesos(r.precio)}</td>
+                            <td className="text-end fw-bold">{pesos((r.cantidad || 1) * (r.precio || 0))}</td>
+                            <td>{r.proveedor || "—"}</td>
+                            <td className="text-center">
+                              <span className="badge bg-secondary-subtle text-dark border px-2 py-0.5">
+                                {r.estado || "Colocado"}
+                              </span>
+                            </td>
+                            <td className="text-muted">{r.observaciones || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-muted small fst-italic">No se asociaron repuestos a este trabajo.</div>
+                )}
+              </Card>
+
+              {/* Observaciones y Responsable */}
+              {(trabajoSeleccionado.observaciones || trabajoSeleccionado.responsable || getTractorInfo(trabajoSeleccionado).infoG.supervisor) && (
+                <Card className="border-0 shadow-sm rounded-3 p-3 bg-white">
+                  <Row className="g-3">
+                    {(trabajoSeleccionado.responsable || getTractorInfo(trabajoSeleccionado).infoG.supervisor) && (
+                      <Col sm={6}>
+                        <div className="text-muted small">Mecánico / Responsable de Ejecución</div>
+                        <div className="fw-semibold text-dark">
+                          {trabajoSeleccionado.responsable || getTractorInfo(trabajoSeleccionado).infoG.supervisor}
+                        </div>
+                      </Col>
+                    )}
+                    {trabajoSeleccionado.observaciones && (
+                      <Col sm={6}>
+                        <div className="text-muted small">Observaciones Adicionales</div>
+                        <div className="text-dark small">{trabajoSeleccionado.observaciones}</div>
+                      </Col>
+                    )}
+                  </Row>
+                </Card>
+              )}
+            </Modal.Body>
+
+            <Modal.Footer className="border-top-0 bg-white">
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="rounded-3 px-3"
+                onClick={() => setShowModal(false)}
+              >
+                Cerrar
+              </Button>
+            </Modal.Footer>
+          </>
+        )}
+      </Modal>
+    </div>
   );
 }
 

@@ -507,7 +507,8 @@ function CamionetasAltas() {
       <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border-0 shadow-lg rounded-4 overflow-visible">
         <Modal.Header
           closeButton
-          style={{ backgroundColor: "#1e293b", color: "#fff", borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem" }}
+          closeVariant="white"
+          style={{ backgroundColor: "#1e293b", color: "#fff", borderTopLeftRadius: "1rem", borderTopRightRadius: "1rem", borderBottom: "1px solid rgba(255,255,255,0.1)" }}
         >
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
             <i className="bi bi-car-front-fill text-info"></i>

@@ -25,6 +25,11 @@ import TractoresReparaciones from "./components/pages/TractoresReparaciones";
 import TractoresAltas from "./components/pages/TractoresAltas";
 import TractoresGrupo from "./components/pages/TractoresGrupo";
 import ReparacionesTractor from "./components/pages/ReparacionesTractor";
+import ReportarFallaTractor from "./components/pages/ReportarFallaTractor";
+import TareasTractor from "./components/pages/TareasTractor";
+import TareasTractorVieja from "./components/pages/TareasTractorVieja";
+import TareasTractorNueva from "./components/pages/TareasTractorNueva";
+import HistorialTractor from "./components/pages/HistorialTractor";
 import ResumenReparacionesTractores from "./components/pages/ResumenReparacionesTractores";
 import Visitas from "./components/pages/Visitas";
 import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
@@ -68,15 +73,21 @@ function App() {
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
               <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
               <Route path="/tractores" element={<Tractores />} />
-              <Route path="/tractores/preventivo" element={<TractoresPreventivo />} />
+              <Route path="/tractores/preventivo" element={<Error404 />} />
               <Route path="/tractores/reparaciones" element={<TractoresReparaciones />} />
               <Route path="/tractores/services/reparaciones" element={<Navigate to="/tractores/reparaciones" replace />} />
               <Route path="/tractores/altas" element={<TractoresAltas />} />
               <Route path="/tractores/grupo/:grupoId" element={<TractoresGrupo />} />
+              <Route path="/tractores/grupo/:grupoId/resumen" element={<ResumenReparacionesTractores />} />
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId" element={<ReparacionesTractor />} />
+              <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/reportar" element={<ReportarFallaTractor />} />
+              <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/tareas" element={<TareasTractorNueva />} />
+              <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/tareas/vieja" element={<Error404 />} />
+              <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/tareas/nueva" element={<TareasTractorNueva />} />
+              <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/historial" element={<HistorialTractor />} />
               <Route path="/tractores/services/reparaciones/resumen" element={<ResumenReparacionesTractores />} />
-              <Route path="/reparaciones/sanpablo" element={<ReparacionesSanPablo />} />
-              <Route path="/reparaciones/berdina" element={<ReparacionesBerdina />} />
+              <Route path="/reparaciones/sanpablo" element={<Error404 />} />
+              <Route path="/reparaciones/berdina" element={<Error404 />} />
               <Route path="/camionetas/services" element={<CamionetasServices />} />
               <Route path="/camionetas/services/kilometros" element={<ServicesKilometros />} />
               <Route path="/camionetas/services/ultimo-service" element={<ServicesUltimoService />} />

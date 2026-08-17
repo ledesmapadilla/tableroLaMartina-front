@@ -414,20 +414,29 @@ function ResumenReparaciones() {
       </div>
 
       <Container fluid className="px-4 py-3">
-        {/* Fila Superior: Botón Excel a la derecha */}
-        <div className="d-flex align-items-center justify-content-end mb-3">
-          <Button
-            variant="success"
-            size="sm"
-            onClick={exportarExcel}
-            disabled={trabajosFiltrados.length === 0}
-            className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
-            style={{ fontSize: "0.82rem", backgroundColor: "#15803d", borderColor: "#15803d" }}
-            title="Exportar a Excel"
-          >
-            <i className="bi bi-file-earmark-excel-fill"></i>
-            <span>Excel</span>
-          </Button>
+        {/* Fila Superior: Título Centrado en la Página y Botón Excel a la derecha */}
+        <div className="position-relative d-flex align-items-center justify-content-center mb-3">
+          <div className="text-center">
+            <div className="d-flex align-items-center justify-content-center gap-2">
+              <h5 className="fw-bold text-dark mb-0 fs-5">Planilla General de Reparaciones</h5>
+              <span className="text-muted small">• Todas las Camionetas</span>
+            </div>
+          </div>
+
+          <div className="position-absolute end-0">
+            <Button
+              variant="success"
+              size="sm"
+              onClick={exportarExcel}
+              disabled={trabajosFiltrados.length === 0}
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
+              style={{ fontSize: "0.82rem", backgroundColor: "#15803d", borderColor: "#15803d" }}
+              title="Exportar a Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill"></i>
+              <span>Excel</span>
+            </Button>
+          </div>
         </div>
 
         {/* Barra de Filtros distribuida armónicamente */}
@@ -450,8 +459,14 @@ function ResumenReparaciones() {
                   placeholder="Buscar falla, repuesto, taller..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className="border-start-0 ps-0"
-                  style={{ fontSize: "0.82rem", height: "32px", padding: "3px 8px" }}
+                  className={`border-start-0 ps-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 8px",
+                    color: busqueda ? "#dc2626" : "#1e293b",
+                    fontWeight: busqueda ? "700" : "normal",
+                  }}
                 />
                 {busqueda && (
                   <button
@@ -480,8 +495,14 @@ function ResumenReparaciones() {
                   size="sm"
                   value={filtroCamioneta}
                   onChange={(e) => setFiltroCamioneta(e.target.value)}
-                  className={`rounded-3 ${filtroCamioneta !== "Todas" ? "rounded-end-0 border-end-0" : ""}`}
-                  style={{ fontSize: "0.82rem", height: "32px", padding: "3px 24px 3px 8px", color: "#334155" }}
+                  className={`rounded-3 ${filtroCamioneta !== "Todas" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroCamioneta !== "Todas" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroCamioneta !== "Todas" ? "700" : "normal",
+                  }}
                 >
                   <option value="Todas">Todas</option>
                   {listaPatentes.map((pat) => (
@@ -517,8 +538,14 @@ function ResumenReparaciones() {
                   size="sm"
                   value={filtroCategoria}
                   onChange={(e) => setFiltroCategoria(e.target.value)}
-                  className={`rounded-3 ${filtroCategoria !== "Todas" ? "rounded-end-0 border-end-0" : ""}`}
-                  style={{ fontSize: "0.82rem", height: "32px", padding: "3px 24px 3px 8px", color: "#334155" }}
+                  className={`rounded-3 ${filtroCategoria !== "Todas" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroCategoria !== "Todas" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroCategoria !== "Todas" ? "700" : "normal",
+                  }}
                 >
                   {CATEGORIAS.map((cat) => (
                     <option key={cat} value={cat}>
@@ -553,8 +580,14 @@ function ResumenReparaciones() {
                   size="sm"
                   value={filtroTaller}
                   onChange={(e) => setFiltroTaller(e.target.value)}
-                  className={`rounded-3 ${filtroTaller !== "Todos" ? "rounded-end-0 border-end-0" : ""}`}
-                  style={{ fontSize: "0.82rem", height: "32px", padding: "3px 24px 3px 8px", color: "#334155" }}
+                  className={`rounded-3 ${filtroTaller !== "Todos" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroTaller !== "Todos" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroTaller !== "Todos" ? "700" : "normal",
+                  }}
                 >
                   <option value="Todos">Todos</option>
                   <option value="Taller Propio">Taller Propio</option>
@@ -587,8 +620,14 @@ function ResumenReparaciones() {
                   size="sm"
                   value={filtroEstado}
                   onChange={(e) => setFiltroEstado(e.target.value)}
-                  className={`rounded-3 ${filtroEstado !== "Todas" ? "rounded-end-0 border-end-0" : ""}`}
-                  style={{ fontSize: "0.82rem", height: "32px", padding: "3px 24px 3px 8px", color: "#334155" }}
+                  className={`rounded-3 ${filtroEstado !== "Todas" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                  style={{
+                    fontSize: "0.82rem",
+                    height: "32px",
+                    padding: "3px 24px 3px 8px",
+                    color: filtroEstado !== "Todas" ? "#dc2626" : "#1e293b",
+                    fontWeight: filtroEstado !== "Todas" ? "700" : "normal",
+                  }}
                 >
                   <option value="Todas">Todas</option>
                   <option value="Pendiente / En proceso">Pendiente / En proceso</option>

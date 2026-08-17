@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "react-bootstrap";
 import ExcelJS from "exceljs";
 import Swal from "sweetalert2";
+import TractorIcon from "../shared/TractorIcon";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -15,16 +16,26 @@ const formatF = (iso) => {
   return str;
 };
 
+const pesos = (n) =>
+  (Number(n) || 0).toLocaleString("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  });
+
 const CATEGORIAS = [
   "Todas",
   "Motor",
   "Embrague",
+  "Transmisión / Caja",
   "Frenos",
-  "Suspensión / Dirección",
+  "Hidráulica",
+  "Dirección",
   "Mecánica general",
   "Electricidad / Luces",
-  "Neumáticos / Cubiertas",
-  "Chapa / Carrocería",
+  "Neumáticos / Rodado",
+  "Chapa / Cabina",
+  "Toma de Fuerza / Levante",
   "Service Programado",
   "Otros",
 ];
@@ -32,24 +43,44 @@ const CATEGORIAS = [
 const CATEGORIA_COLORES = {
   Motor: { bg: "#fee2e2", text: "#991b1b", border: "#f87171" },
   Embrague: { bg: "#ffedd5", text: "#9a3412", border: "#fb923c" },
+  "Transmisión / Caja": { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
   Frenos: { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
-  "Suspensión / Dirección": { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
+  Hidráulica: { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
+  Dirección: { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
   "Mecánica general": { bg: "#e2e8f0", text: "#334155", border: "#94a3b8" },
   "Electricidad / Luces": { bg: "#fef9c3", text: "#854d0e", border: "#facc15" },
-  "Neumáticos / Cubiertas": { bg: "#ccfbf1", text: "#115e59", border: "#2dd4bf" },
-  "Chapa / Carrocería": { bg: "#fae8ff", text: "#86198f", border: "#e879f9" },
+  "Neumáticos / Rodado": { bg: "#ccfbf1", text: "#115e59", border: "#2dd4bf" },
+  "Chapa / Cabina": { bg: "#fae8ff", text: "#86198f", border: "#e879f9" },
+  "Toma de Fuerza / Levante": { bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc" },
   "Service Programado": { bg: "#dcfce7", text: "#166534", border: "#4ade80" },
   Otros: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
 };
 
-function HistorialReparaciones() {
+const estadoNormalizado = (estado) => {
+  if (!estado) return "Pendiente";
+  const lower = String(estado).toLowerCase().trim();
+  if (lower === "terminado" || lower === "terminada") return "Terminada";
+  if (lower === "en proceso") return "En proceso";
+  return "Pendiente";
+};
+
+const GRUPOS = {
+  1: { label: "Grupo 1", supervisor: "Jorge Rosas" },
+  2: { label: "Grupo 2", supervisor: "Guillermo Bustos" },
+  3: { label: "Grupo 3", supervisor: "Carlos Chumiento" },
+  4: { label: "Grupo 4", supervisor: "brandan alejandro" },
+  5: { label: "Grupo 5", supervisor: "Elio Rojas" },
+  6: { label: "Berdina", supervisor: "Kevin" },
+  7: { label: "San Pablo", supervisor: "Victor" },
+};
+
+function HistorialTractor() {
   const navigate = useNavigate();
-  const { camionetaId } = useParams();
+  const { grupoId, tractorId } = useParams();
   const { state } = useLocation();
 
-  const [camioneta, setCamioneta] = useState(null);
+  const [tractor, setTractor] = useState(null);
   const [trabajos, setTrabajos] = useState([]);
-  const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
   const [cargando, setCargando] = useState(true);
 
   // Filtros
@@ -66,44 +97,41 @@ function HistorialReparaciones() {
   const cargarDatos = () => {
     setCargando(true);
     Promise.all([
-      fetch(`/api/camionetas/${camionetaId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`/api/trabajos-camioneta/${camionetaId}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/paradas/abiertas/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([cam, trabs, abIds]) => {
-      if (cam) setCamioneta(cam);
+      fetch(`/api/tractores/${tractorId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(`/api/trabajos-tractor/tractor/${tractorId}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([trac, trabs]) => {
+      if (trac) setTractor(trac);
       setTrabajos(Array.isArray(trabs) ? trabs : []);
-      setParadasAbiertas(new Set(Array.isArray(abIds) ? abIds : []));
       setCargando(false);
     });
   };
 
   useEffect(() => {
     cargarDatos();
-  }, [camionetaId]);
+  }, [tractorId]);
 
-  const patente = camioneta?.patente || state?.patente || "—";
-  const marca = camioneta?.marca || state?.marca || "";
-  const responsableCam = camioneta?.responsable || "";
+  const rawCC = tractor?.cc || state?.cc || "CC —";
+  const cleanCC = String(rawCC).replace(/^cc\s*/i, "").trim();
+  const descripcion = tractor?.descripcion || state?.descripcion || "";
+  const infoGrupo = GRUPOS[grupoId] || { label: state?.grupoLabel || `Grupo ${grupoId}`, supervisor: "—" };
 
   // Estado Parada vs Activa
-  const estaParada =
-    paradasAbiertas.has(camionetaId) ||
-    trabajos.some(
-      (t) =>
-        t.maquinaParada &&
-        !["terminada", "terminado"].includes((t.estado || "").toLowerCase())
+  const estaParada = useMemo(() => {
+    return trabajos.some(
+      (t) => t.maquinaParada && estadoNormalizado(t.estado) !== "Terminada"
     );
+  }, [trabajos]);
 
   // Filtrado de Trabajos
   const trabajosFiltrados = useMemo(() => {
     return trabajos.filter((t) => {
       // Filtro por Estado
       if (filtroEstado === "Pendientes / En proceso" || filtroEstado === "Pendiente / En proceso") {
-        const est = (t.estado || "Pendiente").toLowerCase();
-        if (est !== "pendiente" && est !== "en proceso") return false;
+        const est = estadoNormalizado(t.estado);
+        if (est !== "Pendiente" && est !== "En proceso") return false;
       } else if (filtroEstado !== "Todas") {
-        const est = (t.estado || "Pendiente").toLowerCase();
-        if (filtroEstado.toLowerCase() !== est) return false;
+        const est = estadoNormalizado(t.estado);
+        if (filtroEstado !== est) return false;
       }
 
       // Filtro por Categoría
@@ -125,6 +153,11 @@ function HistorialReparaciones() {
         const enRep = (t.reparacion || "").toLowerCase().includes(q);
         const enDesc = (t.descripcion || "").toLowerCase().includes(q);
         const enResp = (t.responsable || "").toLowerCase().includes(q);
+        const enTaller = (t.nombreTaller || "").toLowerCase().includes(q);
+        const enParte = (t.parte || "").toLowerCase().includes(q);
+        const enRepuestos = (t.repuestos || []).some((r) =>
+          (r.repuesto || "").toLowerCase().includes(q) || (r.proveedor || "").toLowerCase().includes(q)
+        );
         if (!enDiag && !enRep && !enDesc && !enResp && !enTaller && !enParte && !enRepuestos) {
           return false;
         }
@@ -135,8 +168,8 @@ function HistorialReparaciones() {
   }, [trabajos, filtroEstado, filtroCategoria, filtroTaller, busqueda]);
 
   // Contadores de tareas
-  const pendientes = trabajos.filter((t) => (t.estado || "").toLowerCase() === "pendiente").length;
-  const enProceso = trabajos.filter((t) => (t.estado || "").toLowerCase() === "en proceso").length;
+  const pendientes = trabajos.filter((t) => estadoNormalizado(t.estado) === "Pendiente").length;
+  const enProceso = trabajos.filter((t) => estadoNormalizado(t.estado) === "En proceso").length;
   const cantPendientesOEnProceso = pendientes + enProceso;
 
   const abrirDetalle = (t) => {
@@ -148,8 +181,9 @@ function HistorialReparaciones() {
   const handleEliminarTrabajo = async (trabajoId) => {
     const result = await Swal.fire({
       title: "¿Eliminar registro?",
+      text: "Esta acción no se puede deshacer.",
       icon: "warning",
-      width: "300px",
+      width: "320px",
       showCancelButton: true,
       confirmButtonColor: "#ef4444",
       cancelButtonColor: "#64748b",
@@ -160,7 +194,7 @@ function HistorialReparaciones() {
     if (!result.isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/trabajos-camioneta/${trabajoId}`, {
+      const res = await fetch(`/api/trabajos-tractor/${trabajoId}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -197,7 +231,7 @@ function HistorialReparaciones() {
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Historial Reparaciones");
 
-    const titulo = `HISTORIAL DE REPARACIONES - ${patente} ${marca ? `(${marca})` : ""}`;
+    const titulo = `HISTORIAL DE REPARACIONES - TRACTOR CC ${cleanCC} ${descripcion ? `(${descripcion})` : ""}`;
     const fechaHoy = formatF(new Date().toISOString());
 
     const columnas = [
@@ -217,7 +251,7 @@ function HistorialReparaciones() {
     celdaTitulo.value = titulo;
     celdaTitulo.font = { bold: true, size: 14, color: { argb: "FF000000" } };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
-    ws.getRow(1).height = 24;
+    ws.getRow(1).height = 28;
 
     ws.mergeCells(2, 1, 2, 4);
     const celdaFecha = ws.getCell("A2");
@@ -230,9 +264,9 @@ function HistorialReparaciones() {
 
     const filaEnc = ws.addRow(columnas);
     filaEnc.eachCell((cell) => {
-      cell.font = { bold: false, color: { argb: "FFFFFFFF" } };
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E293B" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF334155" } };
       cell.border = {
         top: { style: "thin", color: { argb: "FFA0A0A0" } },
         left: { style: "thin", color: { argb: "FFA0A0A0" } },
@@ -246,7 +280,7 @@ function HistorialReparaciones() {
 
     trabajosFiltrados.forEach((t, idx) => {
       const repList = (t.repuestos || [])
-        .map((r) => `${r.repuesto || "Repuesto"} (x${r.cantidad || 1})`)
+        .map((r) => `${r.repuesto || "Repuesto"} (x${r.cantidad || 1}) - ${pesos(r.precio)}`)
         .join(", ");
 
       const tallerStr =
@@ -256,10 +290,10 @@ function HistorialReparaciones() {
         formatF(t.fecha),
         t.parte || "Mecánica general",
         t.diagnostico || t.descripcion || "-",
-        t.reparacion || "-",
-        t.estado || "Pendiente",
+        t.reparacion || t.descripcion || "-",
+        estadoNormalizado(t.estado),
         tallerStr,
-        t.responsable || responsableCam || "-",
+        t.responsable || "-",
         repList || "-",
         t.observaciones || "-",
       ]);
@@ -283,7 +317,7 @@ function HistorialReparaciones() {
 
     ws.columns = [
       { width: 14 }, // Fecha
-      { width: 20 }, // Categoría
+      { width: 22 }, // Categoría
       { width: 35 }, // Diagnóstico
       { width: 35 }, // Reparación
       { width: 14 }, // Estado
@@ -300,7 +334,7 @@ function HistorialReparaciones() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Historial_Reparaciones_${patente}_${fechaHoy.replace(/\//g, "-")}.xlsx`;
+    a.download = `Historial_Reparaciones_Tractor_CC_${cleanCC}_${fechaHoy.replace(/\//g, "-")}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -316,7 +350,7 @@ function HistorialReparaciones() {
         overflowY: "auto",
       }}
     >
-      {/* Barra de Cabecera */}
+      {/* Barra de Cabecera Institucional */}
       <div
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
@@ -344,16 +378,14 @@ function HistorialReparaciones() {
                 backgroundColor: "#0f172a",
                 border: "1px solid #475569",
                 fontSize: "0.92rem",
-                letterSpacing: "1.2px",
+                letterSpacing: "0.5px",
                 borderRadius: "8px",
               }}
             >
-              {patente}
+              CC {cleanCC}
             </span>
-            {marca && <span className="text-light opacity-75 small">• {marca}</span>}
-            {responsableCam && (
-              <span className="text-light opacity-75 small">• Responsable: {responsableCam}</span>
-            )}
+            <span className="text-light opacity-75 small">• {infoGrupo.label}</span>
+            {descripcion && <span className="text-light opacity-75 small">• {descripcion}</span>}
           </div>
         </div>
 
@@ -368,12 +400,20 @@ function HistorialReparaciones() {
             <span>Volver</span>
           </button>
           <button
-            onClick={() => navigate(`/camionetas/services/reparaciones/${camionetaId}`)}
+            onClick={() => navigate(`/tractores/grupo/${grupoId}/reparaciones/${tractorId}`)}
             className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
             style={{ fontSize: "0.82rem" }}
           >
-            <i className="bi bi-car-front-fill me-1"></i>
-            <span>Menú Camioneta</span>
+            <TractorIcon size="1.05rem" color="#fff" />
+            <span>Menú Tractor</span>
+          </button>
+          <button
+            onClick={() => navigate(`/tractores/grupo/${grupoId}`)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-grid-fill"></i>
+            <span>{infoGrupo.label}</span>
           </button>
           <button
             onClick={() => navigate("/")}
@@ -386,7 +426,7 @@ function HistorialReparaciones() {
         </div>
       </div>
 
-      {/* Cartel / Banner de Estado de la Camioneta Centrado en la Página */}
+      {/* Cartel / Banner de Estado del Tractor Centrado en la Página */}
       <div
         className="px-4 py-2 border-bottom flex-shrink-0 d-flex align-items-center justify-content-center"
         style={{
@@ -464,14 +504,14 @@ function HistorialReparaciones() {
           </div>
         </div>
 
-        {/* Barra de Filtros distribuida armónicamente a lo ancho con mayor espacio inferior */}
+        {/* Barra de Filtros */}
         <Card
           className="shadow-sm border-0 rounded-3 px-3 py-2 bg-white"
           style={{ marginBottom: "18px" }}
         >
           <div className="d-flex align-items-center justify-content-between w-100 flex-nowrap gap-3">
             {/* Buscador de Texto */}
-            <div style={{ width: "260px" }}>
+            <div style={{ width: "310px" }}>
               <div className="input-group input-group-sm">
                 <span
                   className="input-group-text bg-light border-end-0 text-muted"
@@ -633,7 +673,7 @@ function HistorialReparaciones() {
           </div>
         </Card>
 
-        {/* Contenedor de la Tabla con bordes y esquinas limpias sin recorte */}
+        {/* Contenedor de la Tabla */}
         <div
           className="shadow-sm bg-white"
           style={{
@@ -797,8 +837,9 @@ function HistorialReparaciones() {
                 ) : (
                   trabajosFiltrados.map((t) => {
                     const estiloCat = CATEGORIA_COLORES[t.parte] || CATEGORIA_COLORES["Otros"];
-                    const esTerminada = (t.estado || "").toLowerCase() === "terminada";
-                    const esEnProceso = (t.estado || "").toLowerCase() === "en proceso";
+                    const est = estadoNormalizado(t.estado);
+                    const esTerminada = est === "Terminada";
+                    const esEnProceso = est === "En proceso";
 
                     return (
                       <tr key={t._id}>
@@ -850,9 +891,9 @@ function HistorialReparaciones() {
                           <div
                             className="text-secondary text-truncate"
                             style={{ maxWidth: "280px" }}
-                            title={t.reparacion || "—"}
+                            title={t.reparacion || t.descripcion || "—"}
                           >
-                            {t.reparacion || <span className="text-muted fst-italic">Sin detalle de avance</span>}
+                            {t.reparacion || t.descripcion || <span className="text-muted fst-italic">Sin detalle de avance</span>}
                           </div>
                         </td>
 
@@ -862,107 +903,90 @@ function HistorialReparaciones() {
                             <span
                               className="badge px-2 py-1 fw-medium"
                               style={{
-                                backgroundColor: "#e0f2fe",
-                                color: "#0369a1",
-                                border: "1px solid #7dd3fc",
-                                fontSize: "0.73rem",
+                                backgroundColor: "#fed7aa",
+                                color: "#9a3412",
+                                border: "1px solid #f97316",
+                                fontSize: "0.74rem",
+                                borderRadius: "6px",
                               }}
+                              title={`Taller Externo: ${t.nombreTaller || "Tercero"}`}
                             >
                               <i className="bi bi-building me-1"></i>
-                              {t.nombreTaller || "Tercero"}
+                              {t.nombreTaller ? t.nombreTaller : "Tercero"}
                             </span>
                           ) : (
                             <span
                               className="badge px-2 py-1 fw-medium"
                               style={{
-                                backgroundColor: "#f0fdf4",
-                                color: "#166534",
-                                border: "1px solid #86efac",
-                                fontSize: "0.73rem",
+                                backgroundColor: "#e2e8f0",
+                                color: "#334155",
+                                border: "1px solid #94a3b8",
+                                fontSize: "0.74rem",
+                                borderRadius: "6px",
                               }}
                             >
-                              <i className="bi bi-house-door me-1"></i>
-                              {t.taller || "Taller Propio"}
+                              <i className="bi bi-wrench me-1"></i>T. Propio
                             </span>
                           )}
                         </td>
 
-                        {/* Repuestos (Clicable para abrir ficha técnica) */}
+                        {/* Repuestos */}
                         <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
                           {t.repuestos && t.repuestos.length > 0 ? (
                             <span
-                              className="badge px-2 py-1 fw-medium"
-                              style={{
-                                backgroundColor: "#f1f5f9",
-                                color: "#334155",
-                                border: "1px solid #cbd5e1",
-                                fontSize: "0.73rem",
-                                cursor: "pointer",
-                              }}
+                              className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"
+                              style={{ fontSize: "0.74rem", cursor: "pointer" }}
                               onClick={() => abrirDetalle(t)}
-                              title="Haga clic para ver el detalle de repuestos"
+                              title="Ver repuestos utilizados"
                             >
                               <i className="bi bi-box-seam me-1"></i>
                               {t.repuestos.length} {t.repuestos.length === 1 ? "repuesto" : "repuestos"}
                             </span>
                           ) : (
-                            <span className="text-muted small">—</span>
+                            <span className="text-muted small fst-italic">—</span>
                           )}
                         </td>
 
                         {/* Estado */}
                         <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
                           <span
-                            className="badge px-2.5 py-1 fw-semibold"
+                            className="badge px-2 py-1 fw-semibold"
                             style={{
-                              backgroundColor: esTerminada ? "#d1fae5" : esEnProceso ? "#fef3c7" : "#fee2e2",
-                              color: esTerminada ? "#065f46" : esEnProceso ? "#92400e" : "#991b1b",
-                              border: `1px solid ${esTerminada ? "#6ee7b7" : esEnProceso ? "#fcd34d" : "#fca5a5"}`,
-                              fontSize: "0.74rem",
-                              borderRadius: "20px",
+                              backgroundColor: esTerminada ? "#dcfce7" : esEnProceso ? "#fef3c7" : "#fee2e2",
+                              color: esTerminada ? "#15803d" : esEnProceso ? "#b45309" : "#b91c1c",
+                              border: `1px solid ${
+                                esTerminada ? "#86efac" : esEnProceso ? "#fde047" : "#fca5a5"
+                              }`,
+                              fontSize: "0.76rem",
+                              borderRadius: "6px",
                             }}
                           >
-                            {esTerminada ? (
-                              <>
-                                <i className="bi bi-check2 me-1"></i>Terminada
-                              </>
-                            ) : esEnProceso ? (
-                              <>
-                                <i className="bi bi-hourglass-split me-1"></i>En proceso
-                              </>
-                            ) : (
-                              <>
-                                <i className="bi bi-clock me-1"></i>Pendiente
-                              </>
-                            )}
+                            {esTerminada ? "Terminada" : esEnProceso ? "En proceso" : "Pendiente"}
                           </span>
                         </td>
 
-                        {/* Acciones: Botón Ver (sin icono) y Botón Borrar */}
-                        <td
-                          className="text-center"
-                          style={{ borderBottom: "1px solid #f1f5f9" }}
-                        >
-                          <div className="d-flex align-items-center justify-content-center gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline-primary"
-                              className="rounded-3 px-2.5 py-0.5"
-                              style={{ fontSize: "0.75rem", fontWeight: "600" }}
+                        {/* Acción */}
+                        <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                          <div className="d-inline-flex align-items-center gap-1.5">
+                            <button
+                              type="button"
                               onClick={() => abrirDetalle(t)}
+                              className="btn btn-sm btn-outline-dark d-inline-flex align-items-center gap-1 rounded-3 px-2 py-1"
+                              style={{ fontSize: "0.76rem" }}
+                              title="Ver ficha completa"
                             >
-                              Ver
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline-danger"
-                              className="rounded-3 px-2 py-0.5"
-                              style={{ fontSize: "0.75rem" }}
+                              <i className="bi bi-eye"></i>
+                              <span>Ver</span>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleEliminarTrabajo(t._id)}
-                              title="Eliminar reparación"
+                              className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center rounded-3 p-1"
+                              style={{ width: "26px", height: "26px" }}
+                              title="Eliminar del historial"
                             >
-                              <i className="bi bi-trash3-fill"></i>
-                            </Button>
+                              <i className="bi bi-trash3" style={{ fontSize: "0.75rem" }}></i>
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -976,185 +1000,179 @@ function HistorialReparaciones() {
       </Container>
 
       {/* Modal de Detalle Completo de la Reparación */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
-        {trabajoSeleccionado && (
-          <>
-            <Modal.Header
-              closeButton
-              closeVariant="white"
-              data-bs-theme="dark"
-              style={{ backgroundColor: "#1e293b", color: "#fff", borderBottom: "none" }}
-            >
-              <Modal.Title className="fs-6 d-flex align-items-center gap-2">
-                <i className="bi bi-tools text-warning"></i>
-                <span>
-                  Ficha de Reparación - {patente} ({formatF(trabajoSeleccionado.fecha)})
-                </span>
-              </Modal.Title>
-            </Modal.Header>
-
-            <Modal.Body className="p-4 bg-light">
-              {/* Tarjeta de Resumen Rápido */}
-              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
-                <Row className="g-3">
-                  <Col sm={3}>
-                    <div className="text-muted small">Fecha</div>
-                    <div className="fw-bold text-dark">{formatF(trabajoSeleccionado.fecha)}</div>
-                  </Col>
-                  <Col sm={3}>
-                    <div className="text-muted small">Categoría</div>
-                    <div>
-                      <Badge
-                        bg="light"
-                        className="text-dark border"
-                        style={{ fontSize: "0.8rem", fontWeight: "600" }}
-                      >
-                        {trabajoSeleccionado.parte || "Mecánica general"}
-                      </Badge>
-                    </div>
-                  </Col>
-                  <Col sm={3}>
-                    <div className="text-muted small">Estado</div>
-                    <div>
-                      <span
-                        className="badge px-2 py-1 fw-semibold"
-                        style={{
-                          backgroundColor:
-                            (trabajoSeleccionado.estado || "").toLowerCase() === "terminada"
-                              ? "#d1fae5"
-                              : (trabajoSeleccionado.estado || "").toLowerCase() === "en proceso"
-                              ? "#fef3c7"
-                              : "#fee2e2",
-                          color:
-                            (trabajoSeleccionado.estado || "").toLowerCase() === "terminada"
-                              ? "#065f46"
-                              : (trabajoSeleccionado.estado || "").toLowerCase() === "en proceso"
-                              ? "#92400e"
-                              : "#991b1b",
-                          fontSize: "0.78rem",
-                        }}
-                      >
-                        {trabajoSeleccionado.estado || "Pendiente"}
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        size="lg"
+        centered
+        dialogClassName="rounded-4 overflow-hidden"
+      >
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          data-bs-theme="dark"
+          style={{ backgroundColor: "#1e293b", color: "#fff" }}
+        >
+          <Modal.Title className="fs-6 fw-semibold d-flex align-items-center gap-2">
+            <i className="bi bi-file-earmark-text"></i>
+            <span>Ficha de Reparación — Tractor CC {cleanCC}</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4" style={{ backgroundColor: "#f8fafc" }}>
+          {trabajoSeleccionado && (
+            <div>
+              {/* Bloque Superior de Información */}
+              <div className="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border-bottom pb-2 mb-3">
+                  <div>
+                    <h5 className="fw-bold text-dark mb-0">
+                      {trabajoSeleccionado.reparacion || trabajoSeleccionado.diagnostico || "Reparación sin título"}
+                    </h5>
+                    <span className="text-muted small">
+                      Reportada el {formatF(trabajoSeleccionado.fecha)}
+                    </span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span
+                      className="badge px-2.5 py-1 fw-semibold"
+                      style={{
+                        backgroundColor:
+                          estadoNormalizado(trabajoSeleccionado.estado) === "Terminada"
+                            ? "#dcfce7"
+                            : estadoNormalizado(trabajoSeleccionado.estado) === "En proceso"
+                            ? "#fef3c7"
+                            : "#fee2e2",
+                        color:
+                          estadoNormalizado(trabajoSeleccionado.estado) === "Terminada"
+                            ? "#15803d"
+                            : estadoNormalizado(trabajoSeleccionado.estado) === "En proceso"
+                            ? "#b45309"
+                            : "#b91c1c",
+                        border: "1px solid #cbd5e1",
+                      }}
+                    >
+                      {estadoNormalizado(trabajoSeleccionado.estado)}
+                    </span>
+                    {trabajoSeleccionado.maquinaParada && (
+                      <span className="badge bg-danger text-white px-2 py-1">
+                        <i className="bi bi-exclamation-triangle-fill me-1"></i>Unidad Parada
                       </span>
-                    </div>
+                    )}
+                  </div>
+                </div>
+
+                <Row className="g-2 small text-secondary">
+                  <Col md={4}>
+                    <span className="fw-semibold text-dark d-block">Categoría:</span>
+                    <span>{trabajoSeleccionado.parte || "Mecánica general"}</span>
                   </Col>
-                  <Col sm={3}>
-                    <div className="text-muted small">Taller</div>
-                    <div className="fw-semibold text-dark">
+                  <Col md={4}>
+                    <span className="fw-semibold text-dark d-block">Taller / Lugar:</span>
+                    <span>
                       {trabajoSeleccionado.taller === "Tercero"
                         ? `Tercero (${trabajoSeleccionado.nombreTaller || "Externo"})`
-                        : trabajoSeleccionado.taller || "Taller Propio"}
-                    </div>
+                        : "Taller Propio"}
+                    </span>
+                  </Col>
+                  <Col md={4}>
+                    <span className="fw-semibold text-dark d-block">Responsable:</span>
+                    <span>{trabajoSeleccionado.responsable || "—"}</span>
                   </Col>
                 </Row>
-              </Card>
+              </div>
 
               {/* Diagnóstico */}
-              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
-                <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
-                  <i className="bi bi-clipboard-pulse text-danger"></i>
-                  Diagnóstico
+              <div className="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                <h6 className="fw-bold text-dark mb-1 small">
+                  <i className="bi bi-clipboard2-pulse me-1.5 text-primary"></i>Diagnóstico Técnico
                 </h6>
-                <div
-                  className="p-2.5 rounded-3 bg-light text-dark"
-                  style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}
-                >
-                  {trabajoSeleccionado.diagnostico || trabajoSeleccionado.descripcion || "Sin diagnóstico registrado."}
-                </div>
-              </Card>
+                <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                  {trabajoSeleccionado.diagnostico || "Sin diagnóstico registrado."}
+                </p>
+              </div>
 
-              {/* Reparación Realizada */}
-              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
-                <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
-                  <i className="bi bi-wrench text-success"></i>
-                  Reparación Realizada / Solución
+              {/* Reparaciones Realizadas / Avance */}
+              <div className="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                <h6 className="fw-bold text-dark mb-1 small">
+                  <i className="bi bi-tools me-1.5 text-success"></i>Reparaciones Realizadas / Avance
                 </h6>
-                <div
-                  className="p-2.5 rounded-3 bg-light text-dark"
-                  style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}
-                >
-                  {trabajoSeleccionado.reparacion || (
-                    <span className="text-muted fst-italic">Sin detalle de reparación asentado.</span>
-                  )}
-                </div>
-              </Card>
+                <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                  {trabajoSeleccionado.descripcion || trabajoSeleccionado.reparacion || "Sin detalle registrado."}
+                </p>
+              </div>
 
-              {/* Repuestos Utilizados */}
-              <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
-                <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
-                  <i className="bi bi-box-seam-fill text-primary"></i>
-                  Repuestos y Materiales
+              {/* Repuestos */}
+              <div className="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                <h6 className="fw-bold text-dark mb-2 small d-flex justify-content-between align-items-center">
+                  <span>
+                    <i className="bi bi-box-seam me-1.5 text-warning"></i>Repuestos e Insumos Utilizados
+                  </span>
+                  <span className="text-muted fw-normal" style={{ fontSize: "0.78rem" }}>
+                    {trabajoSeleccionado.repuestos?.length || 0} ítems
+                  </span>
                 </h6>
                 {trabajoSeleccionado.repuestos && trabajoSeleccionado.repuestos.length > 0 ? (
-                  <div className="table-responsive">
-                    <Table size="sm" bordered hover className="align-middle mb-0" style={{ fontSize: "0.8rem" }}>
+                  <div className="table-responsive rounded-3 border">
+                    <Table size="sm" className="mb-0 text-center align-middle" style={{ fontSize: "0.8rem" }}>
                       <thead className="table-light">
                         <tr>
-                          <th>Repuesto / Pieza</th>
-                          <th style={{ width: "70px" }} className="text-center">Cant.</th>
-                          <th style={{ width: "120px" }}>Proveedor</th>
-                          <th style={{ width: "110px" }} className="text-center">Estado</th>
-                          <th>Observaciones</th>
+                          <th className="text-start">Repuesto</th>
+                          <th>Cant.</th>
+                          <th>Precio Unit.</th>
+                          <th>Subtotal</th>
+                          <th>Proveedor</th>
+                          <th>Estado</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {trabajoSeleccionado.repuestos.map((r, i) => (
-                          <tr key={i}>
-                            <td className="fw-semibold text-dark">{r.repuesto || "—"}</td>
-                            <td className="text-center">{r.cantidad || 1}</td>
-                            <td>{r.proveedor || "—"}</td>
-                            <td className="text-center">
-                              <span className="badge bg-secondary-subtle text-dark border px-2 py-0.5">
-                                {r.estado || "Colocado"}
-                              </span>
-                            </td>
-                            <td className="text-muted">{r.observaciones || "—"}</td>
-                          </tr>
-                        ))}
+                        {trabajoSeleccionado.repuestos.map((r, rIdx) => {
+                          const cant = Number(r.cantidad) || 1;
+                          const prec = Number(r.precio) || 0;
+                          return (
+                            <tr key={rIdx}>
+                              <td className="text-start fw-semibold">{r.repuesto || "Repuesto"}</td>
+                              <td>{cant}</td>
+                              <td>{pesos(prec)}</td>
+                              <td className="fw-bold">{pesos(cant * prec)}</td>
+                              <td>{r.proveedor || "—"}</td>
+                              <td>
+                                <span className="badge bg-secondary-subtle text-secondary border">
+                                  {r.estado || "Pedido"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </Table>
                   </div>
                 ) : (
-                  <div className="text-muted small fst-italic">No se asociaron repuestos a este trabajo.</div>
+                  <p className="text-muted small mb-0 fst-italic">No se registraron repuestos para esta reparación.</p>
                 )}
-              </Card>
+              </div>
 
-              {/* Observaciones y Responsable */}
-              {(trabajoSeleccionado.observaciones || trabajoSeleccionado.responsable) && (
-                <Card className="border-0 shadow-sm rounded-3 p-3 bg-white">
-                  <Row className="g-3">
-                    {trabajoSeleccionado.responsable && (
-                      <Col sm={6}>
-                        <div className="text-muted small">Mecánico / Responsable de Ejecución</div>
-                        <div className="fw-semibold text-dark">{trabajoSeleccionado.responsable}</div>
-                      </Col>
-                    )}
-                    {trabajoSeleccionado.observaciones && (
-                      <Col sm={6}>
-                        <div className="text-muted small">Observaciones Adicionales</div>
-                        <div className="text-dark small">{trabajoSeleccionado.observaciones}</div>
-                      </Col>
-                    )}
-                  </Row>
-                </Card>
+              {/* Observaciones */}
+              {trabajoSeleccionado.observaciones && (
+                <div className="bg-white p-3 rounded-3 border shadow-sm">
+                  <h6 className="fw-bold text-dark mb-1 small">
+                    <i className="bi bi-chat-text me-1.5 text-secondary"></i>Observaciones / Notas
+                  </h6>
+                  <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap" }}>
+                    {trabajoSeleccionado.observaciones}
+                  </p>
+                </div>
               )}
-            </Modal.Body>
-
-            <Modal.Footer className="border-top-0 bg-white">
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                className="rounded-3 px-3"
-                onClick={() => setShowModal(false)}
-              >
-                Cerrar
-              </Button>
-            </Modal.Footer>
-          </>
-        )}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="bg-light">
+          <Button variant="secondary" size="sm" onClick={() => setShowModal(false)} className="rounded-3 px-3">
+            Cerrar
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
 }
 
-export default HistorialReparaciones;
+export default HistorialTractor;

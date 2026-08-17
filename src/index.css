@@ -303,3 +303,32 @@ tr.tr-parada:hover > td {
   margin: 0.8rem auto 0.5rem auto !important;
 }
 
+/* ── Filtros con valor seleccionado en negrita y color rojo ── */
+select.form-select.fw-bold,
+input.form-control.fw-bold,
+select.form-select.filtro-activo,
+input.form-control.filtro-activo,
+.filtro-activo {
+  font-weight: 700 !important;
+  color: #dc2626 !important;
+}
+
+select.form-select.fw-bold option:checked,
+select.form-select.filtro-activo option:checked {
+  font-weight: 700 !important;
+  color: #dc2626 !important;
+}
+
+/* ── Cruz de cierre en modales con fondo oscuro ── */
+.modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%) !important;
+  opacity: 0.85 !important;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1 !important;
+  transform: scale(1.1);
+}
+
+
