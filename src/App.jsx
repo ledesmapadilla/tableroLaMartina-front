@@ -31,6 +31,24 @@ import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
 import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 
 function App() {
+  if (isMobile) {
+    return (
+      <BrowserRouter>
+        <div className="app-wrapper" style={{ width: "100%", minHeight: "100vh" }}>
+          <div className="layout-right" style={{ width: "100%", marginLeft: 0, padding: 0 }}>
+            <main style={{ padding: 0 }}>
+              <Routes>
+                <Route path="/visitas" element={<Visitas />} />
+                <Route path="*" element={<Navigate to="/visitas" replace />} />
+              </Routes>
+            </main>
+            <Footer />
+          </div>
+        </div>
+      </BrowserRouter>
+    );
+  }
+
   return (
     <BrowserRouter>
       <div className="app-wrapper">

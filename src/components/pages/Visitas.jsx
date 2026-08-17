@@ -637,69 +637,69 @@ function Visitas() {
         overflowX: "hidden",
       }}
     >
-      {/* Barra de Cabecera Institucional */}
-      <div
-        className="d-flex align-items-center justify-content-between px-3 px-md-4 py-2 border-bottom shadow-sm flex-shrink-0"
-        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
-      >
-        {/* Lado Izquierdo: Icono */}
-        <div className="d-flex align-items-center gap-2">
+      {/* Barra de Cabecera: solo en escritorio */}
+      {!isMobile && (
+        <div
+          className="d-flex align-items-center justify-content-between px-3 px-md-4 py-2 border-bottom shadow-sm flex-shrink-0"
+          style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
+        >
+          {/* Lado Izquierdo: Icono */}
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center"
+              style={{
+                width: "34px",
+                height: "34px",
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                fontSize: "1.15rem",
+                boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+              }}
+            >
+              <i className="bi bi-calendar4-week"></i>
+            </div>
+            <span className="text-light opacity-75 small">Visitas</span>
+          </div>
+
+          {/* Título Centrado */}
           <div
-            className="rounded-3 d-flex align-items-center justify-content-center"
             style={{
-              width: "34px",
-              height: "34px",
-              backgroundColor: "#3b82f6",
-              color: "#fff",
-              fontSize: "1.15rem",
-              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              textAlign: "center",
+              width: "max-content",
+              pointerEvents: "none",
             }}
           >
-            <i className="bi bi-calendar4-week"></i>
+            <span className="text-white fw-normal" style={{ fontSize: "1.05rem", letterSpacing: "0.3px" }}>
+              Planificación de Visitas
+            </span>
           </div>
-          <span className="text-light opacity-75 small d-none d-sm-inline">Visitas</span>
-        </div>
 
-        {/* Título Centrado */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            textAlign: "center",
-            width: "max-content",
-            pointerEvents: "none",
-          }}
-        >
-          <span
-            className="text-white fw-normal"
-            style={{ fontSize: isMobile ? "0.95rem" : "1.05rem", letterSpacing: "0.3px" }}
-          >
-            Planificación de Visitas
-          </span>
+          {/* Botones de Navegación */}
+          <div className="d-flex align-items-center gap-2">
+            <button
+              onClick={() => navigate("/")}
+              className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1 rounded-3 px-2.5 py-1"
+              style={{ fontSize: "0.82rem" }}
+            >
+              <i className="bi bi-house-door-fill"></i>
+              <span>General</span>
+            </button>
+          </div>
         </div>
+      )}
 
-        {/* Botones de Navegación */}
-        <div className="d-flex align-items-center gap-2">
-          <button
-            onClick={() => navigate(-1)}
-            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1 rounded-3 px-2.5 py-1"
-            style={{ fontSize: "0.82rem" }}
-          >
-            <i className="bi bi-arrow-left"></i>
-            <span className="d-none d-sm-inline">Volver</span>
-          </button>
-          <button
-            onClick={() => navigate("/")}
-            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1 rounded-3 px-2.5 py-1"
-            style={{ fontSize: "0.82rem" }}
-          >
-            <i className="bi bi-house-door-fill"></i>
-            <span className="d-none d-sm-inline">General</span>
-          </button>
+      {/* Encabezado limpio para celulares (sin navbar) */}
+      {isMobile && (
+        <div className="px-3 pt-2 pb-1 d-flex align-items-center justify-content-between">
+          <h4 className="fw-bold mb-0 text-dark" style={{ fontSize: "1.25rem" }}>
+            Visitas
+          </h4>
         </div>
-      </div>
+      )}
 
       {/* Contenedor Principal */}
       <Container
