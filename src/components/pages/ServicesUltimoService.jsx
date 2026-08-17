@@ -684,25 +684,25 @@ function ServicesUltimoService() {
                 {guardandoTel ? "..." : "Guardar"}
               </button>
             </div>
-
-            {/* Botón Excel */}
-            <Button
-              variant="success"
-              size="sm"
-              onClick={exportarExcel}
-              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
-              style={{
-                backgroundColor: "#15803d",
-                borderColor: "#15803d",
-                fontSize: "0.82rem",
-                fontWeight: 500,
-              }}
-              title="Exportar planilla a Excel"
-            >
-              <i className="bi bi-file-earmark-excel-fill"></i>
-              <span>Excel</span>
-            </Button>
           </div>
+
+          {/* Botón Excel alineado a la derecha */}
+          <Button
+            variant="success"
+            size="sm"
+            onClick={exportarExcel}
+            className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm ms-auto"
+            style={{
+              backgroundColor: "#15803d",
+              borderColor: "#15803d",
+              fontSize: "0.82rem",
+              fontWeight: 500,
+            }}
+            title="Exportar planilla a Excel"
+          >
+            <i className="bi bi-file-earmark-excel-fill"></i>
+            <span>Excel</span>
+          </Button>
         </div>
 
         {/* Tabla de Último Service (Ancho compactado y centrado) */}

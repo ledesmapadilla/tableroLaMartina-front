@@ -53,7 +53,7 @@ function ResumenReparaciones() {
   const [filtroCamioneta, setFiltroCamioneta] = useState("Todas");
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const [filtroTaller, setFiltroTaller] = useState("Todos");
-  const [filtroEstado, setFiltroEstado] = useState("Todas");
+  const [filtroEstado, setFiltroEstado] = useState("Pendiente / En proceso");
 
   // Modal de Detalle
   const [trabajoSeleccionado, setTrabajoSeleccionado] = useState(null);
@@ -99,8 +99,12 @@ function ResumenReparaciones() {
 
         // Filtro por Estado
         if (filtroEstado !== "Todas") {
-          const est = (t.estado || "Pendiente").toLowerCase();
-          if (filtroEstado.toLowerCase() !== est) return false;
+          const est = (t.estado || "Pendiente").trim().toLowerCase();
+          if (filtroEstado === "Pendiente / En proceso") {
+            if (est !== "pendiente" && est !== "en proceso") return false;
+          } else if (filtroEstado.toLowerCase() !== est) {
+            return false;
+          }
         }
 
         // Filtro por Categoría
@@ -464,9 +468,9 @@ function ResumenReparaciones() {
             </div>
 
             {/* Filtro por Camioneta */}
-            <div className="d-flex align-items-center gap-1.5">
+            <div className="d-flex align-items-center gap-2">
               <span
-                className="fw-bold text-dark small flex-shrink-0"
+                className="fw-bold text-dark small flex-shrink-0 me-1"
                 style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
               >
                 Camioneta:
@@ -501,14 +505,14 @@ function ResumenReparaciones() {
             </div>
 
             {/* Filtro por Categoría */}
-            <div className="d-flex align-items-center gap-1.5">
+            <div className="d-flex align-items-center gap-2">
               <span
-                className="fw-bold text-dark small flex-shrink-0"
+                className="fw-bold text-dark small flex-shrink-0 me-1"
                 style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
               >
                 Categoría:
               </span>
-              <div className="input-group input-group-sm" style={{ width: "180px" }}>
+              <div className="input-group input-group-sm" style={{ width: "175px" }}>
                 <Form.Select
                   size="sm"
                   value={filtroCategoria}
@@ -537,9 +541,9 @@ function ResumenReparaciones() {
             </div>
 
             {/* Filtro por Taller */}
-            <div className="d-flex align-items-center gap-1.5">
+            <div className="d-flex align-items-center gap-2">
               <span
-                className="fw-bold text-dark small flex-shrink-0"
+                className="fw-bold text-dark small flex-shrink-0 me-1"
                 style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
               >
                 Taller:
@@ -571,14 +575,14 @@ function ResumenReparaciones() {
             </div>
 
             {/* Filtro por Estado */}
-            <div className="d-flex align-items-center gap-1.5">
+            <div className="d-flex align-items-center gap-2">
               <span
-                className="fw-bold text-dark small flex-shrink-0"
+                className="fw-bold text-dark small flex-shrink-0 me-1"
                 style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
               >
                 Estado:
               </span>
-              <div className="input-group input-group-sm" style={{ width: "150px" }}>
+              <div className="input-group input-group-sm" style={{ width: "195px" }}>
                 <Form.Select
                   size="sm"
                   value={filtroEstado}
@@ -587,9 +591,10 @@ function ResumenReparaciones() {
                   style={{ fontSize: "0.82rem", height: "32px", padding: "3px 24px 3px 8px", color: "#334155" }}
                 >
                   <option value="Todas">Todas</option>
-                  <option value="Terminada">Terminada</option>
-                  <option value="En proceso">En proceso</option>
+                  <option value="Pendiente / En proceso">Pendiente / En proceso</option>
                   <option value="Pendiente">Pendiente</option>
+                  <option value="En proceso">En proceso</option>
+                  <option value="Terminada">Terminada</option>
                 </Form.Select>
                 {filtroEstado !== "Todas" && (
                   <button
