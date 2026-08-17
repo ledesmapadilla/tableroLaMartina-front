@@ -280,15 +280,19 @@ function Visitas() {
     }
   });
 
-  // Cálculo de Objetivos Teóricos según días hábiles del mes e Itinerario semanal
+  // Cálculo de Objetivos Teóricos según días hábiles acumulados hasta la fecha del informe
   const totalDiasMes = new Date(año, mes + 1, 0).getDate();
+  const esMesActual = año === hoy.getFullYear() && mes === hoy.getMonth();
+  const esMesPasado = new Date(año, mes, 1) < new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const diaLimite = esMesActual ? hoy.getDate() : esMesPasado ? totalDiasMes : 0;
+
   let lunesCount = 0;
   let martesCount = 0;
   let miercolesCount = 0;
   let juevesCount = 0;
   let viernesCount = 0;
 
-  for (let d = 1; d <= totalDiasMes; d++) {
+  for (let d = 1; d <= diaLimite; d++) {
     const dow = new Date(año, mes, d).getDay();
     if (dow === 1) lunesCount++;
     else if (dow === 2) martesCount++;
@@ -1312,23 +1316,25 @@ function Visitas() {
               </button>
             </div>
 
-            <Button
-              variant="success"
-              size="sm"
-              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1 shadow-sm"
-              style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.82rem", fontWeight: 600 }}
-              onClick={
-                tabResumen === "general"
-                  ? exportarExcelGeneral
-                  : tabResumen === "grupos"
-                  ? exportarExcelGrupos
-                  : exportarExcelCC
-              }
-              title="Descargar Excel"
-            >
-              <i className="bi bi-file-earmark-excel-fill"></i>
-              <span>Excel</span>
-            </Button>
+            {!isMobile && (
+              <Button
+                variant="success"
+                size="sm"
+                className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1 shadow-sm"
+                style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.82rem", fontWeight: 600 }}
+                onClick={
+                  tabResumen === "general"
+                    ? exportarExcelGeneral
+                    : tabResumen === "grupos"
+                    ? exportarExcelGrupos
+                    : exportarExcelCC
+                }
+                title="Descargar Excel"
+              >
+                <i className="bi bi-file-earmark-excel-fill"></i>
+                <span>Excel</span>
+              </Button>
+            )}
           </div>
 
           {/* Solapa 1: Resumen General (Objetivos Teóricos vs Hecho) */}
@@ -1344,7 +1350,11 @@ function Visitas() {
                   style={{ fontSize: isMobile ? "0.85rem" : "0.92rem" }}
                 >
                   <i className="bi bi-bullseye text-primary fs-5"></i>
-                  <span>Objetivos teóricos del mes</span>
+                  <span>
+                    {esMesActual
+                      ? `Objetivos teóricos acumulados (al día ${hoy.getDate()}):`
+                      : "Objetivos teóricos:"}
+                  </span>
                 </h6>
                 <div className="d-flex flex-column gap-2" style={{ fontSize: isMobile ? "0.8rem" : "0.86rem" }}>
                   <div className="d-flex align-items-center gap-2">
