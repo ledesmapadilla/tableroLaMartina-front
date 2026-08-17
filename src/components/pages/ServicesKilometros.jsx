@@ -111,8 +111,8 @@ function ServicesKilometros() {
 
   const editForm = useForm({ defaultValues: { fecha: "", responsable: "", kms: "", observaciones: "" } });
 
-  const cargarRegistros = () =>
-    fetch("/api/kilometros")
+  const cargarRegistros = (targetAnio = año) =>
+    fetch(`/api/kilometros/anio/${targetAnio}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setRegistros(Array.isArray(d) ? d : []))
       .catch(() => setRegistros([]));
@@ -133,7 +133,6 @@ function ServicesKilometros() {
         .then((r) => (r.ok ? r.json() : []))
         .then((d) => setUltimosService(Array.isArray(d) ? d : []))
         .catch(() => setUltimosService([])),
-      cargarParadas(),
     ]);
 
   useEffect(() => {
@@ -141,10 +140,13 @@ function ServicesKilometros() {
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setCamionetas(Array.isArray(d) ? d : []))
       .catch(() => setCamionetas([]));
-    cargarRegistros();
     cargarUltimos();
     cargarParadas();
   }, []);
+
+  useEffect(() => {
+    cargarRegistros(año);
+  }, [año]);
 
   useEffect(() => {
     const handler = (e) => {
