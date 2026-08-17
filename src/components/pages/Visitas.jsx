@@ -316,12 +316,37 @@ function Visitas() {
   const talleresTeorico = lunesCount * 1 + juevesCount * 1;
   // 3- Repuestos (San Pablo y Berdina): Martes Tarde (1) + Jueves Tarde (1)
   const repuestosTeorico = martesCount * 1 + juevesCount * 1;
-  const totalTeorico = campoTeorico + talleresTeorico + repuestosTeorico;
+
+  // 4- Tractores: Cantidad de tractores por grupo multiplicado por las visitas teóricas que debería hacer a cada grupo
+  const countTractoresGrupo = (gNum) => {
+    return tractores.filter((t) => (t.gruppo ?? 6) === gNum && t.cc && t.cc !== "Ninguno").length;
+  };
+  const tr1 = countTractoresGrupo(1);
+  const tr2 = countTractoresGrupo(2);
+  const tr3 = countTractoresGrupo(3);
+  const tr4 = countTractoresGrupo(4);
+  const tr5 = countTractoresGrupo(5);
+  const trBerdina = countTractoresGrupo(6);
+  const trSanPablo = countTractoresGrupo(7);
+
+  // Visitas a campo por grupo: Lun(G1), Mar(G2), Mié mañana(G3), Mié tarde(G4), Vie(G5)
+  // Visitas a talleres: Lun tarde(San Pablo), Jue mañana(Berdina)
+  const tractoresTeorico =
+    tr1 * lunesCount +
+    tr2 * martesCount +
+    tr3 * miercolesCount +
+    tr4 * miercolesCount +
+    tr5 * viernesCount +
+    trSanPablo * lunesCount +
+    trBerdina * juevesCount;
+
+  const totalTeorico = campoTeorico + talleresTeorico + repuestosTeorico + tractoresTeorico;
 
   // Conteo de lo hecho en el mes
   let campoHecho = 0;
   let talleresHecho = 0;
   let repuestosHecho = 0;
+  let tractoresHecho = 0;
 
   const gruposCampo = new Set([
     "grupo 1",
@@ -355,10 +380,14 @@ function Visitas() {
         } else if (gruposRepuestos.has(gLow)) {
           repuestosHecho++;
         }
+        if (v.cc) {
+          const ccs = v.cc.split(",").map((s) => s.trim()).filter((c) => c && c.toLowerCase() !== "ninguno");
+          tractoresHecho += ccs.length;
+        }
       });
     }
   });
-  const totalHecho = campoHecho + talleresHecho + repuestosHecho;
+  const totalHecho = campoHecho + talleresHecho + repuestosHecho + tractoresHecho;
 
   const filasGeneral = [
     {
@@ -393,6 +422,17 @@ function Visitas() {
       border: "#fed7aa",
       teorico: repuestosTeorico,
       hecho: repuestosHecho,
+    },
+    {
+      num: "4",
+      tipo: "Tractores",
+      descripcion: "Cantidad de tractores relevados según visitas a cada grupo",
+      icono: "bi-truck",
+      color: "#2563eb",
+      bg: "#eff6ff",
+      border: "#bfdbfe",
+      teorico: tractoresTeorico,
+      hecho: tractoresHecho,
     },
   ];
 
@@ -1404,6 +1444,18 @@ function Visitas() {
                       <span className="fw-bold text-dark">{repuestosTeorico}</span>
                     </div>
                   </div>
+                  <div className="d-flex align-items-center gap-2">
+                    <span
+                      className="badge rounded-pill text-white px-2 py-0.5"
+                      style={{ backgroundColor: "#2563eb", fontSize: "0.72rem" }}
+                    >
+                      4
+                    </span>
+                    <div>
+                      <strong className="text-dark">Tractores a relevar:</strong>{" "}
+                      <span className="fw-bold text-dark">{tractoresTeorico}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1559,12 +1611,6 @@ function Visitas() {
                       );
                     });
                   })()}
-                  <tr style={{ backgroundColor: "#f1f5f9" }}>
-                    <td className="fw-bold text-start ps-3">Total de Visitas</td>
-                    <td className="fw-bold text-primary fs-6">
-                      {Object.values(counts).reduce((a, b) => a + b, 0)}
-                    </td>
-                  </tr>
                 </tbody>
               </table>
             </div>
