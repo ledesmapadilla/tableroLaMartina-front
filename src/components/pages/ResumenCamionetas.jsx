@@ -175,22 +175,85 @@ function ResumenCamionetas() {
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
-        {/* Lado Izquierdo: Icono e info */}
-        <div className="d-flex align-items-center gap-2.5">
-          <div
-            className="rounded-3 d-flex align-items-center justify-content-center"
-            style={{
-              width: "34px",
-              height: "34px",
-              backgroundColor: "#3b82f6",
-              color: "#fff",
-              fontSize: "1.15rem",
-              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
-            }}
-          >
-            <i className="bi bi-speedometer2"></i>
+        {/* Lado Izquierdo: Icono, info y Selector de Año */}
+        <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center"
+              style={{
+                width: "34px",
+                height: "34px",
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                fontSize: "1.15rem",
+                boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3)",
+              }}
+            >
+              <i className="bi bi-speedometer2"></i>
+            </div>
+            <span className="text-light opacity-75 small">{totalCams} Unidades</span>
           </div>
-          <span className="text-light opacity-75 small">{totalCams} Unidades</span>
+
+          {/* Selector de Año en la barra superior */}
+          <div ref={dropAnioRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setDropAnio((v) => !v)}
+              className="btn btn-sm d-flex align-items-center gap-1.5 rounded-3 px-3 py-1 text-white shadow-sm"
+              style={{
+                backgroundColor: "#334155",
+                border: "1px solid #475569",
+                fontWeight: 600,
+                fontSize: "0.84rem",
+              }}
+            >
+              <i className="bi bi-calendar3"></i>
+              <span>Año {anio}</span>
+              <i className={`bi bi-chevron-${dropAnio ? "up" : "down"} small opacity-75`}></i>
+            </button>
+            {dropAnio && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "115%",
+                  left: 0,
+                  backgroundColor: "#fff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "8px",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                  zIndex: 200,
+                  minWidth: "110px",
+                  overflow: "hidden",
+                }}
+              >
+                {aniosOpciones.map((a) => (
+                  <div
+                    key={a}
+                    onClick={() => {
+                      setAnio(a);
+                      localStorage.setItem("tablero_anio", a);
+                      setDropAnio(false);
+                    }}
+                    style={{
+                      padding: "8px 16px",
+                      cursor: "pointer",
+                      fontWeight: a === anio ? "700" : "400",
+                      backgroundColor: a === anio ? "#f1f5f9" : "transparent",
+                      color: a === anio ? "#1e293b" : "#334155",
+                      fontSize: "0.88rem",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (a !== anio) e.currentTarget.style.backgroundColor = "#f8fafc";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = a === anio ? "#f1f5f9" : "transparent";
+                    }}
+                  >
+                    {a}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Título Centrado */}
@@ -253,69 +316,9 @@ function ResumenCamionetas() {
         style={{ overflowY: "auto" }}
       >
         <div style={{ maxWidth: "1220px", width: "100%" }}>
-          {/* Selector de Año */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <div ref={dropAnioRef} style={{ position: "relative" }}>
-              <button
-                onClick={() => setDropAnio((v) => !v)}
-                className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3.5 py-1.5 text-white shadow-sm"
-                style={{
-                  backgroundColor: "#1e293b",
-                  border: "1px solid #475569",
-                  fontWeight: 600,
-                  fontSize: "0.9rem",
-                }}
-              >
-                <i className="bi bi-calendar3"></i>
-                <span>Año {anio}</span>
-                <i className={`bi bi-chevron-${dropAnio ? "up" : "down"} small opacity-75`}></i>
-              </button>
-              {dropAnio && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "115%",
-                    left: 0,
-                    backgroundColor: "#fff",
-                    border: "1px solid #cbd5e1",
-                    borderRadius: "8px",
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-                    zIndex: 200,
-                    minWidth: "110px",
-                    overflow: "hidden",
-                  }}
-                >
-                  {aniosOpciones.map((a) => (
-                    <div
-                      key={a}
-                      onClick={() => {
-                        setAnio(a);
-                        localStorage.setItem("tablero_anio", a);
-                        setDropAnio(false);
-                      }}
-                      style={{
-                        padding: "8px 16px",
-                        cursor: "pointer",
-                        fontWeight: a === anio ? "700" : "400",
-                        backgroundColor: a === anio ? "#f1f5f9" : "transparent",
-                        color: a === anio ? "#1e293b" : "#334155",
-                        fontSize: "0.88rem",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (a !== anio) e.currentTarget.style.backgroundColor = "#f8fafc";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = a === anio ? "#f1f5f9" : "transparent";
-                      }}
-                    >
-                      {a}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <span className="text-muted small fw-semibold">
+          {/* Título de Monitoreo Preventivo Centrado */}
+          <div className="text-center mb-3">
+            <span className="text-secondary small fw-semibold" style={{ fontSize: "0.92rem", letterSpacing: "0.2px" }}>
               Monitoreo operativo y preventivo mensual de la flota
             </span>
           </div>
