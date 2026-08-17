@@ -317,7 +317,7 @@ function Visitas() {
   // 3- Repuestos (San Pablo y Berdina): Martes Tarde (1) + Jueves Tarde (1)
   const repuestosTeorico = martesCount * 1 + juevesCount * 1;
 
-  // 4- Tractores: Cantidad de tractores por grupo multiplicado por las visitas teóricas que debería hacer a cada grupo
+  // 4- Tractores a Campo: Cantidad de tractores de los 5 grupos de campo multiplicado por las visitas teóricas
   const countTractoresGrupo = (gNum) => {
     return tractores.filter((t) => (t.gruppo ?? 6) === gNum && t.cc && t.cc !== "Ninguno").length;
   };
@@ -326,19 +326,14 @@ function Visitas() {
   const tr3 = countTractoresGrupo(3);
   const tr4 = countTractoresGrupo(4);
   const tr5 = countTractoresGrupo(5);
-  const trBerdina = countTractoresGrupo(6);
-  const trSanPablo = countTractoresGrupo(7);
 
-  // Visitas a campo por grupo: Lun(G1), Mar(G2), Mié mañana(G3), Mié tarde(G4), Vie(G5)
-  // Visitas a talleres: Lun tarde(San Pablo), Jue mañana(Berdina)
+  // Visitas a campo por grupo: Lun (G1), Mar (G2), Mié mañana (G3), Mié tarde (G4), Vie (G5)
   const tractoresTeorico =
     tr1 * lunesCount +
     tr2 * martesCount +
     tr3 * miercolesCount +
     tr4 * miercolesCount +
-    tr5 * viernesCount +
-    trSanPablo * lunesCount +
-    trBerdina * juevesCount;
+    tr5 * viernesCount;
 
   const totalTeorico = campoTeorico + talleresTeorico + repuestosTeorico + tractoresTeorico;
 
@@ -375,14 +370,14 @@ function Visitas() {
         const gLow = (v.grupo || "").trim().toLowerCase();
         if (gruposCampo.has(gLow)) {
           campoHecho++;
+          if (v.cc) {
+            const ccs = v.cc.split(",").map((s) => s.trim()).filter((c) => c && c.toLowerCase() !== "ninguno");
+            tractoresHecho += ccs.length;
+          }
         } else if (gruposTalleres.has(gLow)) {
           talleresHecho++;
         } else if (gruposRepuestos.has(gLow)) {
           repuestosHecho++;
-        }
-        if (v.cc) {
-          const ccs = v.cc.split(",").map((s) => s.trim()).filter((c) => c && c.toLowerCase() !== "ninguno");
-          tractoresHecho += ccs.length;
         }
       });
     }
@@ -426,7 +421,7 @@ function Visitas() {
     {
       num: "4",
       tipo: "Tractores",
-      descripcion: "Cantidad de tractores relevados según visitas a cada grupo",
+      descripcion: "Relevamiento de tractores en los 5 grupos de campo",
       icono: "bi-truck",
       color: "#2563eb",
       bg: "#eff6ff",
