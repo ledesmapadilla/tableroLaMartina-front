@@ -69,6 +69,15 @@ function bgGrupo(label) {
   return GRUPOS.find((g) => g.label === l)?.bg ?? "#f8fafc";
 }
 
+function textoCasillero(grupo) {
+  const g = (grupo || "").trim();
+  if (g === "Repuestos Berdina" || g === "Repuestos B.") return "Repuestos\nBerdina";
+  if (g === "Repuestos San Pablo" || g === "Repuestos SP.") return "Repuestos\nS. Pablo";
+  if (g === "Reparaciones Berdina") return "Reparac.\nBerdina";
+  if (g === "Reparaciones San Pablo" || g === "Reparaciones S. Pablo") return "Reparac.\nS. Pablo";
+  return g;
+}
+
 function celdasMes(año, mes) {
   const totalDias = new Date(año, mes + 1, 0).getDate();
   const arr = [];
@@ -935,21 +944,23 @@ function Visitas() {
                   </div>
 
                   {/* Pastillas de Visitas */}
-                  <div className="d-flex flex-column gap-1 overflow-hidden flex-grow-1">
+                  <div className="d-flex flex-column gap-1 overflow-hidden flex-grow-1 justify-content-center">
                     {vDia.slice(0, 2).map((v, i) => (
                       <div
                         key={i}
-                        className="text-truncate px-1 py-0.5 rounded text-center fw-semibold"
+                        className="px-1 py-0.5 rounded text-center fw-semibold text-wrap"
                         style={{
                           backgroundColor: bgGrupo(v.grupo),
                           color: colorGrupo(v.grupo),
                           border: `1px solid ${colorGrupo(v.grupo)}30`,
-                          fontSize: isMobile ? "0.64rem" : "0.74rem",
-                          lineHeight: "1.2",
+                          fontSize: isMobile ? "0.55rem" : "0.68rem",
+                          lineHeight: "1.08",
+                          whiteSpace: "pre-line",
+                          wordBreak: "break-word",
                         }}
                         title={`${v.grupo}${v.cc ? ` (${v.cc})` : ""}${v.observaciones ? ` - ${v.observaciones}` : ""}`}
                       >
-                        {v.grupo}
+                        {textoCasillero(v.grupo)}
                       </div>
                     ))}
                     {vDia.length > 2 && (
