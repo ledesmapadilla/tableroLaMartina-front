@@ -310,6 +310,13 @@ function Visitas() {
   let talleresHecho = 0;
   let repuestosHecho = 0;
 
+  const gruposCampo = new Set([
+    "grupo 1",
+    "grupo 2",
+    "grupo 3",
+    "grupo 4",
+    "grupo 5",
+  ]);
   const gruposTalleres = new Set([
     "berdina",
     "san pablo",
@@ -323,20 +330,17 @@ function Visitas() {
     "repuestos sp.",
     "repuestos san pablo",
   ]);
-  const gruposIgnorados = new Set(["ninguno"]);
 
   Object.entries(visitas).forEach(([key, list]) => {
     if (key.startsWith(targetPrefix)) {
       list.forEach((v) => {
         const gLow = (v.grupo || "").trim().toLowerCase();
-        if (gruposIgnorados.has(gLow)) {
-          // Ninguno
+        if (gruposCampo.has(gLow)) {
+          campoHecho++;
         } else if (gruposTalleres.has(gLow)) {
           talleresHecho++;
         } else if (gruposRepuestos.has(gLow)) {
           repuestosHecho++;
-        } else {
-          campoHecho++;
         }
       });
     }
@@ -347,7 +351,7 @@ function Visitas() {
     {
       num: "1",
       tipo: "Visitas a campo",
-      descripcion: "Grupos operativos a campo (Lun x1, Mar x1, Mié x2, Vie x1)",
+      descripcion: "Marcadas con cualquiera de los 5 grupos",
       icono: "bi-tree-fill",
       color: "#0d9488",
       bg: "#f0fdfa",
@@ -358,7 +362,7 @@ function Visitas() {
     {
       num: "2",
       tipo: "Visitas a talleres",
-      descripcion: "San Pablo y Berdina (Lun tarde y Jue mañana)",
+      descripcion: "Marcadas con Berdina o San Pablo",
       icono: "bi-tools",
       color: "#166534",
       bg: "#f0fdf4",
@@ -369,7 +373,7 @@ function Visitas() {
     {
       num: "3",
       tipo: "Repuestos",
-      descripcion: "San Pablo y Berdina (Mar tarde y Jue tarde)",
+      descripcion: "Marcadas con Repuestos Berdina o San Pablo",
       icono: "bi-gear-wide-connected",
       color: "#c2410c",
       bg: "#fff7ed",
@@ -1336,53 +1340,47 @@ function Visitas() {
                 style={{ backgroundColor: "#f8fafc", borderColor: "#cbd5e1" }}
               >
                 <h6
-                  className="fw-bold text-dark d-flex align-items-center gap-2 mb-2.5"
+                  className="fw-bold text-dark text-center d-flex align-items-center justify-content-center gap-2 mb-2.5"
                   style={{ fontSize: isMobile ? "0.85rem" : "0.92rem" }}
                 >
                   <i className="bi bi-bullseye text-primary fs-5"></i>
-                  <span>Objetivos teóricos del mes (según Itinerario):</span>
+                  <span>Objetivos teóricos del mes</span>
                 </h6>
-                <div className="d-flex flex-column gap-2" style={{ fontSize: isMobile ? "0.78rem" : "0.85rem" }}>
-                  <div className="d-flex align-items-start gap-2">
+                <div className="d-flex flex-column gap-2" style={{ fontSize: isMobile ? "0.8rem" : "0.86rem" }}>
+                  <div className="d-flex align-items-center gap-2">
                     <span
-                      className="badge rounded-pill text-white px-2 py-0.5 mt-0.5"
+                      className="badge rounded-pill text-white px-2 py-0.5"
                       style={{ backgroundColor: "#0d9488", fontSize: "0.72rem" }}
                     >
                       1
                     </span>
                     <div>
                       <strong className="text-dark">Visitas a campo:</strong>{" "}
-                      <span className="text-secondary">
-                        <strong>{campoTeorico}</strong> visitas teóricas en el mes ({lunesCount + martesCount + viernesCount + miercolesCount * 2} turnos semanales de Lunes x1, Martes x1, Miércoles x2 y Viernes x1).
-                      </span>
+                      <span className="fw-bold text-dark">{campoTeorico}</span>
                     </div>
                   </div>
-                  <div className="d-flex align-items-start gap-2">
+                  <div className="d-flex align-items-center gap-2">
                     <span
-                      className="badge rounded-pill text-white px-2 py-0.5 mt-0.5"
+                      className="badge rounded-pill text-white px-2 py-0.5"
                       style={{ backgroundColor: "#166534", fontSize: "0.72rem" }}
                     >
                       2
                     </span>
                     <div>
                       <strong className="text-dark">Visitas a talleres:</strong>{" "}
-                      <span className="text-secondary">
-                        <strong>{talleresTeorico}</strong> visitas teóricas en el mes (suma de {lunesCount} a San Pablo + {juevesCount} a Berdina).
-                      </span>
+                      <span className="fw-bold text-dark">{talleresTeorico}</span>
                     </div>
                   </div>
-                  <div className="d-flex align-items-start gap-2">
+                  <div className="d-flex align-items-center gap-2">
                     <span
-                      className="badge rounded-pill text-white px-2 py-0.5 mt-0.5"
+                      className="badge rounded-pill text-white px-2 py-0.5"
                       style={{ backgroundColor: "#c2410c", fontSize: "0.72rem" }}
                     >
                       3
                     </span>
                     <div>
                       <strong className="text-dark">Repuestos:</strong>{" "}
-                      <span className="text-secondary">
-                        <strong>{repuestosTeorico}</strong> revisiones teóricas en el mes (suma de {martesCount} en San Pablo + {juevesCount} en Berdina).
-                      </span>
+                      <span className="fw-bold text-dark">{repuestosTeorico}</span>
                     </div>
                   </div>
                 </div>
