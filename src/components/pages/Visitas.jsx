@@ -115,7 +115,7 @@ function Visitas() {
   const [tractores, setTractores] = useState([]);
   const [mostrarItinerario, setMostrarItinerario] = useState(false);
   const [mostrarResumen, setMostrarResumen] = useState(false);
-  const [tabResumen, setTabResumen] = useState("general");
+  const [tabResumen, setTabResumen] = useState("grupos");
   const [ccModalOpen, setCcModalOpen] = useState(false);
   const [ccSeleccionadosTemp, setCcSeleccionadosTemp] = useState([]);
 
@@ -1201,41 +1201,47 @@ function Visitas() {
             <span>Itinerario Semanal Estándar</span>
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-3 p-md-4">
-          <div className="table-responsive rounded-3 border" style={{ borderColor: "#cbd5e1" }}>
-            <table className="table table-hover align-middle text-center mb-0" style={{ fontSize: isMobile ? "0.78rem" : "0.86rem" }}>
+        <Modal.Body className={isMobile ? "p-2" : "p-4"}>
+          <div className="rounded-3 border" style={{ borderColor: "#cbd5e1", overflow: "hidden", width: "100%" }}>
+            <table className="table table-hover align-middle text-center mb-0" style={{ tableLayout: "fixed", width: "100%", fontSize: isMobile ? "0.72rem" : "0.86rem" }}>
               <thead style={{ backgroundColor: "#1e293b", color: "#fff" }}>
                 <tr>
-                  <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "15%" }}></th>
-                  <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "42.5%" }}>Mañana</th>
-                  <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "42.5%" }}>Tarde</th>
+                  <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "18%" : "15%" }}></th>
+                  <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "41%" : "42.5%" }}>Mañana</th>
+                  <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "41%" : "42.5%" }}>Tarde</th>
                 </tr>
               </thead>
               <tbody>
                 {ITINERARIO.map((item, idx) => (
                   <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
-                    <td className="fw-bold text-secondary">{item.dia}</td>
-                    <td>
+                    <td className="fw-bold text-secondary" style={{ padding: isMobile ? "6px 2px" : "8px", fontSize: isMobile ? "0.7rem" : "0.86rem" }}>
+                      {item.dia}
+                    </td>
+                    <td style={{ padding: isMobile ? "4px 2px" : "8px 6px" }}>
                       <span
-                        className="badge rounded-pill border px-3 py-1.5 fw-semibold"
+                        className="badge rounded-2 border fw-semibold d-block text-wrap"
                         style={{
                           backgroundColor: item.manana.bg,
                           color: item.manana.color,
                           borderColor: item.manana.border,
-                          fontSize: isMobile ? "0.74rem" : "0.82rem",
+                          fontSize: isMobile ? "0.66rem" : "0.82rem",
+                          padding: isMobile ? "4px 2px" : "6px 12px",
+                          lineHeight: "1.15",
                         }}
                       >
                         {item.manana.text}
                       </span>
                     </td>
-                    <td>
+                    <td style={{ padding: isMobile ? "4px 2px" : "8px 6px" }}>
                       <span
-                        className="badge rounded-pill border px-3 py-1.5 fw-semibold"
+                        className="badge rounded-2 border fw-semibold d-block text-wrap"
                         style={{
                           backgroundColor: item.tarde.bg,
                           color: item.tarde.color,
                           borderColor: item.tarde.border,
-                          fontSize: isMobile ? "0.74rem" : "0.82rem",
+                          fontSize: isMobile ? "0.66rem" : "0.82rem",
+                          padding: isMobile ? "4px 2px" : "6px 12px",
+                          lineHeight: "1.15",
                         }}
                       >
                         {item.tarde.text}
@@ -1383,27 +1389,27 @@ function Visitas() {
               </div>
 
               {/* Tabla Comparativa: Lo Hecho vs Lo Teórico */}
-              <div className="table-responsive rounded-3 border shadow-sm" style={{ borderColor: "#cbd5e1" }}>
+              <div className="rounded-3 border shadow-sm" style={{ borderColor: "#cbd5e1", overflow: "hidden", width: "100%" }}>
                 <table
                   className="table table-hover align-middle text-center mb-0"
-                  style={{ fontSize: isMobile ? "0.76rem" : "0.85rem" }}
+                  style={{ tableLayout: "fixed", width: "100%", fontSize: isMobile ? "0.68rem" : "0.85rem" }}
                 >
                   <thead style={{ backgroundColor: "#1e293b", color: "#fff" }}>
                     <tr>
-                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left" }}>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px 12px", textAlign: "left", width: isMobile ? "30%" : "30%" }}>
                         Objetivo
                       </th>
-                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "17%" }}>
-                        Teórico
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "16%" : "17%" }}>
+                        {isMobile ? "Teór." : "Teórico"}
                       </th>
-                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "17%" }}>
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "16%" : "17%" }}>
                         Hecho
                       </th>
-                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "17%" }}>
-                        Diferencia
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "18%" : "18%" }}>
+                        {isMobile ? "Dif." : "Diferencia"}
                       </th>
-                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px", width: "18%" }}>
-                        % Cumplido
+                      <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: isMobile ? "6px 2px" : "8px", width: isMobile ? "20%" : "18%" }}>
+                        {isMobile ? "Cumpl." : "% Cumplido"}
                       </th>
                     </tr>
                   </thead>
@@ -1413,39 +1419,43 @@ function Visitas() {
                       const pct = r.teorico > 0 ? Math.round((r.hecho / r.teorico) * 100) : 0;
                       return (
                         <tr key={r.tipo} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f8fafc" }}>
-                          <td className="text-start ps-3 py-2.5">
-                            <div className="d-flex align-items-center gap-2">
-                              <i className={`bi ${r.icono}`} style={{ color: r.color, fontSize: "0.95rem" }}></i>
+                          <td className="text-start" style={{ padding: isMobile ? "6px 3px" : "8px 12px" }}>
+                            <div className="d-flex align-items-center gap-1.5">
+                              <i className={`bi ${r.icono} d-none d-sm-inline`} style={{ color: r.color, fontSize: "0.85rem" }}></i>
                               <div>
-                                <div className="fw-bold text-dark">{r.tipo}</div>
-                                <div className="text-muted small d-none d-sm-block" style={{ fontSize: "0.72rem" }}>
+                                <div className="fw-bold text-dark" style={{ fontSize: isMobile ? "0.68rem" : "0.85rem" }}>
+                                  {isMobile ? (r.tipo === "Visitas a campo" ? "Campo" : r.tipo === "Visitas a talleres" ? "Talleres" : r.tipo) : r.tipo}
+                                </div>
+                                <div className="text-muted small d-none d-md-block" style={{ fontSize: "0.72rem" }}>
                                   {r.descripcion}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="fw-bold text-secondary">{r.teorico}</td>
-                          <td className="fw-bold" style={{ color: r.hecho > 0 ? "#0f172a" : "#94a3b8" }}>
+                          <td className="fw-bold text-secondary" style={{ padding: isMobile ? "6px 2px" : "8px" }}>
+                            {r.teorico}
+                          </td>
+                          <td className="fw-bold" style={{ color: r.hecho > 0 ? "#0f172a" : "#94a3b8", padding: isMobile ? "6px 2px" : "8px" }}>
                             {r.hecho}
                           </td>
-                          <td>
+                          <td style={{ padding: isMobile ? "6px 2px" : "8px" }}>
                             <span
                               className={`badge ${
                                 dif >= 0
                                   ? "bg-success-subtle text-success border border-success-subtle"
                                   : "bg-danger-subtle text-danger border border-danger-subtle"
                               }`}
-                              style={{ fontSize: isMobile ? "0.7rem" : "0.78rem" }}
+                              style={{ fontSize: isMobile ? "0.64rem" : "0.76rem", padding: isMobile ? "2px 4px" : "4px 8px" }}
                             >
                               {dif > 0 ? `+${dif}` : dif}
                             </span>
                           </td>
-                          <td>
+                          <td style={{ padding: isMobile ? "6px 2px" : "8px" }}>
                             <span
                               className="fw-bold"
                               style={{
                                 color: pct >= 100 ? "#15803d" : pct >= 50 ? "#d97706" : "#dc2626",
-                                fontSize: isMobile ? "0.72rem" : "0.82rem",
+                                fontSize: isMobile ? "0.68rem" : "0.8rem",
                               }}
                             >
                               {pct}%
@@ -1455,26 +1465,30 @@ function Visitas() {
                       );
                     })}
                     <tr style={{ backgroundColor: "#f1f5f9" }}>
-                      <td className="fw-bold text-start ps-3 py-2 text-dark">
-                        <i className="bi bi-calculator me-1.5 text-primary"></i>Total General
+                      <td className="fw-bold text-start text-dark" style={{ padding: isMobile ? "6px 3px" : "8px 12px", fontSize: isMobile ? "0.68rem" : "0.85rem" }}>
+                        Total
                       </td>
-                      <td className="fw-bold text-secondary">{totalTeorico}</td>
-                      <td className="fw-bold text-primary">{totalHecho}</td>
-                      <td>
+                      <td className="fw-bold text-secondary" style={{ padding: isMobile ? "6px 2px" : "8px" }}>
+                        {totalTeorico}
+                      </td>
+                      <td className="fw-bold text-primary" style={{ padding: isMobile ? "6px 2px" : "8px" }}>
+                        {totalHecho}
+                      </td>
+                      <td style={{ padding: isMobile ? "6px 2px" : "8px" }}>
                         {(() => {
                           const totalDif = totalHecho - totalTeorico;
                           return (
                             <span
                               className={`badge ${totalDif >= 0 ? "bg-success text-white" : "bg-danger text-white"}`}
-                              style={{ fontSize: isMobile ? "0.7rem" : "0.78rem" }}
+                              style={{ fontSize: isMobile ? "0.64rem" : "0.76rem", padding: isMobile ? "2px 4px" : "4px 8px" }}
                             >
                               {totalDif > 0 ? `+${totalDif}` : totalDif}
                             </span>
                           );
                         })()}
                       </td>
-                      <td>
-                        <span className="fw-bold" style={{ color: "#1e293b", fontSize: isMobile ? "0.74rem" : "0.84rem" }}>
+                      <td style={{ padding: isMobile ? "6px 2px" : "8px" }}>
+                        <span className="fw-bold" style={{ color: "#1e293b", fontSize: isMobile ? "0.68rem" : "0.82rem" }}>
                           {totalTeorico > 0 ? `${Math.round((totalHecho / totalTeorico) * 100)}%` : "0%"}
                         </span>
                       </td>
