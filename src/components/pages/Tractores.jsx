@@ -1,199 +1,170 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "react-bootstrap";
 import TractorIcon from "../shared/TractorIcon";
 
-const gruposInfo = [
-  { numero: 1, label: "Grupo 1", supervisor: "Jorge Rosas", bg: "#4a6fa5" },
-  { numero: 2, label: "Grupo 2", supervisor: "Guillermo Bustos", bg: "#52735a" },
-  { numero: 3, label: "Grupo 3", supervisor: "Carlos Chumiento", bg: "#9e8850" },
-  { numero: 4, label: "Grupo 4", supervisor: "brandan alejandro", bg: "#6b5b7b" },
-  { numero: 5, label: "Grupo 5", supervisor: "Elio Rojas", bg: "#7a5038" },
-  { numero: 6, label: "Berdina", supervisor: "Kevin", bg: "#7a3535" },
-  { numero: 7, label: "San Pablo", supervisor: "Victor", bg: "#5a6f40" },
+const tarjetas = [
+  {
+    id: "preventivo",
+    titulo: "Preventivo",
+    subtitulo: "Control preventivo, itinerarios y relevamiento",
+    ruta: "/tractores/preventivo",
+    bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+    accentColor: "#3b82f6",
+    icono: "bi bi-shield-check",
+  },
+  {
+    id: "reparaciones",
+    titulo: "Reparaciones",
+    subtitulo: "Tareas y reparaciones por grupo y tractor",
+    ruta: "/tractores/reparaciones",
+    bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
+    hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
+    accentColor: "#f59e0b",
+    icono: "bi bi-tools",
+  },
 ];
 
 function Tractores() {
   const navigate = useNavigate();
-  const [tractores, setTractores] = useState([]);
-  const [paradosIds, setParadosIds] = useState(new Set());
+  const [hoveredCard, setHoveredCard] = useState(null);
+  const [totalTractores, setTotalTractores] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([tracsData, stopIdsData]) => {
-      if (Array.isArray(tracsData)) {
-        setTractores(tracsData);
-      }
-      if (Array.isArray(stopIdsData)) {
-        setParadosIds(new Set(stopIdsData));
-      }
-    });
+    fetch("/api/tractores")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setTotalTractores(Array.isArray(d) ? d.length : 0))
+      .catch(() => setTotalTractores(0));
   }, []);
 
-  const renderCCsPorGrupo = (grupoNum) => {
-    const listForGrupo = tractores.filter(
-      (t) => Number(t.gruppo ?? 6) === Number(grupoNum)
-    );
-
-    if (listForGrupo.length === 0) return "Sin CCs";
-
-    const mapCC = new Map();
-    listForGrupo.forEach((t) => {
-      const clean = String(t.cc || "").replace(/^cc\s*/i, "").trim();
-      if (!clean) return;
-      const isParado = paradosIds.has(t._id?.toString()) || paradosIds.has(t.cc?.toString());
-      if (!mapCC.has(clean)) {
-        mapCC.set(clean, isParado);
-      } else if (isParado) {
-        mapCC.set(clean, true);
-      }
-    });
-
-    const sortedCleanCCs = Array.from(mapCC.keys()).sort((a, b) =>
-      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
-    );
-
-    if (sortedCleanCCs.length === 0) return "Sin CCs";
-
-    return sortedCleanCCs.map((ccStr, idx) => {
-      const estaParado = mapCC.get(ccStr);
-      return (
-        <span key={ccStr}>
-          <span
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8f9fa",
+        height: "100%",
+        maxHeight: "100vh",
+        overflow: "hidden",
+      }}
+    >
+      {/* Barra de Cabecera Institucional */}
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
+      >
+        <div className="d-flex align-items-center gap-3">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
             style={{
-              color: estaParado ? "#ff3333" : "#ffffff",
-              fontWeight: estaParado ? "800" : "600",
-              fontSize: estaParado ? "0.8rem" : "0.72rem",
-              textShadow: estaParado ? "0 0 3px #000, 0 0 5px #ff0000" : "none",
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#10b981",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
             }}
           >
-            {ccStr}
-          </span>
-          {idx < sortedCleanCCs.length - 1 ? ", " : ""}
-        </span>
-      );
-    });
-  };
+            <TractorIcon size="1.25rem" color="#fff" />
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-white fs-6 fw-semibold">Gestión de Tractores</span>
+            {totalTractores > 0 && (
+              <span className="text-light opacity-75 small">- {totalTractores} Unidades</span>
+            )}
+          </div>
+        </div>
 
-  const getTractoresParadosGrupoCount = (grupoNum) => {
-    return tractores.filter(
-      (t) => Number(t.gruppo ?? 6) === Number(grupoNum) && paradosIds.has(t._id?.toString())
-    ).length;
-  };
-
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div className="d-flex align-items-center" style={{ padding: "1rem 2rem 0", position: "relative" }}>
-        <h3 className="fw-bold mb-0 w-100 text-center">Tractores</h3>
-        <div className="d-flex gap-2" style={{ position: "absolute", right: "2rem" }}>
-          <Button onClick={() => navigate(-1)} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-arrow-left me-2"></i>Volver
-          </Button>
-          <Button onClick={() => navigate("/")} style={{ backgroundColor: "#fff", border: "1px solid #000", color: "#000" }}>
-            <i className="bi bi-house-fill me-2"></i>General
-          </Button>
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem", overflow: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 230px)", gap: "1.5rem" }}>
-          {gruposInfo.map((g) => {
-            const ccs = renderCCsPorGrupo(g.numero);
-            const cantParados = getTractoresParadosGrupoCount(g.numero);
+      {/* Contenedor Central con las 2 Tarjetas Principales */}
+      <div
+        className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
+        style={{ overflow: "hidden" }}
+      >
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{
+            gap: "2.5rem",
+            maxWidth: "880px",
+            width: "100%",
+          }}
+        >
+          {tarjetas.map((t) => {
+            const isHovered = hoveredCard === t.id;
             return (
               <div
-                key={g.numero}
-                className="d-flex flex-column align-items-center justify-content-center text-white"
+                key={t.ruta}
+                className="card-seccion-tractores d-flex flex-column align-items-center justify-content-center p-4 text-center"
                 style={{
-                  position: "relative",
-                  backgroundColor: g.bg,
-                  borderRadius: "16px",
-                  width: "230px",
-                  minHeight: "175px",
-                  padding: "1rem",
-                  boxShadow: "6px 6px 18px rgba(0,0,0,0.35)",
+                  background: isHovered ? t.hoverBg : t.bg,
+                  borderRadius: "22px",
+                  width: "360px",
+                  height: "290px",
+                  boxShadow: isHovered
+                    ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
+                    : "0 10px 25px -4px rgba(0, 0, 0, 0.25)",
+                  border: `1px solid ${isHovered ? t.accentColor : "rgba(255, 255, 255, 0.12)"}`,
                   cursor: "pointer",
-                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                  transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
+                  transform: isHovered ? "translateY(-5px) scale(1.02)" : "translateY(0) scale(1)",
+                  color: "#ffffff",
                   userSelect: "none",
                 }}
-                onClick={() => navigate(`/tractores/grupo/${g.numero}`)}
+                onClick={() => navigate(t.ruta)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && navigate(`/tractores/grupo/${g.numero}`)}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
+                onKeyDown={(e) => e.key === "Enter" && navigate(t.ruta)}
+                onMouseEnter={() => setHoveredCard(t.id)}
+                onMouseLeave={() => setHoveredCard(null)}
               >
-                {cantParados > 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "10px",
-                      display: "flex",
-                      gap: "3px",
-                      alignItems: "center"
-                    }}
-                  >
-                    {Array.from({ length: cantParados }).map((_, idx) => (
-                      <i
-                        key={idx}
-                        className="bi bi-exclamation-triangle-fill"
-                        style={{
-                          color: "#ff0000",
-                          fontSize: "1.15rem",
-                          filter: "drop-shadow(0px 1px 2px rgba(0,0,0,0.5))"
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-                <TractorIcon size="2.4rem" color="#fff" />
-                <h5 className="fw-bold text-center mt-2 mb-0">{g.label}</h5>
-                <small className="text-center mt-1 px-2" style={{ opacity: 0.85, fontSize: "0.75rem" }}>{g.supervisor}</small>
+                {/* Icono Principal */}
                 <div
-                  className="text-center px-2 mt-2"
+                  className="mb-3 d-flex align-items-center justify-content-center"
                   style={{
-                    color: "#fff",
-                    fontSize: "0.72rem",
-                    fontWeight: "600",
-                    lineHeight: "1.25",
-                    wordBreak: "break-word",
-                    width: "100%",
+                    width: "72px",
+                    height: "72px",
+                    borderRadius: "18px",
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    border: "1px solid rgba(255, 255, 255, 0.16)",
+                    boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
                   }}
                 >
-                  {ccs}
+                  <i className={t.icono} style={{ fontSize: "2.4rem", color: t.accentColor }}></i>
                 </div>
+
+                {/* Título */}
+                <h3 className="fw-bold mb-2 tracking-tight text-white" style={{ fontSize: "1.5rem" }}>
+                  {t.titulo}
+                </h3>
+
+                {/* Subtítulo */}
+                <p className="small mb-0 text-light opacity-75 px-3" style={{ fontSize: "0.88rem", lineHeight: "1.4" }}>
+                  {t.subtitulo}
+                </p>
               </div>
             );
           })}
-
-          {/* Tarjeta Resumen Reparaciones General */}
-          <div
-            className="d-flex flex-column align-items-center justify-content-center text-white"
-            style={{
-              position: "relative",
-              backgroundColor: "#2c3e50",
-              borderRadius: "16px",
-              width: "230px",
-              minHeight: "175px",
-              padding: "1rem",
-              boxShadow: "6px 6px 18px rgba(0,0,0,0.35)",
-              cursor: "pointer",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
-              userSelect: "none",
-            }}
-            onClick={() => navigate("/tractores/services/reparaciones/resumen")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && navigate("/tractores/services/reparaciones/resumen")}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.06)"; e.currentTarget.style.boxShadow = "8px 8px 24px rgba(0,0,0,0.45)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "6px 6px 18px rgba(0,0,0,0.35)"; }}
-          >
-            <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "2.8rem", color: "#fff" }}></i>
-            <h5 className="fw-normal text-center mt-3 mb-0">Resumen Reparaciones</h5>
-          </div>
         </div>
       </div>
     </div>

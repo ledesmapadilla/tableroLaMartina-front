@@ -20,6 +20,8 @@ import ResumenCamionetas from "./components/pages/ResumenCamionetas";
 import ResumenReparaciones from "./components/pages/ResumenReparaciones";
 import HistorialReparaciones from "./components/pages/HistorialReparaciones";
 import Tractores from "./components/pages/Tractores";
+import TractoresPreventivo from "./components/pages/TractoresPreventivo";
+import TractoresReparaciones from "./components/pages/TractoresReparaciones";
 import TractoresAltas from "./components/pages/TractoresAltas";
 import TractoresGrupo from "./components/pages/TractoresGrupo";
 import ReparacionesTractor from "./components/pages/ReparacionesTractor";
@@ -66,6 +68,9 @@ function App() {
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
               <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
               <Route path="/tractores" element={<Tractores />} />
+              <Route path="/tractores/preventivo" element={<TractoresPreventivo />} />
+              <Route path="/tractores/reparaciones" element={<TractoresReparaciones />} />
+              <Route path="/tractores/services/reparaciones" element={<Navigate to="/tractores/reparaciones" replace />} />
               <Route path="/tractores/altas" element={<TractoresAltas />} />
               <Route path="/tractores/grupo/:grupoId" element={<TractoresGrupo />} />
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId" element={<ReparacionesTractor />} />
