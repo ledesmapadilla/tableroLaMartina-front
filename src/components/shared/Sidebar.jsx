@@ -20,9 +20,6 @@ const links = [
       { to: "/tractores/altas", label: "Alta Tractores", icon: "bi bi-plus-circle-fill" },
     ],
   },
-  { to: "/reparaciones/sanpablo", label: "Rep. San Pablo", icon: "bi bi-tools" },
-  { to: "/reparaciones/berdina", label: "Rep. Berdina", icon: "bi bi-wrench-adjustable" },
-  { to: "/visitas", label: "Visitas", icon: "bi bi-calendar3" },
 ];
 
 function Icono({ icon, customIcon }) {
@@ -42,10 +39,15 @@ function Sidebar() {
 
   return (
     <nav className={`sidebar${hasOpen ? " sidebar--expanded" : ""}`}>
-      <div className="sidebar-brand d-flex align-items-center justify-content-center">
+      <NavLink
+        to="/"
+        className="sidebar-brand d-flex align-items-center justify-content-center text-decoration-none"
+        title="Inicio — Menú Principal"
+        style={{ cursor: "pointer" }}
+      >
         <img
           src="/logo-la-martina.jpg"
-          alt="Logo"
+          alt="Logo La Martina"
           style={{
             height: "36px",
             minWidth: "36px",
@@ -58,7 +60,7 @@ function Sidebar() {
             WebkitMaskComposite: "destination-in",
           }}
         />
-      </div>
+      </NavLink>
 
       {links.map((link) =>
         link.submenu ? (
