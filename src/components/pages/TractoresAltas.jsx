@@ -3,7 +3,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
 
 const API = "/api/tractores";
@@ -276,7 +276,7 @@ function TractoresAltas() {
     const columnas = ["#", "CC / Tractor", "Grupo", "Supervisor", "Encargado Gral.", "Descripción / Modelo"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Tractores");
 
     // Título institucional

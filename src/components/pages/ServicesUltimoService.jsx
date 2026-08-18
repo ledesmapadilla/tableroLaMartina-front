@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button, Modal, Form, Table, Container } from "react-bootstrap";
 import Swal from "sweetalert2";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 
 import { getIntervalKm, getEstado } from "../../utils/serviceHelpers";
 
@@ -162,7 +162,7 @@ function ServicesUltimoService() {
     const columnas = ["Patente", "Vehículo", "Responsable", "Fecha Service", "Km Últ. Service", "Km Próx. Service", "Km Actuales", "Observaciones", "Estado"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Último Service");
 
     ws.mergeCells(1, 1, 1, columnas.length);

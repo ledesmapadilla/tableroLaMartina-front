@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "react-bootstrap";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 import Swal from "sweetalert2";
 
 // Formateo seguro de fechas sin desfase horario UTC
@@ -194,7 +194,7 @@ function HistorialReparaciones() {
 
   // Exportar Excel
   const exportarExcel = async () => {
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Historial Reparaciones");
 
     const titulo = `HISTORIAL DE REPARACIONES - ${patente} ${marca ? `(${marca})` : ""}`;

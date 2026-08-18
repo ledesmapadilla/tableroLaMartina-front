@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { Container, Button, Form, Table, InputGroup } from "react-bootstrap";
 import Swal from "sweetalert2";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 
 const SOMBRA = "3px 3px 6px rgba(0,0,0,0.35)";
 const FILA_VACIA        = { nombre: "", costo: "", observaciones: "" };
@@ -143,7 +143,7 @@ function TareaDetalle() {
       ? new Date(fecha + "T00:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
       : "—";
 
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Reparación");
     const columnas = ["Fecha", "Trabajos realizados", "Responsable", "Urgencia", "Estado"];
 

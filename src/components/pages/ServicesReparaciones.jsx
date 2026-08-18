@@ -9,15 +9,16 @@ function ServicesReparaciones() {
   const [hoveredId, setHoveredId] = useState(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/camionetas").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/trabajos-camioneta/pendientes/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch("/api/paradas/abiertas/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([cams, pendientesIds, abIds]) => {
-      setCamionetas(Array.isArray(cams) ? cams : []);
-      setConTareaPendiente(new Set(Array.isArray(pendientesIds) ? pendientesIds : []));
-      setParadasIds(new Set(Array.isArray(abIds) ? abIds : []));
-    });
+    // Un solo pedido: las tres consultas se resuelven en el mismo request.
+    fetch("/api/camionetas/reparaciones/resumen")
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((data) => {
+        if (!data) return;
+        setCamionetas(Array.isArray(data.camionetas) ? data.camionetas : []);
+        setConTareaPendiente(new Set(Array.isArray(data.pendientes) ? data.pendientes : []));
+        setParadasIds(new Set(Array.isArray(data.paradas) ? data.paradas : []));
+      });
   }, []);
 
   const totalCams = camionetas.length;

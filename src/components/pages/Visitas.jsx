@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form, Badge } from "react-bootstrap";
 import Swal from "sweetalert2";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 import { isMobile } from "../../utils/device";
 
 const API = "/api/visitas";
@@ -441,7 +441,7 @@ function Visitas() {
       const titulo = `Resumen de Visitas por Grupo - ${nombreMes} ${año}`;
       const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
       const columnas = ["Grupo", "Cantidad de Visitas"];
-      const wb = new ExcelJS.Workbook();
+      const wb = await nuevoWorkbook();
       const ws = wb.addWorksheet("Visitas por Grupo");
 
       ws.mergeCells(1, 1, 1, 2);
@@ -517,7 +517,7 @@ function Visitas() {
       const titulo = `Resumen de Visitas por Centro de Costo (CC) - ${nombreMes} ${año}`;
       const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
       const columnas = ["Centro de Costo (CC)", "Descripción", "Cantidad de Visitas"];
-      const wb = new ExcelJS.Workbook();
+      const wb = await nuevoWorkbook();
       const ws = wb.addWorksheet("Visitas por CC");
 
       ws.mergeCells(1, 1, 1, 3);
@@ -592,7 +592,7 @@ function Visitas() {
       const titulo = `Resumen General: Objetivos vs Realizados - ${nombreMes} ${año}`;
       const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
       const columnas = ["Objetivo", "Teórico (Itinerario)", "Realizado (Hecho)", "Diferencia", "% Cumplimiento"];
-      const wb = new ExcelJS.Workbook();
+      const wb = await nuevoWorkbook();
       const ws = wb.addWorksheet("Resumen General");
 
       ws.mergeCells(1, 1, 1, 5);

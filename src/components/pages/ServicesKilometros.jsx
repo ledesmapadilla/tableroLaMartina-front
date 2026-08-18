@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { Button, Modal, Form, Table, Container } from "react-bootstrap";
 import Swal from "sweetalert2";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 
 import { getEstado } from "../../utils/serviceHelpers";
 
@@ -298,7 +298,7 @@ function ServicesKilometros() {
     const columnas = ["Patente", "Vehículo", "Responsable", ...MESES_CORTOS, "Estado Service"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Kilómetros");
 
     ws.mergeCells(1, 1, 1, columnas.length);

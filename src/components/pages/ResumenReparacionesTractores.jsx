@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "react-bootstrap";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 
@@ -327,7 +327,7 @@ function ResumenReparacionesTractores() {
 
   // Exportar Excel
   const exportarExcel = async () => {
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Planilla General Reparaciones");
 
     const titulo = esModoGrupo

@@ -45,16 +45,14 @@ function ReparacionesCamioneta() {
   const cargarDatos = async () => {
     setCargando(true);
     try {
-      const [camsRes, trabRes, parRes] = await Promise.all([
-        fetch(`/api/camionetas/${camionetaId}`).then((r) => (r.ok ? r.json() : null)),
-        fetch(`/api/trabajos-camioneta/${camionetaId}`).then((r) => (r.ok ? r.json() : [])),
-        fetch(`/api/paradas/${camionetaId}`).then((r) => (r.ok ? r.json() : [])),
-      ]);
+      // Un solo pedido en lugar de tres: camioneta, trabajos y paradas juntos.
+      const data = await fetch(`/api/camionetas/${camionetaId}/reparaciones`).then((r) =>
+        r.ok ? r.json() : null,
+      );
 
-      if (camsRes) setCamioneta(camsRes);
-      const listaTrabajos = Array.isArray(trabRes) ? trabRes : [];
-      setTrabajos(listaTrabajos);
-      setParadas(Array.isArray(parRes) ? parRes : []);
+      if (data?.camioneta) setCamioneta(data.camioneta);
+      setTrabajos(Array.isArray(data?.trabajos) ? data.trabajos : []);
+      setParadas(Array.isArray(data?.paradas) ? data.paradas : []);
     } catch {
       // noop
     } finally {

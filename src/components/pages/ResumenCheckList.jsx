@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Table, Button, Form } from "react-bootstrap";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 
 const MESES = ["enero", "marzo", "mayo", "julio", "septiembre", "noviembre"];
 const AÑO_DESDE = 2026;
@@ -109,7 +109,7 @@ function ResumenCheckList() {
     const columnas = ["Patente", "Vehículo", "Responsable", ...mesesCap, "Promedio"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Check List");
 
     ws.mergeCells(1, 1, 1, columnas.length);

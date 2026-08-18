@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container, Button, Table, Form, Row, Col, Badge } from "react-bootstrap";
-import ExcelJS from "exceljs";
+import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
 
 const formatF = (iso) =>
@@ -315,7 +315,7 @@ function TareasTractorVieja() {
 
   // Exportar a Excel
   const exportarExcel = async () => {
-    const wb = new ExcelJS.Workbook();
+    const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet(`Tractor CC ${cleanCC}`);
 
     const thinBorder = {
