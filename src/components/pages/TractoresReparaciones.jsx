@@ -28,6 +28,33 @@ function IconoAlertaTractor({ size = 24 }) {
   );
 }
 
+// Triangulo amarillo: el grupo tiene alguna reparacion pendiente o en proceso.
+// Exclamacion oscura porque sobre amarillo el blanco no contrasta.
+function IconoReparacionPendiente({ size = 24 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      style={{
+        filter: "drop-shadow(0 0 5px rgba(0,0,0,0.95)) drop-shadow(0 0 8px rgba(250,204,21,0.85))",
+        overflow: "visible",
+        display: "inline-block",
+      }}
+    >
+      <path
+        d="M12 2.2L1.2 21.2h21.6L12 2.2z"
+        fill="#facc15"
+        stroke="#facc15"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <rect x="11" y="8.5" width="2" height="6.5" rx="1" fill="#422006" />
+      <circle cx="12" cy="17.8" r="1.25" fill="#422006" />
+    </svg>
+  );
+}
+
 const gruposInfo = [
   {
     numero: 1,
@@ -91,18 +118,23 @@ function TractoresReparaciones() {
   const navigate = useNavigate();
   const [tractores, setTractores] = useState([]);
   const [paradosIds, setParadosIds] = useState(new Set());
+  const [pendientesIds, setPendientesIds] = useState(new Set());
   const [hoveredCard, setHoveredCard] = useState(null);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([tracsData, stopIdsData]) => {
+      fetch("/api/trabajos-tractor/pendientes/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([tracsData, stopIdsData, pendIdsData]) => {
       if (Array.isArray(tracsData)) {
         setTractores(tracsData);
       }
       if (Array.isArray(stopIdsData)) {
         setParadosIds(new Set(stopIdsData));
+      }
+      if (Array.isArray(pendIdsData)) {
+        setPendientesIds(new Set(pendIdsData));
       }
     });
   }, []);
@@ -155,6 +187,12 @@ function TractoresReparaciones() {
   const getTractoresParadosGrupoCount = (grupoNum) => {
     return tractores.filter(
       (t) => Number(t.gruppo ?? 6) === Number(grupoNum) && paradosIds.has(t._id?.toString())
+    ).length;
+  };
+
+  const getTractoresPendientesGrupoCount = (grupoNum) => {
+    return tractores.filter(
+      (t) => Number(t.gruppo ?? 6) === Number(grupoNum) && pendientesIds.has(t._id?.toString())
     ).length;
   };
 
@@ -255,7 +293,7 @@ function TractoresReparaciones() {
         </button>
       </div>
 
-      {/* Grid Central de Grupos y Resumen Reparaciones */}
+      {/* Grid Central de Grupos */}
       <div
         className="flex-grow-1 p-4 d-flex align-items-center justify-content-center"
         style={{
@@ -275,6 +313,7 @@ function TractoresReparaciones() {
           {gruposInfo.map((g) => {
             const ccs = renderCCsPorGrupo(g.numero);
             const cantParados = getTractoresParadosGrupoCount(g.numero);
+            const cantPendientes = getTractoresPendientesGrupoCount(g.numero);
             const isHovered = hoveredCard === g.numero;
 
             return (
@@ -306,8 +345,9 @@ function TractoresReparaciones() {
                 onMouseEnter={() => setHoveredCard(g.numero)}
                 onMouseLeave={() => setHoveredCard(null)}
               >
-                {/* Alerta si tiene tractores parados (Triángulo rojo chillón con exclamación blanca y halo de opacidad sin borde) */}
-                {cantParados > 0 && (
+                {/* Alertas del grupo: amarillo si hay reparaciones pendientes o en
+                    proceso, y un rojo por cada tractor parado. */}
+                {(cantParados > 0 || cantPendientes > 0) && (
                   <div
                     style={{
                       position: "absolute",
@@ -318,8 +358,16 @@ function TractoresReparaciones() {
                       alignItems: "center",
                       zIndex: 10,
                     }}
-                    title={`${cantParados} ${cantParados === 1 ? "Tractor parado" : "Tractores parados"}`}
+                    title={[
+                      cantParados > 0 &&
+                        `${cantParados} ${cantParados === 1 ? "tractor parado" : "tractores parados"}`,
+                      cantPendientes > 0 &&
+                        `${cantPendientes} con reparacion pendiente o en proceso`,
+                    ]
+                      .filter(Boolean)
+                      .join(" - ")}
                   >
+                    {cantPendientes > 0 && <IconoReparacionPendiente size={22} />}
                     {Array.from({ length: cantParados }).map((_, idx) => (
                       <IconoAlertaTractor key={idx} size={22} />
                     ))}
@@ -365,62 +413,6 @@ function TractoresReparaciones() {
               </div>
             );
           })}
-
-          {/* Tarjeta Resumen Reparaciones General */}
-          <div
-            className="d-flex flex-column align-items-center justify-content-center text-white"
-            style={{
-              position: "relative",
-              background:
-                hoveredCard === "resumen"
-                  ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
-                  : "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-              borderRadius: "18px",
-              width: "235px",
-              minHeight: "180px",
-              padding: "1.1rem 1rem",
-              boxShadow:
-                hoveredCard === "resumen"
-                  ? "0 14px 28px -6px rgba(0, 0, 0, 0.4), 0 0 16px rgba(56, 189, 248, 0.25)"
-                  : "0 6px 18px -2px rgba(0, 0, 0, 0.25)",
-              border:
-                hoveredCard === "resumen"
-                  ? "1px solid #38bdf8"
-                  : "1px solid rgba(255, 255, 255, 0.14)",
-              cursor: "pointer",
-              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-              transform:
-                hoveredCard === "resumen" ? "translateY(-4px) scale(1.03)" : "translateY(0) scale(1)",
-              userSelect: "none",
-            }}
-            onClick={() => navigate("/tractores/services/reparaciones/resumen")}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) =>
-              e.key === "Enter" && navigate("/tractores/services/reparaciones/resumen")
-            }
-            onMouseEnter={() => setHoveredCard("resumen")}
-            onMouseLeave={() => setHoveredCard(null)}
-          >
-            <div
-              className="rounded-3 d-flex align-items-center justify-content-center mb-2"
-              style={{
-                width: "48px",
-                height: "48px",
-                backgroundColor: "rgba(56, 189, 248, 0.15)",
-                border: "1px solid rgba(56, 189, 248, 0.3)",
-                color: "#38bdf8",
-              }}
-            >
-              <i className="bi bi-file-earmark-spreadsheet-fill" style={{ fontSize: "1.8rem" }}></i>
-            </div>
-            <h5 className="fw-semibold text-center mt-1 mb-1" style={{ fontSize: "1.05rem" }}>
-              Resumen Reparaciones
-            </h5>
-            <small className="text-light opacity-75 text-center" style={{ fontSize: "0.75rem" }}>
-              Planilla general de maquinaria
-            </small>
-          </div>
         </div>
       </div>
     </div>
