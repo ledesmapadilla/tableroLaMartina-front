@@ -190,10 +190,17 @@ function TractoresReparaciones() {
     ).length;
   };
 
+  // Solo las unidades pendientes que NO estan paradas: si esta parada alcanza
+  // con el triangulo rojo, que es la senal mas grave.
   const getTractoresPendientesGrupoCount = (grupoNum) => {
-    return tractores.filter(
-      (t) => Number(t.gruppo ?? 6) === Number(grupoNum) && pendientesIds.has(t._id?.toString())
-    ).length;
+    return tractores.filter((t) => {
+      const id = t._id?.toString();
+      return (
+        Number(t.gruppo ?? 6) === Number(grupoNum) &&
+        pendientesIds.has(id) &&
+        !paradosIds.has(id)
+      );
+    }).length;
   };
 
   const totalTractores = tractores.length;
