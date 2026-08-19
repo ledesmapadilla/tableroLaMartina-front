@@ -1140,7 +1140,7 @@ function Visitas() {
                           whiteSpace: "pre-line",
                           wordBreak: "break-word",
                         }}
-                        title={`${v.grupo}${v.cc ? ` (${v.cc})` : ""}${v.horometro ? ` [Horóm: ${v.horometro}]` : ""}${v.observaciones ? ` - ${v.observaciones}` : ""}`}
+                        title={`${v.grupo}${v.cc ? ` (${v.cc})` : ""}${v.observaciones ? ` - ${v.observaciones}` : ""}`}
                       >
                         {textoCasillero(v.grupo)}
                       </div>
@@ -1253,15 +1253,6 @@ function Visitas() {
                             CC: {v.cc}
                           </Badge>
                         )}
-                        {v.horometro && (
-                          <Badge
-                            bg={v.horometro.toUpperCase() === "S/H" ? "secondary" : "info"}
-                            className="fw-normal text-white shadow-sm"
-                            style={{ fontSize: "0.72rem" }}
-                          >
-                            ⏱️ {v.horometro.toUpperCase() === "S/H" ? "S/H" : `${v.horometro} hs`}
-                          </Badge>
-                        )}
                       </div>
                       {v.observaciones && (
                         <span className="text-secondary small mt-0.5" style={{ fontSize: "0.8rem" }}>
@@ -1344,13 +1335,13 @@ function Visitas() {
             return (
               <Form.Group className="mb-3">
                 <Form.Label className="fw-semibold small text-dark mb-1">
-                  Centro de Costo (CC) y Horómetro <span className="text-danger">*</span>
+                  Centro de Costo (CC) <span className="text-danger">*</span>
                 </Form.Label>
                 <Button
                   variant="outline-secondary"
                   className="w-100 text-start d-flex justify-content-between align-items-center rounded-3 py-2 px-3 shadow-sm"
                   style={{
-                    borderColor: errorHorometro && (!form.cc || (form.cc !== "Ninguno" && !form.horometro)) ? "#dc2626" : "#cbd5e1",
+                    borderColor: errorHorometro && !form.cc ? "#dc2626" : "#cbd5e1",
                     backgroundColor: form.cc ? "#f8fafc" : "#fff",
                     fontSize: "0.85rem",
                   }}
@@ -1358,27 +1349,18 @@ function Visitas() {
                 >
                   <div className="d-flex flex-column text-truncate">
                     {form.cc ? (
-                      <>
-                        <span className="fw-bold text-dark text-truncate">
-                          CC: {form.cc}
-                        </span>
-                        {form.horometro ? (
-                          <span className="text-primary small fw-semibold text-truncate">
-                            ⏱️ Horómetro: {form.horometro}
-                          </span>
-                        ) : form.cc === "Ninguno" ? (
-                          <span className="text-muted small">Sin CC asignado</span>
-                        ) : null}
-                      </>
+                      <span className="fw-bold text-dark text-truncate">
+                        CC: {form.cc}
+                      </span>
                     ) : (
-                      <span className="text-muted">— Tocar para elegir CC e ingresar Horómetro —</span>
+                      <span className="text-muted">— Tocar para elegir CC —</span>
                     )}
                   </div>
-                  <i className="bi bi-speedometer2 text-primary fs-5 ms-2"></i>
+                  <i className="bi bi-geo-alt-fill text-primary fs-5 ms-2"></i>
                 </Button>
-                {errorHorometro && (!form.cc || (form.cc !== "Ninguno" && !form.horometro)) && (
+                {errorHorometro && !form.cc && (
                   <small className="text-danger mt-1 d-block" style={{ fontSize: "0.78rem" }}>
-                    Debe seleccionar el CC y cargar su horómetro (o marcar S/H).
+                    Debe seleccionar el CC.
                   </small>
                 )}
               </Form.Group>
@@ -1854,20 +1836,20 @@ function Visitas() {
         show={ccModalOpen}
         onHide={handleCancelarCC}
         centered
-        size="md"
+        size="lg"
         contentClassName="border-0 shadow-lg rounded-4 overflow-hidden"
       >
         <Modal.Header
           closeButton
           closeVariant="white"
-          style={{ backgroundColor: "#1e293b", color: "#fff" }}
+          style={{ backgroundColor: "#1e293b", color: "#fff", padding: "16px 24px" }}
         >
-          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
+          <Modal.Title className="fs-5 fw-bold d-flex align-items-center gap-2">
             <i className="bi bi-speedometer2 text-info"></i>
-            <span>Seleccionar CC y Horómetro — {form.grupo}</span>
+            <span>Selección de Centros de Costo — {form.grupo}</span>
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ maxHeight: "60vh", overflowY: "auto" }} className="p-3">
+        <Modal.Body style={{ maxHeight: "65vh", overflowY: "auto" }} className="p-3 p-md-4">
           {(() => {
             const gNum = getGruppoNumFromLabel(form.grupo);
             const tractoresDelGrupo = tractores.filter(
@@ -1881,17 +1863,17 @@ function Visitas() {
             const cantSeleccionados = Object.keys(ccItemsTemp).length;
 
             return (
-              <div className="d-flex flex-column gap-2">
-                <div className="d-flex justify-content-between align-items-center mb-1 px-1">
-                  <small className="text-muted fw-semibold">
-                    <i className="bi bi-info-circle me-1 text-primary"></i>
-                    Al tocar un CC, complete su horómetro o marque S/H:
-                  </small>
+              <div className="d-flex flex-column gap-3">
+                <div className="d-flex justify-content-between align-items-center px-1">
+                  <span className="text-muted fw-semibold" style={{ fontSize: "0.88rem" }}>
+                    <i className="bi bi-info-circle me-1.5 text-primary"></i>
+                    Toque un CC para cargar su horómetro (número) o marcar <strong>S/H</strong>:
+                  </span>
                   {cantSeleccionados > 0 && (
                     <Button
                       variant="link"
                       size="sm"
-                      className="p-0 text-decoration-none text-danger small"
+                      className="p-0 text-decoration-none text-danger fw-semibold"
                       onClick={() => {
                         setCcItemsTemp({});
                         setCcActivoEditando(null);
@@ -1899,7 +1881,7 @@ function Visitas() {
                         setErrorHorometroTemp(false);
                       }}
                     >
-                      Limpiar
+                      Limpiar selección
                     </Button>
                   )}
                 </div>
@@ -1915,16 +1897,16 @@ function Visitas() {
                       key={t._id || t.cc}
                       className={`rounded-3 border transition-all ${
                         isEditing
-                          ? "border-primary bg-primary-subtle shadow-sm"
+                          ? "border-primary bg-primary-subtle shadow"
                           : isChecked
                           ? "border-success bg-success-subtle shadow-sm"
-                          : "bg-white"
+                          : "bg-white hover-bg-light"
                       }`}
                       style={{ overflow: "hidden", transition: "all 0.15s ease" }}
                     >
                       {/* Fila principal del CC */}
                       <div
-                        className="p-2.5 px-3 d-flex align-items-center justify-content-between"
+                        className="p-3 px-3.5 d-flex align-items-center justify-content-between"
                         style={{ cursor: "pointer" }}
                         onClick={() => {
                           if (!isEditing) {
@@ -1932,37 +1914,41 @@ function Visitas() {
                           }
                         }}
                       >
-                        <div className="d-flex align-items-center gap-2.5 flex-grow-1">
+                        <div className="d-flex align-items-center gap-3 flex-grow-1">
                           <Form.Check
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => {}}
-                            style={{ pointerEvents: "none" }}
+                            style={{ pointerEvents: "none", transform: "scale(1.15)" }}
                           />
                           <div>
                             <span
                               className="fw-bold"
                               style={{
                                 color: esNinguno ? "#64748b" : "#0f172a",
-                                fontSize: "0.92rem",
+                                fontSize: "0.98rem",
                               }}
                             >
                               {t.cc}
                             </span>
                             {t.descripcion && (
-                              <span className="text-muted ms-2 small">— {t.descripcion}</span>
+                              <span className="text-muted ms-2" style={{ fontSize: "0.88rem" }}>
+                                — {t.descripcion}
+                              </span>
                             )}
                           </div>
                         </div>
 
                         {/* Indicador cuando ya está cargado */}
                         {isChecked && !isEditing && (
-                          <div className="d-flex align-items-center gap-2">
+                          <div className="d-flex align-items-center gap-2.5">
                             {!esNinguno && (
                               <Badge
-                                bg={valorHorometro?.toUpperCase() === "S/H" ? "secondary" : "success"}
-                                className="fw-semibold px-2 py-1 shadow-sm text-white"
-                                style={{ fontSize: "0.76rem" }}
+                                bg={valorHorometro?.toUpperCase() === "S/H" ? "warning" : "success"}
+                                className={`fw-bold px-2.5 py-1.5 shadow-sm ${
+                                  valorHorometro?.toUpperCase() === "S/H" ? "text-dark" : "text-white"
+                                }`}
+                                style={{ fontSize: "0.82rem" }}
                               >
                                 ⏱️ {valorHorometro?.toUpperCase() === "S/H" ? "S/H" : `${valorHorometro} hs`}
                               </Badge>
@@ -1970,7 +1956,7 @@ function Visitas() {
                             {!esNinguno && (
                               <button
                                 type="button"
-                                className="btn btn-sm btn-outline-primary border-0 p-1 py-0"
+                                className="btn btn-sm btn-outline-primary border-0 p-1 px-1.5"
                                 title="Modificar horómetro"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1979,26 +1965,26 @@ function Visitas() {
                                   setErrorHorometroTemp(false);
                                 }}
                               >
-                                <i className="bi bi-pencil-square fs-6"></i>
+                                <i className="bi bi-pencil-square fs-5"></i>
                               </button>
                             )}
                             <button
                               type="button"
-                              className="btn btn-sm btn-outline-danger border-0 p-1 py-0"
+                              className="btn btn-sm btn-outline-danger border-0 p-1 px-1.5"
                               title="Desmarcar CC"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleSelectCC(t.cc);
                               }}
                             >
-                              <i className="bi bi-x-circle-fill fs-6"></i>
+                              <i className="bi bi-x-circle-fill fs-5"></i>
                             </button>
                           </div>
                         )}
 
                         {!isChecked && !isEditing && (
-                          <span className="text-muted small">
-                            <i className="bi bi-plus-circle text-primary fs-6"></i>
+                          <span className="text-muted">
+                            <i className="bi bi-plus-circle text-primary fs-5"></i>
                           </span>
                         )}
                       </div>
@@ -2006,61 +1992,61 @@ function Visitas() {
                       {/* Editor inline de Horómetro al tocar el CC */}
                       {isEditing && !esNinguno && (
                         <div
-                          className="p-2.5 px-3 border-top bg-white d-flex flex-column gap-2"
+                          className="p-3.5 px-4 border-top bg-white d-flex flex-column gap-3"
                           style={{ borderColor: "rgba(13, 110, 253, 0.25)" }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <div className="d-flex justify-content-between align-items-center">
-                            <span className="fw-semibold text-dark small">
-                              ⏱️ Horómetro para CC <strong>{t.cc}</strong>:
+                          <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span className="fw-bold text-dark" style={{ fontSize: "0.95rem" }}>
+                              ⏱️ Ingrese el Horómetro para CC <strong>{t.cc}</strong>:
                             </span>
                             <button
                               type="button"
-                              className="btn btn-sm btn-warning text-dark py-0 px-2 fw-bold shadow-sm"
-                              style={{ fontSize: "0.75rem", height: "24px" }}
+                              className="btn btn-warning text-dark px-3 py-1.5 fw-bold shadow-sm d-flex align-items-center gap-2"
+                              style={{ fontSize: "0.9rem", borderRadius: "8px" }}
                               onClick={() => handleMarcarSHCC(t.cc)}
                             >
-                              Opción S/H
+                              <i className="bi bi-slash-circle-fill fs-6"></i>
+                              <span>Opción S/H (Sin Horómetro)</span>
                             </button>
                           </div>
 
                           <div className="d-flex gap-2 align-items-center">
                             <Form.Control
-                              type="number"
-                              min="0"
-                              step="any"
+                              type="text"
+                              inputMode="decimal"
                               autoFocus
-                              placeholder="Ej: 2450"
+                              placeholder="Ej: 2450 (solo números)"
                               value={horometroInputTemp}
                               onChange={(e) => {
-                                setHorometroInputTemp(e.target.value);
+                                const val = e.target.value.replace(/[^0-9.]/g, "");
+                                setHorometroInputTemp(val);
                                 setErrorHorometroTemp(false);
                               }}
                               onKeyDown={(e) => {
+                                if (["e", "E", "+", "-"].includes(e.key)) e.preventDefault();
                                 if (e.key === "Enter") {
                                   e.preventDefault();
                                   handleGuardarHorometroCC(t.cc);
                                 }
                               }}
                               isInvalid={errorHorometroTemp}
-                              className="form-control-sm rounded-3 flex-grow-1"
-                              style={{ fontSize: "0.86rem" }}
+                              className="rounded-3 flex-grow-1 py-2 px-3 fw-semibold"
+                              style={{ fontSize: "0.95rem" }}
                             />
                             <Button
                               variant="primary"
-                              size="sm"
-                              className="px-3 fw-semibold rounded-3 d-flex align-items-center gap-1 shadow-sm"
-                              style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.82rem" }}
+                              className="px-4 py-2 fw-bold rounded-3 d-flex align-items-center gap-1.5 shadow-sm"
+                              style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.9rem" }}
                               onClick={() => handleGuardarHorometroCC(t.cc)}
                             >
-                              <i className="bi bi-check2"></i>
+                              <i className="bi bi-check-lg fs-6"></i>
                               <span>Listo</span>
                             </Button>
                             <Button
                               variant="outline-secondary"
-                              size="sm"
-                              className="px-2 rounded-3"
-                              style={{ fontSize: "0.82rem" }}
+                              className="px-3 py-2 rounded-3 fw-bold"
+                              style={{ fontSize: "0.9rem" }}
                               onClick={() => {
                                 setCcActivoEditando(null);
                                 setHorometroInputTemp("");
@@ -2072,8 +2058,8 @@ function Visitas() {
                           </div>
 
                           {errorHorometroTemp && (
-                            <small className="text-danger fw-semibold" style={{ fontSize: "0.75rem" }}>
-                              * Ingrese un valor numérico válido o seleccione "Opción S/H".
+                            <small className="text-danger fw-bold" style={{ fontSize: "0.82rem" }}>
+                              * Ingrese un valor numérico válido de horas o toque el botón "Opción S/H (Sin Horómetro)".
                             </small>
                           )}
                         </div>
@@ -2085,13 +2071,13 @@ function Visitas() {
             );
           })()}
         </Modal.Body>
-        <Modal.Footer className="bg-light border-0 py-2.5 px-4">
+        <Modal.Footer className="bg-light border-0 py-3 px-4">
           <Button
             variant="outline-secondary"
             size="sm"
             onClick={handleCancelarCC}
-            className="rounded-3 px-3"
-            style={{ fontSize: "0.84rem" }}
+            className="rounded-3 px-3.5 py-1.5"
+            style={{ fontSize: "0.88rem" }}
           >
             Cancelar
           </Button>
@@ -2101,17 +2087,18 @@ function Visitas() {
             style={{
               backgroundColor: Object.keys(ccItemsTemp).length > 0 ? "#15803d" : "#94a3b8",
               borderColor: Object.keys(ccItemsTemp).length > 0 ? "#15803d" : "#94a3b8",
-              fontSize: "0.84rem",
+              fontSize: "0.88rem",
               fontWeight: 600,
               cursor: Object.keys(ccItemsTemp).length > 0 ? "pointer" : "not-allowed",
+              padding: "6px 18px",
             }}
             disabled={Object.keys(ccItemsTemp).length === 0}
             onClick={handleConfirmarCCModal}
           >
-            <i className="bi bi-check-lg me-1"></i>
+            <i className="bi bi-check-lg me-1.5"></i>
             {Object.keys(ccItemsTemp).length > 0
               ? `Confirmar (${Object.keys(ccItemsTemp).length})`
-              : "Seleccionar al menos 1 CC"}
+              : "Seleccionar CC con Horómetro"}
           </Button>
         </Modal.Footer>
       </Modal>
