@@ -558,10 +558,10 @@ function TractoresPreventivo() {
       <Container fluid className="px-4 py-3 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
         {/* Barra de Filtros, Buscador y Acciones */}
         <div
-          className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2"
+          className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-3"
           style={{ maxWidth: "1180px", width: "100%", margin: "0 auto" }}
         >
-          <div className="d-flex align-items-center gap-2.5 flex-wrap">
+          <div className="d-flex align-items-center gap-3 flex-wrap">
             {/* Dropdown de Año */}
             <div ref={dropAñoRef} style={{ position: "relative" }}>
               <button
@@ -623,7 +623,7 @@ function TractoresPreventivo() {
             </div>
 
             {/* Buscador por CC o Descripción */}
-            <div style={{ position: "relative", width: "200px" }}>
+            <div style={{ position: "relative", width: "220px" }}>
               <i
                 className="bi bi-search text-muted"
                 style={{
@@ -670,7 +670,7 @@ function TractoresPreventivo() {
               value={filtroGrupo}
               onChange={(e) => setFiltroGrupo(e.target.value)}
               className="rounded-3 shadow-sm"
-              style={{ width: "170px", fontSize: "0.84rem", borderColor: "#cbd5e1" }}
+              style={{ width: "175px", fontSize: "0.84rem", borderColor: "#cbd5e1" }}
             >
               <option value="TODOS">Todos los Grupos</option>
               <option value="1">Grupo 1</option>
@@ -682,29 +682,13 @@ function TractoresPreventivo() {
             </Form.Select>
           </div>
 
-          {/* Botones de Acción Derecha */}
-          <div className="d-flex align-items-center gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => abrirModalService("")}
-              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm text-white"
-              style={{
-                backgroundColor: "#1e293b",
-                borderColor: "#1e293b",
-                fontSize: "0.84rem",
-                fontWeight: 600,
-              }}
-            >
-              <i className="bi bi-plus-circle-fill"></i>
-              <span>+ Cargar Service</span>
-            </Button>
-
+          {/* Botón Excel a la derecha */}
+          <div>
             <Button
               variant="success"
               size="sm"
               onClick={exportarExcel}
-              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3.5 py-1.5 shadow-sm"
               style={{
                 backgroundColor: "#15803d",
                 borderColor: "#15803d",

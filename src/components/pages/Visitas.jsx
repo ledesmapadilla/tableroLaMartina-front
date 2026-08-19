@@ -402,6 +402,47 @@ function Visitas() {
     }
   };
 
+  const verDetalleVisita = (v) => {
+    const fechaTexto = diaModal !== null ? `${diaModal} de ${MESES_NOMBRE[mes]} de ${año}` : (v.fecha || "");
+    const horometroTexto = v.horometro
+      ? v.horometro.toUpperCase() === "S/H"
+        ? "S/H (Sin Horómetro)"
+        : `${v.horometro} hs`
+      : "No registrado";
+
+    Swal.fire({
+      title: "Detalle de Visita",
+      html: `
+        <div style="text-align: left; font-size: 0.9rem; display: flex; flex-direction: column; gap: 9px; color: #1e293b; margin-top: 8px;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+            <span style="font-weight: 600; color: #64748b;">Fecha:</span>
+            <span style="font-weight: 700;">${fechaTexto}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+            <span style="font-weight: 600; color: #64748b;">Grupo:</span>
+            <span style="font-weight: 700; color: ${colorGrupo(v.grupo)};">${v.grupo}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+            <span style="font-weight: 600; color: #64748b;">Centro de Costo (CC):</span>
+            <span style="font-weight: 700; background: #0f172a; color: #fff; padding: 2px 8px; border-radius: 5px; font-size: 0.82rem;">${v.cc || "Ninguno"}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+            <span style="font-weight: 600; color: #64748b;">Horómetro:</span>
+            <span style="font-weight: 700; color: #2563eb;">⏱️ ${horometroTexto}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding-top: 2px;">
+            <span style="font-weight: 600; color: #64748b;">Observaciones:</span>
+            <span style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 10px; border-radius: 6px; font-size: 0.86rem; color: #334155; white-space: pre-wrap;">${v.observaciones || "Sin observaciones"}</span>
+          </div>
+        </div>
+      `,
+      icon: "info",
+      confirmButtonText: "Cerrar",
+      confirmButtonColor: "#1e293b",
+      width: "360px",
+    });
+  };
+
   const eliminarVisita = async (key, idx) => {
     const visita = visitas[key]?.[idx];
     if (!visita?._id) return;
@@ -1287,13 +1328,24 @@ function Visitas() {
                         </span>
                       )}
                     </div>
-                    <button
-                      onClick={() => eliminarVisita(keyModal, i)}
-                      className="btn btn-sm btn-outline-danger border-0 p-1"
-                      title="Eliminar visita"
-                    >
-                      <i className="bi bi-trash fs-6"></i>
-                    </button>
+                    <div className="d-flex align-items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => verDetalleVisita(v)}
+                        className="btn btn-sm btn-outline-primary border-0 p-1 text-primary"
+                        title="Ver datos cargados de la visita"
+                      >
+                        <i className="bi bi-eye fs-5"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarVisita(keyModal, i)}
+                        className="btn btn-sm btn-outline-danger border-0 p-1 text-danger"
+                        title="Eliminar visita"
+                      >
+                        <i className="bi bi-trash fs-5"></i>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
