@@ -73,7 +73,7 @@ function App() {
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
               <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
               <Route path="/tractores" element={<Tractores />} />
-              <Route path="/tractores/preventivo" element={<Error404 />} />
+              <Route path="/tractores/preventivo" element={<TractoresPreventivo />} />
               <Route path="/tractores/reparaciones" element={<TractoresReparaciones />} />
               <Route path="/tractores/services/reparaciones" element={<Navigate to="/tractores/reparaciones" replace />} />
               <Route path="/tractores/altas" element={<TractoresAltas />} />
