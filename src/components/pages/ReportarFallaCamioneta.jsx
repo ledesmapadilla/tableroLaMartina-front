@@ -392,6 +392,7 @@ function ReportarFallaCamioneta() {
                     <option value="Embrague">Embrague</option>
                     <option value="Frenos">Frenos</option>
                     <option value="Suspensión / Dirección">Suspensión / Dirección</option>
+                    <option value="Tren Delantero">Tren Delantero</option>
                     <option value="Mecánica general">Mecánica general</option>
                     <option value="Electricidad / Luces">Electricidad / Luces</option>
                     <option value="Neumáticos / Cubiertas">Neumáticos / Cubiertas</option>
