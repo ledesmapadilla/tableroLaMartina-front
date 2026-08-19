@@ -389,6 +389,13 @@ function Visitas() {
         setErrorHorometro(false);
         setDiaModal(null);
         cargar();
+        Swal.fire({
+          icon: "success",
+          title: "Visita guardada",
+          text: "La visita fue registrada con éxito",
+          timer: 1500,
+          showConfirmButton: false,
+        });
       }
     } catch {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la visita" });
