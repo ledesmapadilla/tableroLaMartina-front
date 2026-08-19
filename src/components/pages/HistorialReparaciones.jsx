@@ -1055,29 +1055,48 @@ function HistorialReparaciones() {
               <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
                 <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
                   <i className="bi bi-clipboard-pulse text-danger"></i>
-                  Diagnóstico
+                  Diagnóstico Técnico
                 </h6>
                 <div
                   className="p-2.5 rounded-3 bg-light text-dark"
-                  style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}
+                  style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                 >
                   {trabajoSeleccionado.diagnostico || trabajoSeleccionado.descripcion || "Sin diagnóstico registrado."}
                 </div>
               </Card>
 
+              {/* Descripción de la Falla / Motivo Original (si difiere de diagnóstico y reparación) */}
+              {trabajoSeleccionado.descripcion &&
+                trabajoSeleccionado.descripcion.trim() !== (trabajoSeleccionado.diagnostico || "").trim() &&
+                trabajoSeleccionado.descripcion.trim() !== (trabajoSeleccionado.reparacion || "").trim() && (
+                  <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                    <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
+                      <i className="bi bi-card-text text-primary"></i>
+                      Descripción de la Falla / Motivo Original
+                    </h6>
+                    <div
+                      className="p-2.5 rounded-3 bg-light text-dark"
+                      style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                    >
+                      {trabajoSeleccionado.descripcion}
+                    </div>
+                  </Card>
+              )}
+
               {/* Reparación Realizada */}
               <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
                 <h6 className="fw-bold text-dark mb-2 d-flex align-items-center gap-1.5">
                   <i className="bi bi-wrench text-success"></i>
-                  Reparación Realizada / Solución
+                  Detalle de Reparación Realizada / Avance
                 </h6>
                 <div
                   className="p-2.5 rounded-3 bg-light text-dark"
-                  style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap" }}
+                  style={{ fontSize: "0.88rem", whiteSpace: "pre-wrap", wordBreak: "break-word" }}
                 >
-                  {trabajoSeleccionado.reparacion || (
-                    <span className="text-muted fst-italic">Sin detalle de reparación asentado.</span>
-                  )}
+                  {trabajoSeleccionado.reparacion ||
+                    trabajoSeleccionado.descripcion || (
+                      <span className="text-muted fst-italic">Sin detalle de reparación asentado.</span>
+                    )}
                 </div>
               </Card>
 

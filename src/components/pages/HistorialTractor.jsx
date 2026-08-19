@@ -1086,18 +1086,32 @@ function HistorialTractor() {
                 <h6 className="fw-bold text-dark mb-1 small">
                   <i className="bi bi-clipboard2-pulse me-1.5 text-primary"></i>Diagnóstico Técnico
                 </h6>
-                <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                  {trabajoSeleccionado.diagnostico || "Sin diagnóstico registrado."}
+                <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {trabajoSeleccionado.diagnostico || trabajoSeleccionado.descripcion || "Sin diagnóstico registrado."}
                 </p>
               </div>
+
+              {/* Descripción de la Falla / Motivo Original (si difiere de diagnóstico y reparación) */}
+              {trabajoSeleccionado.descripcion &&
+                trabajoSeleccionado.descripcion.trim() !== (trabajoSeleccionado.diagnostico || "").trim() &&
+                trabajoSeleccionado.descripcion.trim() !== (trabajoSeleccionado.reparacion || "").trim() && (
+                  <div className="bg-white p-3 rounded-3 border mb-3 shadow-sm">
+                    <h6 className="fw-bold text-dark mb-1 small">
+                      <i className="bi bi-card-text me-1.5 text-primary"></i>Descripción de la Falla / Motivo Original
+                    </h6>
+                    <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                      {trabajoSeleccionado.descripcion}
+                    </p>
+                  </div>
+              )}
 
               {/* Reparaciones Realizadas / Avance */}
               <div className="bg-white p-3 rounded-3 border mb-3 shadow-sm">
                 <h6 className="fw-bold text-dark mb-1 small">
-                  <i className="bi bi-tools me-1.5 text-success"></i>Reparaciones Realizadas / Avance
+                  <i className="bi bi-tools me-1.5 text-success"></i>Detalle de Reparación Realizada / Avance
                 </h6>
-                <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap" }}>
-                  {trabajoSeleccionado.descripcion || trabajoSeleccionado.reparacion || "Sin detalle registrado."}
+                <p className="text-secondary small mb-0" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                  {trabajoSeleccionado.reparacion || trabajoSeleccionado.descripcion || "Sin detalle registrado."}
                 </p>
               </div>
 

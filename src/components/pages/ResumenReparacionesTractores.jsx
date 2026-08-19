@@ -1387,17 +1387,31 @@ function ResumenReparacionesTractores() {
                     </span>
                   )}
                 </div>
-                <div className="text-dark small" style={{ whiteSpace: "pre-wrap" }}>
+                <div className="text-dark small" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                   {trabajoSeleccionado.diagnostico || trabajoSeleccionado.descripcion || "Sin diagnóstico especificado."}
                 </div>
               </Card>
+
+              {/* Descripción de la Falla / Motivo Original (si difiere de diagnóstico y reparación) */}
+              {trabajoSeleccionado.descripcion &&
+                trabajoSeleccionado.descripcion.trim() !== (trabajoSeleccionado.diagnostico || "").trim() &&
+                trabajoSeleccionado.descripcion.trim() !== (trabajoSeleccionado.reparacion || "").trim() && (
+                  <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
+                    <div className="fw-bold text-dark mb-2">
+                      <i className="bi bi-card-text me-2 text-primary"></i>Descripción de la Falla / Motivo Original
+                    </div>
+                    <div className="text-dark small" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                      {trabajoSeleccionado.descripcion}
+                    </div>
+                  </Card>
+              )}
 
               {/* Reparaciones Realizadas / Avance */}
               <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
                 <div className="fw-bold text-dark mb-2">
                   <i className="bi bi-check2-square me-2 text-success"></i>Detalle de Reparación Realizada / Avance
                 </div>
-                <div className="text-dark small" style={{ whiteSpace: "pre-wrap" }}>
+                <div className="text-dark small" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                   {trabajoSeleccionado.reparacion || trabajoSeleccionado.descripcion || <span className="text-muted fst-italic">Sin avance asentado.</span>}
                 </div>
               </Card>
