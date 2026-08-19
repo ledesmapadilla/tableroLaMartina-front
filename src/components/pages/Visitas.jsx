@@ -387,6 +387,7 @@ function Visitas() {
         setForm(formVacio);
         setError(false);
         setErrorHorometro(false);
+        setDiaModal(null);
         cargar();
       }
     } catch {
