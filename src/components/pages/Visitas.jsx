@@ -27,6 +27,14 @@ const GRUPOS = [
   { label: "Otro",          color: "#475569", bg: "#f8fafc" },
 ];
 
+const SUPERVISORES_POR_GRUPO = {
+  1: "Jorge Rosas",
+  2: "Guillermo Bustos",
+  3: "Carlos Chumiento",
+  4: "brandan alejandro",
+  5: "Elio Rojas (parado)",
+};
+
 const ITINERARIO = [
   {
     dia: "Día 1",
@@ -1038,6 +1046,12 @@ function Visitas() {
                     .filter(Boolean)
                 ),
               ];
+              const supervisorTexto =
+                g === 5
+                  ? "Elio Rojas (parado)"
+                  : sups.length
+                  ? sups.join(", ")
+                  : SUPERVISORES_POR_GRUPO[g] || "—";
               return (
                 <div key={g} className="d-flex align-items-center gap-2">
                   <span
@@ -1051,8 +1065,8 @@ function Visitas() {
                   />
                   <div className="d-flex flex-column" style={{ fontSize: isMobile ? "0.76rem" : "0.82rem" }}>
                     <span className="fw-bold text-dark">{label}</span>
-                    <span className="text-muted text-truncate" style={{ maxWidth: "120px" }}>
-                      {sups.length ? sups.join(", ") : "—"}
+                    <span className="text-muted text-truncate" title={supervisorTexto} style={{ maxWidth: "140px" }}>
+                      {supervisorTexto}
                     </span>
                   </div>
                 </div>
