@@ -139,7 +139,7 @@ function ResumenReparacionesTractores() {
 
   // Lista de tractores (CC) para el filtro
   const listaTractores = useMemo(() => {
-    const map = new Map();
+    const setCC = new Set();
     const tracsFiltrados = esModoGrupo
       ? tractores.filter((t) => Number(t.gruppo) === Number(grupoId))
       : tractores;
@@ -147,31 +147,21 @@ function ResumenReparacionesTractores() {
     tracsFiltrados.forEach((t) => {
       if (t.cc) {
         const clean = String(t.cc).replace(/^cc\s*/i, "").trim();
-        const gNum = t.gruppo || 1;
-        const gInfo = GRUPOS[gNum] || { label: `Grupo ${gNum}` };
-        if (esModoGrupo) {
-          map.set(clean, `CC ${clean}${t.descripcion ? ` - ${t.descripcion}` : ""}`);
-        } else {
-          map.set(clean, `CC ${clean} • ${gInfo.label}${t.descripcion ? ` (${t.descripcion})` : ""}`);
-        }
+        if (clean) setCC.add(clean);
       }
     });
 
     trabajos.forEach((t) => {
       const tractorInfo = getTractorInfo(t);
       if (esModoGrupo && Number(tractorInfo.grupoNum) !== Number(grupoId)) return;
-      if (tractorInfo.cleanCC && tractorInfo.cleanCC !== "—" && !map.has(tractorInfo.cleanCC)) {
-        if (esModoGrupo) {
-          map.set(tractorInfo.cleanCC, `CC ${tractorInfo.cleanCC}`);
-        } else {
-          map.set(tractorInfo.cleanCC, `CC ${tractorInfo.cleanCC} • ${tractorInfo.infoG.label}`);
-        }
+      if (tractorInfo.cleanCC && tractorInfo.cleanCC !== "—") {
+        setCC.add(tractorInfo.cleanCC);
       }
     });
 
-    return Array.from(map.entries())
-      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: "base" }))
-      .map(([clean, label]) => ({ clean, label }));
+    return Array.from(setCC)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
+      .map((clean) => ({ clean, label: `CC ${clean}` }));
   }, [tractores, trabajos, esModoGrupo, grupoId]);
 
   // Filtrado y Ordenamiento: Por Tractor (CC) y dentro de cada tractor por Fecha descendente
