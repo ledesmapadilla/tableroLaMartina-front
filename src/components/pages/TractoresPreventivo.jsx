@@ -10,7 +10,14 @@ const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
 const formatFecha = (iso) => {
   if (!iso) return "—";
+  if (typeof iso === "string" && iso.includes("-")) {
+    const parts = iso.split("T")[0].split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
@@ -750,8 +757,10 @@ function TractoresPreventivo() {
                 const reg = ultimosServices.find(
                   (u) => u.tractor?._id === t._id || u.tractor === t._id
                 );
-                const hmObj = ultimosHorometros[t.cc];
+                const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
+                const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
                 const hsActuales = hmObj?.horometro;
+                const fechaHsActual = hmObj?.fecha;
                 const hsUltimoService = typeof reg?.horometro === "number" ? reg.horometro : null;
                 const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
                 const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
@@ -842,10 +851,29 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Hs actual */}
-                    <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#0f172a", padding: "5px 4px" }}>
-                      {hsActuales !== undefined && hsActuales !== null
-                        ? `${hsActuales.toLocaleString("es-AR")} hs`
-                        : "—"}
+                    <td style={{ padding: "4px 4px" }}>
+                      {hsActuales !== undefined && hsActuales !== null ? (
+                        <div className="d-flex flex-column align-items-center justify-content-center">
+                          <span className="fw-semibold" style={{ fontSize: "0.8rem", color: "#0f172a", lineHeight: 1.2 }}>
+                            {hsActuales.toLocaleString("es-AR")} hs
+                          </span>
+                          {fechaHsActual && (
+                            <span
+                              style={{
+                                fontSize: "0.68rem",
+                                color: "#64748b",
+                                fontWeight: 400,
+                                marginTop: "2px",
+                                lineHeight: 1.1,
+                              }}
+                            >
+                              {formatFecha(fechaHsActual)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: "0.8rem", color: "#64748b" }}>—</span>
+                      )}
                     </td>
 
                     {/* Obs */}
