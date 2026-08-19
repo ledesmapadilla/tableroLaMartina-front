@@ -106,7 +106,7 @@ function toKey(año, mes, dia) {
   return `${año}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 }
 
-const formVacio = { grupo: "", otroGrupo: "", cc: "", observaciones: "" };
+const formVacio = { grupo: "", otroGrupo: "", cc: "", horometro: "", observaciones: "" };
 
 function getGruppoNumFromLabel(grupoLabel) {
   if (grupoLabel === "Grupo 1") return 1;
@@ -205,7 +205,7 @@ function Visitas() {
 
   const handleCancelarCC = () => {
     if (!form.cc) {
-      setForm((f) => ({ ...f, grupo: "", otroGrupo: "", cc: "" }));
+      setForm((f) => ({ ...f, grupo: "", otroGrupo: "", cc: "", horometro: "" }));
     }
     setCcModalOpen(false);
   };
@@ -215,14 +215,14 @@ function Visitas() {
     setError(false);
 
     if (grupoRequiereCC(nuevoGrupo)) {
-      setForm((f) => ({ ...f, grupo: nuevoGrupo, otroGrupo: "", cc: "" }));
+      setForm((f) => ({ ...f, grupo: nuevoGrupo, otroGrupo: "", cc: "", horometro: "" }));
       const gNum = getGruppoNumFromLabel(nuevoGrupo);
       const tractoresDelGrupo = tractores.filter((t) => gNum === null || (t.gruppo ?? 6) === gNum);
       const opciones = ["Ninguno", ...tractoresDelGrupo.map((t) => t.cc).filter(Boolean)];
       setCcSeleccionadosTemp([]);
       setCcModalOpen(true);
     } else {
-      setForm((f) => ({ ...f, grupo: nuevoGrupo, cc: "" }));
+      setForm((f) => ({ ...f, grupo: nuevoGrupo, cc: "", horometro: "" }));
     }
   };
 
@@ -237,6 +237,7 @@ function Visitas() {
       fecha,
       grupo: grupoFinal,
       cc: form.cc,
+      horometro: (form.horometro || "").trim(),
       observaciones: form.observaciones.trim(),
     };
     try {
@@ -1001,7 +1002,7 @@ function Visitas() {
                           whiteSpace: "pre-line",
                           wordBreak: "break-word",
                         }}
-                        title={`${v.grupo}${v.cc ? ` (${v.cc})` : ""}${v.observaciones ? ` - ${v.observaciones}` : ""}`}
+                        title={`${v.grupo}${v.cc ? ` (${v.cc})` : ""}${v.horometro ? ` [Horóm: ${v.horometro}]` : ""}${v.observaciones ? ` - ${v.observaciones}` : ""}`}
                       >
                         {textoCasillero(v.grupo)}
                       </div>
@@ -1114,6 +1115,15 @@ function Visitas() {
                             CC: {v.cc}
                           </Badge>
                         )}
+                        {v.horometro && (
+                          <Badge
+                            bg={v.horometro.toUpperCase() === "S/H" ? "secondary" : "info"}
+                            className="fw-normal text-white shadow-sm"
+                            style={{ fontSize: "0.72rem" }}
+                          >
+                            ⏱️ {v.horometro.toUpperCase() === "S/H" ? "S/H" : `${v.horometro} hs`}
+                          </Badge>
+                        )}
                       </div>
                       {v.observaciones && (
                         <span className="text-secondary small mt-0.5" style={{ fontSize: "0.8rem" }}>
@@ -1194,30 +1204,94 @@ function Visitas() {
             if (ccOpciones.length === 0) return null;
 
             return (
-              <Form.Group className="mb-3">
-                <Form.Label className="fw-semibold small text-dark mb-1">Centro de Costo (CC)</Form.Label>
-                <Button
-                  variant="outline-secondary"
-                  className="w-100 text-start d-flex justify-content-between align-items-center rounded-3 py-1.5 px-3"
-                  style={{ borderColor: "#cbd5e1", backgroundColor: "#fff", fontSize: "0.85rem" }}
-                  onClick={() => {
-                    const ccsActuales = form.cc
-                      ? form.cc.split(", ").map((s) => s.trim()).filter(Boolean)
-                      : [];
-                    setCcSeleccionadosTemp(ccsActuales);
-                    setCcModalOpen(true);
-                  }}
-                >
-                  <span className="text-truncate">
-                    {form.cc ? (
-                      <span className="fw-bold text-dark">{form.cc}</span>
-                    ) : (
-                      <span className="text-muted">— Elegir CCs (con tilde) —</span>
-                    )}
-                  </span>
-                  <i className="bi bi-check2-square text-success fs-6 ms-2"></i>
-                </Button>
-              </Form.Group>
+              <>
+                <Form.Group className="mb-3">
+                  <Form.Label className="fw-semibold small text-dark mb-1">Centro de Costo (CC)</Form.Label>
+                  <Button
+                    variant="outline-secondary"
+                    className="w-100 text-start d-flex justify-content-between align-items-center rounded-3 py-1.5 px-3"
+                    style={{ borderColor: "#cbd5e1", backgroundColor: "#fff", fontSize: "0.85rem" }}
+                    onClick={() => {
+                      const ccsActuales = form.cc
+                        ? form.cc.split(", ").map((s) => s.trim()).filter(Boolean)
+                        : [];
+                      setCcSeleccionadosTemp(ccsActuales);
+                      setCcModalOpen(true);
+                    }}
+                  >
+                    <span className="text-truncate">
+                      {form.cc ? (
+                        <span className="fw-bold text-dark">{form.cc}</span>
+                      ) : (
+                        <span className="text-muted">— Elegir CCs (con tilde) —</span>
+                      )}
+                    </span>
+                    <i className="bi bi-check2-square text-success fs-6 ms-2"></i>
+                  </Button>
+                </Form.Group>
+
+                {form.cc && form.cc !== "Ninguno" && (
+                  <Form.Group className="mb-3">
+                    <div className="d-flex justify-content-between align-items-center mb-1">
+                      <Form.Label className="fw-semibold small text-dark mb-0">
+                        <i className="bi bi-speedometer2 me-1 text-primary"></i>
+                        Horómetro
+                      </Form.Label>
+                      <button
+                        type="button"
+                        className={`btn btn-sm py-0 px-2 fw-semibold rounded-2 ${
+                          form.horometro?.toUpperCase() === "S/H"
+                            ? "btn-warning text-dark shadow-sm"
+                            : "btn-outline-secondary"
+                        }`}
+                        style={{ fontSize: "0.72rem", height: "22px" }}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            horometro: f.horometro?.toUpperCase() === "S/H" ? "" : "S/H",
+                          }))
+                        }
+                      >
+                        {form.horometro?.toUpperCase() === "S/H"
+                          ? "✓ S/H seleccionado"
+                          : "Marcar S/H"}
+                      </button>
+                    </div>
+                    <div className="input-group input-group-sm">
+                      <Form.Control
+                        type="text"
+                        placeholder="Ingresar número de horas (ej: 2500) o S/H"
+                        value={form.horometro || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setForm((f) => ({ ...f, horometro: val }));
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && agregarVisita()}
+                        className="rounded-start-3"
+                        style={{ fontSize: "0.85rem" }}
+                      />
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${
+                          form.horometro?.toUpperCase() === "S/H"
+                            ? "btn-warning fw-bold text-dark"
+                            : "btn-outline-secondary"
+                        }`}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            horometro: f.horometro?.toUpperCase() === "S/H" ? "" : "S/H",
+                          }))
+                        }
+                        style={{ fontSize: "0.8rem", width: "54px" }}
+                        title="Sin horómetro"
+                      >
+                        S/H
+                      </button>
+                    </div>
+                  </Form.Group>
+                )}
+              </>
             );
           })()}
 
