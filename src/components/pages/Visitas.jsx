@@ -129,6 +129,7 @@ function Visitas() {
   const [diaModal, setDiaModal] = useState(null);
   const [form, setForm] = useState(formVacio);
   const [error, setError] = useState(false);
+  const [errorHorometro, setErrorHorometro] = useState(false);
   const [tractores, setTractores] = useState([]);
   const [mostrarItinerario, setMostrarItinerario] = useState(false);
   const [mostrarResumen, setMostrarResumen] = useState(false);
@@ -186,6 +187,7 @@ function Visitas() {
     setDiaModal(dia);
     setForm(formVacio);
     setError(false);
+    setErrorHorometro(false);
   };
 
   const grupoRequiereCC = (grupoNombre) => {
@@ -207,12 +209,14 @@ function Visitas() {
     if (!form.cc) {
       setForm((f) => ({ ...f, grupo: "", otroGrupo: "", cc: "", horometro: "" }));
     }
+    setErrorHorometro(false);
     setCcModalOpen(false);
   };
 
   const handleGrupoChange = (e) => {
     const nuevoGrupo = e.target.value;
     setError(false);
+    setErrorHorometro(false);
 
     if (grupoRequiereCC(nuevoGrupo)) {
       setForm((f) => ({ ...f, grupo: nuevoGrupo, otroGrupo: "", cc: "", horometro: "" }));
@@ -232,6 +236,16 @@ function Visitas() {
       setError(true);
       return;
     }
+    if (form.cc && form.cc !== "Ninguno" && (!form.horometro || !form.horometro.trim())) {
+      setErrorHorometro(true);
+      Swal.fire({
+        icon: "warning",
+        title: "Horómetro requerido",
+        text: "Debe ingresar el valor del horómetro o marcar la opción S/H para continuar.",
+        confirmButtonColor: "#1e293b",
+      });
+      return;
+    }
     const fecha = toKey(año, mes, diaModal);
     const payload = {
       fecha,
@@ -249,6 +263,7 @@ function Visitas() {
       if (res.ok) {
         setForm(formVacio);
         setError(false);
+        setErrorHorometro(false);
         cargar();
       }
     } catch {
@@ -1235,7 +1250,7 @@ function Visitas() {
                     <div className="d-flex justify-content-between align-items-center mb-1">
                       <Form.Label className="fw-semibold small text-dark mb-0">
                         <i className="bi bi-speedometer2 me-1 text-primary"></i>
-                        Horómetro
+                        Horómetro <span className="text-danger">*</span>
                       </Form.Label>
                       <button
                         type="button"
@@ -1245,12 +1260,13 @@ function Visitas() {
                             : "btn-outline-secondary"
                         }`}
                         style={{ fontSize: "0.72rem", height: "22px" }}
-                        onClick={() =>
+                        onClick={() => {
+                          setErrorHorometro(false);
                           setForm((f) => ({
                             ...f,
                             horometro: f.horometro?.toUpperCase() === "S/H" ? "" : "S/H",
-                          }))
-                        }
+                          }));
+                        }}
                       >
                         {form.horometro?.toUpperCase() === "S/H"
                           ? "✓ S/H seleccionado"
@@ -1263,10 +1279,11 @@ function Visitas() {
                         placeholder="Ingresar número de horas (ej: 2500) o S/H"
                         value={form.horometro || ""}
                         onChange={(e) => {
-                          const val = e.target.value;
-                          setForm((f) => ({ ...f, horometro: val }));
+                          setErrorHorometro(false);
+                          setForm((f) => ({ ...f, horometro: e.target.value }));
                         }}
                         onKeyDown={(e) => e.key === "Enter" && agregarVisita()}
+                        isInvalid={errorHorometro && (!form.horometro || !form.horometro.trim())}
                         className="rounded-start-3"
                         style={{ fontSize: "0.85rem" }}
                       />
@@ -1277,18 +1294,24 @@ function Visitas() {
                             ? "btn-warning fw-bold text-dark"
                             : "btn-outline-secondary"
                         }`}
-                        onClick={() =>
+                        onClick={() => {
+                          setErrorHorometro(false);
                           setForm((f) => ({
                             ...f,
                             horometro: f.horometro?.toUpperCase() === "S/H" ? "" : "S/H",
-                          }))
-                        }
+                          }));
+                        }}
                         style={{ fontSize: "0.8rem", width: "54px" }}
                         title="Sin horómetro"
                       >
                         S/H
                       </button>
                     </div>
+                    {errorHorometro && (!form.horometro || !form.horometro.trim()) && (
+                      <Form.Control.Feedback type="invalid" style={{ display: "block", fontSize: "0.78rem" }}>
+                        Debe ingresar el valor del horómetro o seleccionar S/H para continuar.
+                      </Form.Control.Feedback>
+                    )}
                   </Form.Group>
                 )}
               </>
