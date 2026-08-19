@@ -255,6 +255,7 @@ function TractoresAltas() {
       "Kevin",
       "Victor",
       "Mario Bustos",
+      "Vanegas",
       "SP",
       "ALBERDI",
       ...tractores.map((t) => (t.supervisor || "").trim()).filter(Boolean),
