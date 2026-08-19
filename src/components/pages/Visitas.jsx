@@ -411,6 +411,7 @@ function Visitas() {
     if (!result.isConfirmed) return;
     try {
       await fetch(`${API}/${visita._id}`, { method: "DELETE" });
+      setDiaModal(null);
       cargar();
       Swal.fire({
         icon: "success",
