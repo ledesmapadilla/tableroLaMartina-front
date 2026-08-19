@@ -398,9 +398,27 @@ function Visitas() {
   const eliminarVisita = async (key, idx) => {
     const visita = visitas[key]?.[idx];
     if (!visita?._id) return;
+    const result = await Swal.fire({
+      title: "¿Eliminar visita?",
+      text: `¿Estás seguro de eliminar la visita de ${visita.grupo}${visita.cc ? ` (CC: ${visita.cc})` : ""}?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
     try {
       await fetch(`${API}/${visita._id}`, { method: "DELETE" });
       cargar();
+      Swal.fire({
+        icon: "success",
+        title: "Eliminada",
+        text: "La visita fue eliminada con éxito",
+        timer: 1400,
+        showConfirmButton: false,
+      });
     } catch {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar la visita" });
     }
@@ -1348,11 +1366,24 @@ function Visitas() {
                   }}
                   onClick={abrirModalCC}
                 >
-                  <div className="d-flex flex-column text-truncate">
+                  <div className="d-flex align-items-center gap-2 flex-wrap text-truncate">
                     {form.cc ? (
-                      <span className="fw-bold text-dark text-truncate">
-                        CC: {form.cc}
-                      </span>
+                      <>
+                        <span className="fw-bold text-dark text-truncate">
+                          CC: {form.cc}
+                        </span>
+                        {form.horometro && (
+                          <Badge
+                            bg={form.horometro.toUpperCase() === "S/H" ? "warning" : "info"}
+                            className={`fw-semibold shadow-sm ${
+                              form.horometro.toUpperCase() === "S/H" ? "text-dark" : "text-white"
+                            }`}
+                            style={{ fontSize: "0.78rem" }}
+                          >
+                            ⏱️ {form.horometro.toUpperCase() === "S/H" ? "S/H" : `${form.horometro} hs`}
+                          </Badge>
+                        )}
+                      </>
                     ) : (
                       <span className="text-muted">— Tocar para elegir CC —</span>
                     )}
@@ -2017,7 +2048,7 @@ function Visitas() {
                               type="text"
                               inputMode="decimal"
                               autoFocus
-                              placeholder="Ej: 2450 (solo números)"
+                              placeholder="Ingresar número de horas (ej: 2450)"
                               value={horometroInputTemp}
                               onChange={(e) => {
                                 const val = e.target.value.replace(/[^0-9.]/g, "");
@@ -2032,22 +2063,24 @@ function Visitas() {
                                 }
                               }}
                               isInvalid={errorHorometroTemp}
-                              className="rounded-3 flex-grow-1 py-2 px-3 fw-semibold"
+                              className="rounded-3 flex-grow-1 py-1.5 px-3 fw-semibold"
                               style={{ fontSize: "0.95rem" }}
                             />
                             <Button
                               variant="primary"
-                              className="px-4 py-2 fw-bold rounded-3 d-flex align-items-center gap-1.5 shadow-sm"
-                              style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.9rem" }}
+                              size="sm"
+                              className="px-2.5 py-1.5 fw-bold rounded-2 d-flex align-items-center gap-1 shadow-sm flex-shrink-0"
+                              style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.82rem", whiteSpace: "nowrap" }}
                               onClick={() => handleGuardarHorometroCC(t.cc)}
                             >
-                              <i className="bi bi-check-lg fs-6"></i>
+                              <i className="bi bi-check-lg"></i>
                               <span>Listo</span>
                             </Button>
                             <Button
                               variant="outline-secondary"
-                              className="px-3 py-2 rounded-3 fw-bold"
-                              style={{ fontSize: "0.9rem" }}
+                              size="sm"
+                              className="px-2 py-1.5 rounded-2 fw-bold flex-shrink-0"
+                              style={{ fontSize: "0.82rem" }}
                               onClick={() => {
                                 setCcActivoEditando(null);
                                 setHorometroInputTemp("");
