@@ -294,13 +294,14 @@ function Visitas() {
   };
 
   const handleGuardarHorometroCC = (ccCodigo) => {
-    if (!horometroInputTemp || !horometroInputTemp.trim()) {
+    const valLimpio = (horometroInputTemp || "").trim().replace(",", ".");
+    if (!valLimpio || isNaN(valLimpio) || isNaN(parseFloat(valLimpio)) || parseFloat(valLimpio) < 0) {
       setErrorHorometroTemp(true);
       return;
     }
     setCcItemsTemp((prev) => ({
       ...prev,
-      [ccCodigo]: horometroInputTemp.trim(),
+      [ccCodigo]: valLimpio,
     }));
     setCcActivoEditando(null);
     setHorometroInputTemp("");
@@ -320,8 +321,9 @@ function Visitas() {
   const handleConfirmarCCModal = () => {
     let itemsFinales = { ...ccItemsTemp };
     if (ccActivoEditando) {
-      if (horometroInputTemp && horometroInputTemp.trim()) {
-        itemsFinales[ccActivoEditando] = horometroInputTemp.trim();
+      const valLimpio = (horometroInputTemp || "").trim().replace(",", ".");
+      if (valLimpio && !isNaN(valLimpio) && !isNaN(parseFloat(valLimpio)) && parseFloat(valLimpio) >= 0) {
+        itemsFinales[ccActivoEditando] = valLimpio;
       } else {
         setErrorHorometroTemp(true);
         return;
@@ -2024,7 +2026,9 @@ function Visitas() {
 
                           <div className="d-flex gap-2 align-items-center">
                             <Form.Control
-                              type="text"
+                              type="number"
+                              min="0"
+                              step="any"
                               autoFocus
                               placeholder="Ej: 2450"
                               value={horometroInputTemp}
@@ -2069,7 +2073,7 @@ function Visitas() {
 
                           {errorHorometroTemp && (
                             <small className="text-danger fw-semibold" style={{ fontSize: "0.75rem" }}>
-                              * Ingrese el número de horas o toque el botón "Opción S/H".
+                              * Ingrese un valor numérico válido o seleccione "Opción S/H".
                             </small>
                           )}
                         </div>
