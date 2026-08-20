@@ -136,8 +136,11 @@ function TractoresPreventivo() {
         const paradas = new Set();
         if (Array.isArray(trabajos)) {
           trabajos.forEach((t) => {
-            if (t.maquinaParada && t.estado !== "Realizado" && t.tractor) {
-              paradas.add(t.tractor._id || t.tractor);
+            const est = String(t.estado || "").toLowerCase().trim();
+            const esTerminada = ["terminada", "terminado", "realizado", "realizada", "finalizado", "finalizada"].includes(est);
+            if (t.maquinaParada && !esTerminada && t.tractor) {
+              const tractorId = (t.tractor._id || t.tractor).toString();
+              paradas.add(tractorId);
             }
           });
         }
@@ -423,7 +426,7 @@ function TractoresPreventivo() {
       const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
       const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
 
-      const estaParado = paradasTractores.has(t._id?.toString()) || (t.gruppo === 5);
+      const estaParado = paradasTractores.has(t._id?.toString());
       const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado);
 
       const fila = ws.addRow([
@@ -753,7 +756,7 @@ function TractoresPreventivo() {
             </thead>
             <tbody>
               {tractoresFiltrados.map((t, idx) => {
-                const estaParado = paradasTractores.has(t._id?.toString()) || (t.gruppo === 5);
+                const estaParado = paradasTractores.has(t._id?.toString());
                 const reg = ultimosServices.find(
                   (u) => u.tractor?._id === t._id || u.tractor === t._id
                 );
