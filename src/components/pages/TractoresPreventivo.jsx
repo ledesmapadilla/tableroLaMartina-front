@@ -1132,6 +1132,18 @@ function TractoresPreventivo() {
             const fechaLecturaActual = hmObj?.fecha;
             const horometroActual = hmObj?.horometro;
 
+            const regTabla = ultimosServices.find(
+              (u) =>
+                u.tractor?._id === historialModal?._id ||
+                u.tractor === historialModal?._id ||
+                u.cc === historialModal?.cc
+            );
+
+            let lista = Array.isArray(historialServices) && historialServices.length > 0 ? [...historialServices] : [];
+            if (lista.length === 0 && regTabla) {
+              lista = [regTabla];
+            }
+
             return (
               <>
                 {cargandoHistorial ? (
@@ -1152,16 +1164,29 @@ function TractoresPreventivo() {
                       </tr>
                     </thead>
                     <tbody>
-                      {historialServices.length === 0 ? (
+                      {lista.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="text-muted py-4 text-center">
-                            <i className="bi bi-info-circle me-1.5 fs-6 text-secondary"></i>
-                            No hay registros de services previos cargados para este tractor.
+                          <td>
+                            <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
+                              {historialModal?.cc || "—"}
+                            </span>
                           </td>
+                          <td>{fechaLecturaActual ? formatFecha(fechaLecturaActual) : "—"}</td>
+                          <td className="fw-bold text-dark">
+                            {horometroActual !== undefined && horometroActual !== null
+                              ? `${horometroActual.toLocaleString("es-AR")} hs`
+                              : "—"}
+                          </td>
+                          <td className="text-muted">—</td>
+                          <td className="text-muted">—</td>
+                          <td className="text-muted">—</td>
+                          <td>{historialModal?.supervisor || "—"}</td>
+                          <td className="text-start text-muted">Sin services registrados</td>
+                          <td>—</td>
                         </tr>
                       ) : (
-                        historialServices.map((s) => (
-                          <tr key={s._id}>
+                        lista.map((s) => (
+                          <tr key={s._id || Math.random()}>
                             <td>
                               <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
                                 {historialModal?.cc || s.tractor?.cc || s.cc || "—"}
@@ -1173,21 +1198,27 @@ function TractoresPreventivo() {
                                 ? `${horometroActual.toLocaleString("es-AR")} hs`
                                 : "—"}
                             </td>
-                            <td>{formatFecha(s.fecha)}</td>
-                            <td className="fw-semibold text-primary">{s.horometro?.toLocaleString("es-AR")} hs</td>
-                            <td className="text-secondary fw-semibold">
-                              {(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs
+                            <td>{s.fecha ? formatFecha(s.fecha) : "—"}</td>
+                            <td className="fw-semibold text-primary">
+                              {typeof s.horometro === "number" ? `${s.horometro.toLocaleString("es-AR")} hs` : "—"}
                             </td>
-                            <td>{s.responsable || "—"}</td>
+                            <td className="text-secondary fw-semibold">
+                              {typeof s.horometro === "number"
+                                ? `${(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs`
+                                : "—"}
+                            </td>
+                            <td>{s.responsable || historialModal?.supervisor || "—"}</td>
                             <td className="text-start">{s.observaciones || "—"}</td>
                             <td>
-                              <button
-                                onClick={() => eliminarServiceHistorial(s._id)}
-                                className="btn btn-sm btn-outline-danger border-0 p-1"
-                                title="Eliminar service"
-                              >
-                                <i className="bi bi-trash fs-6"></i>
-                              </button>
+                              {s._id && (
+                                <button
+                                  onClick={() => eliminarServiceHistorial(s._id)}
+                                  className="btn btn-sm btn-outline-danger border-0 p-1"
+                                  title="Eliminar service"
+                                >
+                                  <i className="bi bi-trash fs-6"></i>
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))
