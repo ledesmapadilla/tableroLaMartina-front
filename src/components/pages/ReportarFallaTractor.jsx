@@ -322,7 +322,21 @@ function ReportarFallaTractor() {
               </div>
             </div>
 
-            {/* 1. Diagnóstico */}
+            {/* 1. Horómetro */}
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold text-dark small mb-1">Horómetro (hs)</Form.Label>
+              <Form.Control
+                type="number"
+                min="0"
+                step="any"
+                placeholder="Ej. 1250"
+                value={formData.horometro}
+                onChange={(e) => setFormData({ ...formData, horometro: e.target.value })}
+                className="rounded-3"
+              />
+            </Form.Group>
+
+            {/* 2. Diagnóstico */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold text-dark small mb-1">Diagnóstico</Form.Label>
               <Form.Control
@@ -333,7 +347,7 @@ function ReportarFallaTractor() {
               />
             </Form.Group>
 
-            {/* 2. Descripción de la Falla */}
+            {/* 3. Descripción de la Falla */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold text-dark small mb-1">Descripción de la falla</Form.Label>
               <Form.Control
@@ -345,7 +359,7 @@ function ReportarFallaTractor() {
               />
             </Form.Group>
 
-            {/* 3. Nivel de Urgencia Centrado */}
+            {/* 4. Nivel de Urgencia Centrado */}
             <Form.Group className="mb-4 text-center">
               <Form.Label className="fw-semibold text-dark small mb-2 d-block text-center">Nivel de urgencia</Form.Label>
               <div className="d-flex justify-content-center gap-2 mx-auto" style={{ maxWidth: "380px" }}>
@@ -391,9 +405,9 @@ function ReportarFallaTractor() {
               </div>
             </Form.Group>
 
-            {/* Categoría, Responsable y Horómetro */}
-            <Row className="g-3 mb-4">
-              <Col sm={4}>
+            {/* Categoría y Responsable */}
+            <Row className="g-4 mb-4">
+              <Col sm={6}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Categoría <span className="text-danger">*</span>
@@ -421,7 +435,7 @@ function ReportarFallaTractor() {
                 </Form.Group>
               </Col>
 
-              <Col sm={4}>
+              <Col sm={6}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
                   <Form.Control
@@ -431,22 +445,6 @@ function ReportarFallaTractor() {
                     className="rounded-3"
                     style={{ fontSize: "0.86rem", height: "38px" }}
                     placeholder="Ej. Mecánico"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col sm={4}>
-                <Form.Group>
-                  <Form.Label className="fw-semibold text-dark small mb-1">Horómetro (hs)</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={formData.horometro}
-                    onChange={(e) => setFormData({ ...formData, horometro: e.target.value })}
-                    placeholder="Ej. 1250"
-                    className="rounded-3"
-                    style={{ fontSize: "0.86rem", height: "38px" }}
                   />
                 </Form.Group>
               </Col>

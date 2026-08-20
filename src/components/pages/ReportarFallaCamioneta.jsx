@@ -308,7 +308,21 @@ function ReportarFallaCamioneta() {
               </div>
             </div>
 
-            {/* 1. Diagnóstico */}
+            {/* 1. Kilometraje */}
+            <Form.Group className="mb-3">
+              <Form.Label className="fw-semibold text-dark small mb-1">Kilometraje (km)</Form.Label>
+              <Form.Control
+                type="number"
+                min="0"
+                step="any"
+                placeholder="Ej. 85000"
+                value={formData.kilometraje}
+                onChange={(e) => setFormData({ ...formData, kilometraje: e.target.value })}
+                className="rounded-3"
+              />
+            </Form.Group>
+
+            {/* 2. Diagnóstico */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold text-dark small mb-1">Diagnóstico</Form.Label>
               <Form.Control
@@ -319,7 +333,7 @@ function ReportarFallaCamioneta() {
               />
             </Form.Group>
 
-            {/* 2. Descripción de la Falla */}
+            {/* 3. Descripción de la Falla */}
             <Form.Group className="mb-3">
               <Form.Label className="fw-semibold text-dark small mb-1">Descripción de la falla</Form.Label>
               <Form.Control
@@ -331,7 +345,7 @@ function ReportarFallaCamioneta() {
               />
             </Form.Group>
 
-            {/* 3. Nivel de Urgencia Centrado */}
+            {/* 4. Nivel de Urgencia Centrado */}
             <Form.Group className="mb-4 text-center">
               <Form.Label className="fw-semibold text-dark small mb-2 d-block text-center">Nivel de urgencia</Form.Label>
               <div className="d-flex justify-content-center gap-2 mx-auto" style={{ maxWidth: "380px" }}>
@@ -377,9 +391,9 @@ function ReportarFallaCamioneta() {
               </div>
             </Form.Group>
 
-            {/* Categoría, Responsable y Kilometraje */}
-            <Row className="g-3 mb-4">
-              <Col sm={4}>
+            {/* Categoría y Responsable */}
+            <Row className="g-4 mb-4">
+              <Col sm={6}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Categoría <span className="text-danger">*</span>
@@ -406,7 +420,7 @@ function ReportarFallaCamioneta() {
                 </Form.Group>
               </Col>
 
-              <Col sm={4}>
+              <Col sm={6}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
                   <Form.Control
@@ -416,22 +430,6 @@ function ReportarFallaCamioneta() {
                     className="rounded-3"
                     style={{ fontSize: "0.86rem", height: "38px" }}
                     placeholder="Ej. Mecánico"
-                  />
-                </Form.Group>
-              </Col>
-
-              <Col sm={4}>
-                <Form.Group>
-                  <Form.Label className="fw-semibold text-dark small mb-1">Kilometraje (km)</Form.Label>
-                  <Form.Control
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={formData.kilometraje}
-                    onChange={(e) => setFormData({ ...formData, kilometraje: e.target.value })}
-                    placeholder="Ej. 85000"
-                    className="rounded-3"
-                    style={{ fontSize: "0.86rem", height: "38px" }}
                   />
                 </Form.Group>
               </Col>
