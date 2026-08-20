@@ -363,10 +363,11 @@ function TractoresPreventivo() {
       "Descripción",
       "Supervisor",
       "Grupo",
+      "Fecha",
+      "Horómetro",
       "Fecha Service",
-      "Hm. Últ. Service",
+      "Horómetro Service",
       "Hm. Próx. Service",
-      "Hs Actual",
       "Observaciones",
       "Estado",
     ];
@@ -420,8 +421,10 @@ function TractoresPreventivo() {
       const reg = ultimosServices.find(
         (u) => u.tractor?._id === t._id || u.tractor === t._id
       );
-      const hmObj = ultimosHorometros[t.cc];
+      const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
+      const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
       const hsActuales = hmObj?.horometro;
+      const fechaHsActual = hmObj?.fecha;
       const hsUltimoService = typeof reg?.horometro === "number" ? reg.horometro : null;
       const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
       const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
@@ -435,10 +438,11 @@ function TractoresPreventivo() {
         t.descripcion || "—",
         t.supervisor || "—",
         t.gruppo ? `Grupo ${t.gruppo}` : "—",
+        fechaHsActual ? formatFecha(fechaHsActual) : "—",
+        hsActuales !== undefined && hsActuales !== null ? `${hsActuales.toLocaleString("es-AR")} hs` : "—",
         reg ? formatFecha(reg.fecha) : "—",
         hsUltimoService !== null ? `${hsUltimoService.toLocaleString("es-AR")} hs` : "—",
         hsProxService !== null ? `${hsProxService.toLocaleString("es-AR")} hs` : "—",
-        hsActuales !== undefined && hsActuales !== null ? `${hsActuales.toLocaleString("es-AR")} hs` : "—",
         reg?.observaciones || "—",
         estado.label,
       ]);
@@ -459,7 +463,7 @@ function TractoresPreventivo() {
       fila.getCell(2).font = { bold: true };
       fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(11).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
@@ -469,9 +473,10 @@ function TractoresPreventivo() {
       { width: 20 },
       { width: 14 },
       { width: 15 },
-      { width: 18 },
-      { width: 18 },
       { width: 16 },
+      { width: 15 },
+      { width: 18 },
+      { width: 18 },
       { width: 28 },
       { width: 16 },
     ];
@@ -743,12 +748,13 @@ function TractoresPreventivo() {
               <tr className="fw-normal align-middle">
                 <th style={{ width: "35px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>#</th>
                 <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Acción</th>
-                <th style={{ width: "100px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>CC</th>
+                <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>CC</th>
                 <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Descripción</th>
                 <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha</th>
-                <th style={{ width: "125px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Horómetro Últ. Srv.</th>
+                <th style={{ width: "105px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Horómetro</th>
+                <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha Service</th>
+                <th style={{ width: "125px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Horómetro Service</th>
                 <th style={{ width: "115px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Hm. Próx. Srv.</th>
-                <th style={{ width: "100px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Hs actual</th>
                 <th style={{ width: "45px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Obs.</th>
                 <th style={{ width: "105px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Estado</th>
                 <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Historial</th>
@@ -838,45 +844,29 @@ function TractoresPreventivo() {
                       </div>
                     </td>
 
-                    {/* Fecha */}
+                    {/* Fecha (Fecha lectura horómetro actual) */}
+                    <td style={{ fontSize: "0.76rem", color: "#475569", padding: "5px 4px" }}>
+                      {fechaHsActual ? formatFecha(fechaHsActual) : "—"}
+                    </td>
+
+                    {/* Horómetro (Horómetro actual) */}
+                    <td className="fw-bold" style={{ fontSize: "0.82rem", color: "#0f172a", padding: "5px 4px" }}>
+                      {hsActuales !== undefined && hsActuales !== null ? `${hsActuales.toLocaleString("es-AR")} hs` : "—"}
+                    </td>
+
+                    {/* Fecha Service (Fecha último service) */}
                     <td style={{ fontSize: "0.76rem", color: "#475569", padding: "5px 4px" }}>
                       {reg ? formatFecha(reg.fecha) : "—"}
                     </td>
 
-                    {/* Horómetro Último Service */}
-                    <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#0f172a", padding: "5px 4px" }}>
+                    {/* Horómetro Service (Horómetro último service) */}
+                    <td className="fw-semibold text-primary" style={{ fontSize: "0.8rem", padding: "5px 4px" }}>
                       {hsUltimoService !== null ? `${hsUltimoService.toLocaleString("es-AR")} hs` : "—"}
                     </td>
 
                     {/* Hm. Próx. Srv. */}
                     <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#2563eb", padding: "5px 4px" }}>
                       {hsProxService !== null ? `${hsProxService.toLocaleString("es-AR")} hs` : "—"}
-                    </td>
-
-                    {/* Hs actual */}
-                    <td style={{ padding: "4px 4px" }}>
-                      {hsActuales !== undefined && hsActuales !== null ? (
-                        <div className="d-flex flex-column align-items-center justify-content-center">
-                          <span className="fw-semibold" style={{ fontSize: "0.8rem", color: "#0f172a", lineHeight: 1.2 }}>
-                            {hsActuales.toLocaleString("es-AR")} hs
-                          </span>
-                          {fechaHsActual && (
-                            <span
-                              style={{
-                                fontSize: "0.68rem",
-                                color: "#64748b",
-                                fontWeight: 400,
-                                marginTop: "2px",
-                                lineHeight: 1.1,
-                              }}
-                            >
-                              {formatFecha(fechaHsActual)}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: "0.8rem", color: "#64748b" }}>—</span>
-                      )}
                     </td>
 
                     {/* Obs */}
