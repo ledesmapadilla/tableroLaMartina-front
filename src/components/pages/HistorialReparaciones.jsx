@@ -204,6 +204,7 @@ function HistorialReparaciones() {
 
     const columnas = [
       "Fecha",
+      "Kilometraje",
       "Categoría",
       "Diagnóstico",
       "Reparación Realizada",
@@ -256,6 +257,7 @@ function HistorialReparaciones() {
 
       const fila = ws.addRow([
         formatF(t.fecha),
+        t.kilometraje || t.kilometros ? `${t.kilometraje || t.kilometros} km` : "-",
         t.parte || "Mecánica general",
         t.diagnostico || t.descripcion || "-",
         t.reparacion || "-",
@@ -285,6 +287,7 @@ function HistorialReparaciones() {
 
     ws.columns = [
       { width: 14 }, // Fecha
+      { width: 14 }, // Kilometraje
       { width: 20 }, // Categoría
       { width: 35 }, // Diagnóstico
       { width: 35 }, // Reparación
@@ -999,9 +1002,17 @@ function HistorialReparaciones() {
               {/* Tarjeta de Resumen Rápido */}
               <Card className="border-0 shadow-sm rounded-3 p-3 mb-3 bg-white">
                 <Row className="g-3">
-                  <Col sm={3}>
+                  <Col sm={2}>
                     <div className="text-muted small">Fecha</div>
                     <div className="fw-bold text-dark">{formatF(trabajoSeleccionado.fecha)}</div>
+                  </Col>
+                  <Col sm={2}>
+                    <div className="text-muted small">Kilometraje</div>
+                    <div className="fw-bold text-dark">
+                      {trabajoSeleccionado.kilometraje || trabajoSeleccionado.kilometros
+                        ? `${trabajoSeleccionado.kilometraje || trabajoSeleccionado.kilometros} km`
+                        : "—"}
+                    </div>
                   </Col>
                   <Col sm={3}>
                     <div className="text-muted small">Categoría</div>
@@ -1015,7 +1026,7 @@ function HistorialReparaciones() {
                       </Badge>
                     </div>
                   </Col>
-                  <Col sm={3}>
+                  <Col sm={2}>
                     <div className="text-muted small">Estado</div>
                     <div>
                       <span

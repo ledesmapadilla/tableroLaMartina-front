@@ -236,6 +236,7 @@ function HistorialTractor() {
 
     const columnas = [
       "Fecha",
+      "Horómetro",
       "Categoría",
       "Diagnóstico",
       "Reparación Realizada",
@@ -288,6 +289,7 @@ function HistorialTractor() {
 
       const fila = ws.addRow([
         formatF(t.fecha),
+        t.horometro ? `${t.horometro} hs` : "-",
         t.parte || "Mecánica general",
         t.diagnostico || t.descripcion || "-",
         t.reparacion || t.descripcion || "-",
@@ -317,6 +319,7 @@ function HistorialTractor() {
 
     ws.columns = [
       { width: 14 }, // Fecha
+      { width: 14 }, // Horómetro
       { width: 22 }, // Categoría
       { width: 35 }, // Diagnóstico
       { width: 35 }, // Reparación
@@ -1062,11 +1065,11 @@ function HistorialTractor() {
                 </div>
 
                 <Row className="g-2 small text-secondary">
-                  <Col md={4}>
+                  <Col md={3}>
                     <span className="fw-semibold text-dark d-block">Categoría:</span>
                     <span>{trabajoSeleccionado.parte || "Mecánica general"}</span>
                   </Col>
-                  <Col md={4}>
+                  <Col md={3}>
                     <span className="fw-semibold text-dark d-block">Taller / Lugar:</span>
                     <span>
                       {trabajoSeleccionado.taller === "Tercero"
@@ -1074,9 +1077,13 @@ function HistorialTractor() {
                         : "Taller Propio"}
                     </span>
                   </Col>
-                  <Col md={4}>
+                  <Col md={3}>
                     <span className="fw-semibold text-dark d-block">Responsable:</span>
                     <span>{trabajoSeleccionado.responsable || "—"}</span>
+                  </Col>
+                  <Col md={3}>
+                    <span className="fw-semibold text-dark d-block">Horómetro:</span>
+                    <span>{trabajoSeleccionado.horometro ? `${trabajoSeleccionado.horometro} hs` : "—"}</span>
                   </Col>
                 </Row>
               </div>

@@ -565,7 +565,10 @@ function TareasTractorNueva() {
                   )}
 
                   <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: "0.72rem" }}>
-                    <span>{t.parte || "Mecánica general"}</span>
+                    <span>
+                      {t.parte || "Mecánica general"}
+                      {t.horometro ? ` • ${t.horometro} hs` : ""}
+                    </span>
                     {t.maquinaParada && <span className="text-danger fw-bold">🔴 Parada</span>}
                   </div>
                 </div>
@@ -588,7 +591,12 @@ function TareasTractorNueva() {
                 </h5>
                 <div className="small text-muted" style={{ fontSize: "0.82rem" }}>
                   <div>Fecha de reporte: {formatF(tareaSeleccionada.fecha)}</div>
-                  <div className="mt-0.5">Categoría: <span className="fw-semibold text-dark">{tareaSeleccionada.parte || "Mecánica general"}</span></div>
+                  <div className="mt-0.5">
+                    Categoría: <span className="fw-semibold text-dark">{tareaSeleccionada.parte || "Mecánica general"}</span>
+                    {tareaSeleccionada.horometro ? (
+                      <span className="ms-2">• Horómetro: <span className="fw-semibold text-dark">{tareaSeleccionada.horometro} hs</span></span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
@@ -633,9 +641,9 @@ function TareasTractorNueva() {
               </div>
             </div>
 
-            {/* Fecha, Estado del Trabajo, Taller, Nombre Taller y Responsable */}
+            {/* Fecha, Horómetro, Estado del Trabajo, Taller, Nombre Taller y Responsable */}
             <Row className="g-3 mb-3">
-              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 2}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Fecha</Form.Label>
                   <Form.Control
@@ -662,7 +670,23 @@ function TareasTractorNueva() {
                 </Form.Group>
               </Col>
 
-              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 2}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Horómetro (hs)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={tareaSeleccionada.horometro ?? ""}
+                    onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "horometro", e.target.value)}
+                    placeholder="Ej. 1250"
+                    className="rounded-3 form-control-sm"
+                    style={{ fontSize: "0.85rem", height: "36px" }}
+                  />
+                </Form.Group>
+              </Col>
+
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 2}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
                   <Form.Select
@@ -708,7 +732,7 @@ function TareasTractorNueva() {
               </Col>
 
               {tareaSeleccionada.taller === "Tercero" && (
-                <Col md={3}>
+                <Col md={2}>
                   <Form.Group>
                     <Form.Label className="fw-semibold text-dark small mb-1">Nombre del taller</Form.Label>
                     <Form.Control
@@ -723,7 +747,7 @@ function TareasTractorNueva() {
                 </Col>
               )}
 
-              <Col md={tareaSeleccionada.taller === "Tercero" ? 3 : 3}>
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
                   <Form.Control

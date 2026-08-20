@@ -238,6 +238,7 @@ function ResumenReparaciones() {
       "Camioneta",
       "Marca",
       "Fecha",
+      "Kilometraje",
       "Categoría",
       "Diagnóstico",
       "Reparación Realizada",
@@ -295,6 +296,7 @@ function ResumenReparaciones() {
         t.camioneta?.patente || "-",
         t.camioneta?.marca || "-",
         formatF(t.fecha),
+        t.kilometraje || t.kilometros ? `${t.kilometraje || t.kilometros} km` : "-",
         t.parte || "Mecánica general",
         t.diagnostico || t.descripcion || "-",
         t.reparacion || "-",
@@ -316,7 +318,7 @@ function ResumenReparaciones() {
           bottom: bottomBorder,
           right: { style: "thin", color: { argb: "FFE2E8F0" } },
         };
-        if ([5, 6, 10, 11].includes(colNumber)) {
+        if ([6, 7, 11, 12].includes(colNumber)) {
           cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
         } else {
           cell.alignment = { horizontal: "center", vertical: "middle" };
@@ -328,6 +330,7 @@ function ResumenReparaciones() {
       { width: 14 }, // Camioneta (Patente)
       { width: 16 }, // Marca
       { width: 14 }, // Fecha
+      { width: 14 }, // Kilometraje
       { width: 20 }, // Categoría
       { width: 35 }, // Diagnóstico
       { width: 35 }, // Reparación
@@ -1111,9 +1114,17 @@ function ResumenReparaciones() {
                       {trabajoSeleccionado.camioneta?.marca && `(${trabajoSeleccionado.camioneta.marca})`}
                     </div>
                   </Col>
-                  <Col sm={3}>
+                  <Col sm={2}>
                     <div className="text-muted small">Fecha</div>
                     <div className="fw-bold text-dark">{formatF(trabajoSeleccionado.fecha)}</div>
+                  </Col>
+                  <Col sm={2}>
+                    <div className="text-muted small">Kilometraje</div>
+                    <div className="fw-bold text-dark">
+                      {trabajoSeleccionado.kilometraje || trabajoSeleccionado.kilometros
+                        ? `${trabajoSeleccionado.kilometraje || trabajoSeleccionado.kilometros} km`
+                        : "—"}
+                    </div>
                   </Col>
                   <Col sm={3}>
                     <div className="text-muted small">Categoría</div>
@@ -1127,7 +1138,7 @@ function ResumenReparaciones() {
                       </Badge>
                     </div>
                   </Col>
-                  <Col sm={3}>
+                  <Col sm={2}>
                     <div className="text-muted small">Estado</div>
                     <div>
                       <span

@@ -330,6 +330,7 @@ function ResumenReparacionesTractores() {
           "Tractor",
           "Descripción",
           "Fecha",
+          "Horómetro",
           "Categoría",
           "Diagnóstico",
           "Reparación Realizada",
@@ -344,6 +345,7 @@ function ResumenReparacionesTractores() {
           "Descripción",
           "Grupo / Supervisor",
           "Fecha",
+          "Horómetro",
           "Categoría",
           "Diagnóstico",
           "Reparación Realizada",
@@ -403,6 +405,7 @@ function ResumenReparacionesTractores() {
             `CC ${ccActual}`,
             tractorInfo.descripcion || "-",
             formatF(t.fecha),
+            t.horometro ? `${t.horometro} hs` : "-",
             t.parte || "Mecánica general",
             t.diagnostico || t.descripcion || "-",
             t.reparacion || t.descripcion || "-",
@@ -417,6 +420,7 @@ function ResumenReparacionesTractores() {
             tractorInfo.descripcion || "-",
             `${tractorInfo.infoG.label} (${tractorInfo.infoG.supervisor})`,
             formatF(t.fecha),
+            t.horometro ? `${t.horometro} hs` : "-",
             t.parte || "Mecánica general",
             t.diagnostico || t.descripcion || "-",
             t.reparacion || t.descripcion || "-",
@@ -433,7 +437,7 @@ function ResumenReparacionesTractores() {
         ? { style: "medium", color: { argb: "FF1E293B" } }
         : { style: "thin", color: { argb: "FFE2E8F0" } };
 
-      const colIndicesTexto = esModoGrupo ? [5, 6, 10, 11] : [6, 7, 11, 12];
+      const colIndicesTexto = esModoGrupo ? [6, 7, 11, 12] : [7, 8, 12, 13];
 
       fila.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         cell.border = {
@@ -455,6 +459,7 @@ function ResumenReparacionesTractores() {
           { width: 14 }, // Tractor CC
           { width: 25 }, // Descripción
           { width: 14 }, // Fecha
+          { width: 14 }, // Horómetro
           { width: 20 }, // Categoría
           { width: 35 }, // Diagnóstico
           { width: 35 }, // Reparación
@@ -469,6 +474,7 @@ function ResumenReparacionesTractores() {
           { width: 22 }, // Descripción
           { width: 25 }, // Grupo / Supervisor
           { width: 14 }, // Fecha
+          { width: 14 }, // Horómetro
           { width: 20 }, // Categoría
           { width: 35 }, // Diagnóstico
           { width: 35 }, // Reparación
@@ -1311,7 +1317,7 @@ function ResumenReparacionesTractores() {
                       );
                     })()}
                   </Col>
-                  <Col sm={3}>
+                  <Col sm={2}>
                     <div className="text-muted small">Categoría</div>
                     <div>
                       <Badge
@@ -1323,7 +1329,13 @@ function ResumenReparacionesTractores() {
                       </Badge>
                     </div>
                   </Col>
-                  <Col sm={3}>
+                  <Col sm={2}>
+                    <div className="text-muted small">Horómetro</div>
+                    <div className="fw-semibold text-dark">
+                      {trabajoSeleccionado.horometro ? `${trabajoSeleccionado.horometro} hs` : "—"}
+                    </div>
+                  </Col>
+                  <Col sm={2}>
                     <div className="text-muted small">Estado</div>
                     <div>
                       <span

@@ -25,6 +25,7 @@ function ReportarFallaCamioneta() {
     prioridad: "Normal",
     parte: "",
     responsable: state?.responsable || "",
+    kilometraje: "",
     maquinaParada: false,
   });
 
@@ -118,6 +119,8 @@ function ReportarFallaCamioneta() {
       urgencia: formData.urgencia,
       prioridad: formData.prioridad,
       responsable: formData.responsable.trim(),
+      kilometraje: formData.kilometraje !== "" ? Number(formData.kilometraje) : "",
+      kilometros: formData.kilometraje !== "" ? Number(formData.kilometraje) : "",
       maquinaParada: formData.maquinaParada,
       estado: "pendiente",
     };
@@ -374,9 +377,9 @@ function ReportarFallaCamioneta() {
               </div>
             </Form.Group>
 
-            {/* Categoría y Responsable */}
-            <Row className="g-4 mb-4">
-              <Col sm={6}>
+            {/* Categoría, Responsable y Kilometraje */}
+            <Row className="g-3 mb-4">
+              <Col sm={4}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Categoría <span className="text-danger">*</span>
@@ -403,13 +406,30 @@ function ReportarFallaCamioneta() {
                 </Form.Group>
               </Col>
 
-              <Col sm={6}>
+              <Col sm={4}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.responsable}
                     onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
+                    className="rounded-3"
+                    style={{ fontSize: "0.86rem", height: "38px" }}
+                    placeholder="Ej. Mecánico"
+                  />
+                </Form.Group>
+              </Col>
+
+              <Col sm={4}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Kilometraje (km)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={formData.kilometraje}
+                    onChange={(e) => setFormData({ ...formData, kilometraje: e.target.value })}
+                    placeholder="Ej. 85000"
                     className="rounded-3"
                     style={{ fontSize: "0.86rem", height: "38px" }}
                   />

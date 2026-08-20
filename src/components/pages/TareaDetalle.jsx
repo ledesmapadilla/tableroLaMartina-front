@@ -32,6 +32,7 @@ function TareaDetalle() {
 
   const [loading,      setLoading]      = useState(true);
   const [fecha,        setFecha]        = useState("");
+  const [kilometraje,  setKilometraje]  = useState("");
   const [descripcion,  setDescripcion]  = useState("");
   const [urgencia,     setUrgencia]     = useState("baja");
   const [responsable,  setResponsable]  = useState("");
@@ -48,6 +49,7 @@ function TareaDetalle() {
   useEffect(() => {
     const cargarDesdeObj = (t) => {
       setFecha(t.fecha ? t.fecha.split("T")[0] : "");
+      setKilometraje(t.kilometraje ?? t.kilometros ?? "");
       setDescripcion(t.descripcion ?? "");
       setUrgencia(t.urgencia ?? "baja");
       setResponsable((prev) => t.responsable || prev || "");
@@ -122,7 +124,18 @@ function TareaDetalle() {
       const res = await fetch(`/api/trabajos-camioneta/${trabajoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fecha, descripcion, urgencia, responsable, estado, detalle, trabajosRealizados, repuestos: lista }),
+        body: JSON.stringify({
+          fecha,
+          kilometraje: kilometraje !== "" ? Number(kilometraje) : "",
+          kilometros: kilometraje !== "" ? Number(kilometraje) : "",
+          descripcion,
+          urgencia,
+          responsable,
+          estado,
+          detalle,
+          trabajosRealizados,
+          repuestos: lista,
+        }),
       });
       if (res.ok) {
         Swal.fire({ icon: "success", title: "Reparación guardada", timer: 1500, showConfirmButton: false });
@@ -145,7 +158,7 @@ function TareaDetalle() {
 
     const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Reparación");
-    const columnas = ["Fecha", "Trabajos realizados", "Responsable", "Urgencia", "Estado"];
+    const columnas = ["Fecha", "Kilometraje", "Trabajos realizados", "Responsable", "Urgencia", "Estado"];
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
@@ -185,6 +198,7 @@ function TareaDetalle() {
     filas.forEach((tr, idx) => {
       const fila = ws.addRow([
         fechaTarea,
+        kilometraje ? `${kilometraje} km` : "—",
         tr.descripcion || "—",
         responsable || "—",
         urgencia ?? "baja",
@@ -196,10 +210,10 @@ function TareaDetalle() {
         cell.border = thinBorder;
         if (isOdd) cell.fill = zebraFill;
       });
-      fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
     });
 
-    ws.columns = [{ width: 14 }, { width: 44 }, { width: 22 }, { width: 12 }, { width: 14 }];
+    ws.columns = [{ width: 14 }, { width: 14 }, { width: 44 }, { width: 22 }, { width: 12 }, { width: 14 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob   = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -274,12 +288,24 @@ function TareaDetalle() {
             <Form.Label className="fw-semibold">Fecha</Form.Label>
             <Form.Control
               type="date"
-              style={{ width: "160px" }}
+              style={{ width: "150px" }}
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
             />
           </div>
-          <div style={{ flex: 1, minWidth: "200px" }}>
+          <div>
+            <Form.Label className="fw-semibold">Kilometraje (km)</Form.Label>
+            <Form.Control
+              type="number"
+              min="0"
+              step="any"
+              placeholder="Ej: 85000"
+              style={{ width: "140px" }}
+              value={kilometraje}
+              onChange={(e) => setKilometraje(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: "180px" }}>
             <Form.Label className="fw-semibold">Descripción</Form.Label>
             <Form.Control
               type="text"

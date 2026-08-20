@@ -536,7 +536,10 @@ function ReparacionesCamioneta() {
                   </div>
 
                   <div className="d-flex align-items-center justify-content-between text-muted" style={{ fontSize: "0.72rem" }}>
-                    <span>{t.parte || "Mecánica general"}</span>
+                    <span>
+                      {t.parte || "Mecánica general"}
+                      {(t.kilometraje || t.kilometros) ? ` • ${t.kilometraje || t.kilometros} km` : ""}
+                    </span>
                     {t.maquinaParada && <span className="text-danger fw-bold">🔴 Parada</span>}
                   </div>
                 </div>
@@ -559,7 +562,12 @@ function ReparacionesCamioneta() {
                 </h5>
                 <div className="small text-muted" style={{ fontSize: "0.82rem" }}>
                   <div>Fecha de reporte: {formatF(tareaSeleccionada.fecha)}</div>
-                  <div className="mt-0.5">Categoría: <span className="fw-semibold text-dark">{tareaSeleccionada.parte || "Mecánica general"}</span></div>
+                  <div className="mt-0.5">
+                    Categoría: <span className="fw-semibold text-dark">{tareaSeleccionada.parte || "Mecánica general"}</span>
+                    {(tareaSeleccionada.kilometraje || tareaSeleccionada.kilometros) ? (
+                      <span className="ms-2">• Kilometraje: <span className="fw-semibold text-dark">{tareaSeleccionada.kilometraje || tareaSeleccionada.kilometros} km</span></span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
@@ -585,9 +593,9 @@ function ReparacionesCamioneta() {
               </div>
             </div>
 
-            {/* Fecha, Estado del Trabajo, Taller, Nombre Taller y Responsable */}
+            {/* Fecha, Kilometraje, Estado del Trabajo, Taller, Nombre Taller y Responsable */}
             <Row className="g-3 mb-3">
-              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 2}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Fecha</Form.Label>
                   <Form.Control
@@ -614,7 +622,26 @@ function ReparacionesCamioneta() {
                 </Form.Group>
               </Col>
 
-              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 2}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Kilometraje (km)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={tareaSeleccionada.kilometraje ?? tareaSeleccionada.kilometros ?? ""}
+                    onChange={(e) => {
+                      handleUpdateTarea(tareaSeleccionada._id, "kilometraje", e.target.value);
+                      handleUpdateTarea(tareaSeleccionada._id, "kilometros", e.target.value);
+                    }}
+                    placeholder="Ej. 85000"
+                    className="rounded-3 form-control-sm"
+                    style={{ fontSize: "0.85rem", height: "36px" }}
+                  />
+                </Form.Group>
+              </Col>
+
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 2}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
                   <Form.Select
@@ -660,7 +687,7 @@ function ReparacionesCamioneta() {
               </Col>
 
               {tareaSeleccionada.taller === "Tercero" && (
-                <Col md={3}>
+                <Col md={2}>
                   <Form.Group>
                     <Form.Label className="fw-semibold text-dark small mb-1">Nombre del taller</Form.Label>
                     <Form.Control
@@ -675,7 +702,7 @@ function ReparacionesCamioneta() {
                 </Col>
               )}
 
-              <Col md={tareaSeleccionada.taller === "Tercero" ? 3 : 3}>
+              <Col md={tareaSeleccionada.taller === "Tercero" ? 2 : 3}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
                   <Form.Control

@@ -36,6 +36,7 @@ function ReportarFallaTractor() {
     prioridad: "Normal",
     parte: "",
     responsable: state?.responsable || "",
+    horometro: "",
     maquinaParada: false,
   });
 
@@ -132,6 +133,7 @@ function ReportarFallaTractor() {
       urgencia: formData.urgencia,
       prioridad: formData.prioridad,
       responsable: formData.responsable.trim(),
+      horometro: formData.horometro !== "" ? Number(formData.horometro) : "",
       maquinaParada: formData.maquinaParada,
       estado: "Pendiente",
     };
@@ -389,9 +391,9 @@ function ReportarFallaTractor() {
               </div>
             </Form.Group>
 
-            {/* Categoría y Responsable */}
-            <Row className="g-4 mb-4">
-              <Col sm={6}>
+            {/* Categoría, Responsable y Horómetro */}
+            <Row className="g-3 mb-4">
+              <Col sm={4}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Categoría <span className="text-danger">*</span>
@@ -419,13 +421,30 @@ function ReportarFallaTractor() {
                 </Form.Group>
               </Col>
 
-              <Col sm={6}>
+              <Col sm={4}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">Responsable</Form.Label>
                   <Form.Control
                     type="text"
                     value={formData.responsable}
                     onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
+                    className="rounded-3"
+                    style={{ fontSize: "0.86rem", height: "38px" }}
+                    placeholder="Ej. Mecánico"
+                  />
+                </Form.Group>
+              </Col>
+
+              <Col sm={4}>
+                <Form.Group>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Horómetro (hs)</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={formData.horometro}
+                    onChange={(e) => setFormData({ ...formData, horometro: e.target.value })}
+                    placeholder="Ej. 1250"
                     className="rounded-3"
                     style={{ fontSize: "0.86rem", height: "38px" }}
                   />
