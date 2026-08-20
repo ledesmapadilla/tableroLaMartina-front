@@ -1120,7 +1120,7 @@ function TractoresPreventivo() {
         show={historialModal !== null}
         onHide={() => setHistorialModal(null)}
         centered
-        size="lg"
+        size="xl"
         contentClassName="border-0 rounded-4 shadow-lg overflow-hidden"
       >
         <Modal.Header
@@ -1135,50 +1135,103 @@ function TractoresPreventivo() {
             </span>
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-3 p-md-4 bg-white" style={{ maxHeight: "65vh", overflowY: "auto" }}>
-          {cargandoHistorial ? (
-            <div className="text-center py-4 text-muted">Cargando historial...</div>
-          ) : historialServices.length === 0 ? (
-            <div className="text-center py-4 text-muted">
-              <i className="bi bi-info-circle fs-3 d-block mb-2 text-secondary"></i>
-              No hay registros de services previos para este tractor.
-            </div>
-          ) : (
-            <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
-              <thead className="table-dark">
-                <tr>
-                  <th style={{ fontWeight: 500 }}>Fecha</th>
-                  <th style={{ fontWeight: 500 }}>Horómetro</th>
-                  <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
-                  <th style={{ fontWeight: 500 }}>Responsable</th>
-                  <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
-                  <th style={{ fontWeight: 500, width: "60px" }}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historialServices.map((s) => (
-                  <tr key={s._id}>
-                    <td>{formatFecha(s.fecha)}</td>
-                    <td className="fw-bold">{s.horometro?.toLocaleString("es-AR")} hs</td>
-                    <td className="text-primary fw-semibold">
-                      {(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs
-                    </td>
-                    <td>{s.responsable || "—"}</td>
-                    <td className="text-start">{s.observaciones || "—"}</td>
-                    <td>
-                      <button
-                        onClick={() => eliminarServiceHistorial(s._id)}
-                        className="btn btn-sm btn-outline-danger border-0 p-1"
-                        title="Eliminar service"
-                      >
-                        <i className="bi bi-trash fs-6"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
+        <Modal.Body className="p-3 p-md-4 bg-white" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+          {(() => {
+            const cleanCC = String(historialModal?.cc || "").replace(/^cc\s*/i, "").trim();
+            const hmObj = ultimosHorometros[historialModal?.cc] || ultimosHorometros[cleanCC];
+            const fechaLecturaActual = hmObj?.fecha;
+            const horometroActual = hmObj?.horometro;
+
+            return (
+              <>
+                {/* Ficha Resumen Superior */}
+                {historialModal && (
+                  <div className="bg-light p-2.5 rounded-3 mb-3 border d-flex align-items-center justify-content-between flex-wrap gap-2 text-dark small">
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: "0.72rem" }}>TRACTOR</span>
+                      <span className="fw-bold fs-6">CC {cleanCC}</span>
+                      <span className="text-muted ms-1">({historialModal.descripcion || "Tractor"})</span>
+                    </div>
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: "0.72rem" }}>HORÓMETRO ACTUAL</span>
+                      <span className="fw-bold text-primary fs-6">
+                        {horometroActual !== undefined && horometroActual !== null
+                          ? `${horometroActual.toLocaleString("es-AR")} hs`
+                          : "—"}
+                      </span>
+                      {fechaLecturaActual && (
+                        <span className="text-muted ms-1">({formatFecha(fechaLecturaActual)})</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-muted d-block" style={{ fontSize: "0.72rem" }}>SUPERVISOR / GRUPO</span>
+                      <span className="fw-semibold">
+                        {historialModal.supervisor || "—"} {historialModal.gruppo ? `(Grupo ${historialModal.gruppo})` : ""}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {cargandoHistorial ? (
+                  <div className="text-center py-4 text-muted">Cargando historial...</div>
+                ) : historialServices.length === 0 ? (
+                  <div className="text-center py-4 text-muted">
+                    <i className="bi bi-info-circle fs-3 d-block mb-2 text-secondary"></i>
+                    No hay registros de services previos para este tractor.
+                  </div>
+                ) : (
+                  <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
+                    <thead className="table-dark">
+                      <tr>
+                        <th style={{ fontWeight: 500 }}>CC</th>
+                        <th style={{ fontWeight: 500 }}>Fecha</th>
+                        <th style={{ fontWeight: 500 }}>Horómetro</th>
+                        <th style={{ fontWeight: 500 }}>Fecha Service</th>
+                        <th style={{ fontWeight: 500 }}>Horómetro Service</th>
+                        <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
+                        <th style={{ fontWeight: 500 }}>Responsable</th>
+                        <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
+                        <th style={{ fontWeight: 500, width: "60px" }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historialServices.map((s) => (
+                        <tr key={s._id}>
+                          <td>
+                            <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
+                              {historialModal?.cc || s.tractor?.cc || s.cc || "—"}
+                            </span>
+                          </td>
+                          <td>{fechaLecturaActual ? formatFecha(fechaLecturaActual) : "—"}</td>
+                          <td className="fw-bold text-dark">
+                            {horometroActual !== undefined && horometroActual !== null
+                              ? `${horometroActual.toLocaleString("es-AR")} hs`
+                              : "—"}
+                          </td>
+                          <td>{formatFecha(s.fecha)}</td>
+                          <td className="fw-semibold text-primary">{s.horometro?.toLocaleString("es-AR")} hs</td>
+                          <td className="text-secondary fw-semibold">
+                            {(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs
+                          </td>
+                          <td>{s.responsable || "—"}</td>
+                          <td className="text-start">{s.observaciones || "—"}</td>
+                          <td>
+                            <button
+                              onClick={() => eliminarServiceHistorial(s._id)}
+                              className="btn btn-sm btn-outline-danger border-0 p-1"
+                              title="Eliminar service"
+                            >
+                              <i className="bi bi-trash fs-6"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                )}
+              </>
+            );
+          })()}
         </Modal.Body>
         <Modal.Footer className="bg-light border-0 py-2.5 px-4">
           <Button
