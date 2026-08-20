@@ -278,16 +278,16 @@ function ReportarFallaTractor() {
         </div>
       </div>
 
-      <Container className="py-4" style={{ maxWidth: "680px" }}>
-        <Card className="shadow-sm rounded-4 p-4 bg-white" style={{ border: "1px solid #cbd5e1" }}>
+      <Container className="py-2" style={{ maxWidth: "680px" }}>
+        <Card className="shadow-sm rounded-4 px-4 py-3 bg-white" style={{ border: "1px solid #cbd5e1" }}>
           {/* Título de la tarjeta centrado */}
-          <div className="text-center mb-3 pb-2" style={{ borderBottom: "1px solid #cbd5e1" }}>
-            <h5 className="text-dark mb-0 fs-5">Detalle de reparación solicitada</h5>
+          <div className="text-center mb-2 pb-1" style={{ borderBottom: "1px solid #cbd5e1" }}>
+            <h5 className="text-dark mb-0 fs-6 fw-bold">Detalle de reparación solicitada</h5>
           </div>
 
           <Form onSubmit={handleSubmit}>
             {/* Fila Superior: Fecha a la izquierda y Tractor Parado a la derecha */}
-            <div className="d-flex align-items-center justify-content-between mb-3 pb-2" style={{ borderBottom: "1px solid #f1f5f9" }}>
+            <div className="d-flex align-items-center justify-content-between mb-2 pb-2" style={{ borderBottom: "1px solid #f1f5f9" }}>
               {/* Campo Fecha */}
               <div className="d-flex align-items-center gap-2">
                 <Form.Label className="fw-semibold text-dark small mb-0">Fecha:</Form.Label>
@@ -310,20 +310,20 @@ function ReportarFallaTractor() {
 
               {/* Switch de Tractor Parado */}
               <div
-                className={`d-inline-flex align-items-center justify-content-between px-3 py-1.5 rounded-3 border ${
+                className={`d-inline-flex align-items-center justify-content-between px-3 py-1 rounded-3 border ${
                   formData.maquinaParada
                     ? "bg-danger-subtle border-danger text-danger"
                     : "bg-light border text-secondary"
                 }`}
-                style={{ width: "210px" }}
+                style={{ width: "205px" }}
               >
-                <div className="d-flex align-items-center gap-2" style={{ fontSize: "0.86rem" }}>
+                <div className="d-flex align-items-center gap-2" style={{ fontSize: "0.84rem" }}>
                   <i
                     className={`bi bi-exclamation-triangle-fill ${
                       formData.maquinaParada ? "text-danger" : "text-secondary"
                     }`}
                   ></i>
-                  <span className="text-dark" style={{ fontSize: "0.84rem" }}>Tractor parado</span>
+                  <span className="text-dark" style={{ fontSize: "0.82rem" }}>Tractor parado</span>
                 </div>
                 <Form.Check
                   type="switch"
@@ -335,13 +335,13 @@ function ReportarFallaTractor() {
                       maquinaParada: e.target.checked,
                     });
                   }}
-                  style={{ fontSize: "1.1rem", cursor: "pointer", marginBottom: 0 }}
+                  style={{ fontSize: "1rem", cursor: "pointer", marginBottom: 0 }}
                 />
               </div>
             </div>
 
             {/* 1. Horómetro */}
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-2">
               <Form.Label className="fw-semibold text-dark small mb-1">
                 Horómetro (hs) <span className="text-danger">*</span>
               </Form.Label>
@@ -381,56 +381,56 @@ function ReportarFallaTractor() {
             </Form.Group>
 
             {/* 2. Diagnóstico */}
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-2">
               <Form.Label className="fw-semibold text-dark small mb-1">Diagnóstico</Form.Label>
               <Form.Control
                 type="text"
                 value={formData.diagnostico}
                 onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })}
-                className="rounded-3"
+                className="rounded-3 form-control-sm"
               />
             </Form.Group>
 
             {/* 3. Descripción de la Falla */}
-            <Form.Group className="mb-3">
+            <Form.Group className="mb-2">
               <Form.Label className="fw-semibold text-dark small mb-1">Descripción de la falla</Form.Label>
               <Form.Control
                 as="textarea"
-                rows={3}
+                rows={2}
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                className="rounded-3"
+                className="rounded-3 form-control-sm"
               />
             </Form.Group>
 
             {/* 4. Nivel de Urgencia Centrado */}
-            <Form.Group className="mb-4 text-center">
-              <Form.Label className="fw-semibold text-dark small mb-2 d-block text-center">Nivel de urgencia</Form.Label>
+            <Form.Group className="mb-2.5 text-center">
+              <Form.Label className="fw-semibold text-dark small mb-1.5 d-block text-center">Nivel de urgencia</Form.Label>
               <div className="d-flex justify-content-center gap-2 mx-auto" style={{ maxWidth: "380px" }}>
                 <div
-                  className={`flex-fill px-3 py-1.5 rounded-3 border text-center transition-all ${
+                  className={`flex-fill px-3 py-1 rounded-3 border text-center transition-all ${
                     formData.urgencia === "baja"
                       ? "bg-success-subtle border-success text-success fw-semibold"
                       : "bg-light text-secondary"
                   }`}
                   onClick={() => setFormData({ ...formData, urgencia: "baja", prioridad: "Normal" })}
-                  style={{ cursor: "pointer", fontSize: "0.84rem" }}
+                  style={{ cursor: "pointer", fontSize: "0.82rem" }}
                 >
                   🟢 Leve
                 </div>
                 <div
-                  className={`flex-fill px-3 py-1.5 rounded-3 border text-center transition-all ${
+                  className={`flex-fill px-3 py-1 rounded-3 border text-center transition-all ${
                     formData.urgencia === "media"
                       ? "bg-warning-subtle border-warning text-warning-emphasis fw-semibold"
                       : "bg-light text-secondary"
                   }`}
                   onClick={() => setFormData({ ...formData, urgencia: "media", prioridad: "Urgente" })}
-                  style={{ cursor: "pointer", fontSize: "0.84rem" }}
+                  style={{ cursor: "pointer", fontSize: "0.82rem" }}
                 >
                   🟡 Urgente
                 </div>
                 <div
-                  className={`flex-fill px-3 py-1.5 rounded-3 border text-center transition-all ${
+                  className={`flex-fill px-3 py-1 rounded-3 border text-center transition-all ${
                     formData.urgencia === "alta"
                       ? "bg-danger-subtle border-danger text-danger fw-semibold"
                       : "bg-light text-secondary"
@@ -442,7 +442,7 @@ function ReportarFallaTractor() {
                       prioridad: "Crítico",
                     })
                   }
-                  style={{ cursor: "pointer", fontSize: "0.84rem" }}
+                  style={{ cursor: "pointer", fontSize: "0.82rem" }}
                 >
                   🔴 Crítico
                 </div>
@@ -450,7 +450,7 @@ function ReportarFallaTractor() {
             </Form.Group>
 
             {/* Categoría y Responsable */}
-            <Row className="g-4 mb-4">
+            <Row className="g-3 mb-3">
               <Col sm={6}>
                 <Form.Group>
                   <Form.Label className="fw-semibold text-dark small mb-1">
@@ -459,8 +459,8 @@ function ReportarFallaTractor() {
                   <Form.Select
                     value={formData.parte}
                     onChange={(e) => setFormData({ ...formData, parte: e.target.value })}
-                    className="rounded-3"
-                    style={{ fontSize: "0.86rem", height: "38px" }}
+                    className="rounded-3 form-control-sm"
+                    style={{ fontSize: "0.84rem" }}
                   >
                     <option value="">-- Seleccione una categoría --</option>
                     <option value="Motor">Motor</option>
@@ -486,8 +486,8 @@ function ReportarFallaTractor() {
                     type="text"
                     value={formData.responsable}
                     onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
-                    className="rounded-3"
-                    style={{ fontSize: "0.86rem", height: "38px" }}
+                    className="rounded-3 form-control-sm"
+                    style={{ fontSize: "0.84rem" }}
                     placeholder="Ej. Mecánico"
                   />
                 </Form.Group>
@@ -495,7 +495,7 @@ function ReportarFallaTractor() {
             </Row>
 
             {/* Botones de Envío */}
-            <div className="d-flex justify-content-end gap-2 pt-3 border-top">
+            <div className="d-flex justify-content-end gap-2 pt-2 border-top">
               <Button
                 variant="outline-secondary"
                 className="rounded-3 px-4 btn-sm"
