@@ -26,6 +26,7 @@ function ReportarFallaCamioneta() {
     parte: "",
     responsable: state?.responsable || "",
     kilometraje: "",
+    sinKilometraje: false,
     maquinaParada: false,
   });
 
@@ -57,6 +58,18 @@ function ReportarFallaCamioneta() {
         icon: "warning",
         title: "Atención",
         text: "Complete el diagnóstico o la descripción de la falla.",
+        width: "320px",
+        confirmButtonColor: "#1e293b",
+      });
+      return;
+    }
+
+    const tieneKm = formData.kilometraje !== "" && !isNaN(Number(formData.kilometraje));
+    if (!tieneKm && !formData.sinKilometraje) {
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Debe ingresar el kilometraje o marcar el casillero S/K.",
         width: "320px",
         confirmButtonColor: "#1e293b",
       });
@@ -108,6 +121,11 @@ function ReportarFallaCamioneta() {
     const desc = formData.descripcion.trim() || formData.diagnostico.trim();
     const diag = formData.diagnostico.trim() || desc;
     const fechaISO = formData.fecha ? `${formData.fecha}T12:00:00.000Z` : new Date().toISOString();
+    const valorKm = formData.sinKilometraje
+      ? "S/K"
+      : formData.kilometraje !== ""
+      ? Number(formData.kilometraje)
+      : "";
 
     const payload = {
       camioneta: camionetaId,
@@ -119,8 +137,8 @@ function ReportarFallaCamioneta() {
       urgencia: formData.urgencia,
       prioridad: formData.prioridad,
       responsable: formData.responsable.trim(),
-      kilometraje: formData.kilometraje !== "" ? Number(formData.kilometraje) : "",
-      kilometros: formData.kilometraje !== "" ? Number(formData.kilometraje) : "",
+      kilometraje: valorKm,
+      kilometros: valorKm,
       maquinaParada: formData.maquinaParada,
       estado: "pendiente",
     };
@@ -310,16 +328,42 @@ function ReportarFallaCamioneta() {
 
             {/* 1. Kilometraje */}
             <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold text-dark small mb-1">Kilometraje (km)</Form.Label>
-              <Form.Control
-                type="number"
-                min="0"
-                step="any"
-                placeholder="Ej. 85000"
-                value={formData.kilometraje}
-                onChange={(e) => setFormData({ ...formData, kilometraje: e.target.value })}
-                className="rounded-3"
-              />
+              <Form.Label className="fw-semibold text-dark small mb-1">
+                Kilometraje (km) <span className="text-danger">*</span>
+              </Form.Label>
+              <div className="d-flex align-items-center gap-3">
+                <Form.Control
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={formData.sinKilometraje ? "" : formData.kilometraje}
+                  disabled={formData.sinKilometraje}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      kilometraje: e.target.value,
+                      sinKilometraje: false,
+                    })
+                  }
+                  className="rounded-3 form-control-sm"
+                  style={{ width: "155px", fontSize: "0.85rem" }}
+                />
+                <Form.Check
+                  type="checkbox"
+                  id="check-sin-kilometraje"
+                  label={<span className="fw-semibold text-dark small">S/K</span>}
+                  checked={formData.sinKilometraje || false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({
+                      ...formData,
+                      sinKilometraje: checked,
+                      kilometraje: checked ? "" : formData.kilometraje,
+                    });
+                  }}
+                  className="mb-0 user-select-none"
+                />
+              </div>
             </Form.Group>
 
             {/* 2. Diagnóstico */}

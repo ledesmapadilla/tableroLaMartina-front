@@ -37,6 +37,7 @@ function ReportarFallaTractor() {
     parte: "",
     responsable: state?.responsable || "",
     horometro: "",
+    sinHorometro: false,
     maquinaParada: false,
   });
 
@@ -71,6 +72,18 @@ function ReportarFallaTractor() {
         icon: "warning",
         title: "Atención",
         text: "Complete el diagnóstico o la descripción de la falla.",
+        width: "320px",
+        confirmButtonColor: "#1e293b",
+      });
+      return;
+    }
+
+    const tieneHorometro = formData.horometro !== "" && !isNaN(Number(formData.horometro));
+    if (!tieneHorometro && !formData.sinHorometro) {
+      Swal.fire({
+        icon: "warning",
+        title: "Atención",
+        text: "Debe ingresar el horómetro o marcar el casillero S/H.",
         width: "320px",
         confirmButtonColor: "#1e293b",
       });
@@ -122,6 +135,11 @@ function ReportarFallaTractor() {
     const desc = formData.descripcion.trim() || formData.diagnostico.trim();
     const diag = formData.diagnostico.trim() || desc;
     const fechaISO = formData.fecha ? `${formData.fecha}T12:00:00.000Z` : new Date().toISOString();
+    const valorHorometro = formData.sinHorometro
+      ? "S/H"
+      : formData.horometro !== ""
+      ? Number(formData.horometro)
+      : "";
 
     const payload = {
       tractor: tractorId,
@@ -133,7 +151,7 @@ function ReportarFallaTractor() {
       urgencia: formData.urgencia,
       prioridad: formData.prioridad,
       responsable: formData.responsable.trim(),
-      horometro: formData.horometro !== "" ? Number(formData.horometro) : "",
+      horometro: valorHorometro,
       maquinaParada: formData.maquinaParada,
       estado: "Pendiente",
     };
@@ -324,16 +342,42 @@ function ReportarFallaTractor() {
 
             {/* 1. Horómetro */}
             <Form.Group className="mb-3">
-              <Form.Label className="fw-semibold text-dark small mb-1">Horómetro (hs)</Form.Label>
-              <Form.Control
-                type="number"
-                min="0"
-                step="any"
-                placeholder="Ej. 1250"
-                value={formData.horometro}
-                onChange={(e) => setFormData({ ...formData, horometro: e.target.value })}
-                className="rounded-3"
-              />
+              <Form.Label className="fw-semibold text-dark small mb-1">
+                Horómetro (hs) <span className="text-danger">*</span>
+              </Form.Label>
+              <div className="d-flex align-items-center gap-3">
+                <Form.Control
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={formData.sinHorometro ? "" : formData.horometro}
+                  disabled={formData.sinHorometro}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      horometro: e.target.value,
+                      sinHorometro: false,
+                    })
+                  }
+                  className="rounded-3 form-control-sm"
+                  style={{ width: "155px", fontSize: "0.85rem" }}
+                />
+                <Form.Check
+                  type="checkbox"
+                  id="check-sin-horometro"
+                  label={<span className="fw-semibold text-dark small">S/H</span>}
+                  checked={formData.sinHorometro || false}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setFormData({
+                      ...formData,
+                      sinHorometro: checked,
+                      horometro: checked ? "" : formData.horometro,
+                    });
+                  }}
+                  className="mb-0 user-select-none"
+                />
+              </div>
             </Form.Group>
 
             {/* 2. Diagnóstico */}
