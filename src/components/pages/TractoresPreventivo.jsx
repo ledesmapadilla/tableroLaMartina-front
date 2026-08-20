@@ -1158,7 +1158,6 @@ function TractoresPreventivo() {
                         <th style={{ fontWeight: 500 }}>Fecha Service</th>
                         <th style={{ fontWeight: 500 }}>Horómetro Service</th>
                         <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
-                        <th style={{ fontWeight: 500 }}>Responsable</th>
                         <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
                         <th style={{ fontWeight: 500, width: "60px" }}>Acción</th>
                       </tr>
@@ -1180,7 +1179,6 @@ function TractoresPreventivo() {
                           <td className="text-muted">—</td>
                           <td className="text-muted">—</td>
                           <td className="text-muted">—</td>
-                          <td>{historialModal?.supervisor || "—"}</td>
                           <td className="text-start text-muted">Sin services registrados</td>
                           <td>—</td>
                         </tr>
@@ -1207,7 +1205,6 @@ function TractoresPreventivo() {
                                 ? `${(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs`
                                 : "—"}
                             </td>
-                            <td>{s.responsable || historialModal?.supervisor || "—"}</td>
                             <td className="text-start">{s.observaciones || "—"}</td>
                             <td>
                               {s._id && (
