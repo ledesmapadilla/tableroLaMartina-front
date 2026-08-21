@@ -1440,7 +1440,24 @@ function TractoresPreventivo() {
                           <td className="text-muted">—</td>
                           <td className="text-muted">—</td>
                           <td className="text-start text-muted">Sin services registrados</td>
-                          <td>—</td>
+                          <td>
+                            <div className="d-flex align-items-center justify-content-center gap-1">
+                              <button
+                                onClick={() => historialModal && abrirModalService(historialModal._id)}
+                                className="btn btn-sm btn-outline-primary border-0 p-1"
+                                title="Cargar el service de este tractor"
+                              >
+                                <i className="bi bi-pencil-square fs-6"></i>
+                              </button>
+                              <button
+                                disabled
+                                className="btn btn-sm btn-outline-danger border-0 p-1"
+                                title="No hay service para borrar"
+                              >
+                                <i className="bi bi-trash fs-6"></i>
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       ) : (
                         lista.map((s) => (
