@@ -94,6 +94,11 @@ function TractoresPreventivo() {
   const [showModal, setShowModal] = useState(false);
   const [tractorModalPreseleccionado, setTractorModalPreseleccionado] = useState(null);
 
+  // Modal Cargar Horometro actual
+  const [showModalHm, setShowModalHm] = useState(false);
+  const [tractorModalHm, setTractorModalHm] = useState(null);
+  const [hmActualReferencia, setHmActualReferencia] = useState(null);
+
   // Modal Observaciones
   const [obsModalText, setObsModalText] = useState(null);
   const [guardandoObs, setGuardandoObs] = useState(false);
@@ -117,6 +122,20 @@ function TractoresPreventivo() {
       responsable: "",
       horometro: "",
       intervalo: 250,
+      observaciones: "",
+    },
+  });
+
+  const {
+    register: registerHm,
+    handleSubmit: handleSubmitHm,
+    reset: resetHm,
+    formState: { errors: errorsHm },
+  } = useForm({
+    defaultValues: {
+      tractor: "",
+      fecha: new Date().toISOString().split("T")[0],
+      horometro: "",
       observaciones: "",
     },
   });
@@ -223,6 +242,54 @@ function TractoresPreventivo() {
           icon: "success",
           title: "Service guardado",
           text: "El registro de service fue guardado exitosamente.",
+          timer: 1500,
+          showConfirmButton: false,
+          width: "320px",
+        });
+      } else {
+        const err = await res.json();
+        Swal.fire({ icon: "error", title: "Error", text: err.error || "No se pudo guardar", width: "320px" });
+      }
+    } catch {
+      Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor", width: "320px" });
+    }
+  };
+
+  const abrirModalHorometro = (tractor) => {
+    const cleanCC = String(tractor?.cc || "").replace(/^cc\s*/i, "").trim();
+    const hmObj = ultimosHorometros[tractor?.cc] || ultimosHorometros[cleanCC];
+
+    setTractorModalHm(tractor || null);
+    setHmActualReferencia(hmObj || null);
+    resetHm({
+      tractor: tractor?._id || "",
+      fecha: new Date().toISOString().split("T")[0],
+      horometro: "",
+      observaciones: "",
+    });
+    setShowModalHm(true);
+  };
+
+  const cerrarModalHorometro = () => {
+    setShowModalHm(false);
+    setTractorModalHm(null);
+    setHmActualReferencia(null);
+  };
+
+  const onSubmitHorometro = async (data) => {
+    try {
+      const res = await fetch("/api/horometros-tractor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (res.ok) {
+        cerrarModalHorometro();
+        await cargarTabla(año);
+        Swal.fire({
+          icon: "success",
+          title: "Horómetro cargado",
+          text: "La lectura de horómetro fue registrada exitosamente.",
           timer: 1500,
           showConfirmButton: false,
           width: "320px",
@@ -747,7 +814,7 @@ function TractoresPreventivo() {
             >
               <tr className="fw-normal align-middle">
                 <th style={{ width: "35px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>#</th>
-                <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Acción</th>
+                <th style={{ width: "175px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Acción</th>
                 <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>CC</th>
                 <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Descripción</th>
                 <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha</th>
@@ -790,28 +857,50 @@ function TractoresPreventivo() {
                       {idx + 1}
                     </td>
 
-                    {/* Acción / Último Service */}
+                    {/* Acción / Último Service + Horómetro */}
                     <td style={{ padding: "5px 4px" }}>
-                      <button
-                        onClick={() => abrirModalService(t._id)}
-                        className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
-                        style={{
-                          backgroundColor: "#1e293b",
-                          border: "1px solid #475569",
-                          fontSize: "0.72rem",
-                          fontWeight: 500,
-                          transition: "all 0.15s ease",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#334155";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "#1e293b";
-                        }}
-                        title="Cargar último service para este tractor"
-                      >
-                        + Service
-                      </button>
+                      <div className="d-flex align-items-center justify-content-center gap-1">
+                        <button
+                          onClick={() => abrirModalService(t._id)}
+                          className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
+                          style={{
+                            backgroundColor: "#1e293b",
+                            border: "1px solid #475569",
+                            fontSize: "0.72rem",
+                            fontWeight: 500,
+                            transition: "all 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#334155";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#1e293b";
+                          }}
+                          title="Cargar último service para este tractor"
+                        >
+                          + Service
+                        </button>
+                        <button
+                          onClick={() => abrirModalHorometro(t)}
+                          className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
+                          style={{
+                            backgroundColor: "#2563eb",
+                            border: "1px solid #1d4ed8",
+                            fontSize: "0.72rem",
+                            fontWeight: 500,
+                            transition: "all 0.15s ease",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#1d4ed8";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = "#2563eb";
+                          }}
+                          title="Cargar horómetro actual para este tractor"
+                        >
+                          + Horóm.
+                        </button>
+                      </div>
                     </td>
 
                     {/* CC */}
@@ -933,7 +1022,7 @@ function TractoresPreventivo() {
 
               {tractoresFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-muted py-4">
+                  <td colSpan={12} className="text-muted py-4">
                     {loading
                       ? "Cargando datos..."
                       : filtroBusqueda
@@ -1099,6 +1188,145 @@ function TractoresPreventivo() {
                   }}
                 >
                   Guardar Service
+                </Button>
+              </div>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+
+      {/* Modal Cargar Horómetro Actual */}
+      <Modal show={showModalHm} onHide={cerrarModalHorometro} centered contentClassName="border-0 rounded-4 shadow-lg overflow-hidden">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: "#1e293b",
+            color: "#fff",
+            padding: "14px 20px",
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 mb-0">
+            <i className="bi bi-stopwatch-fill text-info"></i>
+            <span>
+              {tractorModalHm
+                ? `Cargar Horómetro — CC ${tractorModalHm.cc}`
+                : "Cargar Horómetro de Tractor"}
+            </span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 bg-white">
+          <Form onSubmit={handleSubmitHm(onSubmitHorometro)} className="d-flex flex-column align-items-center">
+            <div style={{ width: "100%", maxWidth: "340px" }}>
+              {/* Selector de Tractor */}
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold text-dark mb-1">
+                  Tractor (CC) <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Select
+                  {...registerHm("tractor", { required: "Seleccioná un tractor" })}
+                  isInvalid={!!errorsHm.tractor}
+                  className="rounded-3"
+                  style={{ fontSize: "0.86rem" }}
+                >
+                  <option value="">— Seleccionar Tractor —</option>
+                  {tractores.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      CC {t.cc} {t.descripcion ? `— ${t.descripcion}` : ""} {t.supervisor ? `(${t.supervisor})` : ""}
+                    </option>
+                  ))}
+                </Form.Select>
+                {errorsHm.tractor && (
+                  <Form.Control.Feedback type="invalid" style={{ fontSize: "0.76rem" }}>
+                    {errorsHm.tractor.message}
+                  </Form.Control.Feedback>
+                )}
+              </Form.Group>
+
+              {/* Fecha de lectura */}
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold text-dark mb-1">
+                  Fecha de la Lectura <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="date"
+                  {...registerHm("fecha", { required: "La fecha es requerida" })}
+                  isInvalid={!!errorsHm.fecha}
+                  className="rounded-3"
+                  style={{ fontSize: "0.86rem" }}
+                />
+                {errorsHm.fecha && (
+                  <Form.Control.Feedback type="invalid" style={{ fontSize: "0.76rem" }}>
+                    {errorsHm.fecha.message}
+                  </Form.Control.Feedback>
+                )}
+              </Form.Group>
+
+              {/* Horómetro actual */}
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-semibold text-dark mb-1">
+                  Horómetro Actual (Hs) <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="Ej: 2680"
+                  {...registerHm("horometro", { required: "El horómetro es requerido" })}
+                  isInvalid={!!errorsHm.horometro}
+                  className="rounded-3"
+                  style={{ fontSize: "0.86rem" }}
+                />
+                {errorsHm.horometro && (
+                  <Form.Control.Feedback type="invalid" style={{ fontSize: "0.76rem" }}>
+                    {errorsHm.horometro.message}
+                  </Form.Control.Feedback>
+                )}
+                {hmActualReferencia?.horometro !== undefined && (
+                  <Form.Text className="text-muted" style={{ fontSize: "0.74rem" }}>
+                    Última lectura registrada: {hmActualReferencia.horometro.toLocaleString("es-AR")} hs
+                    {hmActualReferencia.fecha ? ` (${formatFecha(hmActualReferencia.fecha)})` : ""}
+                  </Form.Text>
+                )}
+              </Form.Group>
+
+              {/* Observaciones */}
+              <Form.Group className="mb-4">
+                <Form.Label className="small fw-semibold text-dark mb-1">
+                  Observaciones
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  placeholder="Quién tomó la lectura, novedades, detalles..."
+                  {...registerHm("observaciones")}
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem" }}
+                />
+              </Form.Group>
+
+              <div className="d-flex justify-content-end gap-2 pt-2 border-top">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  onClick={cerrarModalHorometro}
+                  className="rounded-3 px-3 py-1.5"
+                  style={{ fontSize: "0.84rem" }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="rounded-3 px-3 py-1.5 fw-semibold shadow-sm text-white"
+                  style={{
+                    backgroundColor: "#2563eb",
+                    borderColor: "#2563eb",
+                    fontSize: "0.84rem",
+                  }}
+                >
+                  Guardar Horómetro
                 </Button>
               </div>
             </div>
