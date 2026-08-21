@@ -207,7 +207,7 @@ function HistorialReparaciones() {
       "Kilometraje",
       "Categoría",
       "Diagnóstico",
-      "Reparación Realizada",
+      "Reparación",
       "Estado",
       "Taller",
       "Responsable",
@@ -723,7 +723,7 @@ function HistorialReparaciones() {
                       borderBottom: "1px solid #334155",
                     }}
                   >
-                    Reparación Realizada
+                    Reparación
                   </th>
                   <th
                     style={{

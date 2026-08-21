@@ -241,7 +241,7 @@ function ResumenReparaciones() {
       "Kilometraje",
       "Categoría",
       "Diagnóstico",
-      "Reparación Realizada",
+      "Reparación",
       "Estado",
       "Taller",
       "Responsable",
@@ -771,7 +771,7 @@ function ResumenReparaciones() {
                       fontSize: "0.8rem",
                     }}
                   >
-                    Reparación Realizada
+                    Reparación
                   </th>
                   <th
                     style={{

@@ -333,7 +333,7 @@ function ResumenReparacionesTractores() {
           "Horómetro",
           "Categoría",
           "Diagnóstico",
-          "Reparación Realizada",
+          "Reparación",
           "Estado",
           "Taller",
           "Responsable",
@@ -348,7 +348,7 @@ function ResumenReparacionesTractores() {
           "Horómetro",
           "Categoría",
           "Diagnóstico",
-          "Reparación Realizada",
+          "Reparación",
           "Estado",
           "Taller",
           "Responsable",
@@ -966,7 +966,7 @@ function ResumenReparacionesTractores() {
                       fontSize: "0.8rem",
                     }}
                   >
-                    Reparación Realizada
+                    Reparación
                   </th>
                   <th
                     style={{
