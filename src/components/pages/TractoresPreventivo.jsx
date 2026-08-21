@@ -93,6 +93,7 @@ function TractoresPreventivo() {
   // Modal Cargar Service
   const [showModal, setShowModal] = useState(false);
   const [tractorModalPreseleccionado, setTractorModalPreseleccionado] = useState(null);
+  const [servicioEditandoId, setServicioEditandoId] = useState(null);
 
   // Modal Cargar Horometro actual
   const [showModalHm, setShowModalHm] = useState(false);
@@ -198,11 +199,13 @@ function TractoresPreventivo() {
   }, []);
 
   useEffect(() => {
+    // Al editar se respeta el responsable que quedo guardado en el registro.
+    if (servicioEditandoId) return;
     const t = tractores.find((t) => t._id === tractorSeleccionadoId);
     if (t?.supervisor) {
       setValue("responsable", t.supervisor);
     }
-  }, [tractorSeleccionadoId, tractores, setValue]);
+  }, [tractorSeleccionadoId, tractores, setValue, servicioEditandoId]);
 
   const abrirModalService = (tractorId = "") => {
     const t = tractores.find((t) => t._id === tractorId);
@@ -211,6 +214,7 @@ function TractoresPreventivo() {
     );
     const hmActualObj = t?.cc ? ultimosHorometros[t.cc] : null;
 
+    setServicioEditandoId(null);
     setTractorModalPreseleccionado(t || null);
     reset({
       tractor: tractorId || "",
@@ -226,22 +230,32 @@ function TractoresPreventivo() {
   const cerrarModalService = () => {
     setShowModal(false);
     setTractorModalPreseleccionado(null);
+    setServicioEditandoId(null);
   };
 
   const onSubmitService = async (data) => {
+    const editando = Boolean(servicioEditandoId);
     try {
-      const res = await fetch("/api/services-tractor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(
+        editando ? `/api/services-tractor/${servicioEditandoId}` : "/api/services-tractor",
+        {
+          method: editando ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
       if (res.ok) {
+        const tractorHistorial = historialModal;
         cerrarModalService();
         await cargarTabla(año);
+        // Si la edicion salio del historial, refrescarlo antes de mostrarlo.
+        if (tractorHistorial) await abrirHistorial(tractorHistorial);
         Swal.fire({
           icon: "success",
-          title: "Service guardado",
-          text: "El registro de service fue guardado exitosamente.",
+          title: editando ? "Service actualizado" : "Service guardado",
+          text: editando
+            ? "Los cambios del service fueron guardados exitosamente."
+            : "El registro de service fue guardado exitosamente.",
           timer: 1500,
           showConfirmButton: false,
           width: "320px",
@@ -374,6 +388,23 @@ function TractoresPreventivo() {
     } finally {
       setCargandoHistorial(false);
     }
+  };
+
+  const editarServiceHistorial = (s) => {
+    const tractorId = (s.tractor?._id || s.tractor || historialModal?._id || "").toString();
+    const t = tractores.find((x) => x._id === tractorId) || historialModal;
+
+    setServicioEditandoId(s._id);
+    setTractorModalPreseleccionado(t || null);
+    reset({
+      tractor: tractorId,
+      fecha: s.fecha ? String(s.fecha).split("T")[0] : new Date().toISOString().split("T")[0],
+      responsable: s.responsable || t?.supervisor || "",
+      horometro: s.horometro ?? "",
+      intervalo: s.intervalo ?? DEFAULT_INTERVALO_HS,
+      observaciones: s.observaciones || "",
+    });
+    setShowModal(true);
   };
 
   const eliminarServiceHistorial = async (serviceId) => {
@@ -1051,8 +1082,8 @@ function TractoresPreventivo() {
             <i className="bi bi-speedometer2 text-warning"></i>
             <span>
               {tractorModalPreseleccionado
-                ? `Cargar Service — CC ${tractorModalPreseleccionado.cc}`
-                : "Cargar Service de Tractor"}
+                ? `${servicioEditandoId ? "Editar" : "Cargar"} Service — CC ${tractorModalPreseleccionado.cc}`
+                : `${servicioEditandoId ? "Editar" : "Cargar"} Service de Tractor`}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -1187,7 +1218,7 @@ function TractoresPreventivo() {
                     fontSize: "0.84rem",
                   }}
                 >
-                  Guardar Service
+                  {servicioEditandoId ? "Guardar Cambios" : "Guardar Service"}
                 </Button>
               </div>
             </div>
@@ -1336,7 +1367,7 @@ function TractoresPreventivo() {
 
       {/* Modal Historial de Services */}
       <Modal
-        show={historialModal !== null}
+        show={historialModal !== null && !showModal}
         onHide={() => setHistorialModal(null)}
         centered
         size="xl"
@@ -1388,7 +1419,7 @@ function TractoresPreventivo() {
                         <th style={{ fontWeight: 500 }}>Horómetro Service</th>
                         <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
                         <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
-                        <th style={{ fontWeight: 500, width: "60px" }}>Acción</th>
+                        <th style={{ fontWeight: 500, width: "90px" }}>Acción</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1437,13 +1468,22 @@ function TractoresPreventivo() {
                             <td className="text-start">{s.observaciones || "—"}</td>
                             <td>
                               {s._id && (
-                                <button
-                                  onClick={() => eliminarServiceHistorial(s._id)}
-                                  className="btn btn-sm btn-outline-danger border-0 p-1"
-                                  title="Eliminar service"
-                                >
-                                  <i className="bi bi-trash fs-6"></i>
-                                </button>
+                                <div className="d-flex align-items-center justify-content-center gap-1">
+                                  <button
+                                    onClick={() => editarServiceHistorial(s)}
+                                    className="btn btn-sm btn-outline-primary border-0 p-1"
+                                    title="Editar service"
+                                  >
+                                    <i className="bi bi-pencil-square fs-6"></i>
+                                  </button>
+                                  <button
+                                    onClick={() => eliminarServiceHistorial(s._id)}
+                                    className="btn btn-sm btn-outline-danger border-0 p-1"
+                                    title="Eliminar service"
+                                  >
+                                    <i className="bi bi-trash fs-6"></i>
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </tr>
