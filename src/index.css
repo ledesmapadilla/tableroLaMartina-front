@@ -261,14 +261,19 @@ input[type="number"] {
   z-index: 1;
 }
 
-/* ── Camioneta Parada en tablas ── */
+/* ── Camioneta / Unidad Parada en tablas ── */
 tr.tr-parada,
-tr.tr-parada > td {
-  background-color: #f8d7da !important;
+tr.tr-parada > td,
+tr.tr-parada > th {
+  background-color: #fee2e2 !important;
+  --bs-table-bg: #fee2e2 !important;
+  --bs-table-accent-bg: #fee2e2 !important;
 }
 tr.tr-parada:hover,
-tr.tr-parada:hover > td {
-  background-color: #f1b0b7 !important;
+tr.tr-parada:hover > td,
+tr.tr-parada:hover > th {
+  background-color: #fca5a5 !important;
+  --bs-table-hover-bg: #fca5a5 !important;
 }
 
 /* ── Estilos globales SweetAlert2 (Bordes Redondeados & Compactos) ── */

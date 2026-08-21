@@ -854,6 +854,7 @@ function HistorialTractor() {
                     return (
                       <tr
                         key={t._id}
+                        className={esParadaFila ? "tr-parada" : ""}
                         style={{
                           backgroundColor: esParadaFila ? "#fee2e2" : undefined,
                         }}

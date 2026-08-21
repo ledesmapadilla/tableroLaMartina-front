@@ -1075,7 +1075,7 @@ function ResumenReparacionesTractores() {
                     return (
                       <tr
                         key={t._id}
-                        className={esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"}
+                        className={`${esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"} ${Boolean(t.maquinaParada) ? "tr-parada" : ""}`}
                         style={{
                           backgroundColor: Boolean(t.maquinaParada) ? "#fee2e2" : undefined,
                         }}

@@ -779,6 +779,7 @@ function TractoresPreventivo() {
                 return (
                   <tr
                     key={t._id}
+                    className={estaParado ? "tr-parada" : ""}
                     style={{
                       backgroundColor: estaParado ? "#fee2e2" : isEven ? "#ffffff" : "#f8fafc",
                       borderBottom: "1px solid #e2e8f0",

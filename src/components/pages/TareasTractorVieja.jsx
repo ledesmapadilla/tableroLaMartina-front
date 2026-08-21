@@ -589,7 +589,11 @@ function TareasTractorVieja() {
                   const colorEst = COLOR_ESTADO[est] || "#6c757d";
 
                   return (
-                    <tr key={f.id} style={{ height: "36px", backgroundColor: f.maquinaParada ? "rgba(220, 53, 69, 0.04)" : undefined }}>
+                    <tr
+                      key={f.id}
+                      className={f.maquinaParada ? "tr-parada" : ""}
+                      style={{ height: "36px", backgroundColor: f.maquinaParada ? "#fee2e2" : undefined }}
+                    >
                       <td>{f.fecha ? f.fecha.split("-").reverse().join("/") : "-"}</td>
                       <td className="text-start fw-semibold" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>
                         {f.reparacion || "-"}

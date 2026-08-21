@@ -885,7 +885,7 @@ function ResumenReparaciones() {
                     return (
                       <tr
                         key={t._id}
-                        className={esCambioCamioneta ? "fila-cambio-camioneta" : "fila-misma-camioneta"}
+                        className={`${esCambioCamioneta ? "fila-cambio-camioneta" : "fila-misma-camioneta"} ${estaParada ? "tr-parada" : ""}`}
                         style={{
                           backgroundColor: estaParada ? "#fee2e2" : undefined,
                         }}
