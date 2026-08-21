@@ -98,6 +98,7 @@ function TractoresPreventivo() {
   // Modal Cargar Horometro actual
   const [showModalHm, setShowModalHm] = useState(false);
   const [tractorModalHm, setTractorModalHm] = useState(null);
+  const [horometroEditandoId, setHorometroEditandoId] = useState(null);
   const [hmActualReferencia, setHmActualReferencia] = useState(null);
 
   // Modal Observaciones
@@ -107,6 +108,7 @@ function TractoresPreventivo() {
   // Modal Historial
   const [historialModal, setHistorialModal] = useState(null);
   const [historialServices, setHistorialServices] = useState([]);
+  const [historialHorometros, setHistorialHorometros] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
   const {
@@ -273,6 +275,7 @@ function TractoresPreventivo() {
     const cleanCC = String(tractor?.cc || "").replace(/^cc\s*/i, "").trim();
     const hmObj = ultimosHorometros[tractor?.cc] || ultimosHorometros[cleanCC];
 
+    setHorometroEditandoId(null);
     setTractorModalHm(tractor || null);
     setHmActualReferencia(hmObj || null);
     resetHm({
@@ -288,22 +291,78 @@ function TractoresPreventivo() {
     setShowModalHm(false);
     setTractorModalHm(null);
     setHmActualReferencia(null);
+    setHorometroEditandoId(null);
   };
 
-  const onSubmitHorometro = async (data) => {
+  const editarHorometroHistorial = (h) => {
+    const tractorId = (h.tractor?._id || h.tractor || historialModal?._id || "").toString();
+    const t = tractores.find((x) => x._id === tractorId) || historialModal;
+
+    setHorometroEditandoId(h._id);
+    setTractorModalHm(t || null);
+    setHmActualReferencia(null);
+    resetHm({
+      tractor: tractorId,
+      fecha: h.fecha ? String(h.fecha).split("T")[0] : new Date().toISOString().split("T")[0],
+      horometro: h.horometro ?? "",
+      observaciones: h.observaciones || "",
+    });
+    setShowModalHm(true);
+  };
+
+  const eliminarHorometroHistorial = async (horometroId) => {
+    const result = await Swal.fire({
+      title: "¿Eliminar lectura?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
+
     try {
-      const res = await fetch("/api/horometros-tractor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+      const res = await fetch(`/api/horometros-tractor/${horometroId}`, { method: "DELETE" });
       if (res.ok) {
-        cerrarModalHorometro();
+        if (historialModal) await abrirHistorial(historialModal);
         await cargarTabla(año);
         Swal.fire({
           icon: "success",
-          title: "Horómetro cargado",
-          text: "La lectura de horómetro fue registrada exitosamente.",
+          title: "Eliminada",
+          text: "La lectura de horómetro fue eliminada.",
+          timer: 1300,
+          showConfirmButton: false,
+        });
+      }
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar" });
+    }
+  };
+
+  const onSubmitHorometro = async (data) => {
+    const editando = Boolean(horometroEditandoId);
+    try {
+      const res = await fetch(
+        editando ? `/api/horometros-tractor/${horometroEditandoId}` : "/api/horometros-tractor",
+        {
+          method: editando ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        }
+      );
+      if (res.ok) {
+        const tractorHistorial = historialModal;
+        cerrarModalHorometro();
+        await cargarTabla(año);
+        if (tractorHistorial) await abrirHistorial(tractorHistorial);
+        Swal.fire({
+          icon: "success",
+          title: editando ? "Horómetro actualizado" : "Horómetro cargado",
+          text: editando
+            ? "Los cambios de la lectura fueron guardados exitosamente."
+            : "La lectura de horómetro fue registrada exitosamente.",
           timer: 1500,
           showConfirmButton: false,
           width: "320px",
@@ -376,15 +435,17 @@ function TractoresPreventivo() {
     setHistorialModal(tractor);
     setCargandoHistorial(true);
     try {
-      const res = await fetch(`/api/services-tractor/historial/${tractor._id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setHistorialServices(Array.isArray(data) ? data : []);
-      } else {
-        setHistorialServices([]);
-      }
+      const [resSrv, resHm] = await Promise.all([
+        fetch(`/api/services-tractor/historial/${tractor._id}`),
+        fetch(`/api/horometros-tractor/historial/${tractor._id}`),
+      ]);
+      const srv = resSrv.ok ? await resSrv.json() : [];
+      const hm = resHm.ok ? await resHm.json() : [];
+      setHistorialServices(Array.isArray(srv) ? srv : []);
+      setHistorialHorometros(Array.isArray(hm) ? hm : []);
     } catch {
       setHistorialServices([]);
+      setHistorialHorometros([]);
     } finally {
       setCargandoHistorial(false);
     }
@@ -452,6 +513,24 @@ function TractoresPreventivo() {
     if (filtroGrupo === "OTROS") return !t.gruppo || t.gruppo > 5;
     return String(t.gruppo) === String(filtroGrupo);
   });
+
+  // Registros que alimentan el modal de historial del tractor abierto.
+  const ccHistorialLimpio = String(historialModal?.cc || "").replace(/^cc\s*/i, "").trim();
+  const hmVigente = historialModal
+    ? ultimosHorometros[historialModal.cc] || ultimosHorometros[ccHistorialLimpio] || null
+    : null;
+  const regTablaHistorial = historialModal
+    ? ultimosServices.find(
+        (u) =>
+          u.tractor?._id === historialModal._id ||
+          u.tractor === historialModal._id ||
+          u.cc === historialModal.cc
+      )
+    : null;
+  // El endpoint de historial es la fuente; si todavia no respondio se usa el
+  // registro que ya trae la planilla para no mostrar la tabla vacia.
+  const listaServices =
+    historialServices.length > 0 ? historialServices : regTablaHistorial ? [regTablaHistorial] : [];
 
   const exportarExcel = async () => {
     const titulo = `Control de Último Service - Flota de Tractores (${año})`;
@@ -1241,8 +1320,8 @@ function TractoresPreventivo() {
             <i className="bi bi-stopwatch-fill text-info"></i>
             <span>
               {tractorModalHm
-                ? `Cargar Horómetro — CC ${tractorModalHm.cc}`
-                : "Cargar Horómetro de Tractor"}
+                ? `${horometroEditandoId ? "Editar" : "Cargar"} Horómetro — CC ${tractorModalHm.cc}`
+                : `${horometroEditandoId ? "Editar" : "Cargar"} Horómetro de Tractor`}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -1357,7 +1436,7 @@ function TractoresPreventivo() {
                     fontSize: "0.84rem",
                   }}
                 >
-                  Guardar Horómetro
+                  {horometroEditandoId ? "Guardar Cambios" : "Guardar Horómetro"}
                 </Button>
               </div>
             </div>
@@ -1367,7 +1446,7 @@ function TractoresPreventivo() {
 
       {/* Modal Historial de Services */}
       <Modal
-        show={historialModal !== null && !showModal}
+        show={historialModal !== null && !showModal && !showModalHm}
         onHide={() => setHistorialModal(null)}
         centered
         size="xl"
@@ -1381,120 +1460,163 @@ function TractoresPreventivo() {
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 mb-0">
             <i className="bi bi-clock-history text-info"></i>
             <span>
-              Historial de Services — CC {historialModal?.cc} ({historialModal?.descripcion || "Tractor"})
+              Historial — CC {historialModal?.cc} ({historialModal?.descripcion || "Tractor"})
             </span>
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-3 p-md-4 bg-white" style={{ maxHeight: "70vh", overflowY: "auto" }}>
-          {(() => {
-            const cleanCC = String(historialModal?.cc || "").replace(/^cc\s*/i, "").trim();
-            const hmObj = ultimosHorometros[historialModal?.cc] || ultimosHorometros[cleanCC];
-            const fechaLecturaActual = hmObj?.fecha;
-            const horometroActual = hmObj?.horometro;
+          {cargandoHistorial ? (
+            <div className="text-center py-4 text-muted">Cargando historial...</div>
+          ) : (
+            <>
+              {/* ---- Services ---- */}
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="fw-semibold text-dark d-flex align-items-center gap-2" style={{ fontSize: "0.88rem" }}>
+                  <i className="bi bi-wrench-adjustable text-secondary"></i>
+                  Services
+                </span>
+                <button
+                  onClick={() => historialModal && abrirModalService(historialModal._id)}
+                  className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
+                  style={{ backgroundColor: "#1e293b", border: "1px solid #475569", fontSize: "0.74rem", fontWeight: 500 }}
+                  title="Cargar un service para este tractor"
+                >
+                  + Service
+                </button>
+              </div>
 
-            const regTabla = ultimosServices.find(
-              (u) =>
-                u.tractor?._id === historialModal?._id ||
-                u.tractor === historialModal?._id ||
-                u.cc === historialModal?.cc
-            );
-
-            let lista = Array.isArray(historialServices) && historialServices.length > 0 ? [...historialServices] : [];
-            if (lista.length === 0 && regTabla) {
-              lista = [regTabla];
-            }
-
-            return (
-              <>
-                {cargandoHistorial ? (
-                  <div className="text-center py-4 text-muted">Cargando historial...</div>
-                ) : (
-                  <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
-                    <thead className="table-dark">
-                      <tr>
-                        <th style={{ fontWeight: 500 }}>CC</th>
-                        <th style={{ fontWeight: 500 }}>Fecha</th>
-                        <th style={{ fontWeight: 500 }}>Horómetro</th>
-                        <th style={{ fontWeight: 500 }}>Fecha Service</th>
-                        <th style={{ fontWeight: 500 }}>Horómetro Service</th>
-                        <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
-                        <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
-                        <th style={{ fontWeight: 500, width: "90px" }}>Acción</th>
+              <Table hover size="sm" className="align-middle text-center mb-4" style={{ fontSize: "0.82rem" }}>
+                <thead className="table-dark">
+                  <tr>
+                    <th style={{ fontWeight: 500 }}>Fecha</th>
+                    <th style={{ fontWeight: 500 }}>Horómetro</th>
+                    <th style={{ fontWeight: 500 }}>Intervalo</th>
+                    <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
+                    <th style={{ fontWeight: 500 }}>Responsable</th>
+                    <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
+                    <th style={{ fontWeight: 500, width: "90px" }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listaServices.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-muted py-3">
+                        Sin services registrados
+                      </td>
+                    </tr>
+                  ) : (
+                    listaServices.map((s) => (
+                      <tr key={s._id}>
+                        <td>{s.fecha ? formatFecha(s.fecha) : "—"}</td>
+                        <td className="fw-semibold text-primary">
+                          {typeof s.horometro === "number" ? `${s.horometro.toLocaleString("es-AR")} hs` : "—"}
+                        </td>
+                        <td className="text-secondary">{s.intervalo || DEFAULT_INTERVALO_HS} hs</td>
+                        <td className="text-secondary fw-semibold">
+                          {typeof s.horometro === "number"
+                            ? `${(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs`
+                            : "—"}
+                        </td>
+                        <td>{s.responsable || "—"}</td>
+                        <td className="text-start">{s.observaciones || "—"}</td>
+                        <td>
+                          <div className="d-flex align-items-center justify-content-center gap-1">
+                            <button
+                              onClick={() => editarServiceHistorial(s)}
+                              className="btn btn-sm btn-outline-primary border-0 p-1"
+                              title="Editar service"
+                            >
+                              <i className="bi bi-pencil-square fs-6"></i>
+                            </button>
+                            <button
+                              onClick={() => eliminarServiceHistorial(s._id)}
+                              className="btn btn-sm btn-outline-danger border-0 p-1"
+                              title="Eliminar service"
+                            >
+                              <i className="bi bi-trash fs-6"></i>
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {lista.length === 0 ? (
-                        <tr>
-                          <td>
-                            <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
-                              {historialModal?.cc || "—"}
-                            </span>
-                          </td>
-                          <td>{fechaLecturaActual ? formatFecha(fechaLecturaActual) : "—"}</td>
-                          <td className="fw-bold text-dark">
-                            {horometroActual !== undefined && horometroActual !== null
-                              ? `${horometroActual.toLocaleString("es-AR")} hs`
-                              : "—"}
-                          </td>
-                          <td className="text-muted">—</td>
-                          <td className="text-muted">—</td>
-                          <td className="text-muted">—</td>
-                          <td className="text-start text-muted">Sin services registrados</td>
-                          <td>—</td>
-                        </tr>
-                      ) : (
-                        lista.map((s) => (
-                          <tr key={s._id || Math.random()}>
-                            <td>
-                              <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
-                                {historialModal?.cc || s.tractor?.cc || s.cc || "—"}
-                              </span>
-                            </td>
-                            <td>{fechaLecturaActual ? formatFecha(fechaLecturaActual) : "—"}</td>
-                            <td className="fw-bold text-dark">
-                              {horometroActual !== undefined && horometroActual !== null
-                                ? `${horometroActual.toLocaleString("es-AR")} hs`
-                                : "—"}
-                            </td>
-                            <td>{s.fecha ? formatFecha(s.fecha) : "—"}</td>
-                            <td className="fw-semibold text-primary">
-                              {typeof s.horometro === "number" ? `${s.horometro.toLocaleString("es-AR")} hs` : "—"}
-                            </td>
-                            <td className="text-secondary fw-semibold">
-                              {typeof s.horometro === "number"
-                                ? `${(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs`
-                                : "—"}
-                            </td>
-                            <td className="text-start">{s.observaciones || "—"}</td>
-                            <td>
-                              {s._id && (
-                                <div className="d-flex align-items-center justify-content-center gap-1">
-                                  <button
-                                    onClick={() => editarServiceHistorial(s)}
-                                    className="btn btn-sm btn-outline-primary border-0 p-1"
-                                    title="Editar service"
-                                  >
-                                    <i className="bi bi-pencil-square fs-6"></i>
-                                  </button>
-                                  <button
-                                    onClick={() => eliminarServiceHistorial(s._id)}
-                                    className="btn btn-sm btn-outline-danger border-0 p-1"
-                                    title="Eliminar service"
-                                  >
-                                    <i className="bi bi-trash fs-6"></i>
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </Table>
-                )}
-              </>
-            );
-          })()}
+                    ))
+                  )}
+                </tbody>
+              </Table>
+
+              {/* ---- Lecturas de horometro ---- */}
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="fw-semibold text-dark d-flex align-items-center gap-2" style={{ fontSize: "0.88rem" }}>
+                  <i className="bi bi-stopwatch-fill" style={{ color: "#0d9488" }}></i>
+                  Lecturas de horómetro
+                </span>
+                <button
+                  onClick={() => historialModal && abrirModalHorometro(historialModal)}
+                  className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
+                  style={{ backgroundColor: "#0d9488", border: "1px solid #0f766e", fontSize: "0.74rem", fontWeight: 500 }}
+                  title="Cargar una lectura de horómetro para este tractor"
+                >
+                  + Horóm.
+                </button>
+              </div>
+
+              <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
+                <thead className="table-dark">
+                  <tr>
+                    <th style={{ fontWeight: 500 }}>Fecha</th>
+                    <th style={{ fontWeight: 500 }}>Horómetro</th>
+                    <th style={{ fontWeight: 500, textAlign: "left" }}>Observaciones</th>
+                    <th style={{ fontWeight: 500, width: "90px" }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historialHorometros.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="text-muted py-3">
+                        Sin lecturas cargadas
+                      </td>
+                    </tr>
+                  ) : (
+                    historialHorometros.map((h) => (
+                      <tr key={h._id}>
+                        <td>{h.fecha ? formatFecha(h.fecha) : "—"}</td>
+                        <td className="fw-bold text-dark">
+                          {typeof h.horometro === "number" ? `${h.horometro.toLocaleString("es-AR")} hs` : "—"}
+                        </td>
+                        <td className="text-start">{h.observaciones || "—"}</td>
+                        <td>
+                          <div className="d-flex align-items-center justify-content-center gap-1">
+                            <button
+                              onClick={() => editarHorometroHistorial(h)}
+                              className="btn btn-sm btn-outline-primary border-0 p-1"
+                              title="Editar lectura"
+                            >
+                              <i className="bi bi-pencil-square fs-6"></i>
+                            </button>
+                            <button
+                              onClick={() => eliminarHorometroHistorial(h._id)}
+                              className="btn btn-sm btn-outline-danger border-0 p-1"
+                              title="Eliminar lectura"
+                            >
+                              <i className="bi bi-trash fs-6"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </Table>
+
+              {hmVigente && hmVigente.origen !== "manual" && (
+                <div className="text-muted mt-2" style={{ fontSize: "0.76rem" }}>
+                  <i className="bi bi-info-circle me-1"></i>
+                  El horómetro actual de la planilla ({hmVigente.horometro.toLocaleString("es-AR")} hs) viene de una{" "}
+                  {hmVigente.origen === "service" ? "carga de service" : hmVigente.origen}, no de una lectura cargada acá.
+                  Para corregirlo, agregá una lectura con el valor real.
+                </div>
+              )}
+            </>
+          )}
         </Modal.Body>
         <Modal.Footer className="bg-light border-0 py-2.5 px-4">
           <Button
