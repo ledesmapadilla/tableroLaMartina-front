@@ -884,17 +884,17 @@ function TractoresPreventivo() {
                           onClick={() => abrirModalHorometro(t)}
                           className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
                           style={{
-                            backgroundColor: "#2563eb",
-                            border: "1px solid #1d4ed8",
+                            backgroundColor: "#0d9488",
+                            border: "1px solid #0f766e",
                             fontSize: "0.72rem",
                             fontWeight: 500,
                             transition: "all 0.15s ease",
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#1d4ed8";
+                            e.currentTarget.style.backgroundColor = "#0f766e";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "#2563eb";
+                            e.currentTarget.style.backgroundColor = "#0d9488";
                           }}
                           title="Cargar horómetro actual para este tractor"
                         >
@@ -1321,8 +1321,8 @@ function TractoresPreventivo() {
                   size="sm"
                   className="rounded-3 px-3 py-1.5 fw-semibold shadow-sm text-white"
                   style={{
-                    backgroundColor: "#2563eb",
-                    borderColor: "#2563eb",
+                    backgroundColor: "#0d9488",
+                    borderColor: "#0d9488",
                     fontSize: "0.84rem",
                   }}
                 >
