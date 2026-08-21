@@ -690,7 +690,7 @@ function ServicesKilometros() {
                     <tr
                       key={c._id}
                       style={{
-                        backgroundColor: estaParada ? "#fef2f2" : isEven ? "#ffffff" : "#f8fafc",
+                        backgroundColor: estaParada ? "#fee2e2" : isEven ? "#ffffff" : "#f8fafc",
                         borderBottom: "1px solid #e2e8f0",
                       }}
                     >

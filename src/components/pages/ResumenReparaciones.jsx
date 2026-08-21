@@ -48,6 +48,7 @@ function ResumenReparaciones() {
   const navigate = useNavigate();
   const [trabajos, setTrabajos] = useState([]);
   const [camionetas, setCamionetas] = useState([]);
+  const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
   const [cargando, setCargando] = useState(true);
 
   // Filtros
@@ -66,9 +67,11 @@ function ResumenReparaciones() {
     Promise.all([
       fetch("/api/trabajos-camioneta").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/camionetas").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([trabs, cams]) => {
+      fetch("/api/paradas/abiertas/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([trabs, cams, abIds]) => {
       setTrabajos(Array.isArray(trabs) ? trabs : []);
       setCamionetas(Array.isArray(cams) ? cams : []);
+      setParadasAbiertas(new Set(Array.isArray(abIds) ? abIds : []));
       setCargando(false);
     });
   };
@@ -281,6 +284,8 @@ function ResumenReparaciones() {
     const zebraFill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
 
     trabajosFiltrados.forEach((t, idx) => {
+      const camIdStr = (t.camioneta?._id ?? t.camioneta)?.toString();
+      const estaParada = Boolean(t.maquinaParada || (camIdStr && paradasAbiertas.has(camIdStr)));
       const proxTrabajo = trabajosFiltrados[idx + 1];
       const esCambioCamioneta =
         !proxTrabajo || (proxTrabajo.camioneta?.patente !== t.camioneta?.patente);
@@ -318,6 +323,9 @@ function ResumenReparaciones() {
           bottom: bottomBorder,
           right: { style: "thin", color: { argb: "FFE2E8F0" } },
         };
+        if (estaParada) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+        }
         if ([6, 7, 11, 12].includes(colNumber)) {
           cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
         } else {
@@ -871,10 +879,16 @@ function ResumenReparaciones() {
                     const bgPatente = tonoIndex === 0 ? "#1e293b" : "#475569";
                     const borderPatente = tonoIndex === 0 ? "#0f172a" : "#334155";
 
+                    const camIdStr = (t.camioneta?._id ?? t.camioneta)?.toString();
+                    const estaParada = Boolean(t.maquinaParada || (camIdStr && paradasAbiertas.has(camIdStr)));
+
                     return (
                       <tr
                         key={t._id}
                         className={esCambioCamioneta ? "fila-cambio-camioneta" : "fila-misma-camioneta"}
+                        style={{
+                          backgroundColor: estaParada ? "#fee2e2" : undefined,
+                        }}
                       >
                         {/* Camioneta / Patente (con nombre de modelo/marca más pequeño debajo) */}
                         <td className="text-center" style={{ padding: "4px 8px" }}>

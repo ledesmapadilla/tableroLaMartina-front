@@ -268,7 +268,13 @@ function HistorialReparaciones() {
         t.observaciones || "-",
       ]);
 
-      if (idx % 2 === 1) {
+      const esParadaFila = Boolean(t.maquinaParada || estaParada);
+
+      if (esParadaFila) {
+        fila.eachCell((cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+        });
+      } else if (idx % 2 === 1) {
         fila.eachCell((cell) => {
           cell.fill = zebraFill;
         });
@@ -804,9 +810,15 @@ function HistorialReparaciones() {
                     const estiloCat = CATEGORIA_COLORES[t.parte] || CATEGORIA_COLORES["Otros"];
                     const esTerminada = (t.estado || "").toLowerCase() === "terminada";
                     const esEnProceso = (t.estado || "").toLowerCase() === "en proceso";
+                    const esParadaFila = Boolean(t.maquinaParada || estaParada);
 
                     return (
-                      <tr key={t._id}>
+                      <tr
+                        key={t._id}
+                        style={{
+                          backgroundColor: esParadaFila ? "#fee2e2" : undefined,
+                        }}
+                      >
                         {/* Fecha */}
                         <td
                           className="fw-semibold text-dark text-center"

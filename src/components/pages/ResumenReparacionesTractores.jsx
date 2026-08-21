@@ -446,6 +446,9 @@ function ResumenReparacionesTractores() {
           bottom: bottomBorder,
           right: { style: "thin", color: { argb: "FFE2E8F0" } },
         };
+        if (Boolean(t.maquinaParada)) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+        }
         if (colIndicesTexto.includes(colNumber)) {
           cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
         } else {
@@ -1073,6 +1076,9 @@ function ResumenReparacionesTractores() {
                       <tr
                         key={t._id}
                         className={esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"}
+                        style={{
+                          backgroundColor: Boolean(t.maquinaParada) ? "#fee2e2" : undefined,
+                        }}
                       >
                         {/* Tractor / CC */}
                         <td className="text-center" style={{ padding: "4px 8px" }}>

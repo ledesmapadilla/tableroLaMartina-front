@@ -105,6 +105,7 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
 function CamionetasAltas() {
   const navigate = useNavigate();
   const [camionetas, setCamionetas] = useState([]);
+  const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
   const [busqueda, setBusqueda] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -120,11 +121,17 @@ function CamionetasAltas() {
 
   const cargar = async () => {
     try {
-      const res = await fetch(API);
+      const [res, resParadas] = await Promise.all([
+        fetch(API),
+        fetch("/api/paradas/abiertas/ids"),
+      ]);
       const data = res.ok ? await res.json() : [];
+      const dataParadas = resParadas.ok ? await resParadas.json() : [];
       setCamionetas(Array.isArray(data) ? data : []);
+      setParadasAbiertas(new Set(Array.isArray(dataParadas) ? dataParadas : []));
     } catch {
       setCamionetas([]);
+      setParadasAbiertas(new Set());
     }
   };
 
@@ -430,12 +437,13 @@ function CamionetasAltas() {
                 </tr>
               ) : (
                 camionetasFiltradas.map((c, idx) => {
+                  const estaParada = paradasAbiertas.has(c._id?.toString());
                   const isEven = idx % 2 === 0;
                   return (
                     <tr
                       key={c._id}
                       style={{
-                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
+                        backgroundColor: estaParada ? "#fee2e2" : isEven ? "#ffffff" : "#f8fafc",
                         borderBottom: "1px solid #e2e8f0",
                         height: "44px",
                       }}

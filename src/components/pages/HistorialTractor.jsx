@@ -300,7 +300,13 @@ function HistorialTractor() {
         t.observaciones || "-",
       ]);
 
-      if (idx % 2 === 1) {
+      const esParadaFila = Boolean(t.maquinaParada || estaParada);
+
+      if (esParadaFila) {
+        fila.eachCell((cell) => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+        });
+      } else if (idx % 2 === 1) {
         fila.eachCell((cell) => {
           cell.fill = zebraFill;
         });
@@ -843,9 +849,15 @@ function HistorialTractor() {
                     const est = estadoNormalizado(t.estado);
                     const esTerminada = est === "Terminada";
                     const esEnProceso = est === "En proceso";
+                    const esParadaFila = Boolean(t.maquinaParada || estaParada);
 
                     return (
-                      <tr key={t._id}>
+                      <tr
+                        key={t._id}
+                        style={{
+                          backgroundColor: esParadaFila ? "#fee2e2" : undefined,
+                        }}
+                      >
                         {/* Fecha */}
                         <td
                           className="fw-semibold text-dark text-center"

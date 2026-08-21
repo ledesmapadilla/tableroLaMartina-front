@@ -780,7 +780,7 @@ function TractoresPreventivo() {
                   <tr
                     key={t._id}
                     style={{
-                      backgroundColor: estaParado ? "#fef2f2" : isEven ? "#ffffff" : "#f8fafc",
+                      backgroundColor: estaParado ? "#fee2e2" : isEven ? "#ffffff" : "#f8fafc",
                       borderBottom: "1px solid #e2e8f0",
                     }}
                   >
