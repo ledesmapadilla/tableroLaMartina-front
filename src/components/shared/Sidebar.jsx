@@ -20,6 +20,14 @@ const links = [
       { to: "/tractores/altas", label: "Alta Tractores", icon: "bi bi-plus-circle-fill" },
     ],
   },
+  {
+    to: "/colectivo",
+    label: "Colectivos",
+    icon: "bi bi-bus-front-fill",
+    submenu: [
+      { to: "/colectivos/altas", label: "Alta Colectivos", icon: "bi bi-plus-circle-fill" },
+    ],
+  },
 ];
 
 function Icono({ icon, customIcon }) {

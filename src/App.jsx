@@ -6,7 +6,8 @@ import Inicio from "./components/pages/Inicio";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
-import ReparacionesBerdina from "./components/pages/ReparacionesBerdina";
+import Colectivo from "./components/pages/Colectivo";
+import ColectivosAltas from "./components/pages/ColectivosAltas";
 import CamionetasAltas from "./components/pages/CamionetasAltas";
 import CamionetasCheckList from "./components/pages/CamionetasCheckList";
 import ResumenCheckList from "./components/pages/ResumenCheckList";
@@ -87,7 +88,10 @@ function App() {
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/historial" element={<HistorialTractor />} />
               <Route path="/tractores/services/reparaciones/resumen" element={<ResumenReparacionesTractores />} />
               <Route path="/reparaciones/sanpablo" element={<Error404 />} />
-              <Route path="/reparaciones/berdina" element={<Error404 />} />
+              <Route path="/colectivo" element={<Colectivo />} />
+              <Route path="/colectivo/preventivo" element={<Error404 />} />
+              <Route path="/colectivo/reparaciones" element={<Error404 />} />
+              <Route path="/colectivos/altas" element={<ColectivosAltas />} />
               <Route path="/camionetas/services" element={<CamionetasServices />} />
               <Route path="/camionetas/services/kilometros" element={<ServicesKilometros />} />
               <Route path="/camionetas/services/ultimo-service" element={<ServicesUltimoService />} />
