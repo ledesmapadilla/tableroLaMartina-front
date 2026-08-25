@@ -810,15 +810,10 @@ function HistorialReparaciones() {
                     const estiloCat = CATEGORIA_COLORES[t.parte] || CATEGORIA_COLORES["Otros"];
                     const esTerminada = (t.estado || "").toLowerCase() === "terminada";
                     const esEnProceso = (t.estado || "").toLowerCase() === "en proceso";
-                    const esParadaFila = Boolean(t.maquinaParada || estaParada);
 
                     return (
                       <tr
                         key={t._id}
-                        className={esParadaFila ? "tr-parada" : ""}
-                        style={{
-                          backgroundColor: esParadaFila ? "#fee2e2" : undefined,
-                        }}
                       >
                         {/* Fecha */}
                         <td

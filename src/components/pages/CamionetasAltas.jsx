@@ -442,9 +442,8 @@ function CamionetasAltas() {
                   return (
                     <tr
                       key={c._id}
-                      className={estaParada ? "tr-parada" : ""}
                       style={{
-                        backgroundColor: estaParada ? "#fee2e2" : isEven ? "#ffffff" : "#f8fafc",
+                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
                         borderBottom: "1px solid #e2e8f0",
                         height: "44px",
                       }}
@@ -459,7 +458,7 @@ function CamionetasAltas() {
                         <span
                           className="badge px-2.5 py-1 text-white shadow-sm"
                           style={{
-                            backgroundColor: "#0f172a",
+                            backgroundColor: estaParada ? "#991b1b" : "#0f172a",
                             border: "1px solid #475569",
                             fontSize: "0.82rem",
                             letterSpacing: "1px",

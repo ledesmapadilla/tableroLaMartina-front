@@ -750,9 +750,8 @@ function ServicesUltimoService() {
                   return (
                     <tr
                       key={c._id}
-                      className={estaParada ? "tr-parada" : ""}
                       style={{
-                        backgroundColor: estaParada ? "#fee2e2" : isEven ? "#ffffff" : "#f8fafc",
+                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
                         borderBottom: "1px solid #e2e8f0",
                       }}
                     >

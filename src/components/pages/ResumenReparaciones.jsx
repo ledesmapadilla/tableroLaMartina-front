@@ -876,19 +876,18 @@ function ResumenReparaciones() {
 
                     // 2 tonos intercalados de fondo de patente según camioneta
                     const tonoIndex = truckColorMap.get(t.camioneta?.patente || "—") ?? 0;
-                    const bgPatente = tonoIndex === 0 ? "#1e293b" : "#475569";
-                    const borderPatente = tonoIndex === 0 ? "#0f172a" : "#334155";
 
                     const camIdStr = (t.camioneta?._id ?? t.camioneta)?.toString();
                     const estaParada = Boolean(t.maquinaParada || (camIdStr && paradasAbiertas.has(camIdStr)));
 
+                    // Una camioneta parada se marca con la patente en rojo.
+                    const bgPatente = estaParada ? "#991b1b" : tonoIndex === 0 ? "#1e293b" : "#475569";
+                    const borderPatente = estaParada ? "#7f1d1d" : tonoIndex === 0 ? "#0f172a" : "#334155";
+
                     return (
                       <tr
                         key={t._id}
-                        className={`${esCambioCamioneta ? "fila-cambio-camioneta" : "fila-misma-camioneta"} ${estaParada ? "tr-parada" : ""}`}
-                        style={{
-                          backgroundColor: estaParada ? "#fee2e2" : undefined,
-                        }}
+                        className={esCambioCamioneta ? "fila-cambio-camioneta" : "fila-misma-camioneta"}
                       >
                         {/* Camioneta / Patente (con nombre de modelo/marca más pequeño debajo) */}
                         <td className="text-center" style={{ padding: "4px 8px" }}>
