@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Container, Card, Form, Button, Row, Col, Table } from "react-bootstrap";
+import { Container, Card, Form, Button, Row, Col, Table, Modal } from "react-bootstrap";
 import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 
@@ -24,6 +24,22 @@ const hoyStr = () => {
 };
 
 const ESTADOS = ["Pendiente", "En proceso", "Terminada"];
+
+// Mismas categorias que ofrece el reporte de falla
+const PARTES = [
+  "Motor",
+  "Transmisión / Caja",
+  "Embrague",
+  "Hidráulico",
+  "Frenos",
+  "Dirección",
+  "Mecánica general",
+  "Electricidad / Luces",
+  "Rodado / Cubiertas",
+  "Implementos / Enganche",
+  "Service Programado",
+  "Otros",
+];
 const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
 
 const estadoNormalizado = (estado) => {
@@ -56,6 +72,8 @@ function TareasTractorNueva() {
   const [filtroEstado, setFiltroEstado] = useState("pendientes_en_proceso"); // 'pendientes_en_proceso' (por defecto) | 'Terminadas' | 'todas'
   const [tareaSeleccionadaId, setTareaSeleccionadaId] = useState(null);
   const [guardandoId, setGuardandoId] = useState(null);
+  const [tareaEditada, setTareaEditada] = useState(null); // borrador del modal de edicion
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
 
   const rawCC = tractor?.cc || state?.cc || "CC —";
   const cleanCC = String(rawCC).replace(/^cc\s*/i, "").trim();
@@ -330,6 +348,92 @@ function TareasTractorNueva() {
     }
   };
 
+  // Abrir el modal de edicion de una tarea del listado
+  const handleAbrirEdicion = (tarea, e) => {
+    if (e) e.stopPropagation();
+    setTareaEditada({
+      _id: tarea._id,
+      fecha: tarea.fecha ? String(tarea.fecha).split("T")[0] : hoyStr(),
+      reparacion: tarea.reparacion || tarea.descripcion || "",
+      parte: tarea.parte || "",
+      horometro: tarea.horometro ?? "",
+      estado: estadoNormalizado(tarea.estado),
+    });
+  };
+
+  const handleCerrarEdicion = () => {
+    setTareaEditada(null);
+    setGuardandoEdicion(false);
+  };
+
+  const handleCambioEdicion = (campo, valor) => {
+    setTareaEditada((prev) => (prev ? { ...prev, [campo]: valor } : prev));
+  };
+
+  // Guardar los cambios del modal (actualizacion parcial de la tarea)
+  const handleGuardarEdicion = async () => {
+    if (!tareaEditada) return;
+
+    const titulo = (tareaEditada.reparacion || "").trim();
+    if (!titulo) {
+      Swal.fire({
+        icon: "warning",
+        title: "Falta la descripción",
+        text: "Escriba la falla o tarea reportada.",
+        width: "320px",
+        confirmButtonColor: "#1e293b",
+      });
+      return;
+    }
+
+    setGuardandoEdicion(true);
+    try {
+      const fecha = tareaEditada.fecha || hoyStr();
+      const payload = {
+        fecha: `${fecha}T12:00:00.000Z`,
+        reparacion: titulo,
+        parte: tareaEditada.parte || "",
+        horometro: tareaEditada.horometro,
+        estado: tareaEditada.estado,
+      };
+
+      const res = await fetch(`/api/trabajos-tractor/${tareaEditada._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        handleCerrarEdicion();
+        Swal.fire({
+          icon: "success",
+          title: "Tarea actualizada",
+          width: "300px",
+          timer: 1300,
+          showConfirmButton: false,
+        });
+        cargarDatos();
+      } else {
+        setGuardandoEdicion(false);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudieron guardar los cambios.",
+          width: "300px",
+          confirmButtonColor: "#1e293b",
+        });
+      }
+    } catch {
+      setGuardandoEdicion(false);
+      Swal.fire({
+        icon: "error",
+        title: "Error de conexión",
+        width: "300px",
+        confirmButtonColor: "#1e293b",
+      });
+    }
+  };
+
   // Filtrado de tareas ordenadas por fecha y registro (más recientes arriba de todo)
   const tareasFiltradas = useMemo(() => {
     return [...trabajos]
@@ -545,8 +649,17 @@ function TareasTractorNueva() {
                       </span>
                       <button
                         type="button"
+                        onClick={(e) => handleAbrirEdicion(t, e)}
+                        className="btn btn-sm btn-link text-primary p-0 ms-1 opacity-75 hover-opacity-100"
+                        title="Editar tarea"
+                        style={{ lineHeight: 1 }}
+                      >
+                        <i className="bi bi-pencil-square" style={{ fontSize: "0.85rem" }}></i>
+                      </button>
+                      <button
+                        type="button"
                         onClick={(e) => handleEliminarTarea(t._id, e)}
-                        className="btn btn-sm btn-link text-danger p-0 ms-1 opacity-75 hover-opacity-100"
+                        className="btn btn-sm btn-link text-danger p-0 opacity-75 hover-opacity-100"
                         title="Eliminar tarea"
                         style={{ lineHeight: 1 }}
                       >
@@ -916,6 +1029,135 @@ function TareasTractorNueva() {
           </div>
         )}
       </div>
+
+      {/* Modal para editar una tarea del listado */}
+      <Modal show={Boolean(tareaEditada)} onHide={handleCerrarEdicion} centered contentClassName="border-0 shadow-lg rounded-4">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: "#1e293b",
+            color: "#fff",
+            borderTopLeftRadius: "1rem",
+            borderTopRightRadius: "1rem",
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-pencil-square" style={{ color: "#f59e0b" }}></i>
+            <span>Editar tarea</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          {tareaEditada && (
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Falla / Tarea reportada <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={tareaEditada.reparacion}
+                  onChange={(e) => handleCambioEdicion("reparacion", e.target.value)}
+                  placeholder="Ej. Pérdida de aceite en el cárter"
+                  className="rounded-3"
+                  style={{ fontSize: "0.86rem" }}
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Fecha</Form.Label>
+                <Form.Control
+                  type="date"
+                  max={hoyStr()}
+                  value={tareaEditada.fecha}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleCambioEdicion("fecha", val && val <= hoyStr() ? val : hoyStr());
+                  }}
+                  className="rounded-3 form-control-sm"
+                  style={{ fontSize: "0.85rem", height: "36px" }}
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Horómetro (hs)</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={tareaEditada.horometro}
+                  onChange={(e) => handleCambioEdicion("horometro", e.target.value)}
+                  placeholder="Ej. 1250"
+                  className="rounded-3 form-control-sm"
+                  style={{ fontSize: "0.85rem", height: "36px" }}
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Categoría</Form.Label>
+                <Form.Select
+                  value={tareaEditada.parte}
+                  onChange={(e) => handleCambioEdicion("parte", e.target.value)}
+                  className="rounded-3 form-select-sm"
+                  style={{ fontSize: "0.85rem", height: "36px" }}
+                >
+                  <option value="">-- Sin categoría --</option>
+                  {PARTES.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
+                <Form.Select
+                  value={tareaEditada.estado}
+                  onChange={(e) => handleCambioEdicion("estado", e.target.value)}
+                  className="rounded-3 form-select-sm"
+                  style={{ fontSize: "0.85rem", height: "36px" }}
+                >
+                  {ESTADOS.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+            </Row>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="bg-light border-0 py-2.5 px-4" style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}>
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={handleCerrarEdicion}
+            className="rounded-3 px-3 py-1.5"
+            style={{ fontSize: "0.84rem" }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="dark"
+            size="sm"
+            onClick={handleGuardarEdicion}
+            disabled={guardandoEdicion}
+            className="rounded-3 px-3.5 py-1.5 shadow-sm d-flex align-items-center gap-1.5"
+            style={{ fontSize: "0.84rem" }}
+          >
+            {guardandoEdicion ? (
+              <span>Guardando...</span>
+            ) : (
+              <>
+                <i className="bi bi-floppy-fill"></i>
+                <span>Guardar cambios</span>
+              </>
+            )}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }
