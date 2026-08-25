@@ -35,8 +35,8 @@ const secciones = [
   },
   {
     id: "colectivo",
-    titulo: "Colectivo",
-    subtitulo: "Preventivo y reparaciones del colectivo",
+    titulo: "Colectivos",
+    subtitulo: "Preventivo y reparaciones de los colectivos",
     ruta: "/colectivo",
     bg: "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
     hoverBg: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",

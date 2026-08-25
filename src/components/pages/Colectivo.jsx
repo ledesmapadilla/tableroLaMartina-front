@@ -15,7 +15,7 @@ const tarjetas = [
   {
     id: "reparaciones",
     titulo: "Reparaciones",
-    subtitulo: "Tareas y reparaciones del colectivo",
+    subtitulo: "Tareas y reparaciones de los colectivos",
     ruta: "/colectivo/reparaciones",
     bg: "linear-gradient(135deg, #312e81 0%, #4338ca 100%)",
     hoverBg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
@@ -59,7 +59,7 @@ function Colectivo() {
           >
             <i className="bi bi-bus-front-fill" style={{ fontSize: "1.15rem" }}></i>
           </div>
-          <span className="text-white fs-6 fw-semibold">Gestión del Colectivo</span>
+          <span className="text-white fs-6 fw-semibold">Gestión de Colectivos</span>
         </div>
 
         {/* Botones de Navegación */}

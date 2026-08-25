@@ -416,7 +416,7 @@ function ColectivosAltas() {
             style={{ fontSize: "0.82rem" }}
           >
             <i className="bi bi-bus-front-fill"></i>
-            <span>Colectivo</span>
+            <span>Colectivos</span>
           </button>
           <button
             onClick={() => navigate("/")}
