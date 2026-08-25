@@ -343,6 +343,41 @@ function TractoresPreventivo() {
 
   const onSubmitHorometro = async (data) => {
     const editando = Boolean(horometroEditandoId);
+
+    // Bajar el horometro es legitimo (corregir una carga erronea) pero nunca
+    // deberia pasar por descuido: se avisa y decide el usuario.
+    const nuevo = Number(data.horometro);
+    const cleanCC = String(tractorModalHm?.cc || "").replace(/^cc\s*/i, "").trim();
+    const hmObj = ultimosHorometros[tractorModalHm?.cc] || ultimosHorometros[cleanCC];
+    const actual = hmObj?.horometro;
+
+    if (Number.isFinite(nuevo) && typeof actual === "number" && nuevo < actual) {
+      // La correccion hacia abajo solo pisa a la tabla si la carga manual es al
+      // menos tan reciente como la lectura vigente. Si no, la tabla no cambia y
+      // conviene decirlo en vez de prometer algo que no va a pasar.
+      const pisaLaTabla = String(data.fecha || "") >= String(hmObj?.fecha || "");
+      const confirmacion = await Swal.fire({
+        icon: "warning",
+        title: "El horómetro es menor al registrado",
+        html:
+          `La última lectura de <b>CC ${tractorModalHm?.cc ?? "—"}</b> es de ` +
+          `<b>${actual.toLocaleString("es-AR")} hs</b>` +
+          `${hmObj?.fecha ? ` (${formatFecha(hmObj.fecha)})` : ""}` +
+          ` y estás cargando <b>${nuevo.toLocaleString("es-AR")} hs</b>.<br/><br/>` +
+          (pisaLaTabla
+            ? "Si continuás, la tabla va a pasar a mostrar el valor nuevo."
+            : "Como la fecha que cargás es anterior, la lectura queda en el historial pero la tabla va a seguir mostrando la más reciente."),
+        showCancelButton: true,
+        confirmButtonText: "Continuar igual",
+        cancelButtonText: "Corregir",
+        confirmButtonColor: "#dc2626",
+        cancelButtonColor: "#64748b",
+        reverseButtons: true,
+        width: "440px",
+      });
+      if (!confirmacion.isConfirmed) return;
+    }
+
     try {
       const res = await fetch(
         editando ? `/api/horometros-tractor/${horometroEditandoId}` : "/api/horometros-tractor",
