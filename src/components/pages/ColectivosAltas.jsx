@@ -7,26 +7,6 @@ import { nuevoWorkbook } from "../../helpers/excel";
 
 const API = "/api/colectivos";
 
-const GRUPPO_LABELS = {
-  1: "Grupo 1",
-  2: "Grupo 2",
-  3: "Grupo 3",
-  4: "Grupo 4",
-  5: "Grupo 5",
-  6: "Berdina",
-  7: "San Pablo",
-};
-
-const GRUPPO_COLORS = {
-  1: "#1e40af", // Azul
-  2: "#047857", // Verde oscuro
-  3: "#b45309", // Ámbar / Dorado
-  4: "#6b21a8", // Púrpura
-  5: "#c2410c", // Naranja / Óxido
-  6: "#b91c1c", // Rojo Berdina
-  7: "#4d7c0f", // Verde Oliva San Pablo
-};
-
 function SearchableInputDropdown({
   value,
   onChange,
@@ -134,7 +114,6 @@ function ColectivosAltas() {
   const navigate = useNavigate();
   const [colectivos, setColectivos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
-  const [filtroGrupo, setFiltroGrupo] = useState("Todos");
   const [filtroSupervisor, setFiltroSupervisor] = useState("Todos");
 
   const [showModal, setShowModal] = useState(false);
@@ -169,9 +148,9 @@ function ColectivosAltas() {
     setEditando(null);
     reset({
       cc: "",
+      patente: "",
       descripcion: "",
       supervisor: "",
-      gruppo: 1,
     });
     setShowModal(true);
   };
@@ -179,9 +158,9 @@ function ColectivosAltas() {
   const abrirEditar = (c) => {
     setEditando(c._id);
     setValue("cc", c.cc);
+    setValue("patente", c.patente || "");
     setValue("descripcion", c.descripcion || "");
     setValue("supervisor", c.supervisor || "");
-    setValue("gruppo", c.gruppo ?? 1);
     setShowModal(true);
   };
 
@@ -197,7 +176,7 @@ function ColectivosAltas() {
       const method = editando ? "PUT" : "POST";
       const payload = {
         ...data,
-        gruppo: Number(data.gruppo),
+        patente: (data.patente || "").trim().toUpperCase(),
       };
       const res = await fetch(url, {
         method,
@@ -242,6 +221,7 @@ function ColectivosAltas() {
 
   const supervisoresExistentes = [
     ...new Set([
+      "Humberto Alderete",
       "Jorge Rosas",
       "Guillermo Bustos",
       "Carlos Chumiento",
@@ -262,20 +242,19 @@ function ColectivosAltas() {
     const matchBusqueda =
       !q ||
       (c.cc || "").toLowerCase().includes(q) ||
+      (c.patente || "").toLowerCase().includes(q) ||
       (c.descripcion || "").toLowerCase().includes(q) ||
       (c.supervisor || "").toLowerCase().includes(q);
 
-    const matchGrupo =
-      filtroGrupo === "Todos" || (c.gruppo ?? 1) === Number(filtroGrupo);
     const matchSupervisor =
       filtroSupervisor === "Todos" || (c.supervisor || "").trim() === filtroSupervisor;
 
-    return matchBusqueda && matchGrupo && matchSupervisor;
+    return matchBusqueda && matchSupervisor;
   });
 
   const exportarExcel = async () => {
     const titulo = "Alta de Flota — Colectivos";
-    const columnas = ["#", "CC / Colectivo", "Grupo", "Supervisor", "Descripción / Modelo"];
+    const columnas = ["#", "CC / Colectivo", "Patente", "Supervisor", "Descripción / Modelo"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = await nuevoWorkbook();
@@ -309,12 +288,10 @@ function ColectivosAltas() {
     ws.getRow(4).height = 20;
 
     colectivosFiltrados.forEach((c, idx) => {
-      const gruppoNum = c.gruppo ?? 1;
-      const gruppoLabel = GRUPPO_LABELS[gruppoNum] || `Grupo ${gruppoNum}`;
       const fila = ws.addRow([
         idx + 1,
         c.cc,
-        gruppoLabel,
+        c.patente || "—",
         c.supervisor || "—",
         c.descripcion || "—",
       ]);
@@ -483,7 +460,7 @@ function ColectivosAltas() {
                 </span>
                 <Form.Control
                   type="text"
-                  placeholder="Buscar CC, descripción..."
+                  placeholder="Buscar CC, patente, descripción..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   className={`border-start-0 ps-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
@@ -502,51 +479,6 @@ function ColectivosAltas() {
                     onClick={() => setBusqueda("")}
                     title="Limpiar búsqueda"
                     style={{ padding: "0 7px", height: "32px" }}
-                  >
-                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Filtro por Grupo */}
-            <div className="d-flex align-items-center">
-              <span
-                className="fw-bold text-dark small flex-shrink-0 me-2"
-                style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
-              >
-                Grupo:
-              </span>
-              <div className="input-group input-group-sm" style={{ width: "150px" }}>
-                <Form.Select
-                  size="sm"
-                  value={filtroGrupo}
-                  onChange={(e) => setFiltroGrupo(e.target.value)}
-                  className={`rounded-3 ${filtroGrupo !== "Todos" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
-                  style={{
-                    fontSize: "0.82rem",
-                    height: "32px",
-                    padding: "3px 24px 3px 8px",
-                    color: filtroGrupo !== "Todos" ? "#dc2626" : "#1e293b",
-                    fontWeight: filtroGrupo !== "Todos" ? "700" : "normal",
-                  }}
-                >
-                  <option value="Todos">Todos</option>
-                  <option value="1">Grupo 1</option>
-                  <option value="2">Grupo 2</option>
-                  <option value="3">Grupo 3</option>
-                  <option value="4">Grupo 4</option>
-                  <option value="5">Grupo 5</option>
-                  <option value="6">Berdina</option>
-                  <option value="7">San Pablo</option>
-                </Form.Select>
-                {filtroGrupo !== "Todos" && (
-                  <button
-                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
-                    type="button"
-                    onClick={() => setFiltroGrupo("Todos")}
-                    title="Limpiar filtro grupo"
-                    style={{ padding: "0 6px", height: "32px" }}
                   >
                     <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
                   </button>
@@ -623,7 +555,7 @@ function ColectivosAltas() {
                   CC / Colectivo
                 </th>
                 <th style={{ width: "125px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
-                  Grupo
+                  Patente
                 </th>
                 <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   Supervisor
@@ -640,7 +572,7 @@ function ColectivosAltas() {
               {colectivosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
-                    {busqueda || filtroGrupo !== "Todos" || filtroSupervisor !== "Todos"
+                    {busqueda || filtroSupervisor !== "Todos"
                       ? "No se encontraron colectivos con los filtros seleccionados"
                       : "No hay colectivos registrados en la flota"}
                   </td>
@@ -648,9 +580,6 @@ function ColectivosAltas() {
               ) : (
                 colectivosFiltrados.map((c, idx) => {
                   const isEven = idx % 2 === 0;
-                  const gruppoNum = c.gruppo ?? 1;
-                  const gruppoLabel = GRUPPO_LABELS[gruppoNum] || `Grupo ${gruppoNum}`;
-                  const gruppoColor = GRUPPO_COLORS[gruppoNum] || "#475569";
 
                   return (
                     <tr
@@ -680,17 +609,24 @@ function ColectivosAltas() {
                         </span>
                       </td>
                       <td>
-                        <span
-                          className="badge px-2.5 py-1 text-white shadow-sm"
-                          style={{
-                            backgroundColor: gruppoColor,
-                            fontSize: "0.76rem",
-                            borderRadius: "6px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {gruppoLabel}
-                        </span>
+                        {c.patente ? (
+                          <span
+                            className="badge px-2.5 py-1 shadow-sm"
+                            style={{
+                              backgroundColor: "#f1f5f9",
+                              color: "#0f172a",
+                              border: "1px solid #94a3b8",
+                              fontSize: "0.78rem",
+                              letterSpacing: "1px",
+                              borderRadius: "6px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {c.patente}
+                          </span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
                       </td>
                       <td className="text-secondary fw-medium">
                         {c.supervisor || "—"}
@@ -768,21 +704,19 @@ function ColectivosAltas() {
               </Col>
 
               <Col md={7}>
-                <Form.Label className="fw-semibold text-dark small mb-1">Grupo Asignado</Form.Label>
-                <Form.Select
-                  size="sm"
-                  className="rounded-3"
-                  style={{ fontSize: "0.85rem", height: "36px" }}
-                  {...register("gruppo", { required: true })}
-                >
-                  <option value={1}>Grupo 1 (Jorge Rosas)</option>
-                  <option value={2}>Grupo 2 (Guillermo Bustos)</option>
-                  <option value={3}>Grupo 3 (Carlos Chumiento)</option>
-                  <option value={4}>Grupo 4 (brandan alejandro)</option>
-                  <option value={5}>Grupo 5 (Elio Rojas)</option>
-                  <option value={6}>Berdina (Kevin)</option>
-                  <option value={7}>San Pablo (Victor)</option>
-                </Form.Select>
+                <Form.Label className="fw-semibold text-dark small mb-1">Patente</Form.Label>
+                <Form.Control
+                  placeholder="Ej: EQB 118"
+                  className="rounded-3 text-uppercase"
+                  style={{ fontSize: "0.85rem", letterSpacing: "0.5px" }}
+                  {...register("patente", {
+                    maxLength: { value: 20, message: "Máximo 20 caracteres" },
+                  })}
+                  isInvalid={!!errors.patente}
+                />
+                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                  {errors.patente?.message}
+                </Form.Control.Feedback>
               </Col>
 
               <Col md={12}>
