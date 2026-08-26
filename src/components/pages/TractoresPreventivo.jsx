@@ -24,6 +24,14 @@ const formatFecha = (iso) => {
 // Intervalo estándar de mantenimiento para tractores (en horas)
 const DEFAULT_INTERVALO_HS = 250;
 
+// De donde se tomo la lectura vigente de horometro.
+const ORIGEN_LECTURA = {
+  manual: "carga manual",
+  visita: "visita",
+  service: "service",
+  reparacion: "reparación",
+};
+
 function getEstadoTractor(hsActuales, hsUltimoService, intervalo = DEFAULT_INTERVALO_HS, esParado = false) {
   if (esParado) {
     return {
@@ -1510,6 +1518,29 @@ function TractoresPreventivo() {
               })),
             ].sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
 
+            // La lectura vigente puede venir inferida de una visita / service /
+            // reparacion y no tener registro propio: sin esto el historial
+            // muestra los valores anteriores pero no el actual.
+            const soloDia = (f) => String(f || "").split("T")[0];
+            const actualYaListada = lista.some(
+              (r) =>
+                Number(r.horometro) === Number(horometroActual) &&
+                soloDia(r.fecha) === soloDia(fechaLecturaActual)
+            );
+            const filaActual =
+              typeof horometroActual === "number" && !actualYaListada
+                ? {
+                    tipo: "actual",
+                    _id: "actual",
+                    fecha: fechaLecturaActual,
+                    horometro: horometroActual,
+                    origen: hmObj?.origen,
+                  }
+                : null;
+
+            // Va primero: es la lectura mas reciente del tractor.
+            const listaCompleta = filaActual ? [filaActual, ...lista] : lista;
+
             return (
               <>
                 {cargandoHistorial ? (
@@ -1529,7 +1560,7 @@ function TractoresPreventivo() {
                       </tr>
                     </thead>
                     <tbody>
-                      {lista.length === 0 ? (
+                      {listaCompleta.length === 0 ? (
                         <tr>
                           <td>
                             <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
@@ -1566,53 +1597,71 @@ function TractoresPreventivo() {
                           </td>
                         </tr>
                       ) : (
-                        lista.map((s) => {
-                          const esHorometro = s.tipo === "horometro";
+                        listaCompleta.map((s) => {
+                          const esActual = s.tipo === "actual";
+                          // La lectura vigente ocupa las mismas columnas que una
+                          // lectura de horometro cargada a mano.
+                          const esLectura = s.tipo === "horometro" || esActual;
                           return (
-                            <tr key={`${s.tipo}-${s._id}`}>
+                            <tr
+                              key={`${s.tipo}-${s._id}`}
+                              style={esActual ? { backgroundColor: "#f0f9ff" } : undefined}
+                            >
                               <td>
                                 <span className="badge px-2 py-1 bg-dark text-white rounded-2 fw-bold">
                                   {historialModal?.cc || s.tractor?.cc || s.cc || "—"}
                                 </span>
                               </td>
-                              <td>{esHorometro && s.fecha ? formatFecha(s.fecha) : "—"}</td>
+                              <td>{esLectura && s.fecha ? formatFecha(s.fecha) : "—"}</td>
                               <td className="fw-bold text-dark">
-                                {esHorometro && typeof s.horometro === "number"
+                                {esLectura && typeof s.horometro === "number"
                                   ? `${s.horometro.toLocaleString("es-AR")} hs`
                                   : "—"}
+                                {esActual && (
+                                  <span
+                                    className="badge ms-1 text-white rounded-2"
+                                    style={{ backgroundColor: "#0d9488", fontSize: "0.66rem", fontWeight: 600 }}
+                                  >
+                                    Actual
+                                  </span>
+                                )}
                               </td>
-                              <td>{!esHorometro && s.fecha ? formatFecha(s.fecha) : "—"}</td>
+                              <td>{!esLectura && s.fecha ? formatFecha(s.fecha) : "—"}</td>
                               <td className="fw-semibold text-primary">
-                                {!esHorometro && typeof s.horometro === "number"
+                                {!esLectura && typeof s.horometro === "number"
                                   ? `${s.horometro.toLocaleString("es-AR")} hs`
                                   : "—"}
                               </td>
                               <td className="text-secondary fw-semibold">
-                                {!esHorometro && typeof s.horometro === "number"
+                                {!esLectura && typeof s.horometro === "number"
                                   ? `${(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs`
                                   : "—"}
                               </td>
-                              <td className="text-start">{s.observaciones || "—"}</td>
+                              <td className="text-start">
+                                {esActual
+                                  ? `Lectura vigente${s.origen ? ` — tomada de ${ORIGEN_LECTURA[s.origen] || s.origen}` : ""}`
+                                  : s.observaciones || "—"}
+                              </td>
                               <td>
-                                {s._id && (
+                                {s._id && !esActual && (
                                   <div className="d-flex align-items-center justify-content-center gap-1">
                                     <button
                                       onClick={() =>
-                                        esHorometro ? editarHorometroHistorial(s) : editarServiceHistorial(s)
+                                        esLectura ? editarHorometroHistorial(s) : editarServiceHistorial(s)
                                       }
                                       className="btn btn-sm btn-outline-primary border-0 p-1"
-                                      title={esHorometro ? "Editar lectura de horómetro" : "Editar service"}
+                                      title={esLectura ? "Editar lectura de horómetro" : "Editar service"}
                                     >
                                       <i className="bi bi-pencil-square fs-6"></i>
                                     </button>
                                     <button
                                       onClick={() =>
-                                        esHorometro
+                                        esLectura
                                           ? eliminarHorometroHistorial(s._id)
                                           : eliminarServiceHistorial(s._id)
                                       }
                                       className="btn btn-sm btn-outline-danger border-0 p-1"
-                                      title={esHorometro ? "Eliminar lectura de horómetro" : "Eliminar service"}
+                                      title={esLectura ? "Eliminar lectura de horómetro" : "Eliminar service"}
                                     >
                                       <i className="bi bi-trash fs-6"></i>
                                     </button>
