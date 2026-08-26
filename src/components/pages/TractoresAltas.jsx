@@ -29,6 +29,73 @@ const GRUPPO_COLORS = {
   7: "#4d7c0f", // Verde Oliva San Pablo
 };
 
+// Mismo formato de fecha que el resto del proyecto: dd/mm/aaaa.
+const formatFecha = (iso) => {
+  if (!iso) return "—";
+  if (typeof iso === "string" && iso.includes("-")) {
+    const parts = iso.split("T")[0].split("-");
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+// Etiqueta -> numero de grupo, para volver a pintar el badge con el color que
+// le corresponde a partir del texto que guarda el historial.
+const GRUPPO_NUMS = Object.fromEntries(
+  Object.entries(GRUPPO_LABELS).map(([num, label]) => [label, Number(num)])
+);
+
+const CAMPOS_HISTORIAL = ["cc", "gruppo", "supervisor", "encargadoGral", "descripcion"];
+
+// El historial guarda un renglon por campo modificado. Para mostrarlo con las
+// mismas columnas que la tabla de altas hay que rearmar como quedo el tractor
+// despues de cada edicion: se parte del estado actual y se va hacia atras
+// deshaciendo cambio por cambio.
+const armarFilasHistorial = (tractor, registros) => {
+  if (!tractor) return [];
+
+  let estado = {
+    cc: tractor.cc || "",
+    gruppo: GRUPPO_LABELS[tractor.gruppo ?? 1] || `Grupo ${tractor.gruppo}`,
+    supervisor: tractor.supervisor || "",
+    encargadoGral: tractor.encargadoGral || "",
+    descripcion: tractor.descripcion || "",
+  };
+
+  // Vienen del mas nuevo al mas viejo. Los renglones de una misma edicion
+  // comparten fecha y accion: van todos en una sola fila.
+  const grupos = [];
+  registros.forEach((r) => {
+    const clave = `${new Date(r.fecha).getTime()}-${r.accion}`;
+    const ultimo = grupos[grupos.length - 1];
+    if (ultimo && ultimo.clave === clave) {
+      ultimo.registros.push(r);
+    } else {
+      grupos.push({ clave, accion: r.accion, fecha: r.fecha, origen: r.origen, observaciones: r.observaciones, registros: [r] });
+    }
+  });
+
+  return grupos.map((g) => {
+    const fila = {
+      ...g,
+      valores: { ...estado },
+      cambiados: g.registros.map((r) => r.campo).filter(Boolean),
+    };
+    // Deshace la edicion: lo que queda es como estaba el tractor antes de ella,
+    // o sea el estado que le corresponde a la fila siguiente.
+    g.registros.forEach((r) => {
+      if (r.campo && CAMPOS_HISTORIAL.includes(r.campo)) {
+        estado = { ...estado, [r.campo]: r.valorAnterior || "" };
+      }
+    });
+    return fila;
+  });
+};
+
 function SearchableInputDropdown({
   value,
   onChange,
@@ -270,17 +337,6 @@ function TractoresAltas() {
     setHistorial([]);
   };
 
-  const formatFechaHora = (f) => {
-    if (!f) return "—";
-    const d = new Date(f);
-    if (isNaN(d)) return "—";
-    return `${d.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })} ${d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`;
-  };
-
   const supervisoresExistentes = [
     ...new Set([
       "Jorge Rosas",
@@ -384,6 +440,8 @@ function TractoresAltas() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const filasHistorial = armarFilasHistorial(historialModal, historial);
 
   const tractoresFiltrados = tractores.filter((t) => {
     const q = busqueda.toLowerCase().trim();
@@ -733,7 +791,7 @@ function TractoresAltas() {
                 <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left", fontWeight: "normal" }}>
                   Descripción / Modelo
                 </th>
-                <th style={{ width: "125px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                <th style={{ width: "140px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   Acciones
                 </th>
               </tr>
@@ -804,7 +862,10 @@ function TractoresAltas() {
                         {t.descripcion || "—"}
                       </td>
                       <td>
-                        <div className="d-flex justify-content-center align-items-center gap-1.5">
+                        <div
+                          className="d-flex justify-content-center align-items-center"
+                          style={{ gap: "10px" }}
+                        >
                           <button
                             onClick={() => abrirHistorial(t)}
                             className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center rounded-2 p-1"
@@ -987,65 +1048,143 @@ function TractoresAltas() {
             <div className="text-center py-4 text-muted" style={{ fontSize: "0.85rem" }}>
               Cargando historial...
             </div>
-          ) : historial.length === 0 ? (
+          ) : filasHistorial.length === 0 ? (
             <div className="text-center py-4 text-muted" style={{ fontSize: "0.85rem" }}>
               Todavía no hay cambios registrados para este tractor
             </div>
           ) : (
-            <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
-              <thead className="table-dark">
-                <tr>
-                  <th style={{ fontWeight: 500, width: "130px" }}>Fecha</th>
-                  <th style={{ fontWeight: 500, width: "115px" }}>Acción</th>
-                  <th style={{ fontWeight: 500, width: "160px" }}>Campo</th>
-                  <th style={{ fontWeight: 500, textAlign: "left" }}>Valor anterior</th>
-                  <th style={{ fontWeight: 500, textAlign: "left" }}>Valor nuevo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historial.map((h) => {
-                  const esAlta = h.accion === "alta";
-                  const esBaja = h.accion === "baja";
-                  const colorAccion = esAlta ? "#15803d" : esBaja ? "#b91c1c" : "#1e40af";
-                  const labelAccion = esAlta ? "Alta" : esBaja ? "Baja" : "Modificación";
+            <div style={{ overflowX: "auto" }}>
+              <Table
+                hover
+                size="sm"
+                className="align-middle text-center mb-0"
+                style={{ fontSize: "0.8rem", whiteSpace: "nowrap" }}
+              >
+                <thead style={{ backgroundColor: "#1e293b", color: "#fff" }}>
+                  <tr>
+                    <th style={{ backgroundColor: "#1e293b", color: "#fff", fontWeight: 500, width: "130px" }}>
+                      Fecha
+                    </th>
+                    <th style={{ backgroundColor: "#1e293b", color: "#fff", fontWeight: 500, width: "110px" }}>
+                      CC / Tractor
+                    </th>
+                    <th style={{ backgroundColor: "#1e293b", color: "#fff", fontWeight: 500, width: "125px" }}>
+                      Grupo
+                    </th>
+                    <th style={{ backgroundColor: "#1e293b", color: "#fff", fontWeight: 500, width: "180px" }}>
+                      Supervisor
+                    </th>
+                    <th style={{ backgroundColor: "#1e293b", color: "#fff", fontWeight: 500, width: "160px" }}>
+                      Encargado Gral.
+                    </th>
+                    <th style={{ backgroundColor: "#1e293b", color: "#fff", fontWeight: 500, textAlign: "left" }}>
+                      Descripción / Modelo
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filasHistorial.map((f) => {
+                    const cambio = (campo) => f.cambiados.includes(campo);
+                    const anterior = (campo) =>
+                      f.registros.find((r) => r.campo === campo)?.valorAnterior || "—";
+                    // La celda que se toco queda resaltada y muestra en el tooltip
+                    // de que valor venia.
+                    const estilo = (campo) =>
+                      cambio(campo) ? { backgroundColor: "#fef3c7", fontWeight: 700 } : undefined;
+                    const titulo = (campo) => (cambio(campo) ? `Antes: ${anterior(campo)}` : undefined);
 
-                  return (
-                    <tr key={h._id}>
-                      <td className="text-secondary" style={{ whiteSpace: "nowrap" }}>
-                        {formatFechaHora(h.fecha)}
-                        {h.origen === "reconstruido" && (
-                          <i
-                            className="bi bi-info-circle ms-1 text-muted"
-                            style={{ fontSize: "0.72rem" }}
-                            title={h.observaciones || "Registro reconstruido"}
-                          ></i>
-                        )}
-                      </td>
-                      <td>
-                        <span
-                          className="badge px-2 py-1 text-white rounded-2"
-                          style={{ backgroundColor: colorAccion, fontSize: "0.72rem", fontWeight: 600 }}
+                    const gruppoLabel = f.valores.gruppo || "—";
+                    const gruppoNum = GRUPPO_NUMS[gruppoLabel];
+                    const gruppoColor = GRUPPO_COLORS[gruppoNum] || "#475569";
+
+                    return (
+                      <tr key={f.clave}>
+                        <td className="text-secondary">
+                          {formatFecha(f.fecha)}
+                          {f.accion === "alta" && (
+                            <span
+                              className="badge ms-1 text-white rounded-2"
+                              style={{ backgroundColor: "#15803d", fontSize: "0.66rem", fontWeight: 600 }}
+                            >
+                              Alta
+                            </span>
+                          )}
+                          {f.accion === "baja" && (
+                            <span
+                              className="badge ms-1 text-white rounded-2"
+                              style={{ backgroundColor: "#b91c1c", fontSize: "0.66rem", fontWeight: 600 }}
+                            >
+                              Baja
+                            </span>
+                          )}
+                          {f.origen === "reconstruido" && (
+                            <i
+                              className="bi bi-info-circle ms-1 text-muted"
+                              style={{ fontSize: "0.72rem" }}
+                              title={f.observaciones || "Registro reconstruido"}
+                            ></i>
+                          )}
+                        </td>
+                        <td style={estilo("cc")} title={titulo("cc")}>
+                          <span
+                            className="badge px-2.5 py-1 text-white shadow-sm"
+                            style={{
+                              backgroundColor: "#0f172a",
+                              border: "1px solid #475569",
+                              fontSize: "0.8rem",
+                              letterSpacing: "0.5px",
+                              borderRadius: "6px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {f.valores.cc || "—"}
+                          </span>
+                        </td>
+                        <td style={estilo("gruppo")} title={titulo("gruppo")}>
+                          <span
+                            className="badge px-2.5 py-1 text-white shadow-sm"
+                            style={{
+                              backgroundColor: gruppoColor,
+                              fontSize: "0.74rem",
+                              borderRadius: "6px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {gruppoLabel}
+                          </span>
+                        </td>
+                        <td
+                          className="text-secondary fw-medium"
+                          style={estilo("supervisor")}
+                          title={titulo("supervisor")}
                         >
-                          {labelAccion}
-                        </span>
-                      </td>
-                      <td className="fw-semibold text-dark">{h.campoLabel || "—"}</td>
-                      <td className="text-start text-secondary" style={{ wordBreak: "break-word" }}>
-                        {h.valorAnterior || "—"}
-                      </td>
-                      <td className="text-start fw-semibold text-dark" style={{ wordBreak: "break-word" }}>
-                        {h.valorNuevo || "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
+                          {f.valores.supervisor || "—"}
+                        </td>
+                        <td
+                          className="text-secondary fw-medium"
+                          style={estilo("encargadoGral")}
+                          title={titulo("encargadoGral")}
+                        >
+                          {f.valores.encargadoGral || "—"}
+                        </td>
+                        <td
+                          className="text-start ps-3 fw-semibold text-dark"
+                          style={{ whiteSpace: "normal", wordBreak: "break-word", ...estilo("descripcion") }}
+                          title={titulo("descripcion")}
+                        >
+                          {f.valores.descripcion || "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </div>
           )}
         </Modal.Body>
         <Modal.Footer className="bg-light border-0 py-2 px-4">
           <span className="text-muted me-auto" style={{ fontSize: "0.76rem" }}>
-            {historial.length} {historial.length === 1 ? "registro" : "registros"}
+            {filasHistorial.length} {filasHistorial.length === 1 ? "registro" : "registros"}
           </span>
           <Button
             variant="outline-secondary"
