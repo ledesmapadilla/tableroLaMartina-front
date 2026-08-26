@@ -1117,13 +1117,6 @@ function TractoresAltas() {
                               Baja
                             </span>
                           )}
-                          {f.origen === "reconstruido" && (
-                            <i
-                              className="bi bi-info-circle ms-1 text-muted"
-                              style={{ fontSize: "0.72rem" }}
-                              title={f.observaciones || "Registro reconstruido"}
-                            ></i>
-                          )}
                         </td>
                         <td style={estilo("cc")} title={titulo("cc")}>
                           <span
