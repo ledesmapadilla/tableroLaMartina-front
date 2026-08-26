@@ -8,6 +8,8 @@ import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
 import Colectivo from "./components/pages/Colectivo";
 import ColectivosAltas from "./components/pages/ColectivosAltas";
+import ColectivosPreventivo from "./components/pages/ColectivosPreventivo";
+import ColectivosReparaciones from "./components/pages/ColectivosReparaciones";
 import CamionetasAltas from "./components/pages/CamionetasAltas";
 import CamionetasCheckList from "./components/pages/CamionetasCheckList";
 import ResumenCheckList from "./components/pages/ResumenCheckList";
@@ -89,8 +91,8 @@ function App() {
               <Route path="/tractores/services/reparaciones/resumen" element={<ResumenReparacionesTractores />} />
               <Route path="/reparaciones/sanpablo" element={<Error404 />} />
               <Route path="/colectivo" element={<Colectivo />} />
-              <Route path="/colectivo/preventivo" element={<Error404 />} />
-              <Route path="/colectivo/reparaciones" element={<Error404 />} />
+              <Route path="/colectivo/preventivo" element={<ColectivosPreventivo />} />
+              <Route path="/colectivo/reparaciones" element={<ColectivosReparaciones />} />
               <Route path="/colectivos/altas" element={<ColectivosAltas />} />
               <Route path="/camionetas/services" element={<CamionetasServices />} />
               <Route path="/camionetas/services/kilometros" element={<ServicesKilometros />} />
