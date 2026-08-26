@@ -7,6 +7,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
 
 const API = "/api/tractores";
+const API_HISTORIAL = "/api/historial-tractor";
 
 const GRUPPO_LABELS = {
   1: "Grupo 1",
@@ -142,6 +143,11 @@ function TractoresAltas() {
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
 
+  // Modal Historial de cambios
+  const [historialModal, setHistorialModal] = useState(null);
+  const [historial, setHistorial] = useState([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -243,6 +249,36 @@ function TractoresAltas() {
       cargar();
       Swal.fire({ icon: "success", title: "Tractor eliminado", timer: 1200, showConfirmButton: false });
     }
+  };
+
+  const abrirHistorial = async (t) => {
+    setHistorialModal(t);
+    setCargandoHistorial(true);
+    try {
+      const res = await fetch(`${API_HISTORIAL}/${t._id}`);
+      const data = res.ok ? await res.json() : [];
+      setHistorial(Array.isArray(data) ? data : []);
+    } catch {
+      setHistorial([]);
+    } finally {
+      setCargandoHistorial(false);
+    }
+  };
+
+  const cerrarHistorial = () => {
+    setHistorialModal(null);
+    setHistorial([]);
+  };
+
+  const formatFechaHora = (f) => {
+    if (!f) return "—";
+    const d = new Date(f);
+    if (isNaN(d)) return "—";
+    return `${d.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })} ${d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`;
   };
 
   const supervisoresExistentes = [
@@ -697,7 +733,7 @@ function TractoresAltas() {
                 <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left", fontWeight: "normal" }}>
                   Descripción / Modelo
                 </th>
-                <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                <th style={{ width: "125px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   Acciones
                 </th>
               </tr>
@@ -769,6 +805,14 @@ function TractoresAltas() {
                       </td>
                       <td>
                         <div className="d-flex justify-content-center align-items-center gap-1.5">
+                          <button
+                            onClick={() => abrirHistorial(t)}
+                            className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center rounded-2 p-1"
+                            style={{ width: "28px", height: "28px" }}
+                            title="Historial de cambios"
+                          >
+                            <i className="bi bi-clock-history" style={{ fontSize: "0.8rem" }}></i>
+                          </button>
                           <button
                             onClick={() => abrirEditar(t)}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-1"
@@ -915,6 +959,104 @@ function TractoresAltas() {
             </Button>
           </Modal.Footer>
         </Form>
+      </Modal>
+
+      {/* Modal Historial de Cambios */}
+      <Modal
+        show={historialModal !== null && !showModal}
+        onHide={cerrarHistorial}
+        centered
+        size="xl"
+        contentClassName="border-0 rounded-4 shadow-lg overflow-hidden"
+      >
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{ backgroundColor: "#1e293b", color: "#fff", padding: "14px 20px" }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 mb-0">
+            <i className="bi bi-clock-history text-info"></i>
+            <span>
+              Historial de Cambios — CC {historialModal?.cc}
+              {historialModal?.descripcion ? ` (${historialModal.descripcion})` : ""}
+            </span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3 p-md-4 bg-white" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+          {cargandoHistorial ? (
+            <div className="text-center py-4 text-muted" style={{ fontSize: "0.85rem" }}>
+              Cargando historial...
+            </div>
+          ) : historial.length === 0 ? (
+            <div className="text-center py-4 text-muted" style={{ fontSize: "0.85rem" }}>
+              Todavía no hay cambios registrados para este tractor
+            </div>
+          ) : (
+            <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
+              <thead className="table-dark">
+                <tr>
+                  <th style={{ fontWeight: 500, width: "130px" }}>Fecha</th>
+                  <th style={{ fontWeight: 500, width: "115px" }}>Acción</th>
+                  <th style={{ fontWeight: 500, width: "160px" }}>Campo</th>
+                  <th style={{ fontWeight: 500, textAlign: "left" }}>Valor anterior</th>
+                  <th style={{ fontWeight: 500, textAlign: "left" }}>Valor nuevo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historial.map((h) => {
+                  const esAlta = h.accion === "alta";
+                  const esBaja = h.accion === "baja";
+                  const colorAccion = esAlta ? "#15803d" : esBaja ? "#b91c1c" : "#1e40af";
+                  const labelAccion = esAlta ? "Alta" : esBaja ? "Baja" : "Modificación";
+
+                  return (
+                    <tr key={h._id}>
+                      <td className="text-secondary" style={{ whiteSpace: "nowrap" }}>
+                        {formatFechaHora(h.fecha)}
+                        {h.origen === "reconstruido" && (
+                          <i
+                            className="bi bi-info-circle ms-1 text-muted"
+                            style={{ fontSize: "0.72rem" }}
+                            title={h.observaciones || "Registro reconstruido"}
+                          ></i>
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className="badge px-2 py-1 text-white rounded-2"
+                          style={{ backgroundColor: colorAccion, fontSize: "0.72rem", fontWeight: 600 }}
+                        >
+                          {labelAccion}
+                        </span>
+                      </td>
+                      <td className="fw-semibold text-dark">{h.campoLabel || "—"}</td>
+                      <td className="text-start text-secondary" style={{ wordBreak: "break-word" }}>
+                        {h.valorAnterior || "—"}
+                      </td>
+                      <td className="text-start fw-semibold text-dark" style={{ wordBreak: "break-word" }}>
+                        {h.valorNuevo || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="bg-light border-0 py-2 px-4">
+          <span className="text-muted me-auto" style={{ fontSize: "0.76rem" }}>
+            {historial.length} {historial.length === 1 ? "registro" : "registros"}
+          </span>
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={cerrarHistorial}
+            className="rounded-3 px-3 py-1.5"
+            style={{ fontSize: "0.84rem" }}
+          >
+            Cerrar
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
