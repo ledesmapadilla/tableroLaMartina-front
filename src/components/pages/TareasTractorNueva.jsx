@@ -43,6 +43,24 @@ const PARTES = [
 ];
 const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
 
+const URGENCIAS = ["baja", "media", "alta"];
+
+const URGENCIA_ESTILOS = {
+  alta:  { label: "Crítico", bg: "#dc2626", text: "#ffffff", border: "#b91c1c", plano: "#dc2626", prioridad: "Crítico" },
+  media: { label: "Urgente", bg: "#fef3c7", text: "#b45309", border: "#fde047", plano: "#b45309", prioridad: "Urgente" },
+  baja:  { label: "Leve",    bg: "#dcfce7", text: "#15803d", border: "#86efac", plano: "#15803d", prioridad: "Normal" },
+};
+
+// Las tareas viejas pueden no tener urgencia; se deduce de prioridad.
+const urgenciaNormalizada = (t) => {
+  const u = String(t?.urgencia || "").toLowerCase().trim();
+  if (URGENCIAS.includes(u)) return u;
+  const pr = String(t?.prioridad || "").toLowerCase().trim();
+  if (pr === "crítico" || pr === "critico") return "alta";
+  if (pr === "urgente") return "media";
+  return "baja";
+};
+
 const estadoNormalizado = (estado) => {
   if (!estado) return "Pendiente";
   const lower = String(estado).toLowerCase().trim();
@@ -359,6 +377,7 @@ function TareasTractorNueva() {
       parte: tarea.parte || "",
       horometro: tarea.horometro ?? "",
       estado: estadoNormalizado(tarea.estado),
+      urgencia: urgenciaNormalizada(tarea),
     });
   };
 
@@ -396,6 +415,8 @@ function TareasTractorNueva() {
         parte: tareaEditada.parte || "",
         horometro: tareaEditada.horometro,
         estado: tareaEditada.estado,
+        urgencia: tareaEditada.urgencia,
+        prioridad: URGENCIA_ESTILOS[tareaEditada.urgencia].prioridad,
       };
 
       const res = await fetch(`/api/trabajos-tractor/${tareaEditada._id}`, {
@@ -626,6 +647,7 @@ function TareasTractorNueva() {
             {tareasFiltradas.map((t) => {
               const isSelected = tareaSeleccionada?._id === t._id;
               const estado = estadoNormalizado(t.estado);
+              const estiloUrg = URGENCIA_ESTILOS[urgenciaNormalizada(t)];
               let badgeColor = "bg-secondary";
               if (estado === "En proceso") badgeColor = "bg-warning text-dark";
               if (estado === "Terminada") badgeColor = "bg-success";
@@ -645,6 +667,18 @@ function TareasTractorNueva() {
                       {formatF(t.fecha)}
                     </span>
                     <div className="d-flex align-items-center gap-2">
+                      <span
+                        className="badge rounded-pill px-2 py-1 fw-normal"
+                        style={{
+                          fontSize: "0.68rem",
+                          backgroundColor: estiloUrg.bg,
+                          color: estiloUrg.text,
+                          border: `1px solid ${estiloUrg.border}`,
+                        }}
+                        title="Nivel de urgencia"
+                      >
+                        {estiloUrg.label}
+                      </span>
                       <span className={`badge ${badgeColor} rounded-pill px-2 py-1 fw-normal`} style={{ fontSize: "0.68rem", fontWeight: "normal" }}>
                         {estado}
                       </span>
@@ -710,6 +744,15 @@ function TareasTractorNueva() {
                     {tareaSeleccionada.horometro ? (
                       <span className="ms-2">• Horómetro: <span className="fw-semibold text-dark">{tareaSeleccionada.horometro} hs</span></span>
                     ) : null}
+                    <span className="ms-2">
+                      • Urgencia:{" "}
+                      <span
+                        className="fw-semibold"
+                        style={{ color: URGENCIA_ESTILOS[urgenciaNormalizada(tareaSeleccionada)].plano }}
+                      >
+                        {URGENCIA_ESTILOS[urgenciaNormalizada(tareaSeleccionada)].label}
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1095,7 +1138,7 @@ function TareasTractorNueva() {
                 />
               </Col>
 
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Categoría</Form.Label>
                 <Form.Select
                   value={tareaEditada.parte}
@@ -1112,7 +1155,7 @@ function TareasTractorNueva() {
                 </Form.Select>
               </Col>
 
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
                 <Form.Select
                   value={tareaEditada.estado}
@@ -1123,6 +1166,22 @@ function TareasTractorNueva() {
                   {ESTADOS.map((op) => (
                     <option key={op} value={op}>
                       {op}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Urgencia</Form.Label>
+                <Form.Select
+                  value={tareaEditada.urgencia}
+                  onChange={(e) => handleCambioEdicion("urgencia", e.target.value)}
+                  className="rounded-3 form-select-sm"
+                  style={{ fontSize: "0.85rem", height: "36px" }}
+                >
+                  {URGENCIAS.map((op) => (
+                    <option key={op} value={op}>
+                      {URGENCIA_ESTILOS[op].label}
                     </option>
                   ))}
                 </Form.Select>
