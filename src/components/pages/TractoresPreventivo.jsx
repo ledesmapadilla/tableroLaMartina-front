@@ -63,8 +63,8 @@ function getEstadoTractor(hsActuales, hsUltimoService, intervalo = DEFAULT_INTER
   if (diferencia <= 0) {
     return {
       label: "Atrasado",
-      bg: "#fee2e2",
-      color: "#991b1b",
+      bg: "#dc2626",
+      color: "#ffffff",
     };
   }
 
