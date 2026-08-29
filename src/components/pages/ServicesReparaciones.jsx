@@ -241,6 +241,20 @@ function ServicesReparaciones() {
                 >
                   {c.marca || "Camioneta"}
                 </div>
+
+                {/* Responsable de la unidad */}
+                <div
+                  className="text-truncate w-100 px-2 mt-0.5"
+                  title={c.responsable ? `Responsable: ${c.responsable}` : "Sin responsable asignado"}
+                  style={{
+                    fontSize: "0.72rem",
+                    color: c.responsable ? "#cbd5e1" : "#94a3b8",
+                    fontStyle: c.responsable ? "normal" : "italic",
+                  }}
+                >
+                  <i className="bi bi-person-fill me-1"></i>
+                  {c.responsable || "Sin asignar"}
+                </div>
               </div>
             );
           })}
