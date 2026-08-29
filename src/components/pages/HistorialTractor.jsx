@@ -4,6 +4,7 @@ import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "re
 import { nuevoWorkbook } from "../../helpers/excel";
 import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
+import LogoNavbar from "../shared/LogoNavbar";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -362,8 +363,9 @@ function HistorialTractor() {
       {/* Barra de Cabecera Institucional */}
       <div
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
-        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
+        <LogoNavbar />
         <div className="d-flex align-items-center gap-3">
           <div
             className="rounded-3 d-flex align-items-center justify-content-center me-1"

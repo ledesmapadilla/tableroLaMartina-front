@@ -337,3 +337,10 @@ select.form-select.filtro-activo option:checked {
 }
 
 
+
+/* ── Modal de alta de CC (Producción) ── */
+/* Mas angosto que el modal por defecto de Bootstrap (500px): los campos son
+   pocos y cortos, y de otro modo los inputs quedan desproporcionados. */
+.modal-cc {
+  max-width: 420px;
+}

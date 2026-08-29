@@ -1,8 +1,15 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { isMobile } from "./utils/device";
 import Sidebar from "./components/shared/Sidebar";
 import Footer from "./components/shared/Footer";
+import PaginaPrincipal from "./components/pages/PaginaPrincipal";
 import Inicio from "./components/pages/Inicio";
+import Produccion from "./components/pages/Produccion";
+import ProduccionAltaCC from "./components/pages/ProduccionAltaCC";
+import ProduccionAltaPersonal from "./components/pages/ProduccionAltaPersonal";
+import ProduccionAltaTareas from "./components/pages/ProduccionAltaTareas";
+import ProduccionCertificados from "./components/pages/ProduccionCertificados";
+import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMes";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
@@ -39,6 +46,7 @@ import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
 import CamionetaMenuReparaciones from "./components/pages/CamionetaMenuReparaciones";
 import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
 import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
+import NavbarProduccion from "./components/shared/NavbarProduccion";
 
 function App() {
   if (isMobile) {
@@ -61,13 +69,36 @@ function App() {
 
   return (
     <BrowserRouter>
+      <LayoutDesktop />
+    </BrowserRouter>
+  );
+}
+
+function LayoutDesktop() {
+  const { pathname } = useLocation();
+  const esPaginaPrincipal = pathname === "/";
+  // Producción es una sección independiente: sin sidebar, se navega con su propio navbar
+  const esProduccion = pathname === "/produccion" || pathname.startsWith("/produccion/");
+  const sinSidebar = esPaginaPrincipal || esProduccion;
+
+  return (
       <div className="app-wrapper">
-        <Sidebar />
-        <BotonTableroFlotante />
+        {!sinSidebar && <Sidebar />}
+        {!sinSidebar && <BotonTableroFlotante />}
         <div className="layout-right">
+          {esProduccion && <NavbarProduccion />}
           <main>
             <Routes>
-              <Route path="/" element={<Inicio />} />
+              <Route path="/" element={<PaginaPrincipal />} />
+              <Route path="/inicio" element={<Inicio />} />
+              <Route path="/compras" element={<Error404 />} />
+              <Route path="/produccion" element={<Produccion />} />
+              <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
+              <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMes />} />
+              <Route path="/produccion/altas" element={<Error404 />} />
+              <Route path="/produccion/altas/cc" element={<ProduccionAltaCC />} />
+              <Route path="/produccion/altas/personal" element={<ProduccionAltaPersonal />} />
+              <Route path="/produccion/altas/tareas" element={<ProduccionAltaTareas />} />
               <Route path="/camionetas" element={<Camionetas />} />
               <Route path="/camionetas/preventivo" element={<CamionetasPreventivo />} />
               <Route path="/camionetas/reparaciones" element={<Navigate to="/camionetas/services/reparaciones" replace />} />
@@ -111,7 +142,6 @@ function App() {
           <Footer />
         </div>
       </div>
-    </BrowserRouter>
   );
 }
 

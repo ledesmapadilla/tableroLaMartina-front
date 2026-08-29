@@ -3,6 +3,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col } from "react-bootstrap";
+import LogoNavbar from "../shared/LogoNavbar";
 
 const API = "/api/camionetas";
 
@@ -268,6 +269,7 @@ function CamionetasAltas() {
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
+        <LogoNavbar />
         {/* Lado Izquierdo: Icono e info */}
         <div className="d-flex align-items-center gap-2">
           <div
@@ -286,14 +288,11 @@ function CamionetasAltas() {
           <span className="text-light opacity-75 small ms-1">{camionetas.length} Camionetas</span>
         </div>
 
-        {/* Título Centrado */}
+        {/* Título (corrido a la izquierda: el logo ocupa el centro) */}
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            textAlign: "center",
+            marginRight: "auto",
+            marginLeft: "0.9rem",
             width: "max-content",
             pointerEvents: "none",
           }}

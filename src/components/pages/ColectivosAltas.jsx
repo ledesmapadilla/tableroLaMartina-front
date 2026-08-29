@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
+import LogoNavbar from "../shared/LogoNavbar";
 
 const API = "/api/colectivos";
 
@@ -342,6 +343,7 @@ function ColectivosAltas() {
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
+        <LogoNavbar />
         {/* Lado Izquierdo: Icono e info */}
         <div className="d-flex align-items-center gap-2">
           <div
@@ -360,14 +362,11 @@ function ColectivosAltas() {
           <span className="text-light opacity-75 small ms-1">{colectivos.length} Colectivos</span>
         </div>
 
-        {/* Título Centrado en la Página */}
+        {/* Título (corrido a la izquierda: el logo ocupa el centro) */}
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            textAlign: "center",
+            marginRight: "auto",
+            marginLeft: "0.9rem",
             width: "max-content",
             pointerEvents: "none",
           }}

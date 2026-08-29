@@ -3,7 +3,8 @@ import { NavLink, useLocation } from "react-router-dom";
 import TractorIcon from "./TractorIcon";
 
 const links = [
-  { to: "/", label: "Inicio", icon: "bi bi-house-fill", end: true },
+  { to: "/", label: "Principal", icon: "bi bi-house-fill", end: true },
+  { to: "/inicio", label: "Mantenimiento", icon: "bi bi-tools", end: true },
   {
     to: "/camionetas",
     label: "Camionetas",

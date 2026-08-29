@@ -5,6 +5,8 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
+import LogoNavbar from "../shared/LogoNavbar";
+import { compararCC } from "../../utils/ordenCC";
 
 const API = "/api/tractores";
 const API_HISTORIAL = "/api/historial-tractor";
@@ -462,6 +464,10 @@ function TractoresAltas() {
     return matchBusqueda && matchGrupo && matchSupervisor && matchEncargado;
   });
 
+  // El backend los devuelve agrupados por grupo y supervisor; en esta pantalla
+  // se listan por número de CC, que es como se los busca.
+  tractoresFiltrados.sort((a, b) => compararCC(a.cc, b.cc));
+
   return (
     <div
       style={{
@@ -479,6 +485,7 @@ function TractoresAltas() {
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
+        <LogoNavbar />
         {/* Lado Izquierdo: Icono e info */}
         <div className="d-flex align-items-center gap-2">
           <div
@@ -497,14 +504,11 @@ function TractoresAltas() {
           <span className="text-light opacity-75 small ms-1">{tractores.length} Tractores</span>
         </div>
 
-        {/* Título Centrado en la Página */}
+        {/* Título (corrido a la izquierda: el logo ocupa el centro) */}
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            textAlign: "center",
+            marginRight: "auto",
+            marginLeft: "0.9rem",
             width: "max-content",
             pointerEvents: "none",
           }}

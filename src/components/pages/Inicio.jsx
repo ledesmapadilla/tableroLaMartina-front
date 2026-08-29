@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
+import LogoNavbar from "../shared/LogoNavbar";
 
 const secciones = [
   {
@@ -79,31 +80,10 @@ function Inicio() {
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0 position-relative"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px" }}
       >
-        <div className="d-flex align-items-center">
-          <img
-            src="/logo-la-martina.jpg"
-            alt="Logo"
-            height="46"
-            style={{
-              maskImage:
-                "linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
-              WebkitMaskImage:
-                "linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
-              maskComposite: "intersect",
-              WebkitMaskComposite: "destination-in",
-            }}
-          />
-        </div>
+        <LogoNavbar />
 
-        {/* Título Centrado en el Navbar con & más chica */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-            whiteSpace: "nowrap",
-          }}
-        >
+        {/* Título a la izquierda: el logo ocupa el centro */}
+        <div style={{ whiteSpace: "nowrap" }}>
           <span className="text-white fs-6 fw-semibold">
             Tablero de Control{" "}
             <span style={{ fontSize: "0.82em", opacity: 0.85, marginInline: "2px" }}>&</span>{" "}

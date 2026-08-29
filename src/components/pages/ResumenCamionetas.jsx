@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Container } from "react-bootstrap";
 
 import { getIntervalKm } from "../../utils/serviceHelpers";
+import LogoNavbar from "../shared/LogoNavbar";
 
 const MESES = [
   "Enero",
@@ -175,6 +176,7 @@ function ResumenCamionetas() {
         className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
         style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
       >
+        <LogoNavbar />
         {/* Lado Izquierdo: Icono, info y Selector de Año */}
         <div className="d-flex align-items-center gap-3">
           <div className="d-flex align-items-center gap-2">
@@ -256,14 +258,11 @@ function ResumenCamionetas() {
           </div>
         </div>
 
-        {/* Título Centrado */}
+        {/* Título (corrido a la izquierda: el logo ocupa el centro) */}
         <div
           style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            textAlign: "center",
+            marginRight: "auto",
+            marginLeft: "0.9rem",
             width: "max-content",
             pointerEvents: "none",
           }}
