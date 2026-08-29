@@ -56,6 +56,22 @@ const CATEGORIA_COLORES = {
   Otros: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
 };
 
+const URGENCIA_ESTILOS = {
+  alta:  { label: "Crítico", bg: "#dc2626", text: "#ffffff", border: "#b91c1c" },
+  media: { label: "Urgente", bg: "#fef3c7", text: "#b45309", border: "#fde047" },
+  baja:  { label: "Leve",    bg: "#dcfce7", text: "#15803d", border: "#86efac" },
+};
+
+// Los trabajos viejos pueden no tener urgencia; se deduce de prioridad.
+const urgenciaNormalizada = (t) => {
+  const u = String(t?.urgencia || "").toLowerCase().trim();
+  if (u === "alta" || u === "media" || u === "baja") return u;
+  const p = String(t?.prioridad || "").toLowerCase().trim();
+  if (p === "crítico" || p === "critico") return "alta";
+  if (p === "urgente") return "media";
+  return "baja";
+};
+
 const estadoNormalizado = (estado) => {
   if (!estado) return "Pendiente";
   const lower = String(estado).toLowerCase().trim();
@@ -870,6 +886,11 @@ function ResumenReparacionesTractores() {
             border-bottom: 3px solid #1e293b !important;
             border-top: none !important;
           }
+          .tabla-general-reparaciones tr.fila-critica td,
+          .tabla-general-reparaciones tr.fila-critica td div,
+          .tabla-general-reparaciones tr.fila-critica td span:not(.badge) {
+            color: #dc2626 !important;
+          }
           .tabla-general-reparaciones tbody tr:hover {
             background-color: #f1f5f9 !important;
           }
@@ -944,6 +965,19 @@ function ResumenReparacionesTractores() {
                     }}
                   >
                     Categoría
+                  </th>
+                  <th
+                    style={{
+                      width: "100px",
+                      padding: "8px 10px",
+                      backgroundColor: "#1e293b",
+                      color: "#ffffff",
+                      fontWeight: "normal",
+                      textAlign: "center",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Urgencia
                   </th>
                   <th
                     style={{
@@ -1041,14 +1075,14 @@ function ResumenReparacionesTractores() {
               <tbody>
                 {cargando ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-4 text-muted">
+                    <td colSpan={11} className="text-center py-4 text-muted">
                       <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                       Cargando planilla de reparaciones...
                     </td>
                   </tr>
                 ) : trabajosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-4 text-muted">
+                    <td colSpan={11} className="text-center py-4 text-muted">
                       <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
                       No se encontraron reparaciones registradas con los filtros seleccionados.
                     </td>
@@ -1056,6 +1090,9 @@ function ResumenReparacionesTractores() {
                 ) : (
                   trabajosFiltrados.map((t, idx) => {
                     const estiloCat = CATEGORIA_COLORES[t.parte] || CATEGORIA_COLORES["Otros"];
+                    const urg = urgenciaNormalizada(t);
+                    const estiloUrg = URGENCIA_ESTILOS[urg];
+                    const esCritica = urg === "alta";
                     const est = estadoNormalizado(t.estado);
                     const esTerminada = est === "Terminada";
                     const esEnProceso = est === "En proceso";
@@ -1075,7 +1112,7 @@ function ResumenReparacionesTractores() {
                     return (
                       <tr
                         key={t._id}
-                        className={`${esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"} ${Boolean(t.maquinaParada) ? "tr-parada" : ""}`}
+                        className={`${esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"} ${Boolean(t.maquinaParada) ? "tr-parada" : ""} ${esCritica ? "fila-critica" : ""}`}
                         style={{
                           backgroundColor: Boolean(t.maquinaParada) ? "#fee2e2" : undefined,
                         }}
@@ -1140,6 +1177,22 @@ function ResumenReparacionesTractores() {
                             }}
                           >
                             {t.parte || "Mecánica general"}
+                          </span>
+                        </td>
+
+                        {/* Urgencia */}
+                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                          <span
+                            className="badge fw-semibold px-2 py-0.5"
+                            style={{
+                              backgroundColor: estiloUrg.bg,
+                              color: estiloUrg.text,
+                              border: `1px solid ${estiloUrg.border}`,
+                              fontSize: "0.72rem",
+                              borderRadius: "5px",
+                            }}
+                          >
+                            {estiloUrg.label}
                           </span>
                         </td>
 
