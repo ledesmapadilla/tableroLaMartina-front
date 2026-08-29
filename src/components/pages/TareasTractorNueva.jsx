@@ -35,6 +35,7 @@ const PARTES = [
   "Dirección",
   "Mecánica general",
   "Electricidad / Luces",
+  "Horómetro",
   "Rodado / Cubiertas",
   "Implementos / Enganche",
   "Service Programado",

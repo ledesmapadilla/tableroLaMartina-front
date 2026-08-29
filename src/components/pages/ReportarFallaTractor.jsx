@@ -471,6 +471,7 @@ function ReportarFallaTractor() {
                     <option value="Dirección">Dirección</option>
                     <option value="Mecánica general">Mecánica general</option>
                     <option value="Electricidad / Luces">Electricidad / Luces</option>
+                    <option value="Horómetro">Horómetro</option>
                     <option value="Rodado / Cubiertas">Rodado / Cubiertas</option>
                     <option value="Implementos / Enganche">Implementos / Enganche</option>
                     <option value="Service Programado">Service Programado</option>
