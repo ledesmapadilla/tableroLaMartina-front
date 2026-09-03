@@ -104,6 +104,7 @@ function ResumenReparacionesTractores() {
   const [trabajos, setTrabajos] = useState([]);
   const [tractores, setTractores] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [paradosIds, setParadosIds] = useState(new Set());
 
   // Filtros
   const [busqueda, setBusqueda] = useState("");
@@ -121,9 +122,11 @@ function ResumenReparacionesTractores() {
     Promise.all([
       fetch("/api/trabajos-tractor").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]).then(([trabs, tracs]) => {
+      fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([trabs, tracs, paradosData]) => {
       setTrabajos(Array.isArray(trabs) ? trabs : []);
       setTractores(Array.isArray(tracs) ? tracs : []);
+      setParadosIds(new Set(Array.isArray(paradosData) ? paradosData : []));
       setCargando(false);
     });
   };
@@ -152,6 +155,13 @@ function ResumenReparacionesTractores() {
       infoG,
       tractorId: tracObj?._id || t.tractor?._id,
     };
+  };
+
+  // Un tractor esta parado si este trabajo lo dejo parado o si tiene alguna
+  // parada abierta en otro trabajo (mismo criterio que la pantalla de grupos).
+  const estaTractorParado = (t, tractorInfo) => {
+    const id = tractorInfo?.tractorId ? String(tractorInfo.tractorId) : null;
+    return Boolean(t.maquinaParada || (id && paradosIds.has(id)));
   };
 
   // Lista de tractores (CC) para el filtro
@@ -465,6 +475,10 @@ function ResumenReparacionesTractores() {
         };
         if (Boolean(t.maquinaParada)) {
           cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+        }
+        // El CC de un tractor parado va en rojo, igual que en pantalla.
+        if (colNumber === 1 && estaTractorParado(t, tractorInfo)) {
+          cell.font = { bold: true, color: { argb: "FF991B1B" } };
         }
         if (colIndicesTexto.includes(colNumber)) {
           cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
@@ -1106,10 +1120,20 @@ function ResumenReparacionesTractores() {
                     const ccProx = proxTrabajo ? getTractorInfo(proxTrabajo).cleanCC : null;
                     const esCambioTractor = !proxTrabajo || (ccActual !== ccProx);
 
-                    // 2 tonos intercalados de fondo de badge según tractor
+                    // 2 tonos intercalados de fondo de badge según tractor.
+                    // Un tractor parado se marca con el CC en rojo.
                     const tonoIndex = tractorColorMap.get(ccActual) ?? 0;
-                    const bgBadge = tonoIndex === 0 ? "#1e293b" : "#475569";
-                    const borderBadge = tonoIndex === 0 ? "#0f172a" : "#334155";
+                    const tractorParado = estaTractorParado(t, tractorInfo);
+                    const bgBadge = tractorParado
+                      ? "#991b1b"
+                      : tonoIndex === 0
+                      ? "#1e293b"
+                      : "#475569";
+                    const borderBadge = tractorParado
+                      ? "#7f1d1d"
+                      : tonoIndex === 0
+                      ? "#0f172a"
+                      : "#334155";
 
                     return (
                       <tr
