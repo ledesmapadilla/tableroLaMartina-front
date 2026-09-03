@@ -400,31 +400,35 @@ function CamionetasAltas() {
           }}
         >
           <Table
-            hover
             size="sm"
-            className="text-center align-middle mb-0"
-            style={{ whiteSpace: "nowrap", fontSize: "0.8rem", width: "100%" }}
+            className="tabla-informe text-center align-middle mb-0"
+            style={{ whiteSpace: "nowrap", fontSize: "0.7rem", width: "100%" }}
           >
-            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1e293b", color: "#fff" }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1b4332", color: "#fff" }}>
               <tr className="fw-normal align-middle">
-                <th style={{ width: "40px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 4px", fontWeight: "normal" }}>
-                  #
-                </th>
-                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left", fontWeight: "normal" }}>
-                  Marca / Modelo
-                </th>
-                <th style={{ width: "130px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
-                  Patente
-                </th>
-                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
-                  Responsable
-                </th>
-                <th style={{ width: "160px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
-                  Teléfono (Avisos)
-                </th>
-                <th style={{ width: "100px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
-                  Acciones
-                </th>
+                {[
+                  { h: "#", w: "40px" },
+                  { h: "Marca / Modelo", w: "180px", izq: true },
+                  { h: "Patente", w: "130px" },
+                  { h: "Responsable", w: "180px" },
+                  { h: "Teléfono (Avisos)", w: "160px" },
+                  { h: "Acciones", w: "100px" },
+                ].map(({ h, w, izq }) => (
+                  <th
+                    key={h}
+                    style={{
+                      width: w,
+                      backgroundColor: "#1b4332",
+                      color: "#fff",
+                      padding: "3px 5px",
+                      fontSize: "0.66rem",
+                      fontWeight: 600,
+                      textAlign: izq ? "left" : "center",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -437,17 +441,11 @@ function CamionetasAltas() {
               ) : (
                 camionetasFiltradas.map((c, idx) => {
                   const estaParada = paradasAbiertas.has(c._id?.toString());
-                  const isEven = idx % 2 === 0;
                   return (
                     <tr
                       key={c._id}
-                      style={{
-                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
-                        borderBottom: "1px solid #e2e8f0",
-                        height: "44px",
-                      }}
                     >
-                      <td className="text-muted" style={{ fontSize: "0.76rem" }}>
+                      <td className="text-muted" style={{ fontSize: "0.68rem" }}>
                         {idx + 1}
                       </td>
                       <td className="text-start fw-semibold text-dark ps-3">
@@ -455,11 +453,11 @@ function CamionetasAltas() {
                       </td>
                       <td>
                         <span
-                          className="badge px-2.5 py-1 text-white shadow-sm"
+                          className="badge px-2 py-0.5 text-white shadow-sm"
                           style={{
                             backgroundColor: estaParada ? "#991b1b" : "#0f172a",
                             border: "1px solid #475569",
-                            fontSize: "0.82rem",
+                            fontSize: "0.74rem",
                             letterSpacing: "1px",
                             borderRadius: "6px",
                             fontWeight: 700,
@@ -486,18 +484,18 @@ function CamionetasAltas() {
                           <button
                             onClick={() => abrirEditar(c)}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-1"
-                            style={{ width: "28px", height: "28px" }}
+                            style={{ width: "24px", height: "24px" }}
                             title="Editar camioneta"
                           >
-                            <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
+                            <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
                           <button
                             onClick={() => eliminar(c._id)}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
-                            style={{ width: "28px", height: "28px" }}
+                            style={{ width: "24px", height: "24px" }}
                             title="Eliminar camioneta"
                           >
-                            <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
+                            <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
                           </button>
                         </div>
                       </td>

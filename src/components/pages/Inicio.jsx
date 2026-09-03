@@ -69,7 +69,7 @@ function Inicio() {
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        backgroundColor: "#f8f9fa",
+        background: "linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #334155 100%)",
         height: "100%",
         maxHeight: "100vh",
         overflow: "hidden",
@@ -100,13 +100,21 @@ function Inicio() {
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-3"
         style={{ position: "relative", overflow: "hidden" }}
       >
-        <div style={{ position: "relative", maxWidth: "960px", width: "100%" }}>
+        {/* El ancho se limita al alto disponible para que las dos filas de
+            tarjetas cuadradas entren sin scroll. */}
+        <div
+          style={{
+            position: "relative",
+            maxWidth: "min(560px, calc(100vh - 200px))",
+            width: "100%",
+          }}
+        >
           {/* Grid 2x2 con las 4 tarjetas grandes */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(320px, 1fr))",
-              gap: "1.5rem",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "1.75rem",
               justifyContent: "center",
             }}
           >
@@ -115,13 +123,12 @@ function Inicio() {
               return (
                 <div
                   key={s.ruta}
-                  className="card-seccion-inicio d-flex flex-column align-items-center justify-content-center p-4 text-center"
+                  className="card-seccion-inicio d-flex flex-column align-items-center justify-content-center p-3 text-center"
                   style={{
                     background: isHovered ? s.hoverBg : s.bg,
                     borderRadius: "20px",
-                    height: "calc((100vh - 150px) / 2.3)",
-                    minHeight: "210px",
-                    maxHeight: "265px",
+                    aspectRatio: "1 / 1",
+                    width: "100%",
                     boxShadow: isHovered
                       ? `0 18px 32px -8px rgba(0, 0, 0, 0.45), 0 0 18px ${s.accentColor}40`
                       : "0 8px 20px -4px rgba(0, 0, 0, 0.25)",
@@ -141,10 +148,10 @@ function Inicio() {
                 >
                   {/* Icono Principal */}
                   <div
-                    className="mb-2.5 d-flex align-items-center justify-content-center"
+                    className="mb-2 d-flex align-items-center justify-content-center"
                     style={{
-                      width: "60px",
-                      height: "60px",
+                      width: "64px",
+                      height: "64px",
                       borderRadius: "16px",
                       backgroundColor: "rgba(255, 255, 255, 0.1)",
                       border: "1px solid rgba(255, 255, 255, 0.16)",
@@ -152,17 +159,17 @@ function Inicio() {
                     }}
                   >
                     {s.icono ? (
-                      <i className={s.icono} style={{ fontSize: "2.1rem", color: s.accentColor }}></i>
+                      <i className={s.icono} style={{ fontSize: "2.2rem", color: s.accentColor }}></i>
                     ) : (
-                      <TractorIcon size="2.1rem" color={s.accentColor} />
+                      <TractorIcon size="2.2rem" color={s.accentColor} />
                     )}
                   </div>
 
                   {/* Título */}
-                  <h3 className="h4 fw-bold mb-2 tracking-tight text-white">{s.titulo}</h3>
+                  <h3 className="h4 fw-bold mb-2 text-white">{s.titulo}</h3>
 
                   {/* Subtítulo */}
-                  <p className="small mb-0 text-light opacity-75 px-3" style={{ fontSize: "0.84rem" }}>
+                  <p className="small mb-0 text-light opacity-75 px-2" style={{ fontSize: "0.8rem" }}>
                     {s.subtitulo}
                   </p>
                 </div>
@@ -191,8 +198,8 @@ function Inicio() {
                 border: "2px solid rgba(255, 255, 255, 0.3)",
                 cursor: "pointer",
                 transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
-                width: "140px",
-                height: "92px",
+                width: "104px",
+                height: "70px",
                 zIndex: 20,
                 userSelect: "none",
               }}

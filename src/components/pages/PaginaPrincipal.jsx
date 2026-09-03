@@ -26,7 +26,9 @@ const secciones = [
     id: "produccion",
     titulo: "Producción",
     subtitulo: "Seguimiento y control de producción",
-    ruta: "/produccion",
+    // Entra directo a los meses de certificados: es la única sección de
+    // Producción que se usa todos los días.
+    ruta: "/produccion/certificados",
     bg: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
     hoverBg: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
     accentColor: "#10b981",
@@ -67,16 +69,6 @@ function PaginaPrincipal() {
             WebkitMaskComposite: "destination-in",
           }}
         />
-        <h1
-          className="fw-bold text-center mb-0 mt-3"
-          style={{
-            fontSize: "clamp(1.8rem, 4.5vw, 3.2rem)",
-            letterSpacing: "0.03em",
-            textShadow: "0 6px 24px rgba(0, 0, 0, 0.45)",
-          }}
-        >
-          Página Principal
-        </h1>
       </div>
 
       {/* Tarjetas */}
@@ -99,7 +91,7 @@ function PaginaPrincipal() {
                 style={{
                   background: isHovered ? s.hoverBg : s.bg,
                   borderRadius: "20px",
-                  height: "calc(100vh - 290px)",
+                  height: "calc(100vh - 230px)",
                   minHeight: "230px",
                   maxHeight: "320px",
                   boxShadow: isHovered

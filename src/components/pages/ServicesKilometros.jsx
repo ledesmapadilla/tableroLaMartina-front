@@ -660,22 +660,34 @@ function ServicesKilometros() {
           }}
         >
           <Table
-            hover
             size="sm"
-            className="text-center align-middle mb-0"
-            style={{ whiteSpace: "nowrap", fontSize: "0.82rem", width: "100%" }}
+            className="tabla-informe text-center align-middle mb-0"
+            style={{ whiteSpace: "nowrap", fontSize: "0.7rem", width: "100%" }}
           >
-            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1e293b", color: "#fff" }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1b4332", color: "#fff" }}>
               <tr className="fw-normal align-middle">
-                <th style={{ width: "40px", backgroundColor: "#1e293b", color: "#fff", padding: "8px 6px", fontWeight: "normal" }}>#</th>
-                <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", textAlign: "left", fontWeight: "normal" }}>Patente</th>
-                <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", fontWeight: "normal" }}>Responsable</th>
-                {MESES_CORTOS.map((m) => (
-                  <th key={m} style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 6px", width: "70px", fontWeight: "normal" }}>
-                    {m}
+                {[
+                  { h: "#", w: "40px" },
+                  { h: "Patente", izq: true },
+                  { h: "Responsable" },
+                  ...MESES_CORTOS.map((m) => ({ h: m, w: "70px" })),
+                  { h: "Estado Service" },
+                ].map(({ h, w, izq }) => (
+                  <th
+                    key={h}
+                    style={{
+                      width: w,
+                      backgroundColor: "#1b4332",
+                      color: "#fff",
+                      padding: "3px 5px",
+                      fontSize: "0.66rem",
+                      fontWeight: 600,
+                      textAlign: izq ? "left" : "center",
+                    }}
+                  >
+                    {h}
                   </th>
                 ))}
-                <th style={{ backgroundColor: "#1e293b", color: "#fff", padding: "8px 12px", fontWeight: "normal" }}>Estado Service</th>
               </tr>
             </thead>
             <tbody>
@@ -686,29 +698,24 @@ function ServicesKilometros() {
                   const ultimo = ultimos.find((u) => getId(u.camioneta) === c._id.toString());
                   const serv = ultimosService.find((u) => getId(u.camioneta) === c._id.toString());
                   const estado = getEstado(ultimo?.kms, serv?.kms, c.patente);
-                  const isEven = idx % 2 === 0;
 
                   return (
                     <tr
                       key={c._id}
-                      style={{
-                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
-                        borderBottom: "1px solid #e2e8f0",
-                      }}
                     >
-                      <td className="text-muted" style={{ fontSize: "0.78rem" }}>
+                      <td className="text-muted" style={{ fontSize: "0.68rem" }}>
                         {idx + 1}
                       </td>
 
                       {/* Patente y Marca (sin palabra parada) */}
-                      <td className="text-start" style={{ padding: "6px 12px" }}>
+                      <td className="text-start" style={{ padding: "2px 8px" }}>
                         <div className="d-flex align-items-center gap-2">
                           <span
-                            className="badge px-2.5 py-1 text-white shadow-sm"
+                            className="badge px-2 py-0.5 text-white shadow-sm"
                             style={{
                               backgroundColor: estaParada ? "#991b1b" : "#0f172a",
                               border: "1px solid #475569",
-                              fontSize: "0.82rem",
+                              fontSize: "0.74rem",
                               letterSpacing: "1.1px",
                               borderRadius: "6px",
                               fontWeight: 700,
@@ -716,14 +723,14 @@ function ServicesKilometros() {
                           >
                             {c.patente}
                           </span>
-                          <span className="text-muted small" style={{ fontSize: "0.8rem" }}>
+                          <span className="text-muted small" style={{ fontSize: "0.68rem" }}>
                             {c.marca}
                           </span>
                         </div>
                       </td>
 
                       {/* Responsable */}
-                      <td style={{ color: "#334155", fontSize: "0.82rem" }}>{c.responsable || "—"}</td>
+                      <td style={{ color: "#334155", fontSize: "0.7rem" }}>{c.responsable || "—"}</td>
 
                       {/* Meses Ene - Dic */}
                       {MESES_CORTOS.map((_, mIdx) => {
@@ -732,7 +739,7 @@ function ServicesKilometros() {
                         const isSinDatos = reg && (reg.kms === "S/ Datos" || (typeof reg.kms === "string" && isNaN(Number(reg.kms))));
 
                         return (
-                          <td key={mIdx} style={{ padding: "4px 6px" }}>
+                          <td key={mIdx} style={{ padding: "2px 4px" }}>
                             {reg ? (
                               <button
                                 onClick={() => setDetalleReg(reg)}
@@ -740,7 +747,7 @@ function ServicesKilometros() {
                                 style={{
                                   background: "transparent",
                                   border: "1px solid transparent",
-                                  fontSize: isSinDatos ? "0.76rem" : "0.84rem",
+                                  fontSize: isSinDatos ? "0.68rem" : "0.74rem",
                                   color: isSinDatos ? "#64748b" : "#0f172a",
                                   fontStyle: isSinDatos ? "italic" : "normal",
                                   borderRadius: "4px",
@@ -759,7 +766,7 @@ function ServicesKilometros() {
                                 {isSinDatos ? "S/ Datos" : Number(reg.kms).toLocaleString("es-AR")}
                               </button>
                             ) : esMesFuturo(mes) ? (
-                              <span style={{ color: "#cbd5e1", fontSize: "0.85rem" }}>—</span>
+                              <span style={{ color: "#cbd5e1", fontSize: "0.72rem" }}>—</span>
                             ) : (
                               <button
                                 onClick={() => abrirKmModal(c._id, mes)}
@@ -770,7 +777,7 @@ function ServicesKilometros() {
                                   backgroundColor: "#cbd5e1",
                                   border: "1px solid #94a3b8",
                                   color: "#1e293b",
-                                  fontSize: "0.78rem",
+                                  fontSize: "0.7rem",
                                   fontWeight: "700",
                                   transition: "all 0.15s ease",
                                 }}
@@ -796,15 +803,15 @@ function ServicesKilometros() {
                       })}
 
                       {/* Estado del Service */}
-                      <td style={{ padding: "6px 12px" }}>
+                      <td style={{ padding: "2px 8px" }}>
                         {estado ? (
                           <button
                             onClick={() => navigate("/camionetas/services/ultimo-service")}
-                            className="badge py-1.5 px-3 border-0 shadow-sm"
+                            className="badge py-0.5 px-2 border-0 shadow-sm"
                             style={{
                               backgroundColor: estado.bg,
                               color: estado.color,
-                              fontSize: "0.76rem",
+                              fontSize: "0.7rem",
                               fontWeight: 600,
                               borderRadius: "6px",
                               cursor: "pointer",

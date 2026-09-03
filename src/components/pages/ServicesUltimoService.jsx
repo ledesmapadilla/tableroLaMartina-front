@@ -720,23 +720,39 @@ function ServicesUltimoService() {
           }}
         >
           <Table
-            hover
             size="sm"
-            className="text-center align-middle mb-0"
-            style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}
+            className="tabla-informe text-center align-middle mb-0"
+            style={{ whiteSpace: "nowrap", fontSize: "0.7rem", width: "100%" }}
           >
-            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1e293b", color: "#fff" }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1b4332", color: "#fff" }}>
               <tr className="fw-normal align-middle">
-                <th style={{ width: "30px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 2px", fontWeight: "normal" }}>#</th>
-                <th style={{ width: "70px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 2px", fontWeight: "normal" }}>Acción</th>
-                <th style={{ width: "140px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 6px", textAlign: "left", fontWeight: "normal" }}>Patente</th>
-                <th style={{ width: "120px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 6px", fontWeight: "normal" }}>Responsable</th>
-                <th style={{ width: "80px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Fecha</th>
-                <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Km Últ. Srv.</th>
-                <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Km Próx. Srv.</th>
-                <th style={{ width: "80px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Km Actuales</th>
-                <th style={{ width: "32px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 2px", fontWeight: "normal" }}>Obs.</th>
-                <th style={{ width: "110px", backgroundColor: "#1e293b", color: "#fff", padding: "5px 4px", fontWeight: "normal" }}>Estado</th>
+                {[
+                  { h: "#", w: "30px" },
+                  { h: "Acción", w: "70px" },
+                  { h: "Patente", w: "140px", izq: true },
+                  { h: "Responsable", w: "120px" },
+                  { h: "Fecha", w: "80px" },
+                  { h: "Km Últ. Srv.", w: "85px" },
+                  { h: "Km Próx. Srv.", w: "85px" },
+                  { h: "Km Actuales", w: "80px" },
+                  { h: "Obs.", w: "32px" },
+                  { h: "Estado", w: "110px" },
+                ].map(({ h, w, izq }) => (
+                  <th
+                    key={h}
+                    style={{
+                      width: w,
+                      backgroundColor: "#1b4332",
+                      color: "#fff",
+                      padding: "3px 5px",
+                      fontSize: "0.66rem",
+                      fontWeight: 600,
+                      textAlign: izq ? "left" : "center",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -747,29 +763,24 @@ function ServicesUltimoService() {
                   const reg = ultimos.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                   const km = ultimosKm.find((u) => u.camioneta?._id === c._id || u.camioneta === c._id);
                   const estado = getEstado(km?.kms, reg?.kms, c.patente);
-                  const isEven = idx % 2 === 0;
 
                   return (
                     <tr
                       key={c._id}
-                      style={{
-                        backgroundColor: isEven ? "#ffffff" : "#f8fafc",
-                        borderBottom: "1px solid #e2e8f0",
-                      }}
                     >
-                      <td className="text-muted" style={{ fontSize: "0.75rem", padding: "4px 2px" }}>
+                      <td className="text-muted" style={{ fontSize: "0.68rem", padding: "2px 2px" }}>
                         {idx + 1}
                       </td>
 
                       {/* Botón Acción + Service */}
-                      <td style={{ padding: "4px 2px" }}>
+                      <td style={{ padding: "2px 2px" }}>
                         <button
                           onClick={() => abrirModal(c._id)}
                           className="btn btn-sm py-0.5 px-1.5 rounded-2 text-white shadow-sm"
                           style={{
                             backgroundColor: "#1e293b",
                             border: "1px solid #475569",
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             fontWeight: 500,
                             transition: "all 0.15s ease",
                           }}
@@ -786,14 +797,14 @@ function ServicesUltimoService() {
                       </td>
 
                       {/* Patente y Marca (sin palabra parada) */}
-                      <td className="text-start" style={{ padding: "4px 8px" }}>
+                      <td className="text-start" style={{ padding: "2px 8px" }}>
                         <div className="d-flex align-items-center gap-2">
                           <span
                             className="badge px-2 py-0.5 text-white shadow-sm me-1"
                             style={{
                               backgroundColor: estaParada ? "#991b1b" : "#0f172a",
                               border: "1px solid #475569",
-                              fontSize: "0.78rem",
+                              fontSize: "0.72rem",
                               letterSpacing: "1px",
                               borderRadius: "5px",
                               fontWeight: 700,
@@ -801,39 +812,39 @@ function ServicesUltimoService() {
                           >
                             {c.patente}
                           </span>
-                          <span className="text-muted small" style={{ fontSize: "0.76rem" }}>
+                          <span className="text-muted small" style={{ fontSize: "0.66rem" }}>
                             {c.marca}
                           </span>
                         </div>
                       </td>
 
                       {/* Responsable */}
-                      <td style={{ color: "#334155", fontSize: "0.78rem", padding: "4px 6px" }}>{c.responsable || "—"}</td>
+                      <td style={{ color: "#334155", fontSize: "0.7rem", padding: "2px 5px" }}>{c.responsable || "—"}</td>
 
                       {/* Fecha Service */}
-                      <td style={{ fontSize: "0.76rem", color: "#475569", padding: "4px 4px" }}>{reg ? formatFecha(reg.fecha) : "—"}</td>
+                      <td style={{ fontSize: "0.68rem", color: "#475569", padding: "2px 4px" }}>{reg ? formatFecha(reg.fecha) : "—"}</td>
 
                       {/* Km Último Service */}
-                      <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#0f172a", padding: "4px 4px" }}>
+                      <td className="fw-semibold" style={{ fontSize: "0.72rem", color: "#0f172a", padding: "2px 4px" }}>
                         {reg?.kms ? Number(reg.kms).toLocaleString("es-AR") : "—"}
                       </td>
 
                       {/* Km Próximo Service */}
-                      <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#2563eb", padding: "4px 4px" }}>
+                      <td className="fw-semibold" style={{ fontSize: "0.72rem", color: "#2563eb", padding: "2px 4px" }}>
                         {reg?.kms
                           ? (Number(reg.kms) + getIntervalKm(c.patente, reg.kms, km?.kms)).toLocaleString("es-AR")
                           : "—"}
                       </td>
 
                       {/* Km Actuales */}
-                      <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#0f172a", padding: "4px 4px" }}>
+                      <td className="fw-semibold" style={{ fontSize: "0.72rem", color: "#0f172a", padding: "2px 4px" }}>
                         {km?.kms && typeof km.kms === "number"
                           ? km.kms.toLocaleString("es-AR")
                           : km?.kms || "—"}
                       </td>
 
                       {/* Observaciones Modal */}
-                      <td style={{ padding: "4px 2px" }}>
+                      <td style={{ padding: "2px 2px" }}>
                         <button
                           className={`btn btn-sm p-0 rounded-circle d-inline-flex align-items-center justify-content-center ${
                             reg?.observaciones?.trim()
@@ -843,7 +854,7 @@ function ServicesUltimoService() {
                           style={{
                             width: "22px",
                             height: "22px",
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             opacity: reg?.observaciones?.trim() ? 1 : 0.6,
                           }}
                           onClick={() =>
@@ -862,15 +873,15 @@ function ServicesUltimoService() {
                       </td>
 
                       {/* Estado y WhatsApp */}
-                      <td style={{ padding: "4px 6px" }}>
+                      <td style={{ padding: "2px 5px" }}>
                         <div className="d-flex align-items-center justify-content-center gap-1.5">
                           {estado ? (
                             <span
-                              className="badge py-1.5 px-2.5 border-0 shadow-sm"
+                              className="badge py-0.5 px-2 border-0 shadow-sm"
                               style={{
                                 backgroundColor: estado.bg,
                                 color: estado.color,
-                                fontSize: "0.76rem",
+                                fontSize: "0.7rem",
                                 fontWeight: 600,
                                 borderRadius: "6px",
                               }}
@@ -893,7 +904,7 @@ function ServicesUltimoService() {
                                     backgroundColor: "#25d366",
                                     border: "none",
                                     borderRadius: "6px",
-                                    fontSize: "0.72rem",
+                                    fontSize: "0.68rem",
                                     fontWeight: 600,
                                   }}
                                   title="Enviar aviso por WhatsApp"
@@ -913,7 +924,7 @@ function ServicesUltimoService() {
                                     color: "#166534",
                                     border: "1px solid #86efac",
                                     borderRadius: "6px",
-                                    fontSize: "0.72rem",
+                                    fontSize: "0.68rem",
                                     fontWeight: 600,
                                   }}
                                   title="Avisado — clic para desmarcar"

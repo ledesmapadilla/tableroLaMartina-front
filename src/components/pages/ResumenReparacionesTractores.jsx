@@ -884,31 +884,21 @@ function ResumenReparacionesTractores() {
           </div>
         </Card>
 
-        {/* Estilos CSS para separación de tractores y hover */}
+        {/* Estilos de la tabla: mismo formato compacto que la planilla de
+            certificación de producción (clase .tabla-informe), más los
+            separadores por tractor y el texto rojo de las urgencias altas. */}
         <style>{`
           .tabla-general-reparaciones {
             width: 100%;
             border-collapse: collapse !important;
           }
-          .tabla-general-reparaciones th {
-            border: none !important;
-            border-bottom: 2px solid #0f172a !important;
-          }
-          .tabla-general-reparaciones tr.fila-mismo-tractor td {
-            border-bottom: 1px solid #e2e8f0 !important;
-            border-top: none !important;
-          }
-          .tabla-general-reparaciones tr.fila-cambio-tractor td {
-            border-bottom: 3px solid #1e293b !important;
-            border-top: none !important;
+          .tabla-general-reparaciones tr.fila-cambio-tractor > td {
+            border-bottom: 2px solid #1b4332 !important;
           }
           .tabla-general-reparaciones tr.fila-critica td,
           .tabla-general-reparaciones tr.fila-critica td div,
           .tabla-general-reparaciones tr.fila-critica td span:not(.badge) {
             color: #dc2626 !important;
-          }
-          .tabla-general-reparaciones tbody tr:hover {
-            background-color: #f1f5f9 !important;
           }
         `}</style>
 
@@ -930,162 +920,48 @@ function ResumenReparacionesTractores() {
             }}
           >
             <table
-              className="tabla-general-reparaciones align-middle mb-0"
-              style={{
-                fontSize: "0.81rem",
-              }}
+              className="tabla-general-reparaciones tabla-informe align-middle mb-0"
+              style={{ fontSize: "0.7rem", width: "100%" }}
             >
               <thead
                 style={{
                   position: "sticky",
                   top: 0,
                   zIndex: 2,
+                  backgroundColor: "#1b4332",
+                  color: "#fff",
                 }}
               >
-                <tr className="align-middle">
-                  <th
-                    style={{
-                      width: "115px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Tractor
-                  </th>
-                  <th
-                    style={{
-                      width: "95px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Fecha
-                  </th>
-                  <th
-                    style={{
-                      width: "145px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Categoría
-                  </th>
-                  <th
-                    style={{
-                      width: "100px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Urgencia
-                  </th>
-                  <th
-                    style={{
-                      minWidth: "210px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Diagnóstico
-                  </th>
-                  <th
-                    style={{
-                      minWidth: "220px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Reparación
-                  </th>
-                  <th
-                    style={{
-                      width: "135px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Taller
-                  </th>
-                  <th
-                    style={{
-                      width: "105px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Repuestos
-                  </th>
-                  <th
-                    style={{
-                      width: "105px",
-                      padding: "8px 10px",
-                      textAlign: "center",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Estado
-                  </th>
-                  <th
-                    style={{
-                      width: "125px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Responsable
-                  </th>
-                  <th
-                    style={{
-                      width: "60px",
-                      padding: "8px 6px",
-                      textAlign: "center",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Acción
-                  </th>
+                <tr className="fw-normal align-middle">
+                  {[
+                    { h: "Tractor", w: "115px" },
+                    { h: "Fecha", w: "95px" },
+                    { h: "Categoría", w: "145px" },
+                    { h: "Urgencia", w: "100px" },
+                    { h: "Diagnóstico", min: "210px" },
+                    { h: "Reparación", min: "220px" },
+                    { h: "Taller", w: "135px" },
+                    { h: "Repuestos", w: "105px" },
+                    { h: "Estado", w: "105px" },
+                    { h: "Responsable", w: "125px" },
+                    { h: "Acción", w: "60px" },
+                  ].map(({ h, w, min }) => (
+                    <th
+                      key={h}
+                      style={{
+                        width: w,
+                        minWidth: min,
+                        backgroundColor: "#1b4332",
+                        color: "#fff",
+                        padding: "3px 5px",
+                        fontSize: "0.66rem",
+                        fontWeight: 600,
+                        textAlign: "center",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -1139,18 +1015,15 @@ function ResumenReparacionesTractores() {
                       <tr
                         key={t._id}
                         className={`${esCambioTractor ? "fila-cambio-tractor" : "fila-mismo-tractor"} ${Boolean(t.maquinaParada) ? "tr-parada" : ""} ${esCritica ? "fila-critica" : ""}`}
-                        style={{
-                          backgroundColor: Boolean(t.maquinaParada) ? "#fee2e2" : undefined,
-                        }}
                       >
                         {/* Tractor / CC */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge px-2 py-0.5 fw-bold text-white shadow-sm"
                             style={{
                               backgroundColor: bgBadge,
                               border: `1px solid ${borderBadge}`,
-                              fontSize: "0.74rem",
+                              fontSize: "0.7rem",
                               cursor: tractorInfo.tractorId ? "pointer" : "default",
                               letterSpacing: "0.4px",
                             }}
@@ -1185,20 +1058,20 @@ function ResumenReparacionesTractores() {
                         {/* Fecha */}
                         <td
                           className="fw-semibold text-dark text-center"
-                          style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                          style={{ padding: "2px 5px", fontSize: "0.7rem" }}
                         >
                           {formatF(t.fecha)}
                         </td>
 
                         {/* Categoría */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge fw-medium px-2 py-0.5"
                             style={{
                               backgroundColor: estiloCat.bg,
                               color: estiloCat.text,
                               border: `1px solid ${estiloCat.border}`,
-                              fontSize: "0.72rem",
+                              fontSize: "0.68rem",
                               borderRadius: "5px",
                             }}
                           >
@@ -1207,14 +1080,14 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Urgencia */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge fw-semibold px-2 py-0.5"
                             style={{
                               backgroundColor: estiloUrg.bg,
                               color: estiloUrg.text,
                               border: `1px solid ${estiloUrg.border}`,
-                              fontSize: "0.72rem",
+                              fontSize: "0.68rem",
                               borderRadius: "5px",
                             }}
                           >
@@ -1223,7 +1096,7 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Diagnóstico (clicable para ver detalle) */}
-                        <td style={{ padding: "4px 8px" }}>
+                        <td style={{ padding: "2px 5px" }}>
                           <div
                             className="fw-medium text-dark text-truncate"
                             style={{ maxWidth: "230px", cursor: "pointer" }}
@@ -1243,7 +1116,7 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Reparación Realizada */}
-                        <td style={{ padding: "4px 8px" }}>
+                        <td style={{ padding: "2px 5px" }}>
                           <div
                             className="text-secondary text-truncate"
                             style={{ maxWidth: "240px", cursor: "pointer" }}
@@ -1255,7 +1128,7 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Taller */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           {t.taller === "Tercero" ? (
                             <span
                               className="badge px-1.5 py-0.5 fw-medium"
@@ -1263,7 +1136,7 @@ function ResumenReparacionesTractores() {
                                 backgroundColor: "#fed7aa",
                                 color: "#9a3412",
                                 border: "1px solid #f97316",
-                                fontSize: "0.71rem",
+                                fontSize: "0.68rem",
                               }}
                             >
                               <i className="bi bi-building me-1"></i>
@@ -1276,7 +1149,7 @@ function ResumenReparacionesTractores() {
                                 backgroundColor: "#f0fdf4",
                                 color: "#166534",
                                 border: "1px solid #bbf7d0",
-                                fontSize: "0.71rem",
+                                fontSize: "0.68rem",
                               }}
                             >
                               <i className="bi bi-wrench me-1"></i>T. Propio
@@ -1285,11 +1158,11 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Repuestos */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           {t.repuestos && t.repuestos.length > 0 ? (
                             <span
                               className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5 cursor-pointer"
-                              style={{ fontSize: "0.71rem", cursor: "pointer" }}
+                              style={{ fontSize: "0.68rem", cursor: "pointer" }}
                               onClick={() => abrirDetalle(t)}
                               title="Ver repuestos utilizados"
                             >
@@ -1302,7 +1175,7 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Estado */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge px-1.5 py-0.5 fw-semibold"
                             style={{
@@ -1311,7 +1184,7 @@ function ResumenReparacionesTractores() {
                               border: `1px solid ${
                                 esTerminada ? "#86efac" : esEnProceso ? "#fde047" : "#fca5a5"
                               }`,
-                              fontSize: "0.72rem",
+                              fontSize: "0.68rem",
                               borderRadius: "4px",
                             }}
                           >
@@ -1320,14 +1193,14 @@ function ResumenReparacionesTractores() {
                         </td>
 
                         {/* Responsable */}
-                        <td className="text-center" style={{ padding: "4px 8px", fontSize: "0.76rem" }}>
+                        <td className="text-center" style={{ padding: "2px 5px", fontSize: "0.7rem" }}>
                           <span className="text-dark fw-medium" title={t.responsable || tractorInfo.infoG.supervisor || "—"}>
                             {t.responsable || tractorInfo.infoG.supervisor || "—"}
                           </span>
                         </td>
 
                         {/* Acción */}
-                        <td className="text-center" style={{ padding: "4px 6px" }}>
+                        <td className="text-center" style={{ padding: "2px 4px" }}>
                           <div className="d-inline-flex align-items-center gap-1">
                             <Button
                               variant="outline-dark"

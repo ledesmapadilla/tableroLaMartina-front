@@ -666,26 +666,16 @@ function ResumenReparaciones() {
           </div>
         </Card>
 
-        {/* Contenedor de la Tabla con bordes y esquinas redondeadas */}
+        {/* Estilos de la tabla: mismo formato compacto que la planilla de
+            certificación de producción (clase .tabla-informe), más el
+            separador grueso al cambiar de camioneta. */}
         <style>{`
           .tabla-general-reparaciones {
             width: 100%;
             border-collapse: collapse !important;
           }
-          .tabla-general-reparaciones th {
-            border: none !important;
-            border-bottom: 2px solid #0f172a !important;
-          }
-          .tabla-general-reparaciones tr.fila-misma-camioneta td {
-            border-bottom: 1px solid #e2e8f0 !important;
-            border-top: none !important;
-          }
-          .tabla-general-reparaciones tr.fila-cambio-camioneta td {
-            border-bottom: 3px solid #1e293b !important;
-            border-top: none !important;
-          }
-          .tabla-general-reparaciones tbody tr:hover {
-            background-color: #f1f5f9 !important;
+          .tabla-general-reparaciones tr.fila-cambio-camioneta > td {
+            border-bottom: 2px solid #1b4332 !important;
           }
         `}</style>
         <div
@@ -705,149 +695,47 @@ function ResumenReparaciones() {
             }}
           >
             <table
-              className="tabla-general-reparaciones align-middle mb-0"
-              style={{
-                fontSize: "0.81rem",
-              }}
+              className="tabla-general-reparaciones tabla-informe align-middle mb-0"
+              style={{ fontSize: "0.7rem", width: "100%" }}
             >
               <thead
                 style={{
                   position: "sticky",
                   top: 0,
                   zIndex: 2,
+                  backgroundColor: "#1b4332",
+                  color: "#fff",
                 }}
               >
-                <tr className="align-middle">
-                  <th
-                    style={{
-                      width: "115px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Camioneta
-                  </th>
-                  <th
-                    style={{
-                      width: "95px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Fecha
-                  </th>
-                  <th
-                    style={{
-                      width: "145px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Categoría
-                  </th>
-                  <th
-                    style={{
-                      minWidth: "210px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Diagnóstico
-                  </th>
-                  <th
-                    style={{
-                      minWidth: "220px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Reparación
-                  </th>
-                  <th
-                    style={{
-                      width: "135px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Taller
-                  </th>
-                  <th
-                    style={{
-                      width: "105px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Repuestos
-                  </th>
-                  <th
-                    style={{
-                      width: "105px",
-                      padding: "8px 10px",
-                      textAlign: "center",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Estado
-                  </th>
-                  <th
-                    style={{
-                      width: "125px",
-                      padding: "8px 10px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Responsable
-                  </th>
-                  <th
-                    style={{
-                      width: "60px",
-                      padding: "8px 6px",
-                      textAlign: "center",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    Acción
-                  </th>
+                <tr className="fw-normal align-middle">
+                  {[
+                    { h: "Camioneta", w: "115px" },
+                    { h: "Fecha", w: "95px" },
+                    { h: "Categoría", w: "145px" },
+                    { h: "Diagnóstico", min: "210px" },
+                    { h: "Reparación", min: "220px" },
+                    { h: "Taller", w: "135px" },
+                    { h: "Repuestos", w: "105px" },
+                    { h: "Estado", w: "105px" },
+                    { h: "Responsable", w: "125px" },
+                    { h: "Acción", w: "60px" },
+                  ].map(({ h, w, min }) => (
+                    <th
+                      key={h}
+                      style={{
+                        width: w,
+                        minWidth: min,
+                        backgroundColor: "#1b4332",
+                        color: "#fff",
+                        padding: "3px 5px",
+                        fontSize: "0.66rem",
+                        fontWeight: 600,
+                        textAlign: "center",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -892,13 +780,13 @@ function ResumenReparaciones() {
                         className={esCambioCamioneta ? "fila-cambio-camioneta" : "fila-misma-camioneta"}
                       >
                         {/* Camioneta / Patente (con nombre de modelo/marca más pequeño debajo) */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge px-2 py-0.5 fw-bold text-white shadow-sm"
                             style={{
                               backgroundColor: bgPatente,
                               border: `1px solid ${borderPatente}`,
-                              fontSize: "0.74rem",
+                              fontSize: "0.7rem",
                               cursor: t.camioneta?._id ? "pointer" : "default",
                               letterSpacing: "0.4px",
                             }}
@@ -933,20 +821,20 @@ function ResumenReparaciones() {
                         {/* Fecha */}
                         <td
                           className="fw-semibold text-dark text-center"
-                          style={{ padding: "4px 8px", fontSize: "0.78rem" }}
+                          style={{ padding: "2px 5px", fontSize: "0.7rem" }}
                         >
                           {formatF(t.fecha)}
                         </td>
 
                         {/* Categoría */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge fw-medium px-2 py-0.5"
                             style={{
                               backgroundColor: estiloCat.bg,
                               color: estiloCat.text,
                               border: `1px solid ${estiloCat.border}`,
-                              fontSize: "0.72rem",
+                              fontSize: "0.68rem",
                               borderRadius: "5px",
                             }}
                           >
@@ -955,7 +843,7 @@ function ResumenReparaciones() {
                         </td>
 
                         {/* Diagnóstico (clicable para ver detalle) */}
-                        <td style={{ padding: "4px 8px" }}>
+                        <td style={{ padding: "2px 5px" }}>
                           <div
                             className="fw-medium text-dark text-truncate"
                             style={{ maxWidth: "230px", cursor: "pointer" }}
@@ -975,7 +863,7 @@ function ResumenReparaciones() {
                         </td>
 
                         {/* Reparación Realizada */}
-                        <td style={{ padding: "4px 8px" }}>
+                        <td style={{ padding: "2px 5px" }}>
                           <div
                             className="text-secondary text-truncate"
                             style={{ maxWidth: "240px", cursor: "pointer" }}
@@ -987,7 +875,7 @@ function ResumenReparaciones() {
                         </td>
 
                         {/* Taller */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           {t.taller === "Tercero" ? (
                             <span
                               className="badge px-1.5 py-0.5 fw-medium"
@@ -995,7 +883,7 @@ function ResumenReparaciones() {
                                 backgroundColor: "#e0f2fe",
                                 color: "#0369a1",
                                 border: "1px solid #7dd3fc",
-                                fontSize: "0.71rem",
+                                fontSize: "0.68rem",
                               }}
                             >
                               <i className="bi bi-building me-1"></i>
@@ -1008,7 +896,7 @@ function ResumenReparaciones() {
                                 backgroundColor: "#f0fdf4",
                                 color: "#166534",
                                 border: "1px solid #86efac",
-                                fontSize: "0.71rem",
+                                fontSize: "0.68rem",
                               }}
                             >
                               <i className="bi bi-house-door me-1"></i>
@@ -1018,7 +906,7 @@ function ResumenReparaciones() {
                         </td>
 
                         {/* Repuestos */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           {t.repuestos && t.repuestos.length > 0 ? (
                             <span
                               className="badge px-1.5 py-0.5 fw-medium"
@@ -1026,7 +914,7 @@ function ResumenReparaciones() {
                                 backgroundColor: "#f1f5f9",
                                 color: "#334155",
                                 border: "1px solid #cbd5e1",
-                                fontSize: "0.71rem",
+                                fontSize: "0.68rem",
                                 cursor: "pointer",
                               }}
                               onClick={() => abrirDetalle(t)}
@@ -1036,19 +924,19 @@ function ResumenReparaciones() {
                               {t.repuestos.length} {t.repuestos.length === 1 ? "repuesto" : "repuestos"}
                             </span>
                           ) : (
-                            <span className="text-muted small" style={{ fontSize: "0.75rem" }}>—</span>
+                            <span className="text-muted small" style={{ fontSize: "0.7rem" }}>—</span>
                           )}
                         </td>
 
                         {/* Estado */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
                             className="badge px-2 py-0.5 fw-semibold"
                             style={{
                               backgroundColor: esTerminada ? "#d1fae5" : esEnProceso ? "#fef3c7" : "#fee2e2",
                               color: esTerminada ? "#065f46" : esEnProceso ? "#92400e" : "#991b1b",
                               border: `1px solid ${esTerminada ? "#6ee7b7" : esEnProceso ? "#fcd34d" : "#fca5a5"}`,
-                              fontSize: "0.72rem",
+                              fontSize: "0.68rem",
                               borderRadius: "16px",
                             }}
                           >
@@ -1069,8 +957,8 @@ function ResumenReparaciones() {
                         </td>
 
                         {/* Responsable */}
-                        <td className="text-center" style={{ padding: "4px 8px" }}>
-                          <div className="text-dark fw-medium" style={{ fontSize: "0.75rem" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
+                          <div className="text-dark fw-medium" style={{ fontSize: "0.7rem" }}>
                             {t.responsable || t.camioneta?.responsable || "—"}
                           </div>
                         </td>
@@ -1078,13 +966,13 @@ function ResumenReparaciones() {
                         {/* Acciones: Solo botón Borrar */}
                         <td
                           className="text-center"
-                          style={{ padding: "4px 6px" }}
+                          style={{ padding: "2px 4px" }}
                         >
                           <Button
                             size="sm"
                             variant="outline-danger"
                             className="rounded-3 px-2 py-0.5"
-                            style={{ fontSize: "0.72rem" }}
+                            style={{ fontSize: "0.68rem" }}
                             onClick={() => handleEliminarTrabajo(t._id)}
                             title="Eliminar reparación"
                           >

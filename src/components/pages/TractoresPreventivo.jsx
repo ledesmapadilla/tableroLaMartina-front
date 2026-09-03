@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { guardarConReglaHorometro } from "../../utils/horometro";
 
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
@@ -25,12 +26,55 @@ const formatFecha = (iso) => {
 // Intervalo estándar de mantenimiento para tractores (en horas)
 const DEFAULT_INTERVALO_HS = 250;
 
+// Horas con las que hay que hacer la cuenta del service. Cuando hubo cambio de
+// horómetro la lectura sola miente: hay que sumarle las horas de los anteriores.
+const horasDe = (obj) =>
+  typeof obj?.acumuladas === "number" ? obj.acumuladas : obj?.horometro;
+
 // De donde se tomo la lectura vigente de horometro.
 const ORIGEN_LECTURA = {
   manual: "carga manual",
   visita: "visita",
   service: "service",
   reparacion: "reparación",
+  produccion: "certificaciones",
+};
+
+// Cada fuente con su color, para que en el historial se vea de un vistazo de
+// dónde salió la lectura.
+const ORIGEN_ESTILO = {
+  manual: { bg: "#e0e7ff", color: "#3730a3", border: "#818cf8", icono: "bi-pencil-fill" },
+  visita: { bg: "#e0f2fe", color: "#0369a1", border: "#7dd3fc", icono: "bi-clipboard-check-fill" },
+  service: { bg: "#dcfce7", color: "#166534", border: "#86efac", icono: "bi-tools" },
+  reparacion: { bg: "#fef3c7", color: "#92400e", border: "#fcd34d", icono: "bi-wrench-adjustable" },
+  produccion: { bg: "#fae8ff", color: "#86198f", border: "#e879f9", icono: "bi-journal-text" },
+};
+
+const BadgeHorometro = ({ numero }) => {
+  if (!numero || numero < 2) return null;
+  return (
+    <span
+      className="badge ms-1 rounded-2 fw-bold"
+      style={{ backgroundColor: "#7c2d12", color: "#fff", fontSize: "0.64rem" }}
+      title={`Lectura del ${numero}° horómetro de esta máquina`}
+    >
+      H{numero}
+    </span>
+  );
+};
+
+const BadgeOrigen = ({ origen }) => {
+  if (!origen) return <span className="text-muted">—</span>;
+  const e = ORIGEN_ESTILO[origen] || { bg: "#f1f5f9", color: "#475569", border: "#cbd5e1", icono: "bi-question-circle" };
+  return (
+    <span
+      className="badge px-2 py-1 rounded-2 fw-semibold"
+      style={{ backgroundColor: e.bg, color: e.color, border: `1px solid ${e.border}`, fontSize: "0.7rem" }}
+    >
+      <i className={`bi ${e.icono} me-1`}></i>
+      {ORIGEN_LECTURA[origen] || origen}
+    </span>
+  );
 };
 
 function getEstadoTractor(hsActuales, hsUltimoService, intervalo = DEFAULT_INTERVALO_HS, esParado = false) {
@@ -247,15 +291,21 @@ function TractoresPreventivo() {
   const onSubmitService = async (data) => {
     const editando = Boolean(servicioEditandoId);
     try {
-      const res = await fetch(
-        editando ? `/api/services-tractor/${servicioEditandoId}` : "/api/services-tractor",
-        {
-          method: editando ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }
-      );
-      if (res.ok) {
+      const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
+        tractor: data.tractor,
+        fecha: data.fecha,
+        enviar: ({ sinHorometro }) =>
+          fetch(
+            editando ? `/api/services-tractor/${servicioEditandoId}` : "/api/services-tractor",
+            {
+              method: editando ? "PUT" : "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(sinHorometro ? { ...data, horometro: "" } : data),
+            }
+          ),
+      });
+      if (cancelado) return;
+      if (ok) {
         const tractorHistorial = historialModal;
         cerrarModalService();
         await cargarTabla(año);
@@ -272,8 +322,7 @@ function TractoresPreventivo() {
           width: "320px",
         });
       } else {
-        const err = await res.json();
-        Swal.fire({ icon: "error", title: "Error", text: err.error || "No se pudo guardar", width: "320px" });
+        Swal.fire({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar", width: "320px" });
       }
     } catch {
       Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor", width: "320px" });
@@ -388,15 +437,24 @@ function TractoresPreventivo() {
     }
 
     try {
-      const res = await fetch(
-        editando ? `/api/horometros-tractor/${horometroEditandoId}` : "/api/horometros-tractor",
-        {
-          method: editando ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        }
-      );
-      if (res.ok) {
+      // Acá la lectura es el registro: descartarla sería guardar una fila
+      // vacía, así que esa opción cancela la carga.
+      const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
+        tractor: data.tractor,
+        fecha: data.fecha,
+        descartarCancela: true,
+        enviar: () =>
+          fetch(
+            editando ? `/api/horometros-tractor/${horometroEditandoId}` : "/api/horometros-tractor",
+            {
+              method: editando ? "PUT" : "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            }
+          ),
+      });
+      if (cancelado) return;
+      if (ok) {
         const tractorHistorial = historialModal;
         cerrarModalHorometro();
         await cargarTabla(año);
@@ -412,8 +470,7 @@ function TractoresPreventivo() {
           width: "320px",
         });
       } else {
-        const err = await res.json();
-        Swal.fire({ icon: "error", title: "Error", text: err.error || "No se pudo guardar", width: "320px" });
+        Swal.fire({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar", width: "320px" });
       }
     } catch {
       Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor", width: "320px" });
@@ -626,9 +683,9 @@ function TractoresPreventivo() {
       );
       const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
       const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
-      const hsActuales = hmObj?.horometro;
+      const hsActuales = horasDe(hmObj);
       const fechaHsActual = hmObj?.fecha;
-      const hsUltimoService = typeof reg?.horometro === "number" ? reg.horometro : null;
+      const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
       const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
       const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
 
@@ -935,33 +992,49 @@ function TractoresPreventivo() {
           }}
         >
           <Table
-            hover
             size="sm"
-            className="text-center align-middle mb-0"
-            style={{ whiteSpace: "nowrap", fontSize: "0.78rem", width: "100%" }}
+            className="tabla-informe text-center align-middle mb-0"
+            style={{ whiteSpace: "nowrap", fontSize: "0.7rem", width: "100%" }}
           >
             <thead
               style={{
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                backgroundColor: "#1e293b",
+                backgroundColor: "#1b4332",
                 color: "#fff",
               }}
             >
               <tr className="fw-normal align-middle">
-                <th style={{ width: "35px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>#</th>
-                <th style={{ width: "175px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Acción</th>
-                <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>CC</th>
-                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Descripción</th>
-                <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha</th>
-                <th style={{ width: "105px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Horómetro</th>
-                <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha Service</th>
-                <th style={{ width: "125px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Horómetro Service</th>
-                <th style={{ width: "115px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Hm. Próx. Srv.</th>
-                <th style={{ width: "45px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Obs.</th>
-                <th style={{ width: "105px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Estado</th>
-                <th style={{ width: "85px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Historial</th>
+                {[
+                  { h: "#", w: "35px" },
+                  { h: "Acción", w: "175px" },
+                  { h: "CC", w: "90px" },
+                  { h: "Descripción", w: "180px", izq: true },
+                  { h: "Fecha", w: "90px" },
+                  { h: "Horómetro", w: "105px" },
+                  { h: "Fecha Service", w: "95px" },
+                  { h: "Horómetro Service", w: "125px" },
+                  { h: "Hm. Próx. Srv.", w: "115px" },
+                  { h: "Obs.", w: "45px" },
+                  { h: "Estado", w: "105px" },
+                  { h: "Historial", w: "85px" },
+                ].map(({ h, w, izq }) => (
+                  <th
+                    key={h}
+                    style={{
+                      width: w,
+                      backgroundColor: "#1b4332",
+                      color: "#fff",
+                      padding: "3px 5px",
+                      fontSize: "0.66rem",
+                      fontWeight: 600,
+                      textAlign: izq ? "left" : "center",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -972,29 +1045,24 @@ function TractoresPreventivo() {
                 );
                 const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
                 const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
-                const hsActuales = hmObj?.horometro;
+                const hsActuales = horasDe(hmObj);
                 const fechaHsActual = hmObj?.fecha;
-                const hsUltimoService = typeof reg?.horometro === "number" ? reg.horometro : null;
+                const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
                 const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
                 const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
                 const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado);
-                const isEven = idx % 2 === 0;
 
                 return (
                   <tr
                     key={t._id}
-                    style={{
-                      backgroundColor: isEven ? "#ffffff" : "#f8fafc",
-                      borderBottom: "1px solid #e2e8f0",
-                    }}
                   >
                     {/* # */}
-                    <td className="text-muted" style={{ fontSize: "0.75rem", padding: "5px 4px" }}>
+                    <td className="text-muted" style={{ fontSize: "0.68rem", padding: "2px 4px" }}>
                       {idx + 1}
                     </td>
 
                     {/* Acción / Último Service + Horómetro */}
-                    <td style={{ padding: "5px 4px" }}>
+                    <td style={{ padding: "2px 4px" }}>
                       <div className="d-flex align-items-center justify-content-center gap-1">
                         <button
                           onClick={() => abrirModalService(t._id)}
@@ -1002,7 +1070,7 @@ function TractoresPreventivo() {
                           style={{
                             backgroundColor: "#1e293b",
                             border: "1px solid #475569",
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             fontWeight: 500,
                             transition: "all 0.15s ease",
                           }}
@@ -1022,7 +1090,7 @@ function TractoresPreventivo() {
                           style={{
                             backgroundColor: "#0d9488",
                             border: "1px solid #0f766e",
-                            fontSize: "0.72rem",
+                            fontSize: "0.68rem",
                             fontWeight: 500,
                             transition: "all 0.15s ease",
                           }}
@@ -1040,13 +1108,13 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* CC */}
-                    <td style={{ padding: "5px 6px" }}>
+                    <td style={{ padding: "2px 5px" }}>
                       <span
-                        className="badge px-2 py-1 text-white shadow-sm"
+                        className="badge px-2 py-0.5 text-white shadow-sm"
                         style={{
                           backgroundColor: estaParado ? "#991b1b" : "#0f172a",
                           border: "1px solid #475569",
-                          fontSize: "0.78rem",
+                          fontSize: "0.72rem",
                           letterSpacing: "0.5px",
                           borderRadius: "5px",
                           fontWeight: 700,
@@ -1057,13 +1125,13 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Descripción */}
-                    <td className="text-start" style={{ padding: "5px 8px" }}>
+                    <td className="text-start" style={{ padding: "2px 8px" }}>
                       <div className="d-flex flex-column">
-                        <span className="fw-semibold text-dark" style={{ fontSize: "0.8rem" }}>
+                        <span className="fw-semibold text-dark" style={{ fontSize: "0.72rem" }}>
                           {t.descripcion || "—"}
                         </span>
                         {t.supervisor && (
-                          <span className="text-muted" style={{ fontSize: "0.72rem" }}>
+                          <span className="text-muted" style={{ fontSize: "0.66rem" }}>
                             Sup: {t.supervisor} {t.gruppo ? `(G${t.gruppo})` : ""}
                           </span>
                         )}
@@ -1071,32 +1139,34 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Fecha (Fecha lectura horómetro actual) */}
-                    <td style={{ fontSize: "0.76rem", color: "#475569", padding: "5px 4px" }}>
+                    <td style={{ fontSize: "0.68rem", color: "#475569", padding: "2px 4px" }}>
                       {fechaHsActual ? formatFecha(fechaHsActual) : "—"}
                     </td>
 
                     {/* Horómetro (Horómetro actual) */}
-                    <td className="fw-bold" style={{ fontSize: "0.82rem", color: "#0f172a", padding: "5px 4px" }}>
+                    <td className="fw-bold" style={{ fontSize: "0.74rem", color: "#0f172a", padding: "2px 4px" }}>
                       {hsActuales !== undefined && hsActuales !== null ? `${hsActuales.toLocaleString("es-AR")} hs` : "—"}
+                      <BadgeHorometro numero={hmObj?.numeroHorometro} />
                     </td>
 
                     {/* Fecha Service (Fecha último service) */}
-                    <td style={{ fontSize: "0.76rem", color: "#475569", padding: "5px 4px" }}>
+                    <td style={{ fontSize: "0.68rem", color: "#475569", padding: "2px 4px" }}>
                       {reg ? formatFecha(reg.fecha) : "—"}
                     </td>
 
                     {/* Horómetro Service (Horómetro último service) */}
-                    <td className="fw-semibold text-primary" style={{ fontSize: "0.8rem", padding: "5px 4px" }}>
+                    <td className="fw-semibold text-primary" style={{ fontSize: "0.72rem", padding: "2px 4px" }}>
                       {hsUltimoService !== null ? `${hsUltimoService.toLocaleString("es-AR")} hs` : "—"}
+                      <BadgeHorometro numero={reg?.numeroHorometro} />
                     </td>
 
                     {/* Hm. Próx. Srv. */}
-                    <td className="fw-semibold" style={{ fontSize: "0.8rem", color: "#2563eb", padding: "5px 4px" }}>
+                    <td className="fw-semibold" style={{ fontSize: "0.72rem", color: "#2563eb", padding: "2px 4px" }}>
                       {hsProxService !== null ? `${hsProxService.toLocaleString("es-AR")} hs` : "—"}
                     </td>
 
                     {/* Obs */}
-                    <td style={{ padding: "5px 4px" }}>
+                    <td style={{ padding: "2px 4px" }}>
                       <button
                         className={`btn btn-sm p-0 rounded-circle d-inline-flex align-items-center justify-content-center ${
                           reg?.observaciones?.trim()
@@ -1106,7 +1176,7 @@ function TractoresPreventivo() {
                         style={{
                           width: "22px",
                           height: "22px",
-                          fontSize: "0.72rem",
+                          fontSize: "0.68rem",
                           opacity: reg?.observaciones?.trim() ? 1 : 0.6,
                         }}
                         onClick={() =>
@@ -1125,13 +1195,13 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Estado */}
-                    <td style={{ padding: "5px 4px" }}>
+                    <td style={{ padding: "2px 4px" }}>
                       <span
-                        className="badge py-1.5 px-2.5 border-0 shadow-sm"
+                        className="badge py-0.5 px-2 border-0 shadow-sm"
                         style={{
                           backgroundColor: estado.bg,
                           color: estado.color,
-                          fontSize: "0.76rem",
+                          fontSize: "0.7rem",
                           fontWeight: 600,
                           borderRadius: "6px",
                         }}
@@ -1141,11 +1211,11 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Historial */}
-                    <td style={{ padding: "5px 4px" }}>
+                    <td style={{ padding: "2px 4px" }}>
                       <button
                         onClick={() => abrirHistorial(t)}
                         className="btn btn-sm btn-outline-secondary py-0.5 px-2 rounded-2 d-inline-flex align-items-center gap-1 shadow-sm"
-                        style={{ fontSize: "0.72rem", fontWeight: 500 }}
+                        style={{ fontSize: "0.68rem", fontWeight: 500 }}
                         title="Ver historial de services"
                       >
                         <i className="bi bi-clock-history"></i>
@@ -1545,15 +1615,42 @@ function TractoresPreventivo() {
 
             return (
               <>
+                <style>{`
+                  .tabla-historial th,
+                  .tabla-historial td {
+                    padding: 2px 6px !important;
+                    line-height: 1.25;
+                    white-space: nowrap;
+                  }
+                  .tabla-historial tbody tr { height: 26px; }
+                  .tabla-historial .badge {
+                    padding: 1px 6px !important;
+                    font-weight: 600;
+                  }
+                  .tabla-historial .btn {
+                    padding: 0 !important;
+                    width: 20px;
+                    height: 20px;
+                    line-height: 1;
+                  }
+                  .tabla-historial .btn i { font-size: 0.72rem !important; }
+                `}</style>
+
                 {cargandoHistorial ? (
                   <div className="text-center py-4 text-muted">Cargando historial...</div>
                 ) : (
-                  <Table hover size="sm" className="align-middle text-center mb-0" style={{ fontSize: "0.82rem" }}>
+                  <Table
+                    hover
+                    size="sm"
+                    className="tabla-historial align-middle text-center mb-0"
+                    style={{ fontSize: "0.78rem" }}
+                  >
                     <thead className="table-dark">
                       <tr>
                         <th style={{ fontWeight: 500 }}>CC</th>
                         <th style={{ fontWeight: 500 }}>Fecha</th>
                         <th style={{ fontWeight: 500 }}>Horómetro</th>
+                        <th style={{ fontWeight: 500 }}>Origen</th>
                         <th style={{ fontWeight: 500 }}>Fecha Service</th>
                         <th style={{ fontWeight: 500 }}>Horómetro Service</th>
                         <th style={{ fontWeight: 500 }}>Hm. Próx.</th>
@@ -1575,6 +1672,7 @@ function TractoresPreventivo() {
                               ? `${horometroActual.toLocaleString("es-AR")} hs`
                               : "—"}
                           </td>
+                          <td><BadgeOrigen origen={hmObj?.origen} /></td>
                           <td className="text-muted">—</td>
                           <td className="text-muted">—</td>
                           <td className="text-muted">—</td>
@@ -1619,6 +1717,7 @@ function TractoresPreventivo() {
                                 {esLectura && typeof s.horometro === "number"
                                   ? `${s.horometro.toLocaleString("es-AR")} hs`
                                   : "—"}
+                                {esLectura && <BadgeHorometro numero={s.numeroHorometro ?? hmObj?.numeroHorometro} />}
                                 {esActual && (
                                   <span
                                     className="badge ms-1 text-white rounded-2"
@@ -1628,11 +1727,15 @@ function TractoresPreventivo() {
                                   </span>
                                 )}
                               </td>
+                              <td>
+                                <BadgeOrigen origen={esLectura ? s.origen : "service"} />
+                              </td>
                               <td>{!esLectura && s.fecha ? formatFecha(s.fecha) : "—"}</td>
                               <td className="fw-semibold text-primary">
                                 {!esLectura && typeof s.horometro === "number"
                                   ? `${s.horometro.toLocaleString("es-AR")} hs`
                                   : "—"}
+                                {!esLectura && <BadgeHorometro numero={s.numeroHorometro} />}
                               </td>
                               <td className="text-secondary fw-semibold">
                                 {!esLectura && typeof s.horometro === "number"
@@ -1640,9 +1743,7 @@ function TractoresPreventivo() {
                                   : "—"}
                               </td>
                               <td className="text-start">
-                                {esActual
-                                  ? `Lectura vigente${s.origen ? ` — tomada de ${ORIGEN_LECTURA[s.origen] || s.origen}` : ""}`
-                                  : s.observaciones || "—"}
+                                {esActual ? "Lectura vigente" : s.observaciones || "—"}
                               </td>
                               <td>
                                 {s._id && !esActual && (
