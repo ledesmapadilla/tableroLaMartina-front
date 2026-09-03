@@ -4,6 +4,7 @@ import { Container, Card, Form, Button, Row, Col } from "react-bootstrap";
 import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { guardarConReglaHorometro } from "../../utils/horometro";
 
 const hoyStr = () => {
   const now = new Date();
@@ -158,13 +159,19 @@ function ReportarFallaTractor() {
     };
 
     try {
-      const res = await fetch("/api/trabajos-tractor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
+        tractor: tractorId,
+        fecha: fechaISO,
+        enviar: ({ sinHorometro }) =>
+          fetch("/api/trabajos-tractor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sinHorometro ? { ...payload, horometro: "" } : payload),
+          }),
       });
 
-      if (res.ok) {
+      if (cancelado) return;
+      if (ok) {
         Swal.fire({
           icon: "success",
           title: "Falla guardada",
@@ -182,7 +189,7 @@ function ReportarFallaTractor() {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "No se pudo guardar la solicitud.",
+          text: cuerpo?.error || "No se pudo guardar la solicitud.",
           width: "320px",
           confirmButtonColor: "#1e293b",
         });

@@ -154,6 +154,33 @@ main {
   border-color: #444 !important;
 }
 
+/* ── Tablas del informe de Producción ──
+   Filas finas y en cebra. Los bordes gruesos de .table (2,5px) engordan cada
+   fila y con el fondo alternado ya no hacen falta, así que acá se afinan. */
+.tabla-informe {
+  border: 1px solid #cbd5e1 !important;
+}
+.tabla-informe th,
+.tabla-informe td {
+  border: 1px solid #e2e8f0 !important;
+  padding: 2px 5px;
+}
+.tabla-informe tbody tr:nth-of-type(even) > td {
+  background-color: #f1f5f4;
+}
+.tabla-informe tbody tr:hover:not(.fila-total) > td {
+  background-color: #dcefe4;
+}
+.tabla-informe tbody tr.fila-total > td {
+  background-color: #e8f5ee;
+  border-top: 2px solid #1b4332 !important;
+}
+/* Va después de la cebra: la fila que se está editando manda sobre el fondo
+   alternado. */
+.tabla-informe tbody tr.fila-editando > td {
+  background-color: #e0f2fe;
+}
+
 /* ── Radio buttons ── */
 input[type="radio"] {
   width: 1.2rem;

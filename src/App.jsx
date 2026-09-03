@@ -4,11 +4,14 @@ import Sidebar from "./components/shared/Sidebar";
 import Footer from "./components/shared/Footer";
 import PaginaPrincipal from "./components/pages/PaginaPrincipal";
 import Inicio from "./components/pages/Inicio";
-import Produccion from "./components/pages/Produccion";
 import ProduccionAltaCC from "./components/pages/ProduccionAltaCC";
 import ProduccionAltaPersonal from "./components/pages/ProduccionAltaPersonal";
 import ProduccionAltaTareas from "./components/pages/ProduccionAltaTareas";
 import ProduccionCertificados from "./components/pages/ProduccionCertificados";
+import ProduccionCertificadoMenu from "./components/pages/ProduccionCertificadoMenu";
+import ProduccionInformesMenu from "./components/pages/ProduccionInformesMenu";
+import ProduccionInformeMes from "./components/pages/ProduccionInformeMes";
+import ProduccionInformeTareasPersonal from "./components/pages/ProduccionInformeTareasPersonal";
 import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMes";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
@@ -92,9 +95,18 @@ function LayoutDesktop() {
               <Route path="/" element={<PaginaPrincipal />} />
               <Route path="/inicio" element={<Inicio />} />
               <Route path="/compras" element={<Error404 />} />
-              <Route path="/produccion" element={<Produccion />} />
+              <Route path="/produccion" element={<Navigate to="/produccion/certificados" replace />} />
               <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
-              <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMes />} />
+              <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMenu />} />
+              <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />
+              <Route path="/produccion/certificados/:anio/:mes/informes" element={<ProduccionInformesMenu />} />
+              <Route path="/produccion/certificados/:anio/:mes/informes/mes" element={<ProduccionInformeMes />} />
+              <Route
+                path="/produccion/certificados/:anio/:mes/informes/tareas-personal"
+                element={<ProduccionInformeTareasPersonal />}
+              />
+              {/* Variables todavía no está construido */}
+              <Route path="/produccion/certificados/:anio/:mes/variables" element={<Error404 />} />
               <Route path="/produccion/altas" element={<Error404 />} />
               <Route path="/produccion/altas/cc" element={<ProduccionAltaCC />} />
               <Route path="/produccion/altas/personal" element={<ProduccionAltaPersonal />} />

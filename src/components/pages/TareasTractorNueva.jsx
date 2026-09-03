@@ -4,6 +4,7 @@ import { Container, Card, Form, Button, Row, Col, Table, Modal } from "react-boo
 import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { guardarConReglaHorometro } from "../../utils/horometro";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -157,13 +158,19 @@ function TareasTractorNueva() {
         nombreTaller: tarea.taller === "Tercero" ? (tarea.nombreTaller || "").trim() : "",
       };
 
-      const res = await fetch(`/api/trabajos-tractor/${tarea._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
+        tractor: tractorId,
+        fecha: fechaLimpia,
+        enviar: ({ sinHorometro }) =>
+          fetch(`/api/trabajos-tractor/${tarea._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sinHorometro ? { ...payload, horometro: "" } : payload),
+          }),
       });
 
-      if (res.ok) {
+      if (cancelado) return;
+      if (ok) {
         setTareaSeleccionadaId(null);
 
         const esTerminada = estadoNormalizado(tarea.estado) === "Terminada";
@@ -227,7 +234,7 @@ function TareasTractorNueva() {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "No se pudieron guardar los cambios.",
+          text: cuerpo?.error || "No se pudieron guardar los cambios.",
           width: "300px",
           confirmButtonColor: "#1e293b",
         });
@@ -420,13 +427,22 @@ function TareasTractorNueva() {
         prioridad: URGENCIA_ESTILOS[tareaEditada.urgencia].prioridad,
       };
 
-      const res = await fetch(`/api/trabajos-tractor/${tareaEditada._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
+        tractor: tractorId,
+        fecha: payload.fecha,
+        enviar: ({ sinHorometro }) =>
+          fetch(`/api/trabajos-tractor/${tareaEditada._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sinHorometro ? { ...payload, horometro: "" } : payload),
+          }),
       });
 
-      if (res.ok) {
+      if (cancelado) {
+        setGuardandoEdicion(false);
+        return;
+      }
+      if (ok) {
         handleCerrarEdicion();
         Swal.fire({
           icon: "success",
@@ -441,7 +457,7 @@ function TareasTractorNueva() {
         Swal.fire({
           icon: "error",
           title: "Error",
-          text: "No se pudieron guardar los cambios.",
+          text: cuerpo?.error || "No se pudieron guardar los cambios.",
           width: "300px",
           confirmButtonColor: "#1e293b",
         });

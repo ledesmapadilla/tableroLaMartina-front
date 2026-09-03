@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
 
@@ -20,13 +20,39 @@ const MESES = [
   "Diciembre",
 ];
 
+// "2026-07-26T00:00:00.000Z" -> "26/07"
+const ddmm = (iso) => {
+  const [, m, d] = (iso || "").slice(0, 10).split("-");
+  return d ? `${d}/${m}` : "";
+};
+
 function ProduccionCertificados() {
   const navigate = useNavigate();
   const hoy = new Date();
   const [anio, setAnio] = useState(ANIO_INICIAL);
   const [hovered, setHovered] = useState(null);
+  const [periodos, setPeriodos] = useState([]);
 
   const esAnioEnCurso = anio === hoy.getFullYear();
+  const mesEnCurso = esAnioEnCurso ? hoy.getMonth() + 1 : null;
+
+  // Los 12 períodos del año en una sola consulta. Los meses que nadie tocó
+  // vienen con el corte sugerido, que es el que van a tener al abrirlos.
+  useEffect(() => {
+    let vigente = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/periodos/${anio}`);
+        const data = res.ok ? await res.json() : [];
+        if (vigente) setPeriodos(Array.isArray(data) ? data : []);
+      } catch {
+        if (vigente) setPeriodos([]);
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [anio]);
 
   return (
     <div
@@ -123,28 +149,47 @@ function ProduccionCertificados() {
           {MESES.map((mes, idx) => {
             const numeroMes = idx + 1;
             const isHovered = hovered === numeroMes;
-            const esMesActual = esAnioEnCurso && numeroMes === hoy.getMonth() + 1;
+            const esMesActual = numeroMes === mesEnCurso;
+            const periodo = periodos.find((x) => x.mes === numeroMes);
+            // Solo los meses cerrados muestran el período: hasta que se cierra
+            // el "hasta" acompaña al día de hoy y el corte todavía no es real.
+            const rango =
+              periodo?.cerrado ? `${ddmm(periodo.desde)} al ${ddmm(periodo.hasta)}` : "";
+
+            // El mes en curso va en verde claro, con borde y resplandor
+            // propios: es la tarjeta a la que se entra todos los días.
+            const fondo = esMesActual
+              ? isHovered
+                ? "linear-gradient(135deg, #059669 0%, #065f46 100%)"
+                : "linear-gradient(135deg, #10b981 0%, #047857 100%)"
+              : isHovered
+                ? "linear-gradient(135deg, #081c15 0%, #1b4332 100%)"
+                : "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)";
 
             return (
               <div
                 key={mes}
                 className="d-flex flex-column align-items-center justify-content-center text-center p-3"
                 style={{
-                  background: isHovered
-                    ? "linear-gradient(135deg, #081c15 0%, #1b4332 100%)"
-                    : "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
+                  background: fondo,
                   borderRadius: "16px",
                   height: "140px",
                   color: "#fff",
                   cursor: "pointer",
-                  border: `1px solid ${
-                    isHovered ? "#10b981" : esMesActual ? "#6ee7b7" : "rgba(255,255,255,0.12)"
-                  }`,
-                  boxShadow: isHovered
-                    ? "0 14px 24px -8px rgba(0,0,0,0.4), 0 0 14px rgba(16,185,129,0.25)"
-                    : "0 6px 14px -6px rgba(0,0,0,0.25)",
+                  border: esMesActual
+                    ? "2px solid #a7f3d0"
+                    : `1px solid ${isHovered ? "#10b981" : "rgba(255,255,255,0.12)"}`,
+                  boxShadow: esMesActual
+                    ? "0 0 0 3px rgba(16,185,129,0.22), 0 14px 26px -8px rgba(0,0,0,0.35)"
+                    : isHovered
+                      ? "0 14px 24px -8px rgba(0,0,0,0.4), 0 0 14px rgba(16,185,129,0.25)"
+                      : "0 6px 14px -6px rgba(0,0,0,0.25)",
                   transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                  transform: isHovered ? "translateY(-3px)" : "translateY(0)",
+                  transform: isHovered
+                    ? "translateY(-3px)"
+                    : esMesActual
+                      ? "scale(1.04)"
+                      : "translateY(0)",
                   userSelect: "none",
                 }}
                 onClick={() => navigate(`/produccion/certificados/${anio}/${numeroMes}`)}
@@ -159,15 +204,30 @@ function ProduccionCertificados() {
                 <span className="fw-bold" style={{ fontSize: "1.2rem", letterSpacing: "0.2px" }}>
                   {mes}
                 </span>
+                {/* El certificado no cubre el mes calendario: cerrado ya tiene
+                    sus fechas reales y se muestran */}
+                {rango && (
+                  <span
+                    className="mt-1 d-flex align-items-center gap-1"
+                    style={{
+                      fontSize: "0.72rem",
+                      color: esMesActual ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.7)",
+                      fontWeight: esMesActual ? 600 : 400,
+                    }}
+                  >
+                    <i className="bi bi-calendar3" style={{ fontSize: "0.68rem" }}></i>
+                    {rango}
+                  </span>
+                )}
                 {esMesActual && (
                   <span
                     className="mt-1 px-2 rounded-pill"
                     style={{
-                      backgroundColor: "rgba(110, 231, 183, 0.18)",
-                      color: "#6ee7b7",
+                      backgroundColor: "rgba(255,255,255,0.22)",
+                      color: "#fff",
                       fontSize: "0.68rem",
-                      fontWeight: 600,
-                      border: "1px solid rgba(110, 231, 183, 0.35)",
+                      fontWeight: 700,
+                      border: "1px solid rgba(255,255,255,0.45)",
                     }}
                   >
                     mes en curso

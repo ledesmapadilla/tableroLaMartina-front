@@ -4,12 +4,6 @@ import LogoNavbar from "./LogoNavbar";
 
 const menu = [
   {
-    id: "certificados",
-    label: "Certificados",
-    icon: "bi bi-file-earmark-text-fill",
-    to: "/produccion/certificados",
-  },
-  {
     id: "altas",
     label: "Altas",
     icon: "bi bi-plus-circle-fill",

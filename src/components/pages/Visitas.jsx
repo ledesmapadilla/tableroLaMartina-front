@@ -6,6 +6,8 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import { isMobile } from "../../utils/device";
 import LogoNavbar from "../shared/LogoNavbar";
 
+import { guardarConReglaHorometro } from "../../utils/horometro";
+
 const API = "/api/visitas";
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
@@ -379,12 +381,18 @@ function Visitas() {
       observaciones: form.observaciones.trim(),
     };
     try {
-      const res = await fetch(API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      // El backend valida el horómetro de cada CC anotado en la visita.
+      const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
+        fecha,
+        enviar: ({ sinHorometro }) =>
+          fetch(API, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sinHorometro ? { ...payload, horometro: "S/H" } : payload),
+          }),
       });
-      if (res.ok) {
+      if (cancelado) return;
+      if (ok) {
         setForm(formVacio);
         setError(false);
         setErrorHorometro(false);
@@ -397,6 +405,8 @@ function Visitas() {
           timer: 1500,
           showConfirmButton: false,
         });
+      } else {
+        Swal.fire({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar la visita" });
       }
     } catch {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la visita" });
