@@ -28,7 +28,7 @@ const secciones = [
     subtitulo: "Seguimiento y control de producción",
     // Entra directo a los meses de certificados: es la única sección de
     // Producción que se usa todos los días.
-    ruta: "/produccion/certificados",
+    ruta: "/produccion",
     bg: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
     hoverBg: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
     accentColor: "#10b981",

@@ -7,6 +7,7 @@ import Inicio from "./components/pages/Inicio";
 import ProduccionAltaCC from "./components/pages/ProduccionAltaCC";
 import ProduccionAltaPersonal from "./components/pages/ProduccionAltaPersonal";
 import ProduccionAltaTareas from "./components/pages/ProduccionAltaTareas";
+import ProduccionEstablecimientos from "./components/pages/ProduccionEstablecimientos";
 import ProduccionCertificados from "./components/pages/ProduccionCertificados";
 import ProduccionCertificadoMenu from "./components/pages/ProduccionCertificadoMenu";
 import ProduccionInformesMenu from "./components/pages/ProduccionInformesMenu";
@@ -96,7 +97,10 @@ function LayoutDesktop() {
               <Route path="/" element={<PaginaPrincipal />} />
               <Route path="/inicio" element={<Inicio />} />
               <Route path="/compras" element={<Error404 />} />
-              <Route path="/produccion" element={<Navigate to="/produccion/certificados" replace />} />
+              {/* Producción entra por los establecimientos: todo lo demás
+                  cuelga de uno de ellos. */}
+              <Route path="/produccion" element={<ProduccionEstablecimientos />} />
+              <Route path="/produccion/san-pablo" element={<Error404 />} />
               <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
               <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />

@@ -156,6 +156,7 @@ function ProduccionVariables() {
             _id: t._id,
             tarea: t.tarea,
             unidad: t.unidad || "",
+            empresa: t.empresa || "",
             vigente,
             historial,
           };
@@ -170,7 +171,7 @@ function ProduccionVariables() {
       if (filtroEstado === "Con precio" && !f.vigente) return false;
       if (filtroEstado === "Sin precio" && f.vigente) return false;
       if (!q) return true;
-      return [f.tarea, f.unidad].filter(Boolean).some((v) => v.toLowerCase().includes(q));
+      return [f.tarea, f.unidad, f.empresa].filter(Boolean).some((v) => v.toLowerCase().includes(q));
     });
   }, [filas, busqueda, filtroEstado]);
 
