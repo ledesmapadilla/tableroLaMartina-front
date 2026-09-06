@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card, InputGroup } from "react-bootstrap";
@@ -66,7 +65,6 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
  * no de un año y mes.
  */
 function ProduccionVariables() {
-  const navigate = useNavigate();
   const [tareas, setTareas] = useState([]);
   const [precios, setPrecios] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -494,18 +492,10 @@ function ProduccionVariables() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: "1020px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
-        {/* Encabezado: volver + título + acciones de toda la tabla */}
+        {/* Encabezado: título + acciones de toda la tabla. El volver está en el
+            navbar de Producción, arriba. */}
         <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
           <div className="d-flex align-items-center gap-2">
-            <button
-              onClick={() => navigate("/produccion/certificados")}
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-3 px-2 py-1"
-              style={{ fontSize: "0.8rem" }}
-              title="Volver a los certificados"
-            >
-              <i className="bi bi-arrow-left"></i>
-            </button>
-
             <div
               className="rounded-3 d-flex align-items-center justify-content-center"
               style={{

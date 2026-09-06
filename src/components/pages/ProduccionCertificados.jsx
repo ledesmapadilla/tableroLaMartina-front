@@ -74,17 +74,6 @@ function ProduccionCertificados() {
         {/* Encabezado + selector de año */}
         <div className="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
           <div className="d-flex align-items-center gap-2">
-            {/* Es la entrada de Producción: el volver lleva a la página
-                principal, que es de donde se llegó. */}
-            <button
-              onClick={() => navigate("/")}
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-3 px-2 py-1"
-              style={{ fontSize: "0.8rem" }}
-              title="Volver al inicio"
-            >
-              <i className="bi bi-arrow-left"></i>
-            </button>
-
             <div
               className="rounded-3 d-flex align-items-center justify-content-center"
               style={{

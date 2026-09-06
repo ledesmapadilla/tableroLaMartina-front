@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
@@ -145,8 +145,6 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
 
 function ProduccionCertificadoMes() {
   const { anio, mes } = useParams();
-  const navigate = useNavigate();
-
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
   const [fechaCierre, setFechaCierre] = useState(null);
@@ -977,16 +975,9 @@ function ProduccionCertificadoMes() {
       }}
     >
       <Container fluid className="px-3 py-2 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
-        {/* Encabezado: mes, período y volver */}
+        {/* Encabezado: mes y período. El volver está en el navbar, arriba. */}
         <div className="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
           <div className="d-flex align-items-center gap-2">
-            <button
-              onClick={() => navigate(`/produccion/certificados/${anio}/${mes}`)}
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-3 px-2 py-1"
-              style={{ fontSize: "0.8rem" }}
-            >
-              <i className="bi bi-arrow-left"></i>
-            </button>
             <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
               {titulo}
             </span>          </div>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button, Card, Container, Form, Modal, Table } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 
@@ -99,8 +99,6 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
 
 function ProduccionInformeMes() {
   const { anio, mes } = useParams();
-  const navigate = useNavigate();
-
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
   const [partes, setPartes] = useState([]);
@@ -673,16 +671,8 @@ function ProduccionInformeMes() {
       }}
     >
       <Container fluid className="px-3 py-2 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
-        {/* Encabezado */}
+        {/* Encabezado. El volver está en el navbar de Producción, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-          <button
-            onClick={() => navigate(`/produccion/certificados/${anio}/${mes}/informes`)}
-            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-3 px-2 py-1"
-            style={{ fontSize: "0.8rem" }}
-            title="Volver a los informes"
-          >
-            <i className="bi bi-arrow-left"></i>
-          </button>
           <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
             Informe del mes - {titulo}
           </span>

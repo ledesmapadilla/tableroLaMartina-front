@@ -62,16 +62,8 @@ function ProduccionCertificadoMenu() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: "940px", width: "100%", margin: "0 auto" }}
       >
-        {/* Encabezado: volver a la grilla de meses + mes */}
+        {/* Encabezado. El volver está en el navbar de Producción, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-4">
-          <button
-            onClick={() => navigate("/produccion/certificados")}
-            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-3 px-2 py-1"
-            style={{ fontSize: "0.8rem" }}
-            title="Volver a los meses"
-          >
-            <i className="bi bi-arrow-left"></i>
-          </button>
           <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
             {titulo}
           </span>

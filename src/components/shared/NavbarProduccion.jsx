@@ -71,7 +71,7 @@ function NavbarProduccion() {
         </div>
       </div>
 
-      {/* Lado derecho: menús de la sección */}
+      {/* Lado derecho: menús de la sección y navegación */}
       <div className="d-flex align-items-center gap-2">
         {menu.map((m) => {
           // Sin items es un link directo; con items, un desplegable.
@@ -150,6 +150,26 @@ function NavbarProduccion() {
             </div>
           );
         })}
+
+        {/* Volver y General, igual que en Camionetas y Tractores. Al vivir en
+            el navbar aparecen en todas las pantallas de Producción. */}
+        <button
+          onClick={() => navigate(-1)}
+          className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+          style={{ fontSize: "0.82rem" }}
+        >
+          <i className="bi bi-arrow-left"></i>
+          <span>Volver</span>
+        </button>
+
+        <button
+          onClick={() => navigate("/")}
+          className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+          style={{ fontSize: "0.82rem" }}
+        >
+          <i className="bi bi-house-door-fill"></i>
+          <span>General</span>
+        </button>
       </div>
     </div>
   );
