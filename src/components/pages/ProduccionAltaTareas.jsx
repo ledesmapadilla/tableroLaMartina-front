@@ -14,7 +14,6 @@ function ProduccionAltaTareas() {
   const [tareas, setTareas] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroUnidad, setFiltroUnidad] = useState("Todas");
-  const [filtroEmpresa, setFiltroEmpresa] = useState("Todas");
 
   const [showModal, setShowModal] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -43,7 +42,7 @@ function ProduccionAltaTareas() {
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ tarea: "", unidad: "", empresa: "" });
+    reset({ tarea: "", unidad: "" });
     setShowModal(true);
   };
 
@@ -51,7 +50,6 @@ function ProduccionAltaTareas() {
     setEditando(t._id);
     setValue("tarea", t.tarea);
     setValue("unidad", t.unidad || "");
-    setValue("empresa", t.empresa || "");
     setShowModal(true);
   };
 
@@ -106,32 +104,24 @@ function ProduccionAltaTareas() {
     }
   };
 
-  // Las empresas del filtro salen de lo ya cargado: no hay un padrón fijo.
-  const empresasExistentes = [
-    ...new Set(tareas.map((t) => (t.empresa || "").trim()).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
-
   const tareasFiltradas = tareas
     .filter((t) => {
       const q = busqueda.toLowerCase().trim();
       const matchBusqueda =
         !q ||
         (t.tarea || "").toLowerCase().includes(q) ||
-        (t.unidad || "").toLowerCase().includes(q) ||
-        (t.empresa || "").toLowerCase().includes(q);
+        (t.unidad || "").toLowerCase().includes(q);
 
       const matchUnidad =
         filtroUnidad === "Todas" || (t.unidad || "").trim() === filtroUnidad;
-      const matchEmpresa =
-        filtroEmpresa === "Todas" || (t.empresa || "").trim() === filtroEmpresa;
 
-      return matchBusqueda && matchUnidad && matchEmpresa;
+      return matchBusqueda && matchUnidad;
     })
     .sort((a, b) => (a.tarea || "").localeCompare(b.tarea || "", "es", { sensitivity: "base" }));
 
   const exportarExcel = async () => {
     const titulo = "Alta de Tareas — Producción";
-    const columnas = ["#", "Tarea", "Unidad", "Empresa"];
+    const columnas = ["#", "Tarea", "Unidad"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = await nuevoWorkbook();
@@ -165,7 +155,7 @@ function ProduccionAltaTareas() {
     ws.getRow(4).height = 20;
 
     tareasFiltradas.forEach((t, idx) => {
-      const fila = ws.addRow([idx + 1, t.tarea, t.unidad || "—", t.empresa || "—"]);
+      const fila = ws.addRow([idx + 1, t.tarea, t.unidad || "—"]);
       fila.eachCell((cell) => {
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.border = {
@@ -178,7 +168,7 @@ function ProduccionAltaTareas() {
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
     });
 
-    ws.columns = [{ width: 6 }, { width: 44 }, { width: 14 }, { width: 24 }];
+    ws.columns = [{ width: 6 }, { width: 44 }, { width: 14 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -279,7 +269,7 @@ function ProduccionAltaTareas() {
                 </span>
                 <Form.Control
                   type="text"
-                  placeholder="Buscar tarea, unidad o empresa..."
+                  placeholder="Buscar tarea o unidad..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   className={`border-start-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
@@ -348,48 +338,6 @@ function ProduccionAltaTareas() {
               </div>
             </div>
 
-            {/* Filtro por Empresa */}
-            <div className="d-flex align-items-center">
-              <span
-                className="fw-bold text-dark small flex-shrink-0 me-2"
-                style={{ fontSize: "0.8rem", letterSpacing: "0.1px" }}
-              >
-                Empresa:
-              </span>
-              <div className="input-group input-group-sm" style={{ width: "200px" }}>
-                <Form.Select
-                  size="sm"
-                  value={filtroEmpresa}
-                  onChange={(e) => setFiltroEmpresa(e.target.value)}
-                  className={`rounded-3 ${filtroEmpresa !== "Todas" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
-                  style={{
-                    fontSize: "0.82rem",
-                    height: "32px",
-                    padding: "3px 24px 3px 8px",
-                    color: filtroEmpresa !== "Todas" ? "#dc2626" : "#1e293b",
-                    fontWeight: filtroEmpresa !== "Todas" ? "700" : "normal",
-                  }}
-                >
-                  <option value="Todas">Todas</option>
-                  {empresasExistentes.map((e) => (
-                    <option key={e} value={e}>
-                      {e}
-                    </option>
-                  ))}
-                </Form.Select>
-                {filtroEmpresa !== "Todas" && (
-                  <button
-                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
-                    type="button"
-                    onClick={() => setFiltroEmpresa("Todas")}
-                    title="Limpiar filtro empresa"
-                    style={{ padding: "0 6px", height: "32px" }}
-                  >
-                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         </Card>
 
@@ -419,9 +367,6 @@ function ProduccionAltaTareas() {
                 <th style={{ width: "110px", backgroundColor: "#1b4332", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   Unidad
                 </th>
-                <th style={{ width: "180px", backgroundColor: "#1b4332", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
-                  Empresa
-                </th>
                 <th style={{ width: "95px", backgroundColor: "#1b4332", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   Acciones
                 </th>
@@ -430,8 +375,8 @@ function ProduccionAltaTareas() {
             <tbody>
               {tareasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
-                    {busqueda || filtroUnidad !== "Todas" || filtroEmpresa !== "Todas"
+                  <td colSpan={4} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
+                    {busqueda || filtroUnidad !== "Todas"
                       ? "No se encontraron tareas con los filtros seleccionados"
                       : "No hay tareas registradas"}
                   </td>
@@ -455,7 +400,6 @@ function ProduccionAltaTareas() {
                         {t.tarea}
                       </td>
                       <td className="text-secondary fw-medium">{t.unidad || "—"}</td>
-                      <td className="text-secondary fw-medium">{t.empresa || "—"}</td>
                       <td>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
                           <button
@@ -524,7 +468,7 @@ function ProduccionAltaTareas() {
                 </Form.Control.Feedback>
               </Col>
 
-              <Col md={5}>
+              <Col md={12}>
                 <Form.Label className="fw-semibold text-dark small mb-1">
                   Unidad <span className="text-danger">*</span>
                 </Form.Label>
@@ -546,26 +490,6 @@ function ProduccionAltaTareas() {
                 </Form.Control.Feedback>
               </Col>
 
-              <Col md={7}>
-                <Form.Label className="fw-semibold text-dark small mb-1">Empresa</Form.Label>
-                <Form.Control
-                  className="rounded-3"
-                  style={{ fontSize: "0.85rem" }}
-                  list="empresas-cargadas"
-                  {...register("empresa", {
-                    maxLength: { value: 80, message: "Máximo 80 caracteres" },
-                  })}
-                  isInvalid={!!errors.empresa}
-                />
-                <datalist id="empresas-cargadas">
-                  {empresasExistentes.map((e) => (
-                    <option key={e} value={e} />
-                  ))}
-                </datalist>
-                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.empresa?.message}
-                </Form.Control.Feedback>
-              </Col>
             </Row>
           </Modal.Body>
           <Modal.Footer className="bg-light border-0 py-2.5 px-4" style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}>
