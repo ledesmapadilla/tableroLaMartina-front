@@ -63,8 +63,13 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
  *
  * No depende del mes: por eso cuelga de `/produccion/certificados/variables` y
  * no de un año y mes.
+ *
+ * Es la misma pantalla para los dos establecimientos: los precios son por
+ * campo, así que cambia con cuál se piden y se guardan.
  */
-function ProduccionVariables() {
+function ProduccionVariables({ establecimiento = "caspinchango" }) {
+  // Todas las llamadas de precios y de clientes van con el establecimiento.
+  const query = `?establecimiento=${establecimiento}`;
   const [tareas, setTareas] = useState([]);
   const [precios, setPrecios] = useState([]);
   const [clientes, setClientes] = useState([]);
@@ -96,10 +101,11 @@ function ProduccionVariables() {
   const cargar = async () => {
     try {
       const [resTareas, resPrecios, resClientesPartes, resClientesPrecios] = await Promise.all([
+        // Las tareas son de La Martina y se comparten entre los dos campos.
         fetch(API_TAREAS),
-        fetch(API_VARIABLES),
-        fetch("/api/partes/clientes"),
-        fetch(`${API_VARIABLES}/clientes`),
+        fetch(API_VARIABLES + query),
+        fetch("/api/partes/clientes" + query),
+        fetch(`${API_VARIABLES}/clientes${query}`),
       ]);
       const datosTareas = resTareas.ok ? await resTareas.json() : [];
       const datosPrecios = resPrecios.ok ? await resPrecios.json() : [];
@@ -266,7 +272,7 @@ function ProduccionVariables() {
       const res = await fetch(editando ? `${API_VARIABLES}/${editando}` : API_VARIABLES, {
         method: editando ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, establecimiento }),
       });
       if (res.ok) {
         const guardado = await res.json().catch(() => null);
@@ -513,6 +519,7 @@ function ProduccionVariables() {
               <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1rem" }}>
                 Variables
               </span>
+              {/* El campo en el que se está parado lo dice el navbar, arriba. */}
               <span className="text-muted" style={{ fontSize: "0.78rem" }}>
                 {conPrecio} de {filas.length} tareas con precio · rigen para todos los meses
               </span>
@@ -1086,7 +1093,11 @@ function ProduccionVariables() {
                         <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
                       </button>
                       <button
-                        onClick={() => borrarCarga(h, historialAbierto.tarea)}
+                        // Borrada la carga, el historial que se estaba mirando
+                        // ya no es el mismo: se cierra y se vuelve a la tabla.
+                        onClick={async () => {
+                          if (await borrarCarga(h, historialAbierto.tarea)) setHistorialDe(null);
+                        }}
                         className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                         style={{ width: "24px", height: "24px" }}
                         title="Borrar esta carga"

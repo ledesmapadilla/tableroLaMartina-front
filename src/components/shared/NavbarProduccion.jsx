@@ -15,11 +15,28 @@ const menu = [
   },
 ];
 
+/**
+ * En qué establecimiento se está parado, sacado de la URL.
+ *
+ * Devuelve null donde no corresponde ninguno: en la pantalla que los elige y
+ * en las altas, que son padrones de La Martina y se comparten entre los dos.
+ */
+const establecimientoDe = (pathname) => {
+  if (pathname.startsWith("/produccion/san-pablo")) {
+    return { nombre: "San Pablo", fondo: "#a13d3d", borde: "#ef4444" };
+  }
+  if (pathname.startsWith("/produccion/certificados")) {
+    return { nombre: "Caspinchango", fondo: "#2d6a4f", borde: "#6ee7b7" };
+  }
+  return null;
+};
+
 function NavbarProduccion() {
   const navigate = useNavigate();
   const location = useLocation();
   const [abierto, setAbierto] = useState(null);
   const navRef = useRef(null);
+  const establecimiento = establecimientoDe(location.pathname);
 
   // Cerrar el desplegable al navegar o al hacer click afuera
   useEffect(() => setAbierto(null), [location.pathname]);
@@ -69,6 +86,29 @@ function NavbarProduccion() {
           </div>
           <span className="text-white fw-semibold">Producción</span>
         </div>
+
+        {/* En qué campo se está trabajando. Las pantallas de los dos son
+            iguales, así que el cartel es lo único que las distingue: va grande
+            y con el color de su tarjeta. */}
+        {establecimiento && (
+          <div
+            className="d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{
+              backgroundColor: establecimiento.fondo,
+              border: `1px solid ${establecimiento.borde}`,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+            }}
+            title={`Está viendo ${establecimiento.nombre}`}
+          >
+            <i className="bi bi-geo-alt-fill" style={{ color: establecimiento.borde }}></i>
+            <span
+              className="fw-bold text-white"
+              style={{ fontSize: "0.95rem", letterSpacing: "0.3px" }}
+            >
+              {establecimiento.nombre}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Lado derecho: menús de la sección y navegación */}

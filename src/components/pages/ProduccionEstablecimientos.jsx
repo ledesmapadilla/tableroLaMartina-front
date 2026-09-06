@@ -25,7 +25,7 @@ const ESTABLECIMIENTOS = [
   {
     id: "san-pablo",
     titulo: "San Pablo",
-    subtitulo: "Todavía sin construir",
+    subtitulo: "Certificaciones mensuales del personal",
     icono: "bi bi-tree-fill",
     destino: "/produccion/san-pablo",
     colores: {

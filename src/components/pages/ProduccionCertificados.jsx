@@ -26,7 +26,17 @@ const ddmm = (iso) => {
   return d ? `${d}/${m}` : "";
 };
 
-function ProduccionCertificados() {
+/**
+ * La grilla de meses de un establecimiento, con Variables arriba.
+ *
+ * Es la misma pantalla para los dos campos: cambia el establecimiento con el
+ * que se piden los períodos y la base de las rutas a las que lleva. Sin `base`
+ * queda Caspinchango, que es como estaba antes de separar los campos.
+ */
+function ProduccionCertificados({
+  establecimiento = "caspinchango",
+  base = "/produccion/certificados",
+}) {
   const navigate = useNavigate();
   const hoy = new Date();
   const [anio, setAnio] = useState(ANIO_INICIAL);
@@ -43,7 +53,7 @@ function ProduccionCertificados() {
     let vigente = true;
     (async () => {
       try {
-        const res = await fetch(`/api/periodos/${anio}`);
+        const res = await fetch(`/api/periodos/${anio}?establecimiento=${establecimiento}`);
         const data = res.ok ? await res.json() : [];
         if (vigente) setPeriodos(Array.isArray(data) ? data : []);
       } catch {
@@ -53,7 +63,7 @@ function ProduccionCertificados() {
     return () => {
       vigente = false;
     };
-  }, [anio]);
+  }, [anio, establecimiento]);
 
   return (
     <div
@@ -87,6 +97,7 @@ function ProduccionCertificados() {
             >
               <i className="bi bi-file-earmark-text-fill"></i>
             </div>
+            {/* El campo en el que se está parado lo dice el navbar, arriba. */}
             <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1rem" }}>
               Certificados
             </span>
@@ -159,10 +170,10 @@ function ProduccionCertificados() {
             transform: hoverVariables ? "translateY(-3px)" : "translateY(0)",
             userSelect: "none",
           }}
-          onClick={() => navigate("/produccion/certificados/variables")}
+          onClick={() => navigate(`${base}/variables`)}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && navigate("/produccion/certificados/variables")}
+          onKeyDown={(e) => e.key === "Enter" && navigate(`${base}/variables`)}
           onMouseEnter={() => setHoverVariables(true)}
           onMouseLeave={() => setHoverVariables(false)}
         >
@@ -246,11 +257,11 @@ function ProduccionCertificados() {
                       : "translateY(0)",
                   userSelect: "none",
                 }}
-                onClick={() => navigate(`/produccion/certificados/${anio}/${numeroMes}`)}
+                onClick={() => navigate(`${base}/${anio}/${numeroMes}`)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) =>
-                  e.key === "Enter" && navigate(`/produccion/certificados/${anio}/${numeroMes}`)
+                  e.key === "Enter" && navigate(`${base}/${anio}/${numeroMes}`)
                 }
                 onMouseEnter={() => setHovered(numeroMes)}
                 onMouseLeave={() => setHovered(null)}

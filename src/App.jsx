@@ -100,7 +100,21 @@ function LayoutDesktop() {
               {/* Producción entra por los establecimientos: todo lo demás
                   cuelga de uno de ellos. */}
               <Route path="/produccion" element={<ProduccionEstablecimientos />} />
-              <Route path="/produccion/san-pablo" element={<Error404 />} />
+
+              {/* San Pablo tiene su propia certificación: la grilla de meses y
+                  Variables ya son las suyas, con sus propios períodos. Lo que
+                  hay adentro de cada mes todavía no está construido. */}
+              <Route
+                path="/produccion/san-pablo"
+                element={
+                  <ProduccionCertificados establecimiento="san-pablo" base="/produccion/san-pablo" />
+                }
+              />
+              <Route
+                path="/produccion/san-pablo/variables"
+                element={<ProduccionVariables establecimiento="san-pablo" />}
+              />
+              <Route path="/produccion/san-pablo/:anio/:mes" element={<Error404 />} />
               <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
               <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />

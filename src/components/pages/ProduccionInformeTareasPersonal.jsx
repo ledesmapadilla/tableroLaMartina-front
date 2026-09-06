@@ -200,6 +200,18 @@ function ProduccionInformeTareasPersonal() {
   // período, así la marca aguanta el refresco.
   const [excluidos, setExcluidos] = useState(() => new Set());
 
+  // Personas plegadas con el "−": se les esconden las filas de tarea y queda
+  // solo la de su total. Es una comodidad de la pantalla, no se guarda.
+  const [plegados, setPlegados] = useState(() => new Set());
+
+  const alternarPlegado = (idPersona) =>
+    setPlegados((actuales) => {
+      const nuevos = new Set(actuales);
+      if (nuevos.has(idPersona)) nuevos.delete(idPersona);
+      else nuevos.add(idPersona);
+      return nuevos;
+    });
+
   const conExcluido = (idPersona, excluido) => {
     setExcluidos((actuales) => {
       const nuevos = new Set(actuales);
@@ -713,6 +725,14 @@ function ProduccionInformeTareasPersonal() {
    * que el de cada persona: no se suman los brutos, se lleva a bruto el neto
    * ya descontado.
    */
+  // Plegar y desplegar toda la tabla de una. Se considera plegada cuando no
+  // queda ninguna persona con el detalle a la vista.
+  const todasPlegadas =
+    filas.length > 0 && filas.every((f) => plegados.has(f.idPersona));
+
+  const alternarTodas = () =>
+    setPlegados(todasPlegadas ? new Set() : new Set(filas.map((f) => f.idPersona)));
+
   const totalGeneral = useMemo(() => {
     const personas = new Set(
       filas.map((f) => f.idPersona).filter((id) => !excluidos.has(id))
@@ -1388,7 +1408,26 @@ function ProduccionInformeTareasPersonal() {
           {/* El botón va sobre las columnas de descuento: se apoya en el borde
               derecho de la tabla y se corre el ancho de las dos columnas de
               total, que son las que quedan a su derecha. */}
-          <div className="d-flex justify-content-end mb-1" style={{ paddingRight: "220px" }}>
+          <div className="d-flex align-items-center mb-1" style={{ paddingRight: "220px" }}>
+            {/* Pliega y despliega toda la tabla de una: el mismo botón que
+                tiene cada persona, pero para todas. */}
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={alternarTodas}
+              disabled={filas.length === 0}
+              className="rounded-3 px-2 d-flex align-items-center gap-1 me-auto"
+              style={{ fontSize: "0.78rem", height: "28px", fontWeight: 600 }}
+              title={
+                todasPlegadas
+                  ? "Ver el detalle de todas las personas"
+                  : "Dejar solo los totales de cada persona"
+              }
+            >
+              <i className={`bi bi-${todasPlegadas ? "plus" : "dash"}-lg`}></i>
+              <span>{todasPlegadas ? "Ver detalle" : "Solo totales"}</span>
+            </Button>
+
             <Button
               size="sm"
               onClick={() => abrirCarga()}
@@ -1427,7 +1466,7 @@ function ProduccionInformeTareasPersonal() {
               <tr>
                 <th
                   className="col-ojo"
-                  style={{ ...th, textAlign: "center", minWidth: "34px" }}
+                  style={{ ...th, textAlign: "center", minWidth: "48px" }}
                   title="Apagar a una persona la saca de los totales de abajo"
                 >
                   <i className="bi bi-eye"></i>
@@ -1488,9 +1527,15 @@ function ProduccionInformeTareasPersonal() {
                     idx === filas.length - 1 || filas[idx + 1].idPersona !== f.idPersona;
                   const { neto: total, bruto: totalBruto } = totalesDe(f.idPersona);
                   const excluida = excluidos.has(f.idPersona);
+                  const plegada = plegados.has(f.idPersona);
                   return (
                     <Fragment key={f.clave}>
-                      <tr className={excluida ? "persona-excluida" : undefined}>
+                      {/* Plegada, las filas de tarea se esconden y queda solo
+                          la del total. */}
+                      <tr
+                        className={excluida ? "persona-excluida" : undefined}
+                        hidden={plegada}
+                      >
                         {/* El ojo apaga a la persona: se sigue viendo, tachada,
                             pero deja de sumar abajo. */}
                         <td style={{ ...td, textAlign: "center" }} className="sin-tachar col-ojo">
@@ -1628,11 +1673,57 @@ function ProduccionInformeTareasPersonal() {
                             excluida ? " persona-excluida" : ""
                           }`}
                         >
+                          {/* Plegar y desplegar el detalle de la persona. Va en
+                              la columna del ojo, a la altura de su total. */}
+                          <td
+                            style={{ ...td, textAlign: "center" }}
+                            className="sin-tachar col-ojo"
+                          >
+                            <div className="d-flex align-items-center justify-content-center gap-1">
+                              <button
+                                onClick={() => alternarPlegado(f.idPersona)}
+                                className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center rounded-2 p-0"
+                                style={{ width: "18px", height: "18px" }}
+                                title={
+                                  plegada
+                                    ? `Ver el detalle de ${f.persona}`
+                                    : `Esconder el detalle de ${f.persona}`
+                                }
+                              >
+                                <i
+                                  className={`bi bi-${plegada ? "plus" : "dash"}-lg`}
+                                  style={{ fontSize: "0.6rem" }}
+                                ></i>
+                              </button>
+
+                              {/* Plegada, esta es la única fila que se ve de la
+                                  persona: el ojo tiene que estar acá o no habría
+                                  cómo sacarla de los totales. */}
+                              {plegada && (
+                                <button
+                                  onClick={() => alternarExcluido(f.idPersona)}
+                                  className="btn btn-sm p-0 border-0 bg-transparent"
+                                  style={{ lineHeight: 1, color: excluida ? "#dc2626" : "#64748b" }}
+                                  title={
+                                    excluida
+                                      ? `Volver a contar a ${f.persona} en los totales`
+                                      : `Sacar a ${f.persona} de los totales`
+                                  }
+                                >
+                                  <i
+                                    className={`bi bi-eye${excluida ? "-slash" : ""}-fill`}
+                                    style={{ fontSize: "0.75rem" }}
+                                  ></i>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+
                           {/* El rótulo cruza las columnas hasta el $ unitario y
                               va alineado a la derecha: corta antes de las dos
                               columnas de descuento, lejos de los nombres. */}
                           <td
-                            colSpan={9}
+                            colSpan={8}
                             style={{ ...td, fontWeight: 700, color: "#1b4332", textAlign: "right" }}
                           >
                             Total {f.persona}
