@@ -73,6 +73,26 @@ function NavbarProduccion() {
 
       {/* Lado derecho: menús de la sección y navegación */}
       <div className="d-flex align-items-center gap-2">
+        {/* General y Volver, igual que en Camionetas y Tractores. Al vivir en
+            el navbar aparecen en todas las pantallas de Producción. */}
+        <button
+          onClick={() => navigate("/")}
+          className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+          style={{ fontSize: "0.82rem" }}
+        >
+          <i className="bi bi-house-door-fill"></i>
+          <span>General</span>
+        </button>
+
+        <button
+          onClick={() => navigate(-1)}
+          className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+          style={{ fontSize: "0.82rem" }}
+        >
+          <i className="bi bi-arrow-left"></i>
+          <span>Volver</span>
+        </button>
+
         {menu.map((m) => {
           // Sin items es un link directo; con items, un desplegable.
           if (!m.items) {
@@ -150,26 +170,6 @@ function NavbarProduccion() {
             </div>
           );
         })}
-
-        {/* General y Volver, igual que en Camionetas y Tractores. Al vivir en
-            el navbar aparecen en todas las pantallas de Producción. */}
-        <button
-          onClick={() => navigate("/")}
-          className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-          style={{ fontSize: "0.82rem" }}
-        >
-          <i className="bi bi-house-door-fill"></i>
-          <span>General</span>
-        </button>
-
-        <button
-          onClick={() => navigate(-1)}
-          className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-          style={{ fontSize: "0.82rem" }}
-        >
-          <i className="bi bi-arrow-left"></i>
-          <span>Volver</span>
-        </button>
       </div>
     </div>
   );
