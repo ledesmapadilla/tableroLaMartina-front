@@ -18,7 +18,8 @@ const MESES = [
 ];
 
 // Un informe por tarjeta. Para sumar otro alcanza con agregar una entrada acá
-// y su ruta en App.jsx.
+// y su ruta en App.jsx. Cada uno lleva su color: son informes distintos y de
+// un vistazo se tiene que ver cuál es cuál.
 const INFORMES = [
   {
     id: "mes",
@@ -26,13 +27,27 @@ const INFORMES = [
     subtitulo: "Personal, centros de costo, combustible, producción y rendimiento",
     icono: "bi bi-clipboard-data-fill",
     destino: "mes",
+    colores: {
+      fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
+      fondoHover: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
+      borde: "#10b981",
+      icono: "#6ee7b7",
+      brillo: "rgba(16,185,129,0.25)",
+    },
   },
   {
     id: "tareas-personal",
-    titulo: "Tareas por personal",
-    subtitulo: "Qué tareas hizo cada persona y qué cantidad de cada una",
-    icono: "bi bi-person-lines-fill",
+    titulo: "Contable - Pagos",
+    subtitulo: "Lo que se le certifica a cada persona, con descuentos y totales",
+    icono: "bi bi-cash-coin",
     destino: "tareas-personal",
+    colores: {
+      fondo: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
+      fondoHover: "linear-gradient(135deg, #083344 0%, #164e63 100%)",
+      borde: "#22d3ee",
+      icono: "#a5f3fc",
+      brillo: "rgba(34,211,238,0.25)",
+    },
   },
 ];
 
@@ -97,16 +112,14 @@ function ProduccionInformesMenu() {
                   key={i.id}
                   className="d-flex flex-column align-items-center justify-content-center text-center p-4"
                   style={{
-                    background: isHovered
-                      ? "linear-gradient(135deg, #081c15 0%, #1b4332 100%)"
-                      : "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
+                    background: isHovered ? i.colores.fondoHover : i.colores.fondo,
                     borderRadius: "20px",
                     height: "230px",
                     color: "#fff",
                     cursor: "pointer",
-                    border: `1px solid ${isHovered ? "#10b981" : "rgba(255,255,255,0.12)"}`,
+                    border: `1px solid ${isHovered ? i.colores.borde : "rgba(255,255,255,0.12)"}`,
                     boxShadow: isHovered
-                      ? "0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px rgba(16,185,129,0.25)"
+                      ? `0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px ${i.colores.brillo}`
                       : "0 8px 18px -6px rgba(0,0,0,0.25)",
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     transform: isHovered ? "translateY(-4px)" : "translateY(0)",
@@ -129,7 +142,7 @@ function ProduccionInformesMenu() {
                       border: "1px solid rgba(255,255,255,0.16)",
                     }}
                   >
-                    <i className={i.icono} style={{ fontSize: "2.1rem", color: "#6ee7b7" }}></i>
+                    <i className={i.icono} style={{ fontSize: "2.1rem", color: i.colores.icono }}></i>
                   </div>
 
                   <span className="fw-bold" style={{ fontSize: "1.2rem", letterSpacing: "0.2px" }}>

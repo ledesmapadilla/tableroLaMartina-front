@@ -13,6 +13,7 @@ import ProduccionInformesMenu from "./components/pages/ProduccionInformesMenu";
 import ProduccionInformeMes from "./components/pages/ProduccionInformeMes";
 import ProduccionInformeTareasPersonal from "./components/pages/ProduccionInformeTareasPersonal";
 import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMes";
+import ProduccionVariables from "./components/pages/ProduccionVariables";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
@@ -105,8 +106,8 @@ function LayoutDesktop() {
                 path="/produccion/certificados/:anio/:mes/informes/tareas-personal"
                 element={<ProduccionInformeTareasPersonal />}
               />
-              {/* Variables todavía no está construido */}
-              <Route path="/produccion/certificados/:anio/:mes/variables" element={<Error404 />} />
+              {/* Variables es una sola para todos los meses: no lleva año ni mes */}
+              <Route path="/produccion/certificados/variables" element={<ProduccionVariables />} />
               <Route path="/produccion/altas" element={<Error404 />} />
               <Route path="/produccion/altas/cc" element={<ProduccionAltaCC />} />
               <Route path="/produccion/altas/personal" element={<ProduccionAltaPersonal />} />

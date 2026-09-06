@@ -37,7 +37,7 @@ function ProduccionAltaPersonal() {
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ apellidoNombre: "", dni: "" });
+    reset({ apellidoNombre: "", dni: "", legajo: "" });
     setShowModal(true);
   };
 
@@ -45,6 +45,7 @@ function ProduccionAltaPersonal() {
     setEditando(p._id);
     setValue("apellidoNombre", p.apellidoNombre);
     setValue("dni", p.dni || "");
+    setValue("legajo", p.legajo || "");
     setShowModal(true);
   };
 
@@ -106,7 +107,8 @@ function ProduccionAltaPersonal() {
       return (
         !q ||
         (p.apellidoNombre || "").toLowerCase().includes(q) ||
-        (p.dni || "").toLowerCase().includes(q)
+        (p.dni || "").toLowerCase().includes(q) ||
+        (p.legajo || "").toLowerCase().includes(q)
       );
     })
     .sort((a, b) =>
@@ -115,7 +117,7 @@ function ProduccionAltaPersonal() {
 
   const exportarExcel = async () => {
     const titulo = "Alta de Personal — Producción";
-    const columnas = ["#", "Apellido, Nombre", "DNI"];
+    const columnas = ["#", "Apellido, Nombre", "DNI", "Legajo"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = await nuevoWorkbook();
@@ -149,7 +151,7 @@ function ProduccionAltaPersonal() {
     ws.getRow(4).height = 20;
 
     personalFiltrado.forEach((p, idx) => {
-      const fila = ws.addRow([idx + 1, p.apellidoNombre, p.dni || "—"]);
+      const fila = ws.addRow([idx + 1, p.apellidoNombre, p.dni || "—", p.legajo || "—"]);
       fila.eachCell((cell) => {
         cell.alignment = { horizontal: "center", vertical: "middle" };
         cell.border = {
@@ -162,7 +164,7 @@ function ProduccionAltaPersonal() {
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
     });
 
-    ws.columns = [{ width: 6 }, { width: 40 }, { width: 18 }];
+    ws.columns = [{ width: 6 }, { width: 40 }, { width: 18 }, { width: 14 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -262,7 +264,7 @@ function ProduccionAltaPersonal() {
               </span>
               <Form.Control
                 type="text"
-                placeholder="Buscar apellido, nombre o DNI..."
+                placeholder="Buscar apellido, nombre, DNI o legajo..."
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 className={`border-start-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
@@ -315,6 +317,9 @@ function ProduccionAltaPersonal() {
                 <th style={{ width: "130px", backgroundColor: "#1b4332", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   DNI
                 </th>
+                <th style={{ width: "100px", backgroundColor: "#1b4332", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
+                  Legajo
+                </th>
                 <th style={{ width: "95px", backgroundColor: "#1b4332", color: "#fff", padding: "8px 8px", fontWeight: "normal" }}>
                   Acciones
                 </th>
@@ -323,7 +328,7 @@ function ProduccionAltaPersonal() {
             <tbody>
               {personalFiltrado.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
+                  <td colSpan={5} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
                     {busqueda
                       ? "No se encontró personal con esa búsqueda"
                       : "No hay personal registrado"}
@@ -348,6 +353,7 @@ function ProduccionAltaPersonal() {
                         {p.apellidoNombre}
                       </td>
                       <td className="text-secondary fw-medium">{p.dni || "—"}</td>
+                      <td className="text-secondary fw-medium">{p.legajo || "—"}</td>
                       <td>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
                           <button
@@ -416,21 +422,35 @@ function ProduccionAltaPersonal() {
                 </Form.Control.Feedback>
               </Col>
 
-              <Col md={12}>
-                <Form.Label className="fw-semibold text-dark small mb-1">
-                  DNI <span className="text-danger">*</span>
-                </Form.Label>
+              {/* Ni el DNI ni el legajo son obligatorios: la persona se puede
+                  cargar sin tenerlos a mano y completarlos después. */}
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">DNI</Form.Label>
                 <Form.Control
                   className="rounded-3"
                   style={{ fontSize: "0.85rem" }}
                   {...register("dni", {
-                    required: "El DNI es requerido",
                     maxLength: { value: 20, message: "Máximo 20 caracteres" },
                   })}
                   isInvalid={!!errors.dni}
                 />
                 <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
                   {errors.dni?.message}
+                </Form.Control.Feedback>
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Legajo</Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem" }}
+                  {...register("legajo", {
+                    maxLength: { value: 20, message: "Máximo 20 caracteres" },
+                  })}
+                  isInvalid={!!errors.legajo}
+                />
+                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                  {errors.legajo?.message}
                 </Form.Control.Feedback>
               </Col>
             </Row>

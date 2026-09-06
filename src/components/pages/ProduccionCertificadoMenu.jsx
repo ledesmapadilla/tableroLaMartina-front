@@ -19,7 +19,8 @@ const MESES = [
 
 // Qué se puede hacer dentro de un mes. La planilla de carga es una de las
 // opciones, no la pantalla del mes: por eso el mes entra acá y no directo a
-// los partes.
+// los partes. Variables no está acá: es una sola para todos los meses y vive
+// en la pantalla de certificados.
 const OPCIONES = [
   {
     id: "certificados",
@@ -34,13 +35,6 @@ const OPCIONES = [
     subtitulo: "Resúmenes y exportaciones del período",
     icono: "bi bi-bar-chart-fill",
     destino: "informes",
-  },
-  {
-    id: "variables",
-    titulo: "Variables",
-    subtitulo: "Variables de la certificación",
-    icono: "bi bi-sliders",
-    destino: "variables",
   },
 ];
 
@@ -88,9 +82,11 @@ function ProduccionCertificadoMenu() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: `repeat(${OPCIONES.length}, 1fr)`,
               gap: "1.75rem",
               width: "100%",
+              maxWidth: "640px",
+              margin: "0 auto",
             }}
           >
             {OPCIONES.map((o) => {

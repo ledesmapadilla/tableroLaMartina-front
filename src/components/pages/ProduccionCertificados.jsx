@@ -31,6 +31,7 @@ function ProduccionCertificados() {
   const hoy = new Date();
   const [anio, setAnio] = useState(ANIO_INICIAL);
   const [hovered, setHovered] = useState(null);
+  const [hoverVariables, setHoverVariables] = useState(false);
   const [periodos, setPeriodos] = useState([]);
 
   const esAnioEnCurso = anio === hoy.getFullYear();
@@ -67,11 +68,11 @@ function ProduccionCertificados() {
     >
       <Container
         fluid
-        className="px-4 py-3 d-flex flex-column flex-grow-1"
+        className="px-4 pt-2 pb-0 d-flex flex-column flex-grow-1"
         style={{ maxWidth: "880px", width: "100%", margin: "0 auto" }}
       >
         {/* Encabezado + selector de año */}
-        <div className="d-flex align-items-center justify-content-between gap-3 mb-4 flex-wrap">
+        <div className="d-flex align-items-center justify-content-between gap-3 mb-2 flex-wrap">
           <div className="d-flex align-items-center gap-2">
             <div
               className="rounded-3 d-flex align-items-center justify-content-center"
@@ -136,13 +137,66 @@ function ProduccionCertificados() {
           </div>
         </div>
 
-        {/* Tarjetas de los meses */}
-        <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+        {/* Variables: no depende del mes ni del año, son las mismas para todos
+            los períodos. Por eso va arriba de la grilla y con otro color. */}
+        <div
+          className="d-flex align-items-center justify-content-center gap-3 px-4 py-2 mb-3"
+          style={{
+            width: "50%",
+            marginLeft: "auto",
+            marginRight: "auto",
+            background: hoverVariables
+              ? "linear-gradient(135deg, #0f172a 0%, #334155 100%)"
+              : "linear-gradient(135deg, #334155 0%, #475569 100%)",
+            borderRadius: "16px",
+            color: "#fff",
+            cursor: "pointer",
+            border: `1px solid ${hoverVariables ? "#94a3b8" : "rgba(255,255,255,0.12)"}`,
+            boxShadow: hoverVariables
+              ? "0 14px 24px -8px rgba(0,0,0,0.4)"
+              : "0 6px 14px -6px rgba(0,0,0,0.25)",
+            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+            transform: hoverVariables ? "translateY(-3px)" : "translateY(0)",
+            userSelect: "none",
+          }}
+          onClick={() => navigate("/produccion/certificados/variables")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/produccion/certificados/variables")}
+          onMouseEnter={() => setHoverVariables(true)}
+          onMouseLeave={() => setHoverVariables(false)}
+        >
+          <div
+            className="d-flex align-items-center justify-content-center flex-shrink-0"
+            style={{
+              width: "46px",
+              height: "46px",
+              borderRadius: "14px",
+              backgroundColor: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.16)",
+            }}
+          >
+            <i className="bi bi-sliders" style={{ fontSize: "1.4rem", color: "#cbd5e1" }}></i>
+          </div>
+
+          <div className="d-flex flex-column text-center">
+            <span className="fw-bold" style={{ fontSize: "1.05rem", letterSpacing: "0.2px" }}>
+              Variables
+            </span>
+            <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.72)" }}>
+              Valores de la certificación, comunes a todos los meses
+            </span>
+          </div>
+        </div>
+
+        {/* Tarjetas de los meses. Arrancan arriba: el sobrante de alto queda
+            abajo y separa la última fila del footer. */}
+        <div className="flex-grow-1 d-flex align-items-start justify-content-center pb-4">
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "1.25rem",
+              gap: "1rem",
               width: "100%",
             }}
           >
@@ -238,6 +292,7 @@ function ProduccionCertificados() {
             })}
           </div>
         </div>
+
       </Container>
     </div>
   );

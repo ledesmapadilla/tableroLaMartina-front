@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
@@ -8,9 +9,11 @@ const API = "/api/tareas";
 
 // Unidades en las que se mide una tarea. Para sumar una nueva alcanza con
 // agregarla acá: alimenta el selector del alta y el filtro del listado.
-const UNIDADES = ["Horas", "Plantas", "Tancadas"];
+const UNIDADES = ["Horas", "Plantas", "Tancadas", "Un"];
 
 function ProduccionAltaTareas() {
+  const navigate = useNavigate();
+
   const [tareas, setTareas] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroUnidad, setFiltroUnidad] = useState("Todas");
@@ -209,6 +212,15 @@ function ProduccionAltaTareas() {
         {/* Encabezado de la pantalla + acciones */}
         <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
           <div className="d-flex align-items-center gap-2">
+            <button
+              onClick={() => navigate(-1)}
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 rounded-3 px-2 py-1"
+              style={{ fontSize: "0.8rem" }}
+              title="Volver"
+            >
+              <i className="bi bi-arrow-left"></i>
+            </button>
+
             <div
               className="rounded-3 d-flex align-items-center justify-content-center"
               style={{

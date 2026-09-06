@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
+import SelectBuscador from "../shared/SelectBuscador";
+import { unirClientes } from "../../utils/clientes";
 import {
   esConflictoHorometro,
   preguntarQueHacer,
@@ -18,6 +20,9 @@ const FORM_VACIO = {
   fecha: "",
   persona: "",
   cc: "",
+  // Sin cliente puesto: es obligatorio y define con qué precio se certifica,
+  // así que se elige a mano en cada parte en vez de arrastrar uno por defecto.
+  cliente: "",
   horaIngreso: "",
   horaEgreso: "",
   horomIngreso: "",
@@ -83,39 +88,48 @@ const calcularHorasCC = (ingreso, salida) => {
   return Math.round((s - i) * 100) / 100;
 };
 
-// Desplegable de filtro con el formato del resto del proyecto: se pinta en
-// rojo cuando está activo y suma una cruz para limpiarlo.
+/**
+ * Desplegable de filtro con el formato del resto del proyecto: se pinta en
+ * rojo cuando está activo y suma una cruz para limpiarlo.
+ *
+ * Va sobre `SelectBuscador` y no sobre un `<select>` nativo porque el nativo
+ * solo salta a la opción que EMPIEZA con lo tipeado: acá las listas de
+ * personal y de tareas son largas y se buscan por cualquier parte del texto.
+ *
+ * Adentro, "sin filtro" es el string `vacio` ("Todos" / "Todas"); el buscador
+ * usa "" para eso, así que se traduce en el borde.
+ */
 const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => {
   const activo = valor !== vacio;
   return (
-    <div className="d-flex align-items-center gap-2">
-      <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
+    // minWidth 0 para que el filtro pueda achicarse: si no, el ancho mínimo
+    // del select empuja la fila y los últimos filtros bajan a un segundo
+    // renglón.
+    <div className="d-flex align-items-center gap-1" style={{ minWidth: 0 }}>
+      <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.75rem" }}>
         {etiqueta}:
       </span>
-      <div className="input-group input-group-sm" style={{ width: ancho }}>
-        <Form.Select
-          size="sm"
-          value={valor}
-          onChange={(e) => onChange(e.target.value)}
-          className={`rounded-3 ${activo ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
-          style={{
-            fontSize: "0.82rem",
-            height: "32px",
-            padding: "3px 24px 3px 8px",
-            color: activo ? "#dc2626" : "#1e293b",
-            fontWeight: activo ? "700" : "normal",
-          }}
-        >
-          <option value={vacio}>{vacio}</option>
-          {opciones.map(([id, texto]) => (
-            <option key={id} value={id}>
-              {texto}
-            </option>
-          ))}
-        </Form.Select>
+      <div className="d-flex align-items-center" style={{ width: ancho, minWidth: 0 }}>
+        <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+          <SelectBuscador
+            opciones={opciones.map(([id, texto]) => ({ valor: id, texto }))}
+            valor={activo ? valor : ""}
+            onChange={(v) => onChange(v || vacio)}
+            vacio={vacio}
+            placeholder={vacio}
+            className={`rounded-3 ${activo ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+            style={{
+              fontSize: "0.82rem",
+              height: "32px",
+              padding: "3px 24px 3px 8px",
+              color: activo ? "#dc2626" : "#1e293b",
+              fontWeight: activo ? "700" : "normal",
+            }}
+          />
+        </div>
         {activo && (
           <button
-            className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+            className="btn btn-sm btn-outline-secondary border-start-0 rounded-start-0 d-flex align-items-center justify-content-center flex-shrink-0"
             type="button"
             onClick={() => onChange(vacio)}
             title={`Limpiar filtro ${etiqueta.toLowerCase()}`}
@@ -140,6 +154,8 @@ function ProduccionCertificadoMes() {
   const [personal, setPersonal] = useState([]);
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
+  // Clientes con precio cargado en Variables, para ofrecerlos en el parte.
+  const [clientesPrecios, setClientesPrecios] = useState([]);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
@@ -147,11 +163,14 @@ function ProduccionCertificadoMes() {
   const [filtroTarea, setFiltroTarea] = useState("Todas");
   const [filtroCC, setFiltroCC] = useState("Todos");
   const [filtroTurbo, setFiltroTurbo] = useState("Todos");
+  // Arranca en "Todos": filtrar por un cliente escondería los partes del otro.
+  const [filtroCliente, setFiltroCliente] = useState("Todos");
 
   const [form, setForm] = useState(FORM_VACIO);
   const [editando, setEditando] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const refPersona = useRef(null);
+
   const ccPedido = useRef(null);
   const [ccTexto, setCcTexto] = useState("");
 
@@ -220,16 +239,19 @@ function ProduccionCertificadoMes() {
     };
     // Los tres padrones son independientes: pedirlos en fila era esperar tres
     // veces la misma ida y vuelta al servidor.
-    const [personas, centrosCosto, listaTareas] = await Promise.all([
+    const [personas, centrosCosto, listaTareas, clientesConPrecio] = await Promise.all([
       pedir("/api/personal"),
       pedir("/api/centros-costo"),
       pedir("/api/tareas"),
+      // Los clientes a los que se les cargó precio en Variables: son los que
+      // hacen que el parte se pueda valorizar en el informe.
+      pedir("/api/variables/clientes"),
     ]);
     setPersonal(personas);
     setCentros(centrosCosto);
     setTareas(listaTareas);
+    setClientesPrecios(clientesConPrecio);
   };
-
   useEffect(() => {
     (async () => {
       // El período define qué partes pedir; los padrones no dependen de él.
@@ -448,6 +470,8 @@ function ProduccionCertificadoMes() {
     if (!form.persona) falta.push("la persona");
     if (!form.tarea) falta.push("la tarea");
     if (form.cantidad === "" || form.cantidad === null) falta.push("la cantidad");
+    // Sin cliente no se sabe con qué precio de Variables se certifica la tarea.
+    if (!(form.cliente || "").trim()) falta.push("el cliente");
     if (falta.length) {
       avisar({
         icon: "warning",
@@ -547,31 +571,7 @@ function ProduccionCertificadoMes() {
       fecha: soloFecha(p.fecha),
       persona: p.persona?._id || "",
       cc: p.cc?._id || "",
-      horaIngreso: p.horaIngreso || "",
-      horaEgreso: p.horaEgreso || "",
-      horomIngreso: p.horomIngreso ?? "",
-      horomSalida: p.horomSalida ?? "",
-      lote: p.lote || "",
-      observacion: p.observacion || "",
-      tarea: p.tarea?._id || "",
-      cantidad: p.cantidad ?? "",
-      combustible: p.combustible ?? "",
-      turbo: p.turbo || "",
-      combTurbo: p.combTurbo ?? "",
-    });
-    refPersona.current?.focus();
-  };
-
-  // Copia el parte al formulario sin pisarlo: sirve para el rondín de todos
-  // los días, donde solo cambia la fecha o la persona.
-  const duplicarParte = (p) => {
-    if (cerrado) return;
-    setEditando(null);
-    setCcTexto(p.cc?.cc || "");
-    setForm({
-      fecha: soloFecha(p.fecha),
-      persona: p.persona?._id || "",
-      cc: p.cc?._id || "",
+      cliente: p.cliente || "",
       horaIngreso: p.horaIngreso || "",
       horaEgreso: p.horaEgreso || "",
       horomIngreso: p.horomIngreso ?? "",
@@ -625,6 +625,20 @@ function ProduccionCertificadoMes() {
     () => [...new Set(partes.map((p) => (p.lote || "").trim()).filter(Boolean))].sort(),
     [partes]
   );
+  /**
+   * Los clientes que se ofrecen al cargar un parte.
+   *
+   * Van los dos de siempre, después los que tienen precio cargado en Variables
+   * y al final los que ya se escribieron en el período. El orden importa: si el
+   * cliente del parte no coincide con uno de Variables, el informe no encuentra
+   * con qué precio valorizarlo y esa tarea queda sin importe.
+   */
+  const clientesUsados = useMemo(() => {
+    const enPartes = [...new Set(partes.map((p) => (p.cliente || "").trim()).filter(Boolean))].sort(
+      (a, b) => a.localeCompare(b, "es", { sensitivity: "base" })
+    );
+    return unirClientes(clientesPrecios, enPartes);
+  }, [partes, clientesPrecios]);
   const turbos = useMemo(
     () => centros.filter((c) => (c.equipo || "").trim().toLowerCase() === "turbo"),
     [centros]
@@ -674,13 +688,38 @@ function ProduccionCertificadoMes() {
     ];
   }, [tareas]);
 
+  // Opciones de los desplegables con buscador de la fila de carga.
+  const opcionesPersonal = useMemo(
+    () => personal.map((p) => ({ valor: p._id, texto: p.apellidoNombre })),
+    [personal]
+  );
+
+  const opcionesTarea = useMemo(
+    () => tareasOrdenadas.map((t) => ({ valor: t._id, texto: t.tarea })),
+    [tareasOrdenadas]
+  );
+
+  const opcionesTurbo = useMemo(() => {
+    const delPadron = turbos.map((t) => ({
+      valor: t.cc,
+      texto: t.descripcion ? `${t.cc} - ${t.descripcion}` : t.cc,
+    }));
+    // Un parte viejo puede tener un turbo escrito a mano que ya no está en el
+    // padrón: se conserva para no perderlo.
+    if (form.turbo && !turbos.some((t) => t.cc === form.turbo)) {
+      delPadron.push({ valor: form.turbo, texto: form.turbo });
+    }
+    return delPadron;
+  }, [turbos, form.turbo]);
+
   const hayFiltro =
     Boolean(busqueda) ||
     Boolean(filtroFecha) ||
     filtroPersona !== "Todos" ||
     filtroTarea !== "Todas" ||
     filtroCC !== "Todos" ||
-    filtroTurbo !== "Todos";
+    filtroTurbo !== "Todos" ||
+    filtroCliente !== "Todos";
 
   const partesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -690,10 +729,12 @@ function ProduccionCertificadoMes() {
       if (filtroTarea !== "Todas" && (p.tarea?._id || "") !== filtroTarea) return false;
       if (filtroCC !== "Todos" && (p.cc?._id || "") !== filtroCC) return false;
       if (filtroTurbo !== "Todos" && (p.turbo || "") !== filtroTurbo) return false;
+      if (filtroCliente !== "Todos" && (p.cliente || "").trim() !== filtroCliente) return false;
       if (!q) return true;
       return [
         p.persona?.apellidoNombre,
         p.cc?.cc,
+        p.cliente,
         p.tarea?.tarea,
         p.turbo,
         p.lote,
@@ -702,7 +743,7 @@ function ProduccionCertificadoMes() {
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [partes, busqueda, filtroFecha, filtroPersona, filtroTarea, filtroCC, filtroTurbo]);
+  }, [partes, busqueda, filtroFecha, filtroPersona, filtroTarea, filtroCC, filtroTurbo, filtroCliente]);
 
   // Opciones de los desplegables: solo lo que aparece en el período cargado.
   const personasDelPeriodo = useMemo(() => {
@@ -729,6 +770,16 @@ function ProduccionCertificadoMes() {
     () =>
       [...new Set(partes.map((p) => (p.turbo || "").trim()).filter(Boolean))].sort((a, b) =>
         a.localeCompare(b, "es", { numeric: true, sensitivity: "base" })
+      ),
+    [partes]
+  );
+
+  // Para el filtro solo sirven los clientes que están en pantalla: ofrecer uno
+  // que nadie cargó daría siempre cero filas.
+  const clientesDelPeriodo = useMemo(
+    () =>
+      [...new Set(partes.map((p) => (p.cliente || "").trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, "es", { sensitivity: "base" })
       ),
     [partes]
   );
@@ -760,6 +811,7 @@ function ProduccionCertificadoMes() {
       "Combust.",
       "Turbo",
       "Comb. turbo",
+      "Cliente",
       "Lote",
       "Observaciones",
       "Tarea",
@@ -827,6 +879,7 @@ function ProduccionCertificadoMes() {
         p.combustible ?? "-",
         p.turbo || "-",
         p.combTurbo ?? "-",
+        p.cliente || "-",
         p.lote || "-",
         p.observacion || "-",
         p.tarea?.tarea || "-",
@@ -846,8 +899,9 @@ function ProduccionCertificadoMes() {
           bottom,
           right: { style: "thin", color: { argb: "FFE2E8F0" } },
         };
-        // Personal, lote, observaciones y tarea se leen mejor a la izquierda.
-        const aIzquierda = [2, 13, 14, 15];
+        // Personal, cliente, lote, observaciones y tarea se leen mejor a la
+        // izquierda.
+        const aIzquierda = [2, 13, 14, 15, 16];
         cell.alignment = aIzquierda.includes(colNumber)
           ? { horizontal: "left", vertical: "middle", wrapText: true }
           : { horizontal: "center", vertical: "middle" };
@@ -867,6 +921,7 @@ function ProduccionCertificadoMes() {
       { width: 11 }, // Combust.
       { width: 12 }, // Turbo
       { width: 12 }, // Comb. turbo
+      { width: 22 }, // Cliente
       { width: 14 }, // Lote
       { width: 28 }, // Observaciones
       { width: 30 }, // Tarea
@@ -968,6 +1023,7 @@ function ProduccionCertificadoMes() {
               size="sm"
               value={periodo.desde}
               disabled={cerrado}
+              title="Arranca el día siguiente al cierre del mes anterior. Se puede corregir a mano."
               onChange={(e) => setPeriodo((p) => ({ ...p, desde: e.target.value }))}
               style={{ fontSize: "0.78rem", height: "30px", width: "140px" }}
             />
@@ -1027,12 +1083,16 @@ function ProduccionCertificadoMes() {
 
               <div style={{ width: "175px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Personal *</label>
-                <Form.Select ref={refPersona} value={form.persona} onChange={(e) => cambiar("persona", e.target.value)} style={estiloCelda}>
-                  <option value="">—</option>
-                  {personal.map((p) => (
-                    <option key={p._id} value={p._id}>{p.apellidoNombre}</option>
-                  ))}
-                </Form.Select>
+                {/* Desplegables con buscador: se filtra por cualquier pedazo del
+                    texto, no solo por cómo empieza. */}
+                <SelectBuscador
+                  inputRef={refPersona}
+                  opciones={opcionesPersonal}
+                  valor={form.persona}
+                  onChange={(v) => cambiar("persona", v)}
+                  placeholder="—"
+                  style={estiloCelda}
+                />
               </div>
 
               <div style={{ width: "78px" }}>
@@ -1105,19 +1165,13 @@ function ProduccionCertificadoMes() {
 
               <div style={{ width: "110px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Turbo</label>
-                <Form.Select value={form.turbo} onChange={(e) => cambiar("turbo", e.target.value)} style={estiloCelda}>
-                  <option value="">—</option>
-                  {turbos.map((t) => (
-                    <option key={t._id} value={t.cc}>
-                      {t.descripcion ? `${t.cc} - ${t.descripcion}` : t.cc}
-                    </option>
-                  ))}
-                  {/* Un parte viejo puede tener un turbo escrito a mano que ya
-                      no está en el padrón: se conserva para no perderlo. */}
-                  {form.turbo && !turbos.some((t) => t.cc === form.turbo) && (
-                    <option value={form.turbo}>{form.turbo}</option>
-                  )}
-                </Form.Select>
+                <SelectBuscador
+                  opciones={opcionesTurbo}
+                  valor={form.turbo}
+                  onChange={(v) => cambiar("turbo", v)}
+                  placeholder="—"
+                  style={estiloCelda}
+                />
               </div>
 
               <div style={{ width: "78px" }}>
@@ -1150,12 +1204,13 @@ function ProduccionCertificadoMes() {
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
                   Tarea <span className="text-danger">*</span>
                 </label>
-                <Form.Select value={form.tarea} onChange={(e) => cambiar("tarea", e.target.value)} style={estiloCelda}>
-                  <option value="">—</option>
-                  {tareasOrdenadas.map((t) => (
-                    <option key={t._id} value={t._id}>{t.tarea}</option>
-                  ))}
-                </Form.Select>
+                <SelectBuscador
+                  opciones={opcionesTarea}
+                  valor={form.tarea}
+                  onChange={(v) => cambiar("tarea", v)}
+                  placeholder="—"
+                  style={estiloCelda}
+                />
               </div>
 
               <div style={{ width: "80px" }}>
@@ -1163,6 +1218,30 @@ function ProduccionCertificadoMes() {
                   Cantidad <span className="text-danger">*</span>
                 </label>
                 <Form.Control type="number" value={form.cantidad} onChange={(e) => cambiar("cantidad", e.target.value)} style={estiloCelda} />
+              </div>
+
+              <div style={{ width: "140px" }}>
+                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
+                  Cliente <span className="text-danger">*</span>
+                </label>
+                {/* Desplegable con buscador en vez del datalist: el clic abre
+                    la lista, que con el datalist solo aparecía al tipear. Va en
+                    modo libre, porque el cliente sigue siendo texto y se puede
+                    escribir uno que todavía no está en la lista. */}
+                <SelectBuscador
+                  libre
+                  opciones={clientesUsados.map((c) => ({ valor: c, texto: c }))}
+                  valor={form.cliente}
+                  onChange={(v) => cambiar("cliente", v)}
+                  vacio={null}
+                  placeholder="Cliente"
+                  title="Define con qué precio de Variables se certifica la tarea"
+                  style={{
+                    ...estiloCelda,
+                    // En rojo mientras esté vacío: sin cliente el parte no entra.
+                    borderColor: (form.cliente || "").trim() ? undefined : "#dc2626",
+                  }}
+                />
               </div>
 
               <Button
@@ -1229,9 +1308,12 @@ function ProduccionCertificadoMes() {
 
         {/* Barra de Filtros */}
         <Card className="shadow-sm border-0 rounded-3 px-3 py-2 bg-white flex-shrink-0 mb-2">
-          <div className="d-flex align-items-center flex-wrap gap-3">
+          {/* Una sola fila: nowrap para que no se parta y justify-between para
+              que el sobrante se reparta entre los filtros en vez de dejar un
+              hueco muerto a la derecha. */}
+          <div className="d-flex align-items-center flex-nowrap justify-content-between gap-3 w-100">
             {/* Buscador de Texto */}
-            <div style={{ width: "240px" }}>
+            <div style={{ width: "205px", minWidth: 0, flexShrink: 1 }}>
               <div className="input-group input-group-sm">
                 <span
                   className="input-group-text bg-light border-end-0 text-muted"
@@ -1241,7 +1323,8 @@ function ProduccionCertificadoMes() {
                 </span>
                 <Form.Control
                   type="text"
-                  placeholder="Buscar personal, CC, tarea, lote..."
+                  placeholder="Buscar..."
+                  title="Busca en personal, CC, cliente, tarea, lote y observaciones"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   className={`border-start-0 ps-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
@@ -1268,11 +1351,11 @@ function ProduccionCertificadoMes() {
             </div>
 
             {/* Filtro por Fecha */}
-            <div className="d-flex align-items-center gap-2">
-              <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
+            <div className="d-flex align-items-center gap-1" style={{ minWidth: 0 }}>
+              <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.75rem" }}>
                 Fecha:
               </span>
-              <div className="input-group input-group-sm" style={{ width: "150px" }}>
+              <div className="input-group input-group-sm" style={{ width: "134px", minWidth: 0 }}>
                 <Form.Control
                   type="date"
                   value={filtroFecha}
@@ -1303,7 +1386,7 @@ function ProduccionCertificadoMes() {
             {/* Filtro por Personal */}
             <FiltroSelect
               etiqueta="Personal"
-              ancho="180px"
+              ancho="168px"
               valor={filtroPersona}
               vacio="Todos"
               onChange={setFiltroPersona}
@@ -1313,7 +1396,7 @@ function ProduccionCertificadoMes() {
             {/* Filtro por Tarea */}
             <FiltroSelect
               etiqueta="Tarea"
-              ancho="185px"
+              ancho="168px"
               valor={filtroTarea}
               vacio="Todas"
               onChange={setFiltroTarea}
@@ -1323,17 +1406,27 @@ function ProduccionCertificadoMes() {
             {/* Filtro por CC */}
             <FiltroSelect
               etiqueta="CC"
-              ancho="120px"
+              ancho="98px"
               valor={filtroCC}
               vacio="Todos"
               onChange={setFiltroCC}
               opciones={ccDelPeriodo}
             />
 
+            {/* Filtro por Cliente */}
+            <FiltroSelect
+              etiqueta="Cliente"
+              ancho="132px"
+              valor={filtroCliente}
+              vacio="Todos"
+              onChange={setFiltroCliente}
+              opciones={clientesDelPeriodo.map((c) => [c, c])}
+            />
+
             {/* Filtro por Turbo */}
             <FiltroSelect
               etiqueta="Turbo"
-              ancho="130px"
+              ancho="112px"
               valor={filtroTurbo}
               vacio="Todos"
               onChange={setFiltroTurbo}
@@ -1341,7 +1434,10 @@ function ProduccionCertificadoMes() {
             />
 
             {hayFiltro && (
-              <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+              <span
+                className="text-muted flex-shrink-0"
+                style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}
+              >
                 {partesFiltrados.length} de {partes.length}
               </span>
             )}
@@ -1359,7 +1455,7 @@ function ProduccionCertificadoMes() {
                 {[
                   "Fecha", "Personal", "Ingreso", "Egreso", { h: "Total hs", sep: true },
                   "CC", "Horóm. entra", "Horóm. sal.", "Horas CC", { h: "Combust.", sep: true },
-                  "Turbo", { h: "Comb. turbo", sep: true }, "Lote", "Observaciones", "Tarea", "Cantidad", "Un.", "",
+                  "Turbo", { h: "Comb. turbo", sep: true }, "Cliente", "Lote", "Observaciones", "Tarea", "Cantidad", "Un.", "",
                 ].map((col, i) => {
                   const { h, sep } = typeof col === "string" ? { h: col, sep: false } : col;
                   return (
@@ -1383,7 +1479,7 @@ function ProduccionCertificadoMes() {
             <tbody>
               {partesFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={18} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
+                  <td colSpan={19} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
                     {hayFiltro
                       ? "Ningún parte coincide con los filtros"
                       : "No hay partes cargados en este período"}
@@ -1404,6 +1500,16 @@ function ProduccionCertificadoMes() {
                     <td className={`text-secondary ${SEP}`}>{p.combustible ?? "—"}</td>
                     <td className="text-secondary">{p.turbo || "—"}</td>
                     <td className={`text-secondary ${SEP}`}>{p.combTurbo ?? "—"}</td>
+                    {/* El cliente pasó a ser obligatorio: los partes viejos
+                        que no lo tienen quedan marcados, porque sin él no se
+                        pueden valorizar ni volver a guardar. */}
+                    <td
+                      className={`text-start ps-2 ${p.cliente ? "text-secondary" : "fw-bold"}`}
+                      style={p.cliente ? undefined : { color: "#dc2626" }}
+                      title={p.cliente ? undefined : "Falta el cliente: edite el parte para cargarlo"}
+                    >
+                      {p.cliente || "Sin cliente"}
+                    </td>
                     <td className="text-secondary">{p.lote || "—"}</td>
                     <td className="text-start ps-2 text-secondary">{p.observacion || "—"}</td>
                     <td className="text-start ps-2">{p.tarea?.tarea || "—"}</td>
@@ -1415,30 +1521,22 @@ function ProduccionCertificadoMes() {
                           <span className="text-muted" style={{ fontSize: "0.7rem" }}>—</span>
                         ) : (
                           <>
-                          <button
-                            onClick={() => duplicarParte(p)}
-                            className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center rounded-2 p-0"
-                            style={{ width: "22px", height: "22px" }}
-                            title="Copiar al formulario"
-                          >
-                            <i className="bi bi-files" style={{ fontSize: "0.7rem" }}></i>
-                          </button>
-                          <button
-                            onClick={() => editarParte(p)}
-                            className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
-                            style={{ width: "22px", height: "22px" }}
-                            title="Editar"
-                          >
-                            <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
-                          </button>
-                          <button
-                            onClick={() => eliminarParte(p)}
-                            className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
-                            style={{ width: "22px", height: "22px" }}
-                            title="Eliminar"
-                          >
-                            <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
-                          </button>
+                            <button
+                              onClick={() => editarParte(p)}
+                              className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
+                              style={{ width: "22px", height: "22px" }}
+                              title="Editar"
+                            >
+                              <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
+                            </button>
+                            <button
+                              onClick={() => eliminarParte(p)}
+                              className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
+                              style={{ width: "22px", height: "22px" }}
+                              title="Eliminar"
+                            >
+                              <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
+                            </button>
                           </>
                         )}
                       </div>
