@@ -771,6 +771,23 @@ function ProduccionInformeMes() {
           </div>
         </Card>
 
+        {/* Cortes gruesos adentro de cada tabla: separan las horas de los
+            consumos, y los consumos de lo que carga otro sector (admisible y
+            desvío). Van por posición de columna y no celda por celda, y con
+            !important porque index.css pisa los bordes de th/td. */}
+        <style>{`
+          .tabla-cc th:nth-child(5),
+          .tabla-cc td:nth-child(5),
+          .tabla-cc-tarea th:nth-child(5),
+          .tabla-cc-tarea td:nth-child(5),
+          .tabla-cc-tarea th:nth-child(7),
+          .tabla-cc-tarea td:nth-child(7),
+          .tabla-produccion th:nth-child(8),
+          .tabla-produccion td:nth-child(8) {
+            border-right: 3px solid #1b4332 !important;
+          }
+        `}</style>
+
         <div className="flex-grow-1" style={{ overflow: "auto" }}>
           {/* ── Resumen por personal ── */}
           <div className="mb-5">
@@ -862,7 +879,7 @@ function ProduccionInformeMes() {
           <div className="mb-5">
             {rotulo("Por centro de costo")}
             <div className="bg-white rounded-3 shadow-sm" style={marco}>
-              <Table className="mb-0 tabla-informe" style={{ width: "auto", minWidth: "620px" }}>
+              <Table className="mb-0 tabla-informe tabla-cc" style={{ width: "auto", minWidth: "620px" }}>
                 <thead>
                   <tr>
                     <th style={{ ...th, textAlign: "left", minWidth: "90px" }}>CC</th>
@@ -930,7 +947,10 @@ function ProduccionInformeMes() {
           <div className="mb-5">
             {rotulo("Por centro de costo y tarea")}
             <div className="bg-white rounded-3 shadow-sm" style={marco}>
-              <Table className="mb-0 tabla-informe" style={{ width: "auto", minWidth: "780px" }}>
+              <Table
+                className="mb-0 tabla-informe tabla-cc-tarea"
+                style={{ width: "auto", minWidth: "780px" }}
+              >
                 <thead>
                   <tr>
                     <th style={{ ...th, textAlign: "left", minWidth: "90px" }}>CC</th>
@@ -976,7 +996,10 @@ function ProduccionInformeMes() {
           <div className="mb-4">
             {rotulo("Producción y rendimiento por centro de costo y tarea")}
             <div className="bg-white rounded-3 shadow-sm" style={marco}>
-              <Table className="mb-0 tabla-informe" style={{ width: "auto", minWidth: "820px" }}>
+              <Table
+                className="mb-0 tabla-informe tabla-produccion"
+                style={{ width: "auto", minWidth: "820px" }}
+              >
                 <thead>
                   <tr>
                     <th style={{ ...th, textAlign: "left", minWidth: "90px" }}>CC</th>

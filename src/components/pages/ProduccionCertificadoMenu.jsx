@@ -21,6 +21,8 @@ const MESES = [
 // opciones, no la pantalla del mes: por eso el mes entra acá y no directo a
 // los partes. Variables no está acá: es una sola para todos los meses y vive
 // en la pantalla de certificados.
+// Cada una lleva su color: son cosas distintas y de un vistazo se tiene que
+// ver cuál es cuál.
 const OPCIONES = [
   {
     id: "certificados",
@@ -28,6 +30,13 @@ const OPCIONES = [
     subtitulo: "Carga de los partes diarios del mes",
     icono: "bi bi-file-earmark-text-fill",
     destino: "planilla",
+    colores: {
+      fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
+      fondoHover: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
+      borde: "#10b981",
+      icono: "#6ee7b7",
+      brillo: "rgba(16,185,129,0.25)",
+    },
   },
   {
     id: "informes",
@@ -35,6 +44,13 @@ const OPCIONES = [
     subtitulo: "Resúmenes y exportaciones del período",
     icono: "bi bi-bar-chart-fill",
     destino: "informes",
+    colores: {
+      fondo: "linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)",
+      fondoHover: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)",
+      borde: "#818cf8",
+      icono: "#c7d2fe",
+      brillo: "rgba(129,140,248,0.25)",
+    },
   },
 ];
 
@@ -88,16 +104,14 @@ function ProduccionCertificadoMenu() {
                   key={o.id}
                   className="d-flex flex-column align-items-center justify-content-center text-center p-4"
                   style={{
-                    background: isHovered
-                      ? "linear-gradient(135deg, #081c15 0%, #1b4332 100%)"
-                      : "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
+                    background: isHovered ? o.colores.fondoHover : o.colores.fondo,
                     borderRadius: "20px",
                     height: "230px",
                     color: "#fff",
                     cursor: "pointer",
-                    border: `1px solid ${isHovered ? "#10b981" : "rgba(255,255,255,0.12)"}`,
+                    border: `1px solid ${isHovered ? o.colores.borde : "rgba(255,255,255,0.12)"}`,
                     boxShadow: isHovered
-                      ? "0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px rgba(16,185,129,0.25)"
+                      ? `0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px ${o.colores.brillo}`
                       : "0 8px 18px -6px rgba(0,0,0,0.25)",
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     transform: isHovered ? "translateY(-4px)" : "translateY(0)",
@@ -120,7 +134,7 @@ function ProduccionCertificadoMenu() {
                       border: "1px solid rgba(255,255,255,0.16)",
                     }}
                   >
-                    <i className={o.icono} style={{ fontSize: "2.1rem", color: "#6ee7b7" }}></i>
+                    <i className={o.icono} style={{ fontSize: "2.1rem", color: o.colores.icono }}></i>
                   </div>
 
                   <span className="fw-bold" style={{ fontSize: "1.25rem", letterSpacing: "0.2px" }}>
