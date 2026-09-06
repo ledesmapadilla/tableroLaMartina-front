@@ -254,9 +254,11 @@ function ProduccionCertificadoMes() {
   };
   useEffect(() => {
     (async () => {
-      // El período define qué partes pedir; los padrones no dependen de él.
-      const rango = await cargarPeriodo();
-      await Promise.all([cargarPadrones(), cargarPartes(rango)]);
+      // Los padrones no dependen del período, así que salen junto con él en
+      // vez de esperarlo: era una ida y vuelta de más contra un cluster que
+      // está lejos. Los partes sí necesitan el rango.
+      const [rango] = await Promise.all([cargarPeriodo(), cargarPadrones()]);
+      await cargarPartes(rango);
       setForm((f) => ({ ...f, fecha: hoyStr() }));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
