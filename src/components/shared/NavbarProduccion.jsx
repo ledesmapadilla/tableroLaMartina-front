@@ -151,17 +151,8 @@ function NavbarProduccion() {
           );
         })}
 
-        {/* Volver y General, igual que en Camionetas y Tractores. Al vivir en
+        {/* General y Volver, igual que en Camionetas y Tractores. Al vivir en
             el navbar aparecen en todas las pantallas de Producción. */}
-        <button
-          onClick={() => navigate(-1)}
-          className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-          style={{ fontSize: "0.82rem" }}
-        >
-          <i className="bi bi-arrow-left"></i>
-          <span>Volver</span>
-        </button>
-
         <button
           onClick={() => navigate("/")}
           className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
@@ -169,6 +160,15 @@ function NavbarProduccion() {
         >
           <i className="bi bi-house-door-fill"></i>
           <span>General</span>
+        </button>
+
+        <button
+          onClick={() => navigate(-1)}
+          className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+          style={{ fontSize: "0.82rem" }}
+        >
+          <i className="bi bi-arrow-left"></i>
+          <span>Volver</span>
         </button>
       </div>
     </div>
