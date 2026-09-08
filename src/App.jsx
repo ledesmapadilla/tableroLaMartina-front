@@ -76,6 +76,8 @@ import TareasTractorNueva from "./components/pages/TareasTractorNueva";
 import HistorialTractor from "./components/pages/HistorialTractor";
 import ResumenReparacionesTractores from "./components/pages/ResumenReparacionesTractores";
 import Visitas from "./components/pages/Visitas";
+// Con alias: Compras ya trae su propio Pendientes, que es el de los pedidos.
+import PendientesReunion from "./components/pages/Pendientes";
 import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
 import CamionetaMenuReparaciones from "./components/pages/CamionetaMenuReparaciones";
 import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
@@ -256,8 +258,8 @@ function LayoutDesktop() {
               <Route path="/camionetas/services/reparaciones/:camionetaId/tarea/:trabajoId" element={<TareaDetalle />} />
               <Route path="/camionetas/services/reparaciones/:camionetaId/historial" element={<HistorialReparaciones />} />
               <Route path="/visitas" element={<Visitas />} />
-              {/* Sale del botón de Reunión. La pantalla todavía no existe. */}
-              <Route path="/pendientes" element={<Error404 />} />
+              {/* Sale del botón de Reunión. */}
+              <Route path="/pendientes" element={<PendientesReunion />} />
               <Route path="*" element={<Error404 />} />
             </Routes>
           </main>

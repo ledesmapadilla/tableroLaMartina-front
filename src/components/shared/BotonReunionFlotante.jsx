@@ -36,7 +36,7 @@ const DESTINOS = [
   },
   {
     titulo: "Pendientes",
-    detalle: "Todavía no está hecha",
+    detalle: "Lo que queda por hacer",
     icono: "bi-list-check",
     color: "#6b5b7b",
     bg: "#f6f2f9",
