@@ -235,7 +235,9 @@ function TractoresAltas() {
 
   const cargar = async () => {
     try {
-      const res = await fetch(API);
+      // Esta es la única pantalla que ve las máquinas en desuso: el resto las
+      // recibe filtradas desde el back.
+      const res = await fetch(`${API}?incluirDesuso=1`);
       const data = res.ok ? await res.json() : [];
       setTractores(Array.isArray(data) ? data : []);
     } catch {
