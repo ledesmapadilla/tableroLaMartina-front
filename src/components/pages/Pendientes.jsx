@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
@@ -10,6 +11,14 @@ const API = "/api/pendientes";
 // lista y nada más, sin migrar la base (el back los guarda como texto).
 const SECTORES = ["Camionetas", "Tractores", "Colectivos", "Otros"];
 const RESPONSABLES = ["Victor", "Kevin", "Jorge", "Nacho", "Javier", "Otro"];
+
+// Colores muted, los mismos de todo el proyecto.
+const ESTADOS = {
+  Pendiente: { color: "#9e8850", bg: "#fcf8ee" },
+  "En curso": { color: "#4a6fa5", bg: "#eef3fa" },
+  Terminada: { color: "#52735a", bg: "#edf5ef" },
+};
+const ESTADO_POR_DEFECTO = "Pendiente";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
@@ -65,11 +74,13 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
 };
 
 function Pendientes() {
+  const navigate = useNavigate();
   const [pendientes, setPendientes] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   const [filtroSector, setFiltroSector] = useState("Todos");
   const [filtroResponsable, setFiltroResponsable] = useState("Todos");
+  const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [busqueda, setBusqueda] = useState("");
@@ -83,7 +94,16 @@ function Pendientes() {
     reset,
     control,
     formState: { errors },
-  } = useForm({ defaultValues: { fecha: hoy(), sector: "", responsable: "", otroResponsable: "", observaciones: "" } });
+  } = useForm({
+    defaultValues: {
+      fecha: hoy(),
+      sector: "",
+      estado: ESTADO_POR_DEFECTO,
+      responsable: "",
+      otroResponsable: "",
+      observaciones: "",
+    },
+  });
 
   // Cuando el responsable es "Otro" se escribe el nombre a mano.
   const responsableElegido = useWatch({ control, name: "responsable" });
@@ -107,7 +127,14 @@ function Pendientes() {
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ fecha: hoy(), sector: "", responsable: "", otroResponsable: "", observaciones: "" });
+    reset({
+      fecha: hoy(),
+      sector: "",
+      estado: ESTADO_POR_DEFECTO,
+      responsable: "",
+      otroResponsable: "",
+      observaciones: "",
+    });
     setShowModal(true);
   };
 
@@ -119,6 +146,7 @@ function Pendientes() {
     reset({
       fecha: p.fecha || hoy(),
       sector: p.sector || "",
+      estado: p.estado || ESTADO_POR_DEFECTO,
       responsable: esDeLaLista ? p.responsable : p.responsable ? "Otro" : "",
       otroResponsable: esDeLaLista ? "" : p.responsable || "",
       observaciones: p.observaciones || "",
@@ -198,29 +226,36 @@ function Pendientes() {
   }, [pendientes]);
 
   const hayFiltro =
-    filtroSector !== "Todos" || filtroResponsable !== "Todos" || !!desde || !!hasta || !!busqueda.trim();
+    filtroSector !== "Todos" ||
+    filtroResponsable !== "Todos" ||
+    filtroEstado !== "Todos" ||
+    !!desde ||
+    !!hasta ||
+    !!busqueda.trim();
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     return pendientes
       .filter((p) => filtroSector === "Todos" || p.sector === filtroSector)
       .filter((p) => filtroResponsable === "Todos" || p.responsable === filtroResponsable)
+      .filter((p) => filtroEstado === "Todos" || (p.estado || ESTADO_POR_DEFECTO) === filtroEstado)
       .filter((p) => !desde || (p.fecha || "") >= desde)
       .filter((p) => !hasta || (p.fecha || "") <= hasta)
       .filter((p) => !q || (p.observaciones || "").toLowerCase().includes(q))
       .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
-  }, [pendientes, filtroSector, filtroResponsable, desde, hasta, busqueda]);
+  }, [pendientes, filtroSector, filtroResponsable, filtroEstado, desde, hasta, busqueda]);
 
   const limpiarFiltros = () => {
     setFiltroSector("Todos");
     setFiltroResponsable("Todos");
+    setFiltroEstado("Todos");
     setDesde("");
     setHasta("");
     setBusqueda("");
   };
 
   const exportarExcel = async () => {
-    const columnas = ["#", "Fecha", "Sector", "Responsable", "Observaciones"];
+    const columnas = ["#", "Fecha", "Sector", "Responsable", "Estado", "Observaciones"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = await nuevoWorkbook();
@@ -256,6 +291,7 @@ function Pendientes() {
         fechaLinda(p.fecha),
         p.sector || "—",
         p.responsable || "—",
+        p.estado || ESTADO_POR_DEFECTO,
         p.observaciones || "—",
       ]);
       fila.eachCell((cell) => {
@@ -267,10 +303,10 @@ function Pendientes() {
           right: { style: "thin", color: { argb: "FFE2E8F0" } },
         };
       });
-      fila.getCell(5).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+      fila.getCell(6).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
     });
 
-    ws.columns = [{ width: 6 }, { width: 14 }, { width: 16 }, { width: 18 }, { width: 60 }];
+    ws.columns = [{ width: 6 }, { width: 14 }, { width: 16 }, { width: 18 }, { width: 14 }, { width: 60 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -282,11 +318,34 @@ function Pendientes() {
     URL.revokeObjectURL(url);
   };
 
-  const thEstilo = {
+  // Los mismos dos objetos que el resto de las tablas del proyecto
+  // (docs/formato-tablas.md). El aspecto base sale de la clase `tabla-informe`.
+  const th = {
     backgroundColor: "#1b4332",
     color: "#fff",
-    padding: "8px 8px",
-    fontWeight: "normal",
+    fontSize: "0.66rem",
+    fontWeight: 600,
+    verticalAlign: "middle",
+    padding: "3px 5px",
+    whiteSpace: "nowrap",
+  };
+  const td = { fontSize: "0.7rem", padding: "1px 5px", verticalAlign: "middle" };
+
+  // Un dato que falta va como raya gris, nunca vacío.
+  const raya = <span style={{ color: "#cbd5e1" }}>—</span>;
+
+  // Lo cargado antes de que existiera el estado se lee como "Pendiente".
+  const badgeEstado = (estado) => {
+    const nombre = estado || ESTADO_POR_DEFECTO;
+    const { color, bg } = ESTADOS[nombre] || { color: "#475569", bg: "#f1f5f9" };
+    return (
+      <span
+        className="rounded-2 d-inline-block px-2"
+        style={{ backgroundColor: bg, color, fontWeight: 600, fontSize: "0.66rem", whiteSpace: "nowrap" }}
+      >
+        {nombre}
+      </span>
+    );
   };
 
   return (
@@ -308,6 +367,17 @@ function Pendientes() {
         {/* Encabezado de la pantalla + acciones */}
         <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
           <div className="d-flex align-items-center gap-2">
+            {/* A Pendientes se entra desde el botón de Reunión, que se aprieta
+                en cualquier pantalla: se vuelve a la anterior, no a una fija. */}
+            <button
+              onClick={() => navigate(-1)}
+              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+              style={{ fontSize: "0.82rem" }}
+              title="Volver"
+            >
+              <i className="bi bi-arrow-left"></i>
+              <span>Volver</span>
+            </button>
             <div
               className="rounded-3 d-flex align-items-center justify-content-center"
               style={{
@@ -383,6 +453,15 @@ function Pendientes() {
               vacio="Todos"
               onChange={setFiltroResponsable}
               opciones={responsablesDisponibles}
+            />
+
+            <FiltroSelect
+              etiqueta="Estado"
+              ancho="140px"
+              valor={filtroEstado}
+              vacio="Todos"
+              onChange={setFiltroEstado}
+              opciones={Object.keys(ESTADOS)}
             />
 
             <div className="d-flex align-items-center gap-2">
@@ -473,31 +552,36 @@ function Pendientes() {
           </div>
         </Card>
 
-        {/* Tabla de pendientes */}
+        {/* Tabla de pendientes — marco con el scroll adentro, nunca en la
+            página, y centrada en vez de estirada al ancho de la pantalla. */}
         <div
-          className="flex-grow-1 shadow-sm rounded-3 bg-white"
-          style={{ overflowY: "auto", overflowX: "auto", border: "1px solid #cbd5e1" }}
+          className="shadow-sm rounded-3 bg-white"
+          style={{
+            flex: "1 1 auto",
+            minHeight: 0,
+            alignSelf: "center",
+            maxWidth: "100%",
+            overflowY: "auto",
+            overflowX: "auto",
+            border: "1px solid #cbd5e1",
+          }}
         >
-          <Table
-            hover
-            size="sm"
-            className="text-center align-middle mb-0"
-            style={{ fontSize: "0.8rem", width: "100%" }}
-          >
+          <Table className="mb-0 tabla-informe" style={{ width: "auto", minWidth: "820px" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1b4332", color: "#fff" }}>
-              <tr className="fw-normal align-middle">
-                <th style={{ ...thEstilo, width: "45px", padding: "8px 4px" }}>#</th>
-                <th style={{ ...thEstilo, width: "110px" }}>Fecha</th>
-                <th style={{ ...thEstilo, width: "130px" }}>Sector</th>
-                <th style={{ ...thEstilo, width: "140px" }}>Responsable</th>
-                <th style={{ ...thEstilo, textAlign: "left", padding: "8px 12px" }}>Observaciones</th>
-                <th style={{ ...thEstilo, width: "95px" }}>Acciones</th>
+              <tr>
+                <th style={{ ...th, width: "42px", textAlign: "center" }}>#</th>
+                <th style={{ ...th, width: "90px", textAlign: "center" }}>Fecha</th>
+                <th style={{ ...th, width: "110px", textAlign: "center" }}>Sector</th>
+                <th style={{ ...th, width: "120px", textAlign: "center" }}>Responsable</th>
+                <th style={{ ...th, width: "100px", textAlign: "center" }}>Estado</th>
+                <th style={{ ...th, textAlign: "left", minWidth: "340px" }}>Observaciones</th>
+                <th style={{ ...th, width: "80px", textAlign: "center" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
+                  <td colSpan={7} className="text-center text-muted py-4" style={td}>
                     {cargando
                       ? "Cargando…"
                       : hayFiltro
@@ -507,42 +591,32 @@ function Pendientes() {
                 </tr>
               ) : (
                 filtrados.map((p, idx) => (
-                  <tr
-                    key={p._id}
-                    style={{
-                      backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f8fafc",
-                      borderBottom: "1px solid #e2e8f0",
-                      height: "32px",
-                    }}
-                  >
-                    <td className="text-muted" style={{ fontSize: "0.76rem" }}>
-                      {idx + 1}
+                  <tr key={p._id}>
+                    <td style={{ ...td, textAlign: "center", color: "#94a3b8" }}>{idx + 1}</td>
+                    <td style={{ ...td, textAlign: "center" }}>{fechaLinda(p.fecha)}</td>
+                    <td style={{ ...td, textAlign: "center" }}>{p.sector || raya}</td>
+                    <td style={{ ...td, textAlign: "center" }}>{p.responsable || raya}</td>
+                    <td style={{ ...td, textAlign: "center" }}>{badgeEstado(p.estado)}</td>
+                    <td style={{ ...td, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                      {p.observaciones || raya}
                     </td>
-                    <td className="text-secondary fw-medium">{fechaLinda(p.fecha)}</td>
-                    <td className="text-dark">{p.sector || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                    <td className="text-dark">
-                      {p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}
-                    </td>
-                    <td className="text-start ps-3 text-dark" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      {p.observaciones || <span style={{ color: "#cbd5e1" }}>—</span>}
-                    </td>
-                    <td>
-                      <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
+                    <td style={{ ...td, textAlign: "center" }}>
+                      <div className="d-flex justify-content-center align-items-center" style={{ gap: "8px" }}>
                         <button
                           onClick={() => abrirEditar(p)}
                           className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
-                          style={{ width: "24px", height: "24px" }}
+                          style={{ width: "22px", height: "22px" }}
                           title="Editar"
                         >
-                          <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
+                          <i className="bi bi-pencil" style={{ fontSize: "0.72rem" }}></i>
                         </button>
                         <button
                           onClick={() => eliminar(p)}
                           className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
-                          style={{ width: "24px", height: "24px" }}
+                          style={{ width: "22px", height: "22px" }}
                           title="Eliminar"
                         >
-                          <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
+                          <i className="bi bi-trash" style={{ fontSize: "0.72rem" }}></i>
                         </button>
                       </div>
                     </td>
@@ -580,7 +654,7 @@ function Pendientes() {
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Row className="g-3">
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">
                   Fecha <span className="text-danger">*</span>
                 </Form.Label>
@@ -596,7 +670,7 @@ function Pendientes() {
                 </Form.Control.Feedback>
               </Col>
 
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">
                   Sector <span className="text-danger">*</span>
                 </Form.Label>
@@ -618,7 +692,30 @@ function Pendientes() {
                 </Form.Control.Feedback>
               </Col>
 
-              <Col md={responsableElegido === "Otro" ? 6 : 12}>
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Estado <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Select
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem" }}
+                  {...register("estado", { required: "El estado es requerido" })}
+                  isInvalid={!!errors.estado}
+                >
+                  {Object.keys(ESTADOS).map((e) => (
+                    <option key={e} value={e}>
+                      {e}
+                    </option>
+                  ))}
+                </Form.Select>
+                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                  {errors.estado?.message}
+                </Form.Control.Feedback>
+              </Col>
+
+              {/* Angosto a propósito: son nombres cortos y así queda a la par
+                  del campo de "¿Quién?" cuando se elige Otro. */}
+              <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">
                   Responsable <span className="text-danger">*</span>
                 </Form.Label>
@@ -643,7 +740,7 @@ function Pendientes() {
               {/* Con "Otro" se escribe el nombre; si queda vacío se guarda
                   "Otro" tal cual. */}
               {responsableElegido === "Otro" && (
-                <Col md={6}>
+                <Col md={4}>
                   <Form.Label className="fw-semibold text-dark small mb-1">¿Quién?</Form.Label>
                   <Form.Control
                     className="rounded-3"
