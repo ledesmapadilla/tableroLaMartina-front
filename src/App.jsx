@@ -80,6 +80,7 @@ import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
 import CamionetaMenuReparaciones from "./components/pages/CamionetaMenuReparaciones";
 import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
 import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
+import BotonReunionFlotante from "./components/shared/BotonReunionFlotante";
 import NavbarProduccion from "./components/shared/NavbarProduccion";
 
 function App() {
@@ -142,6 +143,7 @@ function LayoutDesktop() {
       <div className="app-wrapper">
         {!sinSidebar && <Sidebar />}
         {!sinSidebar && <BotonTableroFlotante />}
+        {!sinSidebar && <BotonReunionFlotante />}
         <div className="layout-right">
           {esProduccion && <NavbarProduccion />}
           {esCompras && !esPublica && <MenuCompras />}
@@ -254,6 +256,8 @@ function LayoutDesktop() {
               <Route path="/camionetas/services/reparaciones/:camionetaId/tarea/:trabajoId" element={<TareaDetalle />} />
               <Route path="/camionetas/services/reparaciones/:camionetaId/historial" element={<HistorialReparaciones />} />
               <Route path="/visitas" element={<Visitas />} />
+              {/* Sale del botón de Reunión. La pantalla todavía no existe. */}
+              <Route path="/pendientes" element={<Error404 />} />
               <Route path="*" element={<Error404 />} />
             </Routes>
           </main>
