@@ -79,6 +79,15 @@ const GRUPOS = {
     hoverBg: "linear-gradient(135deg, #1a2e05 0%, #3f6212 100%)",
     accent: "#a3e635",
   },
+  // Las que salieron de circulación. No tienen supervisor: no se trabaja
+  // sobre ellas, se guardan por el historial.
+  8: {
+    label: "En desuso",
+    supervisor: "—",
+    bg: "linear-gradient(135deg, #334155 0%, #64748b 100%)",
+    hoverBg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    accent: "#cbd5e1",
+  },
 };
 
 function TractoresGrupo() {

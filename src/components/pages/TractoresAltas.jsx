@@ -19,6 +19,9 @@ const GRUPPO_LABELS = {
   5: "Grupo 5",
   6: "Berdina",
   7: "San Pablo",
+  // La máquina que salió de circulación. No se da de baja para no perder su
+  // historial: se la manda acá y deja de figurar entre los grupos de trabajo.
+  8: "En desuso",
 };
 
 const GRUPPO_COLORS = {
@@ -29,6 +32,7 @@ const GRUPPO_COLORS = {
   5: "#c2410c", // Naranja / Óxido
   6: "#b91c1c", // Rojo Berdina
   7: "#4d7c0f", // Verde Oliva San Pablo
+  8: "#64748b", // Gris apagado: fuera de circulación
 };
 
 // Mismo formato de fecha que el resto del proyecto: dd/mm/aaaa.
@@ -657,6 +661,7 @@ function TractoresAltas() {
                   <option value="5">Grupo 5</option>
                   <option value="6">Berdina</option>
                   <option value="7">San Pablo</option>
+                  <option value="8">En desuso</option>
                 </Form.Select>
                 {filtroGrupo !== "Todos" && (
                   <button
@@ -956,6 +961,7 @@ function TractoresAltas() {
                   <option value={5}>Grupo 5 (Elio Rojas)</option>
                   <option value={6}>Berdina (Kevin)</option>
                   <option value={7}>San Pablo (Victor)</option>
+                  <option value={8}>En desuso</option>
                 </Form.Select>
               </Col>
 
