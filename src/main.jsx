@@ -4,6 +4,10 @@ import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import './index.css'
 import App from './App.jsx'
+import { instalarFetchConToken } from './utils/fetchConToken'
+
+// Antes de montar la app: desde acá toda llamada a /api sale con el token.
+instalarFetchConToken()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

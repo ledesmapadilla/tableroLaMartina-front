@@ -1,5 +1,34 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { isMobile } from "./utils/device";
+
+// ── Compras ──
+// Unificada con el Tablero el 06/09/2026. Las pantallas viven en
+// components/compras y cuelgan de /compras/*.
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import MenuCompras from "./components/compras/Menu";
+import RutaProtegida from "./components/shared/RutaProtegida";
+import Login from "./components/shared/Login";
+import { PERMISOS, esRutaPublica } from "./utils/permisos";
+import InicioCompras from "./components/compras/Inicio";
+import Berdina from "./components/compras/Berdina";
+import BerdinaPedidos from "./components/compras/BerdinaPedidos";
+import NuevoPedido from "./components/compras/NuevoPedido";
+import Pendientes from "./components/compras/Pendientes";
+import SanPabloCompras from "./components/compras/SanPablo";
+import SanPabloPedidos from "./components/compras/SanPabloPedidos";
+import SanPabloNuevoPedido from "./components/compras/SanPabloNuevoPedido";
+import Analista from "./components/compras/Analista";
+import AnalistaPedidos from "./components/compras/AnalistaPedidos";
+import AnalistaPendientes from "./components/compras/AnalistaPendientes";
+import AnalizarItem from "./components/compras/AnalizarItem";
+import OrdenCompra from "./components/compras/OrdenCompra";
+import Gerencia from "./components/compras/Gerencia";
+import GerenciaHistorial from "./components/compras/GerenciaHistorial";
+import VerOC from "./components/compras/VerOC";
+import Usuarios from "./components/compras/Usuarios";
+import Proveedores from "./components/compras/Proveedores";
+import CentrosCosto from "./components/compras/CentrosCosto";
+
 import Sidebar from "./components/shared/Sidebar";
 import Footer from "./components/shared/Footer";
 import PaginaPrincipal from "./components/pages/PaginaPrincipal";
@@ -54,7 +83,15 @@ import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 import NavbarProduccion from "./components/shared/NavbarProduccion";
 
 function App() {
-  if (isMobile) {
+  // En celular el Tablero muestra solo Visitas: el resto de sus pantallas son
+  // tablas anchas que no entran. Compras es la excepción: era una app aparte
+  // que se usaba desde el teléfono, así que al unificarla tiene que seguir
+  // llegando. Sin esto, pedir /compras rebotaba a /visitas y no había salida.
+  const esCompras =
+    window.location.pathname === "/compras" ||
+    window.location.pathname.startsWith("/compras/");
+
+  if (isMobile && !esCompras) {
     return (
       <BrowserRouter>
         <div className="app-wrapper" style={{ width: "100%", minHeight: "100vh" }}>
@@ -72,10 +109,13 @@ function App() {
     );
   }
 
+  // AuthProvider envuelve todo: el login cubre el proyecto entero.
   return (
-    <BrowserRouter>
-      <LayoutDesktop />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <LayoutDesktop />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
@@ -84,7 +124,19 @@ function LayoutDesktop() {
   const esPaginaPrincipal = pathname === "/";
   // Producción es una sección independiente: sin sidebar, se navega con su propio navbar
   const esProduccion = pathname === "/produccion" || pathname.startsWith("/produccion/");
-  const sinSidebar = esPaginaPrincipal || esProduccion;
+  // Compras también es independiente: trae su propio Menu superior.
+  const esCompras = pathname === "/compras" || pathname.startsWith("/compras/");
+  // En las pantallas publicas (login, visitas) no va ninguna navegacion.
+  const esPublica = esRutaPublica(pathname);
+  const sinSidebar = esPaginaPrincipal || esProduccion || esCompras || esPublica;
+
+  // El login cubre todo el proyecto. Se controla acá, en un solo punto, y no
+  // ruta por ruta: así ninguna pantalla nueva puede quedar abierta por olvido.
+  // Las excepciones están en RUTAS_PUBLICAS (hoy Visitas y el propio login).
+  const { user } = useAuth();
+  if (!user && !esRutaPublica(pathname)) {
+    return <Navigate to="/login" replace state={{ desde: pathname }} />;
+  }
 
   return (
       <div className="app-wrapper">
@@ -92,11 +144,46 @@ function LayoutDesktop() {
         {!sinSidebar && <BotonTableroFlotante />}
         <div className="layout-right">
           {esProduccion && <NavbarProduccion />}
+          {esCompras && !esPublica && <MenuCompras />}
           <main>
             <Routes>
+              <Route path="/login" element={<Login />} />
               <Route path="/" element={<PaginaPrincipal />} />
               <Route path="/inicio" element={<Inicio />} />
-              <Route path="/compras" element={<Error404 />} />
+              {/* ── Compras ──
+                  Se unificó con el Tablero el 06/09/2026. Trae su propio
+                  login con roles; el resto del proyecto sigue abierto hasta
+                  que se unifique la autenticación. */}
+              
+              <Route path="/compras" element={<RutaProtegida><InicioCompras /></RutaProtegida>} />
+
+              <Route path="/compras/berdina" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Berdina /></RutaProtegida>} />
+              <Route path="/compras/berdina/pedidos" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><BerdinaPedidos /></RutaProtegida>} />
+              <Route path="/compras/berdina/pedidos/nuevo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><NuevoPedido /></RutaProtegida>} />
+              <Route path="/compras/berdina/pendientes" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Pendientes taller="berdina" /></RutaProtegida>} />
+
+              <Route path="/compras/sanpablo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloCompras /></RutaProtegida>} />
+              <Route path="/compras/sanpablo/pedidos" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloPedidos /></RutaProtegida>} />
+              <Route path="/compras/sanpablo/pedidos/nuevo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloNuevoPedido /></RutaProtegida>} />
+              <Route path="/compras/sanpablo/pendientes" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Pendientes taller="sanpablo" /></RutaProtegida>} />
+
+              <Route path="/compras/analista" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><Analista /></RutaProtegida>} />
+              <Route path="/compras/analista/pedidos" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPedidos key="analista" /></RutaProtegida>} />
+              <Route path="/compras/analista/pendientes" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPendientes /></RutaProtegida>} />
+              <Route path="/compras/analista/analizar" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalizarItem /></RutaProtegida>} />
+
+              <Route path="/compras/comprador" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPedidos key="comprador" /></RutaProtegida>} />
+              <Route path="/compras/comprador/oc" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><OrdenCompra /></RutaProtegida>} />
+
+              <Route path="/compras/gerencia" element={<RutaProtegida roles={PERMISOS.comprasGerencia}><Gerencia /></RutaProtegida>} />
+              <Route path="/compras/gerencia/historial" element={<RutaProtegida roles={PERMISOS.comprasGerencia}><GerenciaHistorial /></RutaProtegida>} />
+
+              <Route path="/compras/oc/ver" element={<RutaProtegida><VerOC /></RutaProtegida>} />
+              <Route path="/compras/oc/:nro" element={<RutaProtegida><VerOC /></RutaProtegida>} />
+
+              <Route path="/compras/altas/usuarios" element={<RutaProtegida roles={PERMISOS.comprasUsuarios}><Usuarios /></RutaProtegida>} />
+              <Route path="/compras/altas/proveedores" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><Proveedores /></RutaProtegida>} />
+              <Route path="/compras/altas/centros-costo" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><CentrosCosto /></RutaProtegida>} />
               {/* Producción entra por los establecimientos: todo lo demás
                   cuelga de uno de ellos. */}
               <Route path="/produccion" element={<ProduccionEstablecimientos />} />
