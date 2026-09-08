@@ -4,6 +4,7 @@ import { useForm, useWatch } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
+import LogoNavbar from "../shared/LogoNavbar";
 
 const API = "/api/pendientes";
 
@@ -356,54 +357,90 @@ function Pendientes() {
         flexDirection: "column",
         backgroundColor: "#f8f9fa",
         height: "100%",
+        maxHeight: "100vh",
         overflow: "hidden",
       }}
     >
+      {/* Barra de Cabecera Institucional */}
+      <div
+        className="d-flex align-items-center justify-content-between px-4 py-2 border-bottom shadow-sm flex-shrink-0"
+        style={{ backgroundColor: "#1e293b", color: "#fff", height: "54px", position: "relative" }}
+      >
+        <LogoNavbar />
+        {/* Lado izquierdo: ícono y cuenta */}
+        <div className="d-flex align-items-center gap-2">
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center me-1"
+            style={{
+              width: "34px",
+              height: "34px",
+              backgroundColor: "#10b981",
+              color: "#fff",
+              fontSize: "1.15rem",
+              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+            }}
+          >
+            <i className="bi bi-list-check"></i>
+          </div>
+          <span className="text-light opacity-75 small ms-1">
+            {hayFiltro
+              ? `${filtrados.length} de ${pendientes.length} pendientes`
+              : `${pendientes.length} pendientes`}
+          </span>
+        </div>
+
+        {/* Título (corrido a la izquierda: el logo ocupa el centro) */}
+        <div
+          style={{
+            marginRight: "auto",
+            marginLeft: "0.9rem",
+            width: "max-content",
+            pointerEvents: "none",
+          }}
+        >
+          <span className="text-white fs-6 fw-normal" style={{ letterSpacing: "0.3px" }}>
+            Pendientes
+          </span>
+        </div>
+
+        {/* Botones de Navegación */}
+        <div className="d-flex align-items-center gap-2">
+          {/* A Pendientes se entra desde el botón de Reunión, que se aprieta en
+              cualquier pantalla: se vuelve a la anterior, no a una fija. */}
+          <button
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-arrow-left"></i>
+            <span>Volver</span>
+          </button>
+          <button
+            onClick={() => navigate("/inicio")}
+            className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-grid-fill"></i>
+            <span>Mantenimiento</span>
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
+            style={{ fontSize: "0.82rem" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>General</span>
+          </button>
+        </div>
+      </div>
+
       <Container
         fluid
         className="px-4 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "1100px", width: "100%", margin: "0 auto", overflow: "hidden" }}
+        style={{ maxWidth: "1140px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
-        {/* Encabezado de la pantalla + acciones */}
-        <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
-          <div className="d-flex align-items-center gap-2">
-            {/* A Pendientes se entra desde el botón de Reunión, que se aprieta
-                en cualquier pantalla: se vuelve a la anterior, no a una fija. */}
-            <button
-              onClick={() => navigate(-1)}
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-              style={{ fontSize: "0.82rem" }}
-              title="Volver"
-            >
-              <i className="bi bi-arrow-left"></i>
-              <span>Volver</span>
-            </button>
-            <div
-              className="rounded-3 d-flex align-items-center justify-content-center"
-              style={{
-                width: "34px",
-                height: "34px",
-                backgroundColor: "#10b981",
-                color: "#fff",
-                fontSize: "1.1rem",
-                boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
-              }}
-            >
-              <i className="bi bi-list-check"></i>
-            </div>
-            <div className="d-flex flex-column lh-sm">
-              <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1rem" }}>
-                Pendientes
-              </span>
-              <span className="text-muted" style={{ fontSize: "0.78rem" }}>
-                {hayFiltro
-                  ? `${filtrados.length} de ${pendientes.length} pendientes`
-                  : `${pendientes.length} pendientes`}
-              </span>
-            </div>
-          </div>
-
-          <div className="d-flex align-items-center gap-3">
+        {/* Botones de acción, arriba de los filtros */}
+        <div className="d-flex align-items-center justify-content-end gap-3 mb-3">
             <Button
               variant="success"
               size="sm"
@@ -423,15 +460,14 @@ function Pendientes() {
               onClick={abrirNuevo}
               className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
               style={{
-                backgroundColor: "#1b4332",
-                borderColor: "#1b4332",
+                backgroundColor: "#1e293b",
+                borderColor: "#1e293b",
                 fontSize: "0.82rem",
                 fontWeight: 600,
               }}
             >
               <span>Nuevo Pendiente</span>
             </Button>
-          </div>
         </div>
 
         {/* Barra de filtros */}
@@ -639,7 +675,9 @@ function Pendientes() {
           closeButton
           closeVariant="white"
           style={{
-            backgroundColor: "#1b4332",
+            // Los modales de Mantenimiento van con el azul institucional; el
+            // verde queda para el encabezado de la tabla.
+            backgroundColor: "#1e293b",
             color: "#fff",
             borderTopLeftRadius: "1rem",
             borderTopRightRadius: "1rem",
