@@ -10,6 +10,8 @@ const TODOS = ['superadmin', 'solicitante', 'analista', 'comprador', 'gerente']
 const SIN_SOLICITANTE = TODOS.filter(r => r !== 'solicitante')
 
 const NAV_ITEMS = [
+  // Inicio vuelve al menú principal de Compras: el logo ahora sale del proyecto.
+  { label: 'Inicio',    to: '/compras',           roles: TODOS, exacto: true },
   { label: 'Berdina',   to: '/compras/berdina',   roles: TODOS },
   { label: 'San Pablo', to: '/compras/sanpablo',   roles: TODOS },
   { label: 'Analista',  to: '/compras/analista',   roles: SIN_SOLICITANTE },
@@ -34,10 +36,14 @@ export default function Menu() {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
       <div className="container position-relative">
-        <Link className="navbar-brand d-flex align-items-center gap-2" to="/compras">
+        <Link
+          className="navbar-brand d-flex align-items-center gap-2"
+          to="/"
+          title="Ir a la página principal del Tablero"
+        >
           <img
             src="/logo LM.jpg"
-            alt="Logo La Martina"
+            alt="La Martina — Página principal"
             height="54"
             style={{
               maskImage: 'linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%), linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)',
@@ -62,6 +68,7 @@ export default function Menu() {
                 <NavLink
                   className={({ isActive }) => `nav-link${isActive ? ' nav-activo' : ''}`}
                   to={item.to}
+                  end={item.exacto}
                   onClick={closeMenu}
                 >
                   {item.label}
