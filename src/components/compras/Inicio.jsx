@@ -104,6 +104,13 @@ export default function Inicio() {
   const columnas = Math.min(visibles.length, 3) || 1
   const anchoGrilla = columnas === 1 ? '320px' : columnas === 2 ? '640px' : '960px'
 
+  // Con las cinco secciones a la vista van dos arriba y tres abajo, y las de
+  // arriba caen justo sobre los huecos de la fila de abajo. Sale de una grilla
+  // de seis columnas: cada tarjeta ocupa dos, y la fila de arriba arranca
+  // corrida una, así queda centrada sobre las juntas.
+  const enCinco = visibles.length === 5
+  const COLUMNA = ['2 / span 2', '4 / span 2', '1 / span 2', '3 / span 2', '5 / span 2']
+
   return (
     <div
       style={{
@@ -135,16 +142,9 @@ export default function Inicio() {
           >
             <i className="bi bi-cart-fill"></i>
           </div>
-          <div className="d-flex flex-column lh-sm">
-            <span className="fw-bold" style={{ color: '#78350f', fontSize: '1.05rem' }}>
-              Compras
-            </span>
-            {user && (
-              <span className="text-muted" style={{ fontSize: '0.78rem' }}>
-                {user.nombre} · {user.rol}
-              </span>
-            )}
-          </div>
+          <span className="fw-bold" style={{ color: '#78350f', fontSize: '1.05rem' }}>
+            Compras
+          </span>
         </div>
 
         {/* Tarjetas de las secciones */}
@@ -157,20 +157,21 @@ export default function Inicio() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${columnas}, 1fr)`,
+                gridTemplateColumns: enCinco ? 'repeat(6, 1fr)' : `repeat(${columnas}, 1fr)`,
                 gap: '1.75rem',
                 width: '100%',
                 maxWidth: anchoGrilla,
                 margin: '0 auto',
               }}
             >
-              {visibles.map((s) => {
+              {visibles.map((s, i) => {
                 const isHovered = hovered === s.id
                 return (
                   <div
                     key={s.id}
                     className="d-flex flex-column align-items-center justify-content-center text-center p-4"
                     style={{
+                      gridColumn: enCinco ? COLUMNA[i] : undefined,
                       background: isHovered ? s.colores.fondoHover : s.colores.fondo,
                       borderRadius: '20px',
                       height: '230px',
