@@ -79,7 +79,6 @@ export default function Menu() {
 
   const altasVisibles = user ? ALTAS.filter((a) => a.roles.includes(user.rol)) : []
   const enAltas = location.pathname.startsWith('/compras/altas')
-  const enInicio = location.pathname === '/compras'
 
   return (
     <div
@@ -140,30 +139,12 @@ export default function Menu() {
       {/* Lado derecho: navegación y menús de la sección */}
       <div className="navc-desktop align-items-center gap-2">
         <button
-          onClick={() => ir('/compras')}
-          className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3 py-1 text-white"
-          style={btnSeccion(enInicio)}
-        >
-          <i className="bi bi-grid-fill"></i>
-          <span>Inicio</span>
-        </button>
-
-        <button
           onClick={() => { cerrar(); navigate(-1) }}
           className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
           style={{ fontSize: '0.82rem' }}
         >
           <i className="bi bi-arrow-left"></i>
           <span>Volver</span>
-        </button>
-
-        <button
-          onClick={() => ir('/')}
-          className="btn btn-sm btn-light text-dark d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-          style={{ fontSize: '0.82rem' }}
-        >
-          <i className="bi bi-house-door-fill"></i>
-          <span>General</span>
         </button>
 
         {altasVisibles.length > 0 && (
@@ -270,30 +251,12 @@ export default function Menu() {
           )}
 
           <button
-            onClick={() => ir('/compras')}
-            className="btn btn-sm w-100 text-start d-flex align-items-center gap-2 rounded-3 px-3 py-2 text-white mb-1"
-            style={btnSeccion(enInicio)}
-          >
-            <i className="bi bi-grid-fill"></i>
-            <span>Inicio</span>
-          </button>
-
-          <button
             onClick={() => { cerrar(); navigate(-1) }}
             className="btn btn-sm w-100 text-start d-flex align-items-center gap-2 rounded-3 px-3 py-2 text-white mb-1"
             style={btnSeccion(false)}
           >
             <i className="bi bi-arrow-left"></i>
             <span>Volver</span>
-          </button>
-
-          <button
-            onClick={() => ir('/')}
-            className="btn btn-sm w-100 text-start d-flex align-items-center gap-2 rounded-3 px-3 py-2 text-white mb-1"
-            style={btnSeccion(false)}
-          >
-            <i className="bi bi-house-door-fill"></i>
-            <span>General</span>
           </button>
 
           {altasVisibles.map((a) => (

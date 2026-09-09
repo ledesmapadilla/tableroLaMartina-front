@@ -127,25 +127,7 @@ export default function Inicio() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: '1040px', width: '100%', margin: '0 auto' }}
       >
-        {/* Encabezado. El logo y el cierre de sesión están en el navbar. */}
-        <div className="d-flex align-items-center gap-2 mb-4">
-          <div
-            className="rounded-3 d-flex align-items-center justify-content-center"
-            style={{
-              width: '34px',
-              height: '34px',
-              backgroundColor: '#f59e0b',
-              color: '#fff',
-              fontSize: '1.1rem',
-              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
-            }}
-          >
-            <i className="bi bi-cart-fill"></i>
-          </div>
-          <span className="fw-bold" style={{ color: '#78350f', fontSize: '1.05rem' }}>
-            Compras
-          </span>
-        </div>
+        {/* Sin encabezado: el navbar de arriba ya dice Compras. */}
 
         {/* Tarjetas de las secciones */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
