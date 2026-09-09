@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import SesionUsuario from "../shared/SesionUsuario";
 
 const secciones = [
   {
@@ -7,8 +8,8 @@ const secciones = [
     titulo: "Compras",
     subtitulo: "Pedidos, proveedores y órdenes de compra",
     ruta: "/compras",
-    bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
-    hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
+    bg: "linear-gradient(135deg, #7a1828 0%, #9d2235 100%)",
+    hoverBg: "linear-gradient(135deg, #4a0812 0%, #7a1828 100%)",
     accentColor: "#f59e0b",
     icono: "bi bi-cart-fill",
   },
@@ -54,8 +55,14 @@ function PaginaPrincipal() {
         userSelect: "none",
       }}
     >
+      {/* La sesión es del proyecto: se cierra desde acá, sin entrar a ninguna
+          sección. */}
+      <div className="d-flex justify-content-end px-4 pt-3 flex-shrink-0">
+        <SesionUsuario mostrarRol />
+      </div>
+
       {/* Cabecera */}
-      <div className="d-flex flex-column align-items-center pt-4 flex-shrink-0">
+      <div className="d-flex flex-column align-items-center flex-shrink-0">
         <img
           src="/logo-la-martina.jpg"
           alt="Logo La Martina"

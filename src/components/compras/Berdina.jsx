@@ -4,7 +4,7 @@ import { Container } from 'react-bootstrap'
 
 // Qué se puede hacer dentro del taller. Cada una lleva su color: son cosas
 // distintas y de un vistazo se tiene que ver cuál es cuál. Pedidos se queda
-// con el ámbar, que es el color de Compras.
+// con el bordó de Compras.
 const OPCIONES = [
   {
     id: 'pedidos',
@@ -13,8 +13,8 @@ const OPCIONES = [
     icono: 'bi bi-cart-fill',
     destino: '/compras/berdina/pedidos',
     colores: {
-      fondo: 'linear-gradient(135deg, #78350f 0%, #92400e 100%)',
-      fondoHover: 'linear-gradient(135deg, #451a03 0%, #78350f 100%)',
+      fondo: 'linear-gradient(135deg, #7a1828 0%, #9d2235 100%)',
+      fondoHover: 'linear-gradient(135deg, #4a0812 0%, #7a1828 100%)',
       borde: '#f59e0b',
       icono: '#fcd34d',
       brillo: 'rgba(245,158,11,0.25)',
@@ -70,12 +70,7 @@ export default function Berdina() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: '1040px', width: '100%', margin: '0 auto' }}
       >
-        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
-        <div className="d-flex align-items-center gap-2 mb-4">
-          <span className="fw-bold" style={{ color: '#78350f', fontSize: '1.05rem' }}>
-            Berdina
-          </span>
-        </div>
+        {/* Sin encabezado: las tarjetas hablan solas. */}
 
         {/* Tarjetas del taller */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">

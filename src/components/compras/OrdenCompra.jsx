@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Container, Card, Table, Button, Form } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
+import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
+import { Raya, BotonAccion } from './estilos'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
@@ -121,12 +124,6 @@ export default function OrdenCompra() {
     setBusqueda('')
   }
 
-  const agregarOtroPedido = () => {
-    setPreviewItems([])
-    setSelectedKey(null)
-    setBusqueda('')
-  }
-
   const quitarItem = (itemId) => setOcItems(prev => prev.filter(i => i._id !== itemId))
 
   const total = ocItems.reduce((acc, i) => acc + (i.precio_total || 0), 0)
@@ -175,206 +172,321 @@ export default function OrdenCompra() {
   }
 
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-1">
-
-      <div className="container d-flex justify-content-between align-items-center mb-1">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          Comprador
-        </p>
-        <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-      </div>
-
-      <div className="container">
-        <h4 className="text-center mb-3" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2 }}>Orden de Compra</h4>
-
-        {/* Selector de pedido */}
-        <div className="d-flex align-items-end gap-2 mb-3" style={{ position: 'relative' }}>
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Elegir N° de pedido</label>
-            <input
-              className={`form-control form-control-sm${selectedKey ? ' select-activo' : ''}`}
-              style={{ width: 200 }}
-              value={busqueda}
-              onChange={e => { setBusqueda(e.target.value); setShowDropdown(true) }}
-              onFocus={() => { setBusqueda(''); setShowDropdown(true) }}
-              onBlur={() => { if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src)) }}
-              placeholder="Buscar pedido..."
-              autoComplete="off"
-            />
-            {showDropdown && pedidosFiltrados.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 0, zIndex: 100,
-                background: '#fff', border: '1px solid #000', borderRadius: 4,
-                width: 200, maxHeight: 220, overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              }}>
-                {pedidosFiltrados.map(p => {
-                  const key = `${p._src}-${p.nro_pedido}`
-                  return (
-                    <div
-                      key={key}
-                      onMouseDown={() => elegirPedido(p)}
-                      style={{ padding: '6px 12px', cursor: 'pointer', fontWeight: esMultiple(p) ? 700 : 400, backgroundColor: key === selectedKey ? 'rgba(13,110,253,0.08)' : 'transparent' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(13,110,253,0.08)'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = key === selectedKey ? 'rgba(13,110,253,0.08)' : 'transparent'}
-                    >
-                      {fmtNro(p.nro_pedido, p._src)}
-                      {esMultiple(p) && <span className="ms-1 text-muted" style={{ fontSize: 11, fontWeight: 400 }}>({ocItemCount(p)} ítems)</span>}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0 }}>
-            <button
-              className="btn btn-sm btn-outline-primary"
-              disabled={previewItems.length === 0}
-              onClick={aceptar}
-            >Aceptar</button>
-          </div>
-
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', overflowY: 'auto' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap flex-shrink-0">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            Orden de compra
+          </span>
+          {ocItems.length > 0 && (
+            <span
+              className="px-2 py-1 rounded-3"
+              style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+            >
+              {ocItems.length} {ocItems.length === 1 ? 'ítem' : 'ítems'} · {fmtPrecio(total)}
+            </span>
+          )}
         </div>
 
-        {/* Vista previa del pedido seleccionado */}
+        {/* Elegir el pedido que se suma a la orden */}
+        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0">
+          <div className="d-flex align-items-end gap-3 flex-wrap">
+            <div ref={dropdownRef} className="d-flex flex-column" style={{ position: 'relative', width: '220px' }}>
+              <span className="fw-bold text-dark mb-1" style={{ fontSize: '0.72rem' }}>
+                Elegir N° de pedido
+              </span>
+              <Form.Control
+                className={`rounded-3 ${selectedKey ? 'fw-bold filtro-activo' : ''}`}
+                style={{
+                  fontSize: '0.82rem',
+                  height: '32px',
+                  padding: '3px 8px',
+                  color: selectedKey ? '#dc2626' : '#1e293b',
+                  fontWeight: selectedKey ? '700' : 'normal',
+                }}
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value)
+                  setShowDropdown(true)
+                }}
+                onFocus={() => {
+                  setBusqueda('')
+                  setShowDropdown(true)
+                }}
+                onBlur={() => {
+                  if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src))
+                }}
+                placeholder="Buscar pedido…"
+                autoComplete="off"
+              />
+
+              {showDropdown && pedidosFiltrados.length > 0 && (
+                <div
+                  className="shadow-lg"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    zIndex: 100,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    width: 220,
+                    maxHeight: 240,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {pedidosFiltrados.map((p) => {
+                    const key = `${p._src}-${p.nro_pedido}`
+                    const elegido = key === selectedKey
+                    return (
+                      <div
+                        key={key}
+                        onMouseDown={() => elegirPedido(p)}
+                        style={{
+                          padding: '6px 12px',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          fontWeight: esMultiple(p) ? 700 : 500,
+                          color: elegido ? BORDO : '#334155',
+                          backgroundColor: elegido ? BORDO_SUAVE : 'transparent',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = BORDO_SUAVE
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = elegido ? BORDO_SUAVE : 'transparent'
+                        }}
+                      >
+                        {fmtNro(p.nro_pedido, p._src)}
+                        {esMultiple(p) && (
+                          <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
+                            ({ocItemCount(p)} ítems)
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <Button
+              size="sm"
+              disabled={previewItems.length === 0}
+              onClick={aceptar}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.8rem', height: '32px', fontWeight: 600 }}
+              title="Sumar estos ítems a la orden"
+            >
+              <i className="bi bi-plus-lg"></i>
+              <span>Sumar a la orden</span>
+            </Button>
+          </div>
+        </Card>
+
+        {/* Vista previa: lo que se va a sumar, todavía editable */}
         {previewItems.length > 0 && (
-          <div className="mb-3">
-            <p className="mb-1 text-muted" style={{ fontSize: 12 }}>
-              Vista previa — pedido {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src) : ''}
-            </p>
-            <div className="card">
-              <table className="table table-hover table-striped mb-0" style={{ fontSize: 13 }}>
-                <thead className="thead-blue thead-light">
+          <div className="mb-3 flex-shrink-0">
+            <div className="fw-bold mb-1" style={{ color: BORDO, fontSize: '0.82rem' }}>
+              Vista previa — pedido{' '}
+              {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src) : ''}
+            </div>
+            <div
+              className="shadow-sm rounded-3 bg-white"
+              style={{ maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+            >
+              <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '1000px' }}>
+                <thead>
                   <tr>
-                    <th>Fecha</th>
-                    <th>Repuesto</th>
-                    <th>Cant.</th>
-                    <th>Precio Unit.</th>
-                    <th>Precio Total</th>
-                    <th>Proveedor</th>
-                    <th>Observaciones</th>
+                    <th style={thCentro}>Fecha</th>
+                    <th style={th}>Repuesto</th>
+                    <th style={thCentro}>Cant.</th>
+                    <th style={thCentro}>Precio unit.</th>
+                    <th style={thCentro}>Precio total</th>
+                    <th style={thCentro}>Proveedor</th>
+                    <th style={th}>Observaciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {previewItems.map(item => (
+                  {previewItems.map((item) => (
                     <tr key={item._id}>
-                      <td className="text-nowrap">{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
-                      <td>{item.nombre_repuesto}</td>
-                      <td>
-                        <input
+                      <td style={{ ...tdCentro, padding: '4px 5px' }}>
+                        {item.fecha?.slice(0, 10).split('-').reverse().join('/')}
+                      </td>
+                      <td style={{ ...td, padding: '4px 5px', fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                      <td style={{ ...td, padding: '4px 5px' }}>
+                        <Form.Control
                           type="number"
                           min="0"
-                          className="form-control form-control-sm"
-                          style={{ width: 70 }}
+                          size="sm"
+                          className="rounded-3"
+                          style={{ width: 70, fontSize: '0.8rem', height: '30px' }}
                           value={item.cant ?? ''}
-                          onChange={e => updatePreviewItem(item._id, 'cant', e.target.value)}
+                          onChange={(e) => updatePreviewItem(item._id, 'cant', e.target.value)}
                         />
                       </td>
-                      <td>
-                        <input
+                      <td style={{ ...td, padding: '4px 5px' }}>
+                        <Form.Control
                           type={focusPrecio[item._id] ? 'number' : 'text'}
-                          className="form-control form-control-sm"
-                          style={{ width: 130 }}
-                          value={focusPrecio[item._id]
-                            ? (item.precio_unitario ?? '')
-                            : (item.precio_unitario != null ? fmtPrecio(item.precio_unitario) : '')}
-                          onChange={e => updatePreviewItem(item._id, 'precio_unitario', e.target.value)}
-                          onFocus={() => setFocusPrecio(p => ({ ...p, [item._id]: true }))}
-                          onBlur={() => setFocusPrecio(p => ({ ...p, [item._id]: false }))}
+                          size="sm"
+                          className="rounded-3"
+                          style={{ width: 130, fontSize: '0.8rem', height: '30px' }}
+                          value={
+                            focusPrecio[item._id]
+                              ? item.precio_unitario ?? ''
+                              : item.precio_unitario != null
+                                ? fmtPrecio(item.precio_unitario)
+                                : ''
+                          }
+                          onChange={(e) => updatePreviewItem(item._id, 'precio_unitario', e.target.value)}
+                          onFocus={() => setFocusPrecio((p) => ({ ...p, [item._id]: true }))}
+                          onBlur={() => setFocusPrecio((p) => ({ ...p, [item._id]: false }))}
                           placeholder="$0"
                         />
                       </td>
-                      <td style={{ fontWeight: 500 }}>
-                        {item.precio_total != null ? fmtPrecio(item.precio_total) : '—'}
+                      <td style={{ ...tdCentro, fontWeight: 600 }}>
+                        {item.precio_total != null ? fmtPrecio(item.precio_total) : <Raya />}
                       </td>
-                      <td>
-                        <select
-                          className="form-select form-select-sm"
-                          style={{ minWidth: 160 }}
+                      <td style={{ ...td, padding: '4px 5px' }}>
+                        <Form.Select
+                          size="sm"
+                          className="rounded-3"
+                          style={{ minWidth: 160, fontSize: '0.8rem', height: '30px' }}
                           value={item.proveedor_id || ''}
-                          onChange={e => updatePreviewItem(item._id, 'proveedor_id', e.target.value)}
+                          onChange={(e) => updatePreviewItem(item._id, 'proveedor_id', e.target.value)}
                         >
                           <option value="">— Sin proveedor —</option>
-                          {proveedores.map(p => (
-                            <option key={p._id} value={p._id}>{p.razonsocial}</option>
+                          {proveedores.map((p) => (
+                            <option key={p._id} value={p._id}>
+                              {p.razonsocial}
+                            </option>
                           ))}
-                        </select>
+                        </Form.Select>
                       </td>
-                      <td>
-                        <input
-                          className="form-control form-control-sm"
+                      <td style={{ ...td, padding: '4px 5px' }}>
+                        <Form.Control
+                          size="sm"
+                          className="rounded-3"
+                          style={{ fontSize: '0.8rem', height: '30px' }}
                           value={obsPreview[item._id] || ''}
-                          onChange={e => setObsPreview(prev => ({ ...prev, [item._id]: e.target.value }))}
-                          placeholder="Observaciones..."
+                          onChange={(e) => setObsPreview((prev) => ({ ...prev, [item._id]: e.target.value }))}
+                          placeholder="Observaciones…"
                         />
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             </div>
           </div>
         )}
 
-        {/* Tabla acumulada de la OC */}
+        {/* Lo que ya entró en la orden */}
         {ocItems.length > 0 && (
-          <div>
-            <h6 className="mb-2" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Ítems en OC</h6>
-            <div className="card mb-2">
-              <table className="table table-hover table-striped mb-0" style={{ fontSize: 13 }}>
-                <thead className="thead-blue thead-light">
+          <div className="flex-shrink-0 pb-3">
+            <div className="fw-bold mb-1" style={{ color: BORDO, fontSize: '0.82rem' }}>
+              Ítems en la orden
+            </div>
+            <div
+              className="shadow-sm rounded-3 bg-white mb-3"
+              style={{ maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+            >
+              <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '1000px' }}>
+                <thead>
                   <tr>
-                    <th>N° Pedido</th>
-                    <th>Fecha</th>
-                    <th>Repuesto</th>
-                    <th>Cant.</th>
-                    <th>Precio Unit.</th>
-                    <th>Precio Total</th>
-                    <th>Proveedor</th>
-                    <th>Observaciones</th>
-                    <th></th>
+                    <th style={thCentro}>N° Pedido</th>
+                    <th style={thCentro}>Fecha</th>
+                    <th style={th}>Repuesto</th>
+                    <th style={thCentro}>Cant.</th>
+                    <th style={thCentro}>Precio unit.</th>
+                    <th style={thCentro}>Precio total</th>
+                    <th style={th}>Proveedor</th>
+                    <th style={th}>Observaciones</th>
+                    <th style={{ ...thCentro, width: 70 }}>Quitar</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ocItems.map(item => (
+                  {ocItems.map((item) => (
                     <tr key={item._id}>
-                      <td>{fmtNro(item.nro_pedido, item._src)}</td>
-                      <td className="text-nowrap">{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
-                      <td>{item.nombre_repuesto}</td>
-                      <td>{item.cant || '—'}</td>
-                      <td>{item.precio_unitario != null ? fmtPrecio(item.precio_unitario) : '—'}</td>
-                      <td>{item.precio_total != null ? fmtPrecio(item.precio_total) : '—'}</td>
-                      <td>{provNombre(item.proveedor_id)}</td>
-                      <td>{item.observaciones || '—'}</td>
-                      <td>
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          style={{ padding: '1px 6px', fontSize: 11 }}
-                          onClick={() => quitarItem(item._id)}
-                        >✕</button>
+                      <td style={tdCentro}>{fmtNro(item.nro_pedido, item._src)}</td>
+                      <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
+                      <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                      <td style={tdCentro}>{item.cant || <Raya />}</td>
+                      <td style={tdCentro}>
+                        {item.precio_unitario != null ? fmtPrecio(item.precio_unitario) : <Raya />}
+                      </td>
+                      <td style={{ ...tdCentro, fontWeight: 600 }}>
+                        {item.precio_total != null ? fmtPrecio(item.precio_total) : <Raya />}
+                      </td>
+                      <td style={td}>{provNombre(item.proveedor_id)}</td>
+                      <td style={td}>{item.observaciones || <Raya />}</td>
+                      <td style={tdCentro}>
+                        <div className="d-flex justify-content-center">
+                          <BotonAccion
+                            icono="bi-x-lg"
+                            titulo="Quitar de la orden"
+                            variante="danger"
+                            onClick={() => quitarItem(item._id)}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
+
+                  {/* La fila de total va con la clase fila-total, si no el
+                      hover le gana al fondo. */}
+                  <tr className="fila-total">
+                    <td style={{ ...td, fontWeight: 700, color: BORDO }}>TOTAL</td>
+                    <td style={td} />
+                    <td style={td} />
+                    <td style={td} />
+                    <td style={td} />
+                    <td style={{ ...tdCentro, fontWeight: 700, color: BORDO }}>{fmtPrecio(total)}</td>
+                    <td style={td} />
+                    <td style={td} />
+                    <td style={td} />
+                  </tr>
                 </tbody>
-              </table>
+              </Table>
             </div>
 
-            <div className="text-end mb-3" style={{ fontWeight: 700, fontSize: 18 }}>
-              Total: <span style={{ color: 'var(--color-accent)' }}>{fmtPrecio(total)}</span>
-            </div>
-
-            <div className="text-center">
-              <button className="btn btn-outline-danger" onClick={generarOC}>Generar OC</button>
+            <div className="d-flex justify-content-center">
+              <Button
+                size="sm"
+                onClick={generarOC}
+                className="rounded-3 px-4 py-1 shadow-sm d-flex align-items-center gap-2"
+                style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.86rem', fontWeight: 600 }}
+              >
+                <i className="bi bi-receipt"></i>
+                <span>Generar orden de compra</span>
+              </Button>
             </div>
           </div>
         )}
 
         {ocItems.length === 0 && previewItems.length === 0 && (
-          <p className="text-center text-muted mt-4" style={{ fontSize: 14 }}>
-            Seleccioná un pedido para comenzar la orden de compra.
-          </p>
+          <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+            <span className="text-muted" style={{ fontSize: '0.9rem' }}>
+              Elegí un pedido para empezar la orden de compra.
+            </span>
+          </div>
         )}
-      </div>
+      </Container>
     </div>
   )
 }

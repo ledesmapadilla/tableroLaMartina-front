@@ -11,9 +11,9 @@ import { PERMISOS } from '../../utils/permisos'
 // Los roles salen de PERMISOS, que es con lo que App.jsx protege cada ruta:
 // así una tarjeta no puede quedar visible para quien después rebota.
 //
-// Cada una lleva su color, para distinguirlas de un vistazo. El ámbar es el de
-// Compras en la página principal; los dos talleres se lo quedan y los roles
-// llevan el suyo, porque son cosas distintas.
+// Cada una lleva su color, para distinguirlas de un vistazo. Berdina se queda
+// con el bordó, que es el de Compras en la página principal; los roles llevan
+// el suyo, porque son cosas distintas.
 const SECCIONES = [
   {
     id: 'berdina',
@@ -23,8 +23,8 @@ const SECCIONES = [
     destino: '/compras/berdina',
     roles: PERMISOS.comprasGeneral,
     colores: {
-      fondo: 'linear-gradient(135deg, #78350f 0%, #92400e 100%)',
-      fondoHover: 'linear-gradient(135deg, #451a03 0%, #78350f 100%)',
+      fondo: 'linear-gradient(135deg, #7a1828 0%, #9d2235 100%)',
+      fondoHover: 'linear-gradient(135deg, #4a0812 0%, #7a1828 100%)',
       borde: '#f59e0b',
       icono: '#fcd34d',
       brillo: 'rgba(245,158,11,0.25)',
@@ -38,11 +38,11 @@ const SECCIONES = [
     destino: '/compras/sanpablo',
     roles: PERMISOS.comprasGeneral,
     colores: {
-      fondo: 'linear-gradient(135deg, #7c2d12 0%, #9a3412 100%)',
-      fondoHover: 'linear-gradient(135deg, #431407 0%, #7c2d12 100%)',
-      borde: '#fb923c',
-      icono: '#fdba74',
-      brillo: 'rgba(251,146,60,0.25)',
+      fondo: 'linear-gradient(135deg, #14532d 0%, #166534 100%)',
+      fondoHover: 'linear-gradient(135deg, #052e16 0%, #14532d 100%)',
+      borde: '#4ade80',
+      icono: '#bbf7d0',
+      brillo: 'rgba(74,222,128,0.25)',
     },
   },
   {

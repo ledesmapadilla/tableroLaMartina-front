@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Container, Card, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
+import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
+import { avisarSinOC } from './avisos'
+import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, SwitchAgrupar } from './estilos'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Herreria', 'Gomeria', 'Stock', 'Otros']
@@ -9,12 +13,6 @@ const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herb
 const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Para revision', 'Para retirar'])
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
-
-const estiloX = {
-  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-  cursor: 'pointer', fontSize: 13, fontWeight: 900, color: 'var(--color-muted)',
-  zIndex: 5, userSelect: 'none', lineHeight: 1,
-}
 
 export default function AnalistaPendientes() {
   const navigate = useNavigate()
@@ -89,7 +87,7 @@ export default function AnalistaPendientes() {
   const varios = () => <span className="text-muted fst-italic" style={{ fontSize: 12 }}>Varios</span>
 
   const badgeTaller = (src) => (
-    <span className="badge" style={{ backgroundColor: src === 'berdina' ? '#1a3326' : '#4a0812', fontSize: 11, letterSpacing: 0.5, minWidth: 24 }}>
+    <span className="badge" style={{ backgroundColor: src === 'berdina' ? '#7a1828' : '#166534', fontSize: 11, letterSpacing: 0.5, minWidth: 24 }}>
       {src === 'berdina' ? 'B' : 'SP'}
     </span>
   )
@@ -188,175 +186,179 @@ export default function AnalistaPendientes() {
   }
 
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-2">
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      {/* La urgencia crítica pinta la fila. Va en un bloque propio porque
+          .tabla-informe pinta el fondo sobre los td y un style en el tr no le
+          gana. */}
+      <style>{`
+        .tabla-informe.tabla-analista-pend tbody tr.fila-critica > td { background-color: #fee2e2; }
+        .tabla-informe.tabla-analista-pend tbody tr.fila-critica:hover > td { background-color: #fca5a5; }
+      `}</style>
 
-      <div className="container d-flex justify-content-between align-items-center mb-2">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          Analista · Pendientes
-        </p>
-        <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-      </div>
+      {/* El ancho de la página lo fija el Container: encabezado, filtros y
+          tabla comparten el mismo borde izquierdo y derecho. */}
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '1120px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            Pendientes
+          </span>
+          <span
+            className="px-2 py-1 rounded-3"
+            style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+          >
+            {listaAMostrar.length} {agrupado ? 'pedidos' : 'ítems'}
+          </span>
 
-      <div className="container">
-        <h4 className="text-center mb-2" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2 }}>Pendientes</h4>
-
-        <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>N° Pedido</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 80 }} value={filtros.nro} onChange={e => setF('nro', e.target.value)} placeholder="N°" />
-              {filtros.nro && <span onClick={() => setF('nro', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Fecha</label>
-            <div style={{ position: 'relative' }}>
-              <input type="date" className="form-control form-control-sm" value={filtros.fecha} onChange={e => setF('fecha', e.target.value)} />
-              {filtros.fecha && <span onClick={() => setF('fecha', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>C.C.</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 80 }} value={filtros.cc} onChange={e => setF('cc', e.target.value)} placeholder="C.C." />
-              {filtros.cc && <span onClick={() => setF('cc', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Repuesto</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 160 }} value={filtros.repuesto} onChange={e => setF('repuesto', e.target.value)} placeholder="Repuesto..." />
-              {filtros.repuesto && <span onClick={() => setF('repuesto', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Urgencia</label>
-            <div style={{ position: 'relative' }}>
-              <select className={`form-select form-select-sm${filtros.urgencia ? ' select-activo' : ''}`} style={{ width: 110, ...(filtros.urgencia ? { backgroundImage: 'none' } : {}) }} value={filtros.urgencia} onChange={e => setF('urgencia', e.target.value)}>
-                <option value="">Todas</option>
-                {URGENCIAS.map(u => <option key={u}>{u}</option>)}
-              </select>
-              {filtros.urgencia && <span onClick={() => setF('urgencia', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Grupo</label>
-            <div style={{ position: 'relative' }}>
-              <select className={`form-select form-select-sm${filtros.grupo ? ' select-activo' : ''}`} style={{ width: 140, ...(filtros.grupo ? { backgroundImage: 'none' } : {}) }} value={filtros.grupo} onChange={e => setF('grupo', e.target.value)}>
-                <option value="">Todos</option>
-                {GRUPOS.map(g => <option key={g}>{g}</option>)}
-              </select>
-              {filtros.grupo && <span onClick={() => setF('grupo', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Solicita</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 130 }} value={filtros.solicita} onChange={e => setF('solicita', e.target.value)} placeholder="Solicitante..." />
-              {filtros.solicita && <span onClick={() => setF('solicita', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-
-          {hayFiltros && (
-            <div className="ms-auto d-flex align-items-end">
-              <button className="btn btn-sm btn-outline-secondary" onClick={limpiar}>Limpiar</button>
-            </div>
-          )}
+          <SwitchAgrupar id="switchAgruparAP" valor={agrupado} onChange={setAgrupado} />
         </div>
 
-        <div className="d-flex align-items-center mb-2">
-          <div className="form-check form-switch mb-0">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              role="switch"
-              id="switchAgruparAP"
-              checked={agrupado}
-              onChange={e => setAgrupado(e.target.checked)}
-              style={{ width: 40, height: 22, cursor: 'pointer' }}
-            />
-            <label className="form-check-label ms-1" htmlFor="switchAgruparAP" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
-              Agrupar pedidos múltiples
-            </label>
-          </div>
-        </div>
+        {/* Filtros: los siete en una sola fila, con el rótulo arriba del campo. */}
+        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3">
+          <div className="d-flex align-items-end justify-content-center gap-2 flex-nowrap" style={{ overflowX: 'auto' }}>
+            <FiltroTexto etiqueta="N°" ancho="72px" valor={filtros.nro} onChange={(v) => setF('nro', v)} placeholder="N°" />
+            <FiltroTexto etiqueta="Fecha" ancho="132px" tipo="date" valor={filtros.fecha} onChange={(v) => setF('fecha', v)} />
+            <FiltroTexto etiqueta="C.C." ancho="84px" valor={filtros.cc} onChange={(v) => setF('cc', v)} placeholder="C.C." />
+            <FiltroTexto etiqueta="Repuesto" ancho="150px" valor={filtros.repuesto} onChange={(v) => setF('repuesto', v)} placeholder="Repuesto…" />
+            <FiltroSelect etiqueta="Urgencia" ancho="104px" valor={filtros.urgencia} vacio="Todas" onChange={(v) => setF('urgencia', v)} opciones={URGENCIAS} />
+            <FiltroSelect etiqueta="Grupo" ancho="128px" valor={filtros.grupo} vacio="Todos" onChange={(v) => setF('grupo', v)} opciones={GRUPOS} />
+            <FiltroTexto etiqueta="Solicita" ancho="120px" valor={filtros.solicita} onChange={(v) => setF('solicita', v)} placeholder="Solicitante…" />
 
-        <div className="card">
-          <div className="table-responsive" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-            <table className="table table-hover table-striped mb-0">
-              <thead className="thead-blue thead-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+            {hayFiltros && <BotonLimpiar onClick={limpiar} />}
+          </div>
+        </Card>
+
+        {/* La tabla ocupa el ancho de la página, el mismo que el encabezado. */}
+        <div
+          className="flex-grow-1 shadow-sm rounded-3 bg-white"
+          style={{
+            minHeight: 0,
+            maxWidth: '100%',
+            overflowY: 'auto',
+            overflowX: 'auto',
+            border: '1px solid #cbd5e1',
+          }}
+        >
+          <Table className="mb-0 tabla-informe tabla-compras tabla-analista-pend" style={{ width: '100%', minWidth: '1060px' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr>
+                <th style={thCentro}>Taller</th>
+                <th style={thCentro}>N° Pedido</th>
+                <th style={thCentro}>Fecha</th>
+                <th style={thCentro}>C.C.</th>
+                <th style={th}>Repuesto</th>
+                <th style={thCentro}>Cant.</th>
+                <th style={thCentro}>Un.</th>
+                <th style={thCentro}>Descripción</th>
+                <th style={thCentro}>Urgencia</th>
+                <th style={th}>Grupo</th>
+                <th style={th}>Solicita</th>
+                <th style={thCentro}>Estado</th>
+                <th style={thCentro}>O.C.</th>
+                <th style={thCentro}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listaAMostrar.length === 0 ? (
                 <tr>
-                  <th>Taller</th>
-                  <th>N° Pedido</th>
-                  <th>Fecha</th>
-                  <th>C.C.</th>
-                  <th>Repuesto</th>
-                  <th>Cant.</th>
-                  <th>Un.</th>
-                  <th>Descripción</th>
-                  <th>Urgencia</th>
-                  <th>Grupo</th>
-                  <th>Solicita</th>
-                  <th>Estado</th>
-                  <th>O.C.</th>
-                  <th>Acciones</th>
+                  <td colSpan={14} className="text-center text-muted py-4" style={td}>
+                    {hayFiltros ? 'Ningún pendiente coincide con los filtros' : 'No hay pendientes'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {listaAMostrar.map(item => (
-                  <tr
-                    key={item._agrupado ? item._key : item._id}
-                    className={item.urgencia === 'Crítica' ? 'row-critica' : ''}
-                    style={item._agrupado && item._count > 1 ? { borderLeft: '3px solid #0d6efd', backgroundColor: 'rgba(13,110,253,0.06)' } : {}}
-                  >
-                    <td className="text-center">{badgeTaller(item._src)}</td>
-                    <td style={item._agrupado && item._count > 1 ? { fontWeight: 700 } : {}}>{fmtNro(item.nro_pedido, item._src)}</td>
-                    <td>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
-                    <td>{item.cc === 'Varios' ? varios() : item.cc}</td>
-                    <td>{item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}</td>
-                    <td>{item.cant === 'Varios' ? varios() : item.cant}</td>
-                    <td>{item.unidad === 'Varios' ? varios() : (item.unidad || '—')}</td>
-                    <td>
-                      {item.descripcion === 'Varios'
-                        ? varios()
-                        : item.descripcion
-                          ? <button className="btn btn-sm btn-outline-secondary" onClick={() => Swal.fire({ title: 'Descripción', text: item.descripcion, confirmButtonText: 'Cerrar' })}>Ver</button>
-                          : <span className="text-muted">—</span>}
-                    </td>
-                    <td>{badgeUrgencia(item.urgencia)}</td>
-                    <td>{item.grupo === 'Varios' ? varios() : item.grupo}</td>
-                    <td>{item.solicita === 'Varios' ? varios() : (item.solicita || '')}</td>
-                    <td
-                      onClick={() => {
-                        if (item.estado === 'Para revision')
-                          verMotivoRevision(item._agrupado ? item._items[0] : item)
-                        else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios')
-                          navigate(`/compras/oc/${encodeURIComponent(item.oc)}`)
-                      }}
-                      style={(item.estado === 'Para revision' || (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios')) ? { cursor: 'pointer' } : {}}
-                    >{badgeEstado(item.estado)}</td>
-                    <td>{item.oc || '—'}</td>
-                    <td className="text-nowrap">
-                      <button
-                        className="btn btn-sm btn-outline-secondary me-1"
-                        disabled={item._agrupado && item._count > 1}
-                        onClick={() => verHistorial(item._agrupado ? item._items[0] : item)}
-                      >Historial</button>
-                      {item._agrupado && item._count > 1 &&
-                        <button className="btn btn-sm btn-outline-secondary" onClick={() => verDetalle(item)}>Ver</button>
-                      }
-                    </td>
-                  </tr>
-                ))}
-                {listaAMostrar.length === 0 && (
-                  <tr><td colSpan={14} className="text-center text-muted py-3">Sin pendientes</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ) : (
+                listaAMostrar.map((item) => {
+                  const multiple = item._agrupado && item._count > 1
+                  const clickeable =
+                    item.estado === 'Para revision' || item.estado === 'Para retirar'
+                  return (
+                    <tr
+                      key={item._agrupado ? item._key : item._id}
+                      className={item.urgencia === 'Crítica' ? 'fila-critica' : ''}
+                    >
+                      <td style={tdCentro}>{badgeTaller(item._src)}</td>
+                      <td
+                        style={{
+                          ...tdCentro,
+                          fontWeight: multiple ? 700 : 400,
+                          borderLeft: item._agrupado && item._count > 1 ? `3px solid ${BORDO}` : undefined,
+                        }}
+                      >
+                        {fmtNro(item.nro_pedido, item._src)}
+                      </td>
+                      <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
+                      <td style={tdCentro}>{item.cc === 'Varios' ? varios() : item.cc || <Raya />}</td>
+                      <td style={td}>{item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}</td>
+                      <td style={tdCentro}>{item.cant === 'Varios' ? varios() : item.cant ?? <Raya />}</td>
+                      <td style={tdCentro}>{item.unidad === 'Varios' ? varios() : item.unidad || <Raya />}</td>
+                      <td style={tdCentro}>
+                        {item.descripcion === 'Varios' ? (
+                          varios()
+                        ) : item.descripcion ? (
+                          <div className="d-flex justify-content-center">
+                            <BotonAccion
+                              icono="bi-eye"
+                              titulo="Ver la descripción"
+                              onClick={() =>
+                                Swal.fire({ title: 'Descripción', text: item.descripcion, confirmButtonText: 'Cerrar' })
+                              }
+                            />
+                          </div>
+                        ) : (
+                          <Raya />
+                        )}
+                      </td>
+                      <td style={tdCentro}>{badgeUrgencia(item.urgencia)}</td>
+                      <td style={td}>{item.grupo === 'Varios' ? varios() : item.grupo}</td>
+                      <td style={td}>{item.solicita === 'Varios' ? varios() : item.solicita || <Raya />}</td>
+                      <td
+                        style={{ ...tdCentro, cursor: clickeable ? 'pointer' : undefined }}
+                        onClick={() => {
+                          if (item.estado === 'Para revision') {
+                            verMotivoRevision(item._agrupado ? item._items[0] : item)
+                          } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
+                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`)
+                          } else if (item.estado === 'Para retirar') {
+                            avisarSinOC(item)
+                          }
+                        }}
+                      >
+                        {badgeEstado(item.estado)}
+                      </td>
+                      <td style={tdCentro}>{item.oc || <Raya />}</td>
+                      <td style={tdCentro}>
+                        <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
+                          <BotonAccion
+                            icono="bi-clock-history"
+                            titulo="Historial"
+                            onClick={() => verHistorial(item._agrupado ? item._items[0] : item)}
+                            deshabilitado={item._agrupado && item._count > 1}
+                          />
+                          {item._agrupado && item._count > 1 && (
+                            <BotonAccion icono="bi-list-ul" titulo="Ver el detalle" onClick={() => verDetalle(item)} />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </Table>
         </div>
-      </div>
-
+      </Container>
     </div>
   )
 }

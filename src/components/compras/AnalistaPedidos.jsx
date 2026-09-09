@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react'
-import { exportarPlanilla } from "../../helpers/excel";
+import { useNavigate, useLocation } from 'react-router-dom'
+import { Container, Card, Table, Button, Form, Modal, Row, Col } from 'react-bootstrap'
+import Swal from 'sweetalert2'
+import { exportarPlanilla } from '../../helpers/excel'
+import { api } from '../../services/api'
+import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
+import { avisarSinOC } from './avisos'
+import {
+  Raya,
+  BotonAccion,
+  BotonLimpiar,
+  FiltroTexto,
+  FiltroSelect,
+  SwitchAgrupar,
+} from './estilos'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
-import { useNavigate, useLocation } from 'react-router-dom'
-import Swal from 'sweetalert2'
-import { api } from '../../services/api'
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
 const ESTADOS        = ['Para analisis', 'Para hacer OC', 'Autorizar', 'Para retirar', 'Rechazado']
@@ -12,12 +23,6 @@ const GRUPOS         = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 
 const ESTABLECIMIENTOS = ['Berdina', 'San Pablo']
 
 const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', urgencia: 'Media', grupo: 'Tractores', cc: '', estado: 'Pendiente' }
-
-const estiloX = {
-  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-  cursor: 'pointer', fontSize: 13, fontWeight: 900, color: 'var(--color-muted)',
-  zIndex: 5, userSelect: 'none', lineHeight: 1,
-}
 
 export default function AnalistaPedidos() {
   const navigate = useNavigate()
@@ -36,17 +41,27 @@ export default function AnalistaPedidos() {
   const limpiar = () => setFiltros(FILTROS_INIT)
   const hayFiltros = Object.keys(filtros).some(k => filtros[k] !== FILTROS_INIT[k])
 
-  const cargar = async () => {
-    const [berdina, sanpablo] = await Promise.all([
-      api.get('/berdina/pedidos').catch(() => []),
-      api.get('/sanpablo/pedidos').catch(() => []),
-    ])
-    setPedidos([
-      ...berdina.map(p => ({ ...p, _src: 'berdina' })),
-      ...sanpablo.map(p => ({ ...p, _src: 'sanpablo' })),
-    ])
-  }
-  useEffect(() => { cargar() }, [])
+  // La carga vive adentro del efecto y `cargar()` solo pide una vuelta más:
+  // así el que trae los datos es el efecto, que es quien puede cancelarse si
+  // la pantalla se cierra antes de que contesten las dos APIs.
+  const [recarga, setRecarga] = useState(0)
+  const cargar = () => setRecarga(n => n + 1)
+
+  useEffect(() => {
+    let vigente = true
+    ;(async () => {
+      const [berdina, sanpablo] = await Promise.all([
+        api.get('/berdina/pedidos').catch(() => []),
+        api.get('/sanpablo/pedidos').catch(() => []),
+      ])
+      if (!vigente) return
+      setPedidos([
+        ...berdina.map(p => ({ ...p, _src: 'berdina' })),
+        ...sanpablo.map(p => ({ ...p, _src: 'sanpablo' })),
+      ])
+    })()
+    return () => { vigente = false }
+  }, [recarga])
 
   const items = pedidos.flatMap(p =>
     (p.items || []).map(item => ({
@@ -144,27 +159,6 @@ export default function AnalistaPedidos() {
       cargar()
       cerrar()
       Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false })
-    } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
-    }
-  }
-
-  const borrar = async (item) => {
-    const result = await Swal.fire({
-      title: '¿Borrar ítem?',
-      text: 'Esta acción no se puede deshacer.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, borrar',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#4a0812',
-    })
-    if (!result.isConfirmed) return
-    try {
-      const base = item._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
-      await api.delete(`${base}/${item.pedidoId}/items/${item._id}`)
-      cargar()
-      Swal.fire({ icon: 'success', title: 'Borrado', timer: 1500, showConfirmButton: false })
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
     }
@@ -390,299 +384,424 @@ export default function AnalistaPedidos() {
 
   const badgeEstablecimiento = (src) => {
     if (src === 'Varios') return varios()
-    return <span style={{ fontWeight: 500 }}>{src === 'berdina' ? 'Berdina' : 'San Pablo'}</span>
+    return (
+      <span
+        className="badge"
+        style={{
+          backgroundColor: src === 'berdina' ? BORDO : '#166534',
+          fontSize: '0.62rem',
+          letterSpacing: 0.3,
+        }}
+      >
+        {src === 'berdina' ? 'Berdina' : 'San Pablo'}
+      </span>
+    )
   }
 
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-2">
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      {/* La urgencia crítica pinta la fila, y la fila elegida se marca con el
+          fondo de edición del formato. Van en un bloque propio porque
+          .tabla-informe pinta el fondo sobre los td y un style en el tr no le
+          gana. */}
+      <style>{`
+        .tabla-informe.tabla-analista tbody tr.fila-critica > td { background-color: #fee2e2; }
+        .tabla-informe.tabla-analista tbody tr.fila-critica:hover > td { background-color: #fca5a5; }
+        .tabla-informe.tabla-analista tbody tr.fila-elegida > td { background-color: #e0f2fe; }
+        .tabla-informe.tabla-analista thead th { font-weight: ${agrupado ? 700 : 600}; }
+      `}</style>
 
-      <div className="container d-flex justify-content-between align-items-center mb-2">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          {esComprador ? 'Comprador' : 'Analista'}
-        </p>
-        <div className="d-flex gap-2">
-          <button className="btn btn-outline-success btn-sm" onClick={exportarExcel}>Excel</button>
-          <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-        </div>
-      </div>
+      {/* El ancho de la página lo fija el Container: encabezado, filtros y
+          tabla comparten el mismo borde izquierdo y derecho. */}
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '1180px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            {esComprador ? 'Compras' : 'Pedidos'}
+          </span>
+          <span
+            className="px-2 py-1 rounded-3"
+            style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+          >
+            {esComprador ? 'Para hacer OC' : 'Para análisis'} · {listaAMostrar.length}
+          </span>
 
-      <div className="container">
-        <h4 className="text-center mb-4" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2 }}>
-          {esComprador ? 'Compras' : 'Pedidos'} <span style={{ fontWeight: 400, fontSize: '0.75em', letterSpacing: 1, textTransform: 'none' }}>{esComprador ? '(Para hacer OC)' : '(Para analisis)'}</span>
-        </h4>
+          <SwitchAgrupar id="switchAgruparA" valor={agrupado} onChange={setAgrupado} />
 
-        <div className="d-flex flex-wrap gap-2 align-items-end mb-3">
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>N° Pedido</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 80 }} value={filtros.nro} onChange={e => setF('nro', e.target.value)} placeholder="N°" />
-              {filtros.nro && <span onClick={() => setF('nro', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Fecha</label>
-            <div style={{ position: 'relative' }}>
-              <input type="date" className="form-control form-control-sm" value={filtros.fecha} onChange={e => setF('fecha', e.target.value)} />
-              {filtros.fecha && <span onClick={() => setF('fecha', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>C.C.</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 80 }} value={filtros.cc} onChange={e => setF('cc', e.target.value)} placeholder="C.C." />
-              {filtros.cc && <span onClick={() => setF('cc', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Repuesto</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 160 }} value={filtros.repuesto} onChange={e => setF('repuesto', e.target.value)} placeholder="Repuesto..." />
-              {filtros.repuesto && <span onClick={() => setF('repuesto', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Urgencia</label>
-            <div style={{ position: 'relative' }}>
-              <select className={`form-select form-select-sm${filtros.urgencia ? ' select-activo' : ''}`} style={{ width: 110, ...(filtros.urgencia ? { backgroundImage: 'none' } : {}) }} value={filtros.urgencia} onChange={e => setF('urgencia', e.target.value)}>
-                <option value="">Todas</option>
-                {URGENCIAS.map(u => <option key={u}>{u}</option>)}
-              </select>
-              {filtros.urgencia && <span onClick={() => setF('urgencia', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Grupo</label>
-            <div style={{ position: 'relative' }}>
-              <select className={`form-select form-select-sm${filtros.grupo ? ' select-activo' : ''}`} style={{ width: 140, ...(filtros.grupo ? { backgroundImage: 'none' } : {}) }} value={filtros.grupo} onChange={e => setF('grupo', e.target.value)}>
-                <option value="">Todos</option>
-                {GRUPOS.map(g => <option key={g}>{g}</option>)}
-              </select>
-              {filtros.grupo && <span onClick={() => setF('grupo', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Solicita</label>
-            <div style={{ position: 'relative' }}>
-              <input className="form-control form-control-sm" style={{ width: 130 }} value={filtros.solicita} onChange={e => setF('solicita', e.target.value)} placeholder="Solicitante..." />
-              {filtros.solicita && <span onClick={() => setF('solicita', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Estado</label>
-            <div style={{ position: 'relative' }}>
-              <select className={`form-select form-select-sm${filtros.estado ? ' select-activo' : ''}`} style={{ width: 180, ...(filtros.estado ? { backgroundImage: 'none' } : {}) }} value={filtros.estado} onChange={e => setF('estado', e.target.value)}>
-                <option value="">Todos</option>
-
-                {ESTADOS.map(s => <option key={s}>{s}</option>)}
-              </select>
-              {filtros.estado && <span onClick={() => setF('estado', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-          <div>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>Establecimiento</label>
-            <div style={{ position: 'relative' }}>
-              <select className={`form-select form-select-sm${filtros.establecimiento ? ' select-activo' : ''}`} style={{ width: 130, ...(filtros.establecimiento ? { backgroundImage: 'none' } : {}) }} value={filtros.establecimiento} onChange={e => setF('establecimiento', e.target.value)}>
-                <option value="">Todos</option>
-                {ESTABLECIMIENTOS.map(s => <option key={s}>{s}</option>)}
-              </select>
-              {filtros.establecimiento && <span onClick={() => setF('establecimiento', '')} style={estiloX}>✕</span>}
-            </div>
-          </div>
-
-          <div className="ms-auto d-flex gap-2 align-items-end">
-          </div>
-        </div>
-
-        <div className="d-flex align-items-center mb-2">
-          <div className="form-check form-switch mb-0">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              role="switch"
-              id="switchAgruparA"
-              checked={agrupado}
-              onChange={e => setAgrupado(e.target.checked)}
-              style={{ width: 40, height: 22, cursor: 'pointer' }}
-            />
-            <label className="form-check-label ms-1" htmlFor="switchAgruparA" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
-              Agrupar pedidos múltiples
-            </label>
-          </div>
-          <div className="flex-grow-1 text-center">
-            {esComprador
-              ? <span style={{ fontSize: 14 }}>Mayor de $200.000 → <span style={{ color: '#dc3545', fontWeight: 600 }}>Autorizar</span></span>
-              : (
-                <button
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={() => {
-                    const item = selectedId ? listaAMostrar.find(i => i._id === selectedId) : null
-                    navigate('/compras/analista/analizar', { state: item ? { item } : undefined })
-                  }}
-                >Analizar</button>
-              )
-            }
-          </div>
-        </div>
-
-        {esComprador && (
-          <div className="text-center mb-2">
-            <button
-              className="btn btn-outline-danger btn-sm"
+          {/* El comprador arma la orden; el analista analiza el ítem elegido. */}
+          {esComprador ? (
+            <Button
+              size="sm"
               onClick={() => navigate('/compras/comprador/oc')}
-            >Orden de Compra</button>
+              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+              style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+            >
+              <i className="bi bi-receipt"></i>
+              <span>Orden de compra</span>
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => {
+                const item = selectedId ? listaAMostrar.find((i) => i._id === selectedId) : null
+                navigate('/compras/analista/analizar', { state: item ? { item } : undefined })
+              }}
+              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+              style={{ backgroundColor: '#3730a3', borderColor: '#3730a3', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+              title={selectedId ? 'Analizar el ítem elegido' : 'Sin ítem elegido: abre el análisis vacío'}
+            >
+              <i className="bi bi-clipboard-data-fill"></i>
+              <span>Analizar</span>
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            onClick={exportarExcel}
+            disabled={listaAMostrar.length === 0}
+            className="rounded-3 px-3 d-flex align-items-center gap-2"
+            style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+            title="Exportar a Excel"
+          >
+            <i className="bi bi-file-earmark-excel-fill"></i>
+            <span>Excel</span>
+          </Button>
+        </div>
+
+        {/* El comprador tiene que saber a partir de qué monto hay que pedir
+            autorización a Gerencia. */}
+        {esComprador && (
+          <div className="mb-2" style={{ fontSize: '0.8rem', color: '#64748b' }}>
+            Mayor de $200.000 → <span style={{ color: '#dc2626', fontWeight: 700 }}>Autorizar</span>
           </div>
         )}
 
-        <div className="card">
-          <div className="table-responsive" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
-            <table className="table table-hover table-striped mb-0">
-              <style>{`.analista-thead th { font-weight: ${agrupado ? '700' : '400'} !important; }`}</style>
-              <thead className="thead-blue thead-light analista-thead" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                <tr>
-                  {['Taller','N° Pedido','Fecha','C.C.','Repuesto','Cant.','Un.','Descripción','Urgencia','Grupo','Solicita','Estado','O.C.'].map(col => (
-                    <th key={col} className="text-center">{col}</th>
-                  ))}
-                  <th className="text-center" style={{ width: 130 }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listaAMostrar.map(item => {
-                  const id = item._agrupado ? item._key : item._id
-                  const isSelected = selectedId === item._id
-                  return (
-                  <tr
-                    key={id}
-                    className={item.urgencia === 'Crítica' ? 'row-critica' : ''}
-                    style={{
-                      cursor: !agrupado ? 'pointer' : 'default',
-                      ...(isSelected ? { outline: '2px solid #0d6efd', backgroundColor: 'rgba(13,110,253,0.08)' } : {}),
-                      ...(item._agrupado && item._count > 1 ? { borderLeft: '3px solid #0d6efd', backgroundColor: 'rgba(13,110,253,0.06)' } : {}),
-                    }}
-                    onClick={() => { if (!agrupado) setSelectedId(isSelected ? null : item._id) }}
-                  >
-                    <td>{badgeEstablecimiento(item._src)}</td>
-                    <td style={(item._agrupado ? item._count > 1 : conteosPedido[`${item._src}-${item.nro_pedido}`] > 1) ? { fontWeight: 700 } : {}}>{fmtNro(item.nro_pedido, item._src)}</td>
-                    <td>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
-                    <td>{item.cc === 'Varios' ? varios() : item.cc}</td>
-                    <td>{item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}</td>
-                    <td>{item.cant === 'Varios' ? varios() : item.cant}</td>
-                    <td>{item.unidad === 'Varios' ? varios() : (item.unidad || '—')}</td>
-                    <td>
-                      {item.descripcion === 'Varios'
-                        ? varios()
-                        : item.descripcion
-                          ? <button className="btn btn-sm btn-outline-secondary" onClick={e => { e.stopPropagation(); Swal.fire({ title: 'Descripción', text: item.descripcion, confirmButtonText: 'Cerrar' }) }}>Ver</button>
-                          : <span className="text-muted">—</span>}
-                    </td>
-                    <td>{badgeUrgencia(item.urgencia)}</td>
-                    <td>{item.grupo === 'Varios' ? varios() : item.grupo}</td>
-                    <td>{item.solicita === 'Varios' ? varios() : (item.solicita || '')}</td>
-                    <td onClick={e => {
-                      e.stopPropagation()
-                      if (!agrupado && (item.estado === 'Autorizar' || item.estado === 'Para hacer OC'))
-                        navigate('/compras/analista/analizar', { state: { item, esComprador } })
-                      else if (item.estado === 'Rechazado' || item.estado === 'Cancelado') {
-                        verMotivoRechazo(item._agrupado ? item._items[0] : item)
-                      } else if (item.estado === 'Para revision') {
-                        verMotivoRevision(item._agrupado ? item._items[0] : item)
-                      } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                        navigate(`/compras/oc/${encodeURIComponent(item.oc)}`)
-                      } else if (item.estado === 'Retirado') {
-                        verMotivoRetirado(item._agrupado ? item._items[0] : item)
-                      }
-                    }} style={(!agrupado && (item.estado === 'Autorizar' || item.estado === 'Para hacer OC')) || (item.estado === 'Rechazado' || item.estado === 'Cancelado') || item.estado === 'Para revision' || item.estado === 'Para retirar' || item.estado === 'Retirado' ? { cursor: 'pointer' } : {}}>
-                      {badgeEstado(item.estado)}
-                    </td>
-                    <td>{item.oc || '—'}</td>
-                    <td className="text-nowrap" onClick={e => e.stopPropagation()}>
-                      <button className="btn btn-sm btn-outline-secondary me-1" style={{ padding: '1px 5px', fontSize: 11 }} disabled={item._agrupado && item._count > 1} onClick={e => { e.stopPropagation(); verHistorial(item._agrupado ? item._items[0] : item) }}>Historial</button>
-                      {!agrupado && <>
-                        <button className="btn btn-sm btn-outline-secondary me-1" style={{ padding: '1px 5px', fontSize: 11 }} onClick={() => abrirEditar(item)}>Editar</button>
-                        <button className="btn btn-sm btn-outline-danger" style={{ padding: '1px 5px', fontSize: 11 }} onClick={() => rechazar(item)}>Rechazar</button>
-                      </>}
-                      {agrupado && item._count > 1 &&
-                        <button className="btn btn-sm btn-outline-secondary" style={{ padding: '1px 5px', fontSize: 11 }} onClick={() => verDetalle(item)}>Ver</button>
-                      }
-                    </td>
-                  </tr>
-                  )
-                })}
-                {listaAMostrar.length === 0 && (
-                  <tr><td colSpan={14} className="text-center text-muted py-3">Sin resultados</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        {/* Filtros: los nueve en una sola fila, con el rótulo arriba del campo. */}
+        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3">
+          <div className="d-flex align-items-end justify-content-center gap-2 flex-nowrap" style={{ overflowX: 'auto' }}>
+            <FiltroTexto etiqueta="N°" ancho="72px" valor={filtros.nro} onChange={(v) => setF('nro', v)} placeholder="N°" />
+            <FiltroTexto etiqueta="Fecha" ancho="130px" tipo="date" valor={filtros.fecha} onChange={(v) => setF('fecha', v)} />
+            <FiltroTexto etiqueta="C.C." ancho="82px" valor={filtros.cc} onChange={(v) => setF('cc', v)} placeholder="C.C." />
+            <FiltroTexto etiqueta="Repuesto" ancho="140px" valor={filtros.repuesto} onChange={(v) => setF('repuesto', v)} placeholder="Repuesto…" />
+            <FiltroSelect etiqueta="Urgencia" ancho="104px" valor={filtros.urgencia} vacio="Todas" onChange={(v) => setF('urgencia', v)} opciones={URGENCIAS} />
+            <FiltroSelect etiqueta="Grupo" ancho="120px" valor={filtros.grupo} vacio="Todos" onChange={(v) => setF('grupo', v)} opciones={GRUPOS} />
+            <FiltroTexto etiqueta="Solicita" ancho="115px" valor={filtros.solicita} onChange={(v) => setF('solicita', v)} placeholder="Solicitante…" />
+            <FiltroSelect etiqueta="Estado" ancho="140px" valor={filtros.estado} vacio="Todos" onChange={(v) => setF('estado', v)} opciones={ESTADOS} />
+            <FiltroSelect etiqueta="Taller" ancho="112px" valor={filtros.establecimiento} vacio="Todos" onChange={(v) => setF('establecimiento', v)} opciones={ESTABLECIMIENTOS} />
 
-      {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Editar ítem</h5>
-                <button type="button" className="btn-close" onClick={cerrar} />
-              </div>
-              <form onSubmit={guardar}>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Nombre repuesto*</label>
-                    <input className="form-control" value={form.nombre_repuesto}
-                      onChange={e => setForm({ ...form, nombre_repuesto: e.target.value })} required />
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col">
-                      <label className="form-label">Cant.</label>
-                      <input type="number" min="1" className="form-control" value={form.cant}
-                        onChange={e => setForm({ ...form, cant: e.target.value })} />
-                    </div>
-                    <div className="col">
-                      <label className="form-label">Unidad*</label>
-                      <input className="form-control" placeholder="Ej: un, kg, mts" style={{ fontSize: 12 }} value={form.unidad}
-                        onChange={e => setForm({ ...form, unidad: e.target.value })} required />
-                    </div>
-                    <div className="col">
-                      <label className="form-label">C.C.</label>
-                      <input className="form-control" value={form.cc}
-                        onChange={e => setForm({ ...form, cc: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Descripción</label>
-                    <textarea className="form-control" rows={2} value={form.descripcion}
-                      onChange={e => setForm({ ...form, descripcion: e.target.value })} />
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col">
-                      <label className="form-label">Grupo*</label>
-                      <select className="form-select" value={form.grupo}
-                        onChange={e => setForm({ ...form, grupo: e.target.value })}>
-                        {GRUPOS.map(g => <option key={g}>{g}</option>)}
-                      </select>
-                    </div>
-                    <div className="col">
-                      <label className="form-label">Urgencia*</label>
-                      <select className="form-select" value={form.urgencia}
-                        onChange={e => setForm({ ...form, urgencia: e.target.value })}>
-                        {URGENCIAS.map(u => <option key={u}>{u}</option>)}
-                      </select>
-                    </div>
-                    <div className="col">
-                      <label className="form-label">Estado</label>
-                      <input className="form-control" value={form.estado === 'Pedido' ? 'Para analisis' : form.estado} readOnly style={{ backgroundColor: '#f8f9fa', cursor: 'default' }} />
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-outline-secondary" onClick={cerrar}>Cancelar</button>
-                  <button type="submit" className="btn btn-outline-dark">Guardar</button>
-                </div>
-              </form>
-            </div>
+            {hayFiltros && <BotonLimpiar onClick={limpiar} />}
           </div>
+        </Card>
+
+        {/* La tabla ocupa el ancho de la página, el mismo que el encabezado. */}
+        <div
+          className="flex-grow-1 shadow-sm rounded-3 bg-white"
+          style={{
+            minHeight: 0,
+            maxWidth: '100%',
+            overflowY: 'auto',
+            overflowX: 'auto',
+            border: '1px solid #cbd5e1',
+          }}
+        >
+          <Table className="mb-0 tabla-informe tabla-compras tabla-analista" style={{ width: '100%', minWidth: '1120px' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr>
+                <th style={thCentro}>Taller</th>
+                <th style={thCentro}>N° Pedido</th>
+                <th style={thCentro}>Fecha</th>
+                <th style={thCentro}>C.C.</th>
+                <th style={th}>Repuesto</th>
+                <th style={thCentro}>Cant.</th>
+                <th style={thCentro}>Un.</th>
+                <th style={thCentro}>Descripción</th>
+                <th style={thCentro}>Urgencia</th>
+                <th style={th}>Grupo</th>
+                <th style={th}>Solicita</th>
+                <th style={thCentro}>Estado</th>
+                <th style={thCentro}>O.C.</th>
+                <th style={{ ...thCentro, width: 110 }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {listaAMostrar.length === 0 ? (
+                <tr>
+                  <td colSpan={14} className="text-center text-muted py-4" style={td}>
+                    {hayFiltros ? 'Ningún pedido coincide con los filtros' : 'No hay pedidos para esta etapa'}
+                  </td>
+                </tr>
+              ) : (
+                listaAMostrar.map((item) => {
+                  const id = item._agrupado ? item._key : item._id
+                  const elegida = selectedId === item._id
+                  const multiple = item._agrupado
+                    ? item._count > 1
+                    : conteosPedido[`${item._src}-${item.nro_pedido}`] > 1
+                  const clickeableEstado =
+                    (!agrupado && (item.estado === 'Autorizar' || item.estado === 'Para hacer OC')) ||
+                    item.estado === 'Rechazado' ||
+                    item.estado === 'Cancelado' ||
+                    item.estado === 'Para revision' ||
+                    item.estado === 'Para retirar' ||
+                    item.estado === 'Retirado'
+                  return (
+                    <tr
+                      key={id}
+                      className={`${item.urgencia === 'Crítica' ? 'fila-critica' : ''}${elegida ? ' fila-elegida' : ''}`}
+                      style={{ cursor: !agrupado ? 'pointer' : 'default' }}
+                      onClick={() => {
+                        if (!agrupado) setSelectedId(elegida ? null : item._id)
+                      }}
+                    >
+                      <td style={tdCentro}>{badgeEstablecimiento(item._src)}</td>
+                      <td
+                        style={{
+                          ...tdCentro,
+                          fontWeight: multiple ? 700 : 400,
+                          borderLeft: item._agrupado && item._count > 1 ? `3px solid ${BORDO}` : undefined,
+                        }}
+                      >
+                        {fmtNro(item.nro_pedido, item._src)}
+                      </td>
+                      <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
+                      <td style={tdCentro}>{item.cc === 'Varios' ? varios() : item.cc || <Raya />}</td>
+                      <td style={td}>{item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}</td>
+                      <td style={tdCentro}>{item.cant === 'Varios' ? varios() : item.cant ?? <Raya />}</td>
+                      <td style={tdCentro}>{item.unidad === 'Varios' ? varios() : item.unidad || <Raya />}</td>
+                      <td style={tdCentro}>
+                        {item.descripcion === 'Varios' ? (
+                          varios()
+                        ) : item.descripcion ? (
+                          <div className="d-flex justify-content-center">
+                            <BotonAccion
+                              icono="bi-eye"
+                              titulo="Ver la descripción"
+                              onClick={() =>
+                                Swal.fire({ title: 'Descripción', text: item.descripcion, confirmButtonText: 'Cerrar' })
+                              }
+                            />
+                          </div>
+                        ) : (
+                          <Raya />
+                        )}
+                      </td>
+                      <td style={tdCentro}>{badgeUrgencia(item.urgencia)}</td>
+                      <td style={td}>{item.grupo === 'Varios' ? varios() : item.grupo}</td>
+                      <td style={td}>{item.solicita === 'Varios' ? varios() : item.solicita || <Raya />}</td>
+                      <td
+                        style={{ ...tdCentro, cursor: clickeableEstado ? 'pointer' : undefined }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!agrupado && (item.estado === 'Autorizar' || item.estado === 'Para hacer OC')) {
+                            navigate('/compras/analista/analizar', { state: { item, esComprador } })
+                          } else if (item.estado === 'Rechazado' || item.estado === 'Cancelado') {
+                            verMotivoRechazo(item._agrupado ? item._items[0] : item)
+                          } else if (item.estado === 'Para revision') {
+                            verMotivoRevision(item._agrupado ? item._items[0] : item)
+                          } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
+                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`)
+                          } else if (item.estado === 'Para retirar') {
+                            avisarSinOC(item)
+                          } else if (item.estado === 'Retirado') {
+                            verMotivoRetirado(item._agrupado ? item._items[0] : item)
+                          }
+                        }}
+                      >
+                        {badgeEstado(item.estado)}
+                      </td>
+                      <td style={tdCentro}>{item.oc || <Raya />}</td>
+                      <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
+                        <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
+                          <BotonAccion
+                            icono="bi-clock-history"
+                            titulo="Historial"
+                            onClick={() => verHistorial(item._agrupado ? item._items[0] : item)}
+                            deshabilitado={item._agrupado && item._count > 1}
+                          />
+                          {!agrupado && (
+                            <BotonAccion icono="bi-pencil" titulo="Editar" variante="primary" onClick={() => abrirEditar(item)} />
+                          )}
+                          {!agrupado && (
+                            <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(item)} />
+                          )}
+                          {agrupado && item._count > 1 && (
+                            <BotonAccion icono="bi-list-ul" titulo="Ver el detalle" onClick={() => verDetalle(item)} />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </Table>
         </div>
-      )}
+      </Container>
+
+      {/* Modal Editar ítem */}
+      <Modal show={showModal} onHide={cerrar} centered contentClassName="border-0 shadow-lg rounded-4">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: BORDO,
+            color: '#fff',
+            borderTopLeftRadius: '1rem',
+            borderTopRightRadius: '1rem',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-pencil-square" style={{ color: '#f59e0b' }}></i>
+            <span>Editar ítem</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={guardar}>
+          <Modal.Body className="p-4">
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Nombre repuesto <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.nombre_repuesto}
+                  onChange={(e) => setForm({ ...form, nombre_repuesto: e.target.value })}
+                  required
+                />
+              </Col>
+
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Cant.</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="1"
+                  className="rounded-3"
+                  style={campo}
+                  value={form.cant}
+                  onChange={(e) => setForm({ ...form, cant: e.target.value })}
+                />
+              </Col>
+
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Unidad <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  placeholder="Ej: un, kg, mts"
+                  value={form.unidad}
+                  onChange={(e) => setForm({ ...form, unidad: e.target.value })}
+                  required
+                />
+              </Col>
+
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">C.C.</Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.cc}
+                  onChange={(e) => setForm({ ...form, cc: e.target.value })}
+                />
+              </Col>
+
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Descripción</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  className="rounded-3"
+                  style={campo}
+                  value={form.descripcion}
+                  onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+                />
+              </Col>
+
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Grupo <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Select
+                  className="rounded-3"
+                  style={campo}
+                  value={form.grupo}
+                  onChange={(e) => setForm({ ...form, grupo: e.target.value })}
+                >
+                  {GRUPOS.map((g) => (
+                    <option key={g}>{g}</option>
+                  ))}
+                </Form.Select>
+              </Col>
+
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Urgencia <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Select
+                  className="rounded-3"
+                  style={campo}
+                  value={form.urgencia}
+                  onChange={(e) => setForm({ ...form, urgencia: e.target.value })}
+                >
+                  {URGENCIAS.map((u) => (
+                    <option key={u}>{u}</option>
+                  ))}
+                </Form.Select>
+              </Col>
+
+              {/* El estado no se edita a mano: lo mueve el circuito del pedido. */}
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={{ ...campo, backgroundColor: '#f8f9fa', cursor: 'default' }}
+                  value={form.estado === 'Pedido' ? 'Para analisis' : form.estado}
+                  readOnly
+                />
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer
+            className="bg-light border-0 py-2 px-4"
+            style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}
+          >
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={cerrar}
+              className="rounded-3 px-3 py-1"
+              style={{ fontSize: '0.84rem' }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+              style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
+            >
+              <i className="bi bi-check-lg"></i>
+              <span>Guardar</span>
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   )
 }

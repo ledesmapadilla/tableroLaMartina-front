@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import TractorIcon from "./TractorIcon";
+import { useAuth } from "../../context/AuthContext";
 
 const links = [
   { to: "/", label: "Principal", icon: "bi bi-house-fill", end: true },
@@ -39,6 +40,13 @@ function Icono({ icon, customIcon }) {
 function Sidebar() {
   const [open, setOpen] = useState({});
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const salir = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   useEffect(() => { setOpen({}); }, [location.pathname]);
 
@@ -115,6 +123,26 @@ function Sidebar() {
             <span className="sidebar-label">{link.label}</span>
           </NavLink>
         )
+      )}
+
+      {/* La sesión es del proyecto, no de Compras: se cierra también desde acá.
+          Va al pie, empujado por el margin-top automático, y se pliega con el
+          resto del sidebar. */}
+      {user && (
+        <div
+          className="sidebar-link sidebar-sesion"
+          role="button"
+          tabIndex={0}
+          onClick={salir}
+          onKeyDown={(e) => e.key === "Enter" && salir()}
+          title={`Cerrar la sesión de ${user.nombre}`}
+        >
+          <i className="bi bi-box-arrow-right" style={{ minWidth: "24px" }}></i>
+          <span className="sidebar-label">
+            Salir
+            <span style={{ opacity: 0.6, fontSize: "0.82rem" }}> · {user.nombre}</span>
+          </span>
+        </div>
       )}
     </nav>
   );

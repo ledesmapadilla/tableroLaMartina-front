@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Container, Card, Table, Button, Form } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { getArchivo, setArchivo, removeArchivo, fileADataURL } from '../../services/archivoPrototipo'
+import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
+import { Raya } from './estilos'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 const esParaAnalisis = (e) => e === 'Para analisis' || e === 'En analisis' || e === 'Pedido' || e === 'Para revision'
@@ -74,7 +77,9 @@ export default function AnalizarItem() {
         }
       }
     })
-  }, [])
+    // state no cambia mientras no se navegue: react-router devuelve la misma
+    // location, así que ponerlo acá no dispara una recarga de más.
+  }, [state])
 
   useEffect(() => {
     const handleClick = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false) }
@@ -194,18 +199,6 @@ export default function AnalizarItem() {
 
   const getFoco = (itemId, campo) => !!focusMap[`${itemId}_${campo}`]
 
-  const recargar = async () => {
-    const [berdina, sanpablo] = await Promise.all([
-      api.get('/berdina/pedidos').catch(() => []),
-      api.get('/sanpablo/pedidos').catch(() => []),
-    ])
-    const todos = [
-      ...berdina.map(p => ({ ...p, _src: 'berdina' })),
-      ...sanpablo.map(p => ({ ...p, _src: 'sanpablo' })),
-    ].filter(p => (p.items || []).some(i => esParaAnalisis(i.estado)))
-    setPedidos(todos)
-  }
-
   const procesar = async () => {
     if (!pedidoSeleccionado || itemsAMostrar.length === 0) return
     const monto = calcularMontoTotal()
@@ -283,41 +276,99 @@ export default function AnalizarItem() {
   const fecha = pedidoSeleccionado?.fecha?.slice(0, 10).split('-').reverse().join('/') || '—'
 
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-1">
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', overflowY: 'auto' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap flex-shrink-0">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            Analizar ítem
+          </span>
+          <span
+            className="px-2 py-1 rounded-3"
+            style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+          >
+            precios sin IVA
+          </span>
 
-      <div className="container d-flex justify-content-between align-items-center mb-1">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          Analista
-        </p>
-        <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-      </div>
+          {/* El comprador solo mira: el análisis lo carga el analista. */}
+          {!esComprador && (
+            <Button
+              size="sm"
+              disabled={itemsAMostrar.length === 0}
+              onClick={procesar}
+              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+              style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+            >
+              <i className="bi bi-check-lg"></i>
+              <span>Procesar</span>
+            </Button>
+          )}
+        </div>
 
-      <div className="container">
-        <h4 className="text-center mb-0" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2 }}>Analizar ítem</h4>
-        <p className="text-center text-muted mb-1" style={{ fontSize: 13 }}>(precios sin IVA)</p>
-
-        <div className="d-flex align-items-end mb-2" style={{ position: 'relative' }}>
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <label className="form-label form-label-sm mb-1 d-block" style={{ fontSize: 11 }}>N° Pedido</label>
-            <input
-              className={`form-control form-control-sm${selectedKey ? ' select-activo' : ''}`}
-              style={{ width: 200 }}
+        {/* Buscador del pedido a analizar */}
+        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0">
+          <div ref={dropdownRef} className="d-flex flex-column" style={{ position: 'relative', width: '220px' }}>
+            <span className="fw-bold text-dark mb-1" style={{ fontSize: '0.72rem' }}>
+              N° Pedido
+            </span>
+            <Form.Control
+              className={`rounded-3 ${selectedKey ? 'fw-bold filtro-activo' : ''}`}
+              style={{
+                fontSize: '0.82rem',
+                height: '32px',
+                padding: '3px 8px',
+                color: selectedKey ? '#dc2626' : '#1e293b',
+                fontWeight: selectedKey ? '700' : 'normal',
+              }}
               value={busqueda}
-              onChange={e => { setBusqueda(e.target.value); setShowDropdown(true) }}
-              onFocus={() => { setBusqueda(''); setShowDropdown(true) }}
-              onBlur={() => { if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src)) }}
-              placeholder="Buscar pedido..."
+              onChange={(e) => {
+                setBusqueda(e.target.value)
+                setShowDropdown(true)
+              }}
+              onFocus={() => {
+                setBusqueda('')
+                setShowDropdown(true)
+              }}
+              onBlur={() => {
+                if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src))
+              }}
+              placeholder="Buscar pedido…"
               autoComplete="off"
             />
+
             {showDropdown && pedidosFiltrados.length > 0 && (
-              <div style={{
-                position: 'absolute', top: '100%', left: 0, zIndex: 100,
-                background: '#fff', border: '1px solid #000', borderRadius: 4,
-                width: 200, maxHeight: 220, overflowY: 'auto', boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
-              }}>
-                {pedidosFiltrados.map(p => {
+              <div
+                className="shadow-lg"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  zIndex: 100,
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  width: 220,
+                  maxHeight: 240,
+                  overflowY: 'auto',
+                }}
+              >
+                {pedidosFiltrados.map((p) => {
                   const key = `${p._src}-${p.nro_pedido}`
                   const multiple = esMultiple(p)
+                  const elegido = key === selectedKey
                   return (
                     <div
                       key={key}
@@ -325,152 +376,174 @@ export default function AnalizarItem() {
                       style={{
                         padding: '6px 12px',
                         cursor: 'pointer',
-                        fontWeight: multiple ? 700 : 400,
-                        backgroundColor: key === selectedKey ? 'rgba(13,110,253,0.08)' : 'transparent',
+                        fontSize: '0.85rem',
+                        fontWeight: multiple ? 700 : 500,
+                        color: elegido ? BORDO : '#334155',
+                        backgroundColor: elegido ? BORDO_SUAVE : 'transparent',
                       }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(13,110,253,0.08)'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = key === selectedKey ? 'rgba(13,110,253,0.08)' : 'transparent'}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = BORDO_SUAVE
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = elegido ? BORDO_SUAVE : 'transparent'
+                      }}
                     >
                       {fmtNro(p.nro_pedido, p._src)}
-                      {multiple && <span className="ms-1 text-muted" style={{ fontSize: 11, fontWeight: 400 }}>({(p.items || []).filter(i => esParaAnalisis(i.estado)).length} ítems)</span>}
+                      {multiple && (
+                        <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
+                          ({(p.items || []).filter((i) => esParaAnalisis(i.estado)).length} ítems)
+                        </span>
+                      )}
                     </div>
                   )
                 })}
               </div>
             )}
           </div>
-          {!esComprador && (
-            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: 0 }}>
-              <button
-                className="btn btn-sm btn-outline-success"
-                disabled={itemsAMostrar.length === 0}
-                onClick={procesar}
-              >Procesar</button>
-            </div>
-          )}
-        </div>
+        </Card>
 
-        <div style={esComprador ? { border: '1px solid #000', borderRadius: 6, padding: '0.75rem' } : {}}>
-        <div className="card">
-          <div>
-            <table className="table table-hover table-striped mb-0" style={{ tableLayout: 'fixed', width: '100%', fontSize: 13 }}>
-              <colgroup>
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '11%' }} />
-                <col style={{ width: '5%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '9%' }} />
-                <col style={{ width: '9%' }} />
-              </colgroup>
-              <thead className="thead-blue thead-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+        {/* Carga de los tres presupuestos */}
+        <div
+          className="shadow-sm rounded-3 bg-white mb-3 flex-shrink-0"
+          style={{ maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+        >
+          <Table className="mb-0 tabla-informe tabla-compras" style={{ tableLayout: 'fixed', width: '100%', minWidth: '1180px' }}>
+            <colgroup>
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '6%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '14%' }} />
+            </colgroup>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr>
+                <th style={thCentro}>Fecha</th>
+                <th style={th}>Repuesto</th>
+                <th style={thCentro}>Stock</th>
+                <th style={thCentro}>Proveedor 1</th>
+                <th style={thCentro}>Precio 1</th>
+                <th style={thCentro}>Proveedor 2</th>
+                <th style={thCentro}>Precio 2</th>
+                <th style={thCentro}>Proveedor 3</th>
+                <th style={thCentro}>Precio 3</th>
+                <th style={thCentro}>Presupuesto</th>
+              </tr>
+            </thead>
+            <tbody>
+              {itemsAMostrar.length === 0 ? (
                 <tr>
-                  <th>Fecha</th>
-                  <th>Repuesto</th>
-                  <th>Stock</th>
-                  <th>Proveedor 1</th>
-                  <th>Precio 1</th>
-                  <th>Proveedor 2</th>
-                  <th>Precio 2</th>
-                  <th>Proveedor 3</th>
-                  <th>Precio 3</th>
-                  <th>Archivo</th>
-                  <th>Acciones</th>
+                  <td colSpan={10} className="text-center text-muted py-4" style={td}>
+                    {selectedKey ? 'Este pedido no tiene ítems para analizar' : 'Elegí un pedido para empezar'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {itemsAMostrar.map(item => (
+              ) : (
+                itemsAMostrar.map((item) => (
                   <tr key={item._id}>
-                    <td className="text-nowrap">{fecha}</td>
-                    <td>{item.nombre_repuesto}</td>
-                    <td>
-                      <input
+                    <td style={{ ...tdCentro, padding: '4px 5px' }}>{fecha}</td>
+                    <td style={{ ...td, padding: '4px 5px', fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                    <td style={{ ...td, padding: '4px 5px' }}>
+                      <Form.Control
                         type="number"
                         min="0"
-                        className="form-control form-control-sm"
+                        size="sm"
+                        className="rounded-3"
+                        style={{ fontSize: '0.8rem', height: '30px' }}
                         value={(formsMap[item._id] || FORM_ITEM_INIT).stock}
-                        onChange={e => setF(item._id, 'stock', e.target.value)}
+                        onChange={(e) => setF(item._id, 'stock', e.target.value)}
                         placeholder="0"
                         disabled={esComprador}
                       />
                     </td>
-                    <td>{provSelect(item, 'proveedor1')}</td>
-                    <td>{precioInput(item, 'precio1')}</td>
-                    <td>{provSelect(item, 'proveedor2')}</td>
-                    <td>{precioInput(item, 'precio2')}</td>
-                    <td>{provSelect(item, 'proveedor3')}</td>
-                    <td>{precioInput(item, 'precio3')}</td>
-                    <td className="text-center">{archivoCell(item)}</td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate(-1)}>Cancelar</button>
-                    </td>
+                    <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor1')}</td>
+                    <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio1')}</td>
+                    <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor2')}</td>
+                    <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio2')}</td>
+                    <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor3')}</td>
+                    <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio3')}</td>
+                    <td style={{ ...tdCentro, padding: '4px 5px' }}>{archivoCell(item)}</td>
                   </tr>
-                ))}
-                {itemsAMostrar.length === 0 && (
-                  <tr><td colSpan={11} className="text-center text-muted py-3">
-                    {selectedKey ? 'Sin ítems para analizar' : 'Seleccioná un pedido'}
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </Table>
         </div>
 
-        {itemsAMostrar.length > 0 && (() => {
-          const filas = itemsAMostrar.map(item => {
-            const form = formsMap[item._id] || FORM_ITEM_INIT
-            const precios = [form.precio1, form.precio2, form.precio3]
-              .map(v => parseFloat(v))
-              .filter(v => !isNaN(v) && v > 0)
-            const precioMin = precios.length > 0 ? Math.min(...precios) : null
-            const cant = item.cant || 0
-            const total = precioMin !== null ? precioMin * cant : null
-            return { item, precioMin, cant, total }
-          })
-          const sumaTotal = filas.reduce((acc, r) => acc + (r.total || 0), 0)
+        {/* Resumen: qué sale el pedido tomando el menor de los tres precios */}
+        {itemsAMostrar.length > 0 &&
+          (() => {
+            const filas = itemsAMostrar.map((item) => {
+              const form = formsMap[item._id] || FORM_ITEM_INIT
+              const precios = [form.precio1, form.precio2, form.precio3]
+                .map((v) => parseFloat(v))
+                .filter((v) => !isNaN(v) && v > 0)
+              const precioMin = precios.length > 0 ? Math.min(...precios) : null
+              const cant = item.cant || 0
+              const total = precioMin !== null ? precioMin * cant : null
+              return { item, precioMin, cant, total }
+            })
+            const sumaTotal = filas.reduce((acc, r) => acc + (r.total || 0), 0)
 
-          return (
-            <div className="mt-2 d-flex flex-column align-items-center">
-              <h6 className="mb-2" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Resumen</h6>
-              <div className="card" style={{ width: '50%' }}>
-                <table className="table table-striped mb-0" style={{ fontSize: 13 }}>
-                  <thead className="thead-blue thead-light">
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Repuesto</th>
-                      <th>Cant.</th>
-                      <th>Precio Unit.</th>
-                      <th>Precio Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filas.map(({ item, precioMin, cant, total }) => (
-                      <tr key={item._id}>
-                        <td className="text-nowrap">{fecha}</td>
-                        <td>{item.nombre_repuesto}</td>
-                        <td>{cant || '—'}</td>
-                        <td>{precioMin !== null ? fmtPrecio(precioMin) : '—'}</td>
-                        <td>{total !== null ? fmtPrecio(total) : '—'}</td>
+            return (
+              <div className="d-flex flex-column align-items-center flex-shrink-0 pb-3">
+                <div className="fw-bold mb-2" style={{ color: BORDO, fontSize: '0.9rem' }}>
+                  Resumen
+                </div>
+
+                <div
+                  className="shadow-sm rounded-3 bg-white"
+                  style={{ width: '640px', maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+                >
+                  <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th style={thCentro}>Fecha</th>
+                        <th style={th}>Repuesto</th>
+                        <th style={thCentro}>Cant.</th>
+                        <th style={thCentro}>Precio unit.</th>
+                        <th style={thCentro}>Precio total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-1 text-center" style={{ fontWeight: 700, fontSize: 18 }}>
-                Precio de mínima pedido {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src) : ''}:{' '}
-                <span style={{ color: 'var(--color-accent)' }}>{fmtPrecio(sumaTotal)}</span>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filas.map(({ item, precioMin, cant, total }) => (
+                        <tr key={item._id}>
+                          <td style={tdCentro}>{fecha}</td>
+                          <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                          <td style={tdCentro}>{cant || <Raya />}</td>
+                          <td style={tdCentro}>{precioMin !== null ? fmtPrecio(precioMin) : <Raya />}</td>
+                          <td style={{ ...tdCentro, fontWeight: 600 }}>
+                            {total !== null ? fmtPrecio(total) : <Raya />}
+                          </td>
+                        </tr>
+                      ))}
 
-            </div>
-          )
-        })()}
-        </div>
+                      {/* La fila de total va con la clase fila-total, si no el
+                          hover le gana al fondo. */}
+                      <tr className="fila-total">
+                        <td style={{ ...td, fontWeight: 700, color: BORDO }}>MÍNIMO</td>
+                        <td style={td} />
+                        <td style={td} />
+                        <td style={td} />
+                        <td style={{ ...tdCentro, fontWeight: 700, color: BORDO }}>{fmtPrecio(sumaTotal)}</td>
+                      </tr>
+                    </tbody>
+                  </Table>
+                </div>
 
-      </div>
+                <div className="mt-2 text-center" style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                  Precio de mínima del pedido{' '}
+                  <span className="fw-bold" style={{ color: BORDO }}>
+                    {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src) : ''}
+                  </span>
+                </div>
+              </div>
+            )
+          })()}
+      </Container>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import LogoNavbar from '../shared/LogoNavbar'
+import SesionUsuario from '../shared/SesionUsuario'
 import { useAuth } from '../../context/AuthContext'
 import { PERMISOS } from '../../utils/permisos'
 
@@ -30,10 +31,30 @@ const ALTAS = [
   },
 ]
 
-// Marrón y ámbar: los colores de Compras en la página principal.
-const FONDO = '#78350f'
-const ACTIVO = '#92400e'
+// Bordó y ámbar: los colores de Compras en la página principal.
+const FONDO = '#7a1828'
+const ACTIVO = '#9d2235'
 const ACENTO = '#f59e0b'
+
+/**
+ * En qué sección de Compras se está parado, sacado de la URL.
+ *
+ * Adentro de una sección las pantallas se llaman igual (Pedidos, Pendientes) y
+ * no dicen de qué taller son, así que el cartel del navbar es lo único que lo
+ * aclara. Cada uno lleva el color de su tarjeta en el inicio.
+ *
+ * Devuelve null en el inicio, donde no corresponde ninguna, y en las altas,
+ * que son padrones de Compras y no cuelgan de una sección.
+ */
+const SECCIONES = [
+  { ruta: '/compras/berdina', nombre: 'Berdina', icono: 'bi bi-building-fill', fondo: '#9d2235', borde: '#f59e0b' },
+  { ruta: '/compras/sanpablo', nombre: 'San Pablo', icono: 'bi bi-tree-fill', fondo: '#166534', borde: '#4ade80' },
+  { ruta: '/compras/analista', nombre: 'Analista', icono: 'bi bi-clipboard-data-fill', fondo: '#4f46e5', borde: '#818cf8' },
+  { ruta: '/compras/comprador', nombre: 'Comprador', icono: 'bi bi-cart-fill', fondo: '#0e7490', borde: '#22d3ee' },
+  { ruta: '/compras/gerencia', nombre: 'Gerencia', icono: 'bi bi-patch-check-fill', fondo: '#2d6a4f', borde: '#10b981' },
+]
+
+const seccionDe = (pathname) => SECCIONES.find((s) => pathname.startsWith(s.ruta)) || null
 
 const btnSeccion = (activo) => ({
   backgroundColor: activo ? ACTIVO : 'transparent',
@@ -79,6 +100,7 @@ export default function Menu() {
 
   const altasVisibles = user ? ALTAS.filter((a) => a.roles.includes(user.rol)) : []
   const enAltas = location.pathname.startsWith('/compras/altas')
+  const seccion = seccionDe(location.pathname)
 
   return (
     <div
@@ -112,28 +134,50 @@ export default function Menu() {
         <LogoNavbar />
       </div>
 
-      {/* Lado izquierdo: identidad de la sección */}
-      <div
-        className="d-flex align-items-center gap-2"
-        role="button"
-        onClick={() => ir('/compras')}
-        style={{ cursor: 'pointer' }}
-        title="Ir al inicio de Compras"
-      >
+      {/* Lado izquierdo: identidad de Compras y en qué sección se está */}
+      <div className="d-flex align-items-center gap-3">
         <div
-          className="rounded-3 d-flex align-items-center justify-content-center"
-          style={{
-            width: '34px',
-            height: '34px',
-            backgroundColor: ACENTO,
-            color: '#fff',
-            fontSize: '1.15rem',
-            boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
-          }}
+          className="d-flex align-items-center gap-2"
+          role="button"
+          onClick={() => ir('/compras')}
+          style={{ cursor: 'pointer' }}
+          title="Ir al inicio de Compras"
         >
-          <i className="bi bi-cart-fill"></i>
+          <div
+            className="rounded-3 d-flex align-items-center justify-content-center"
+            style={{
+              width: '34px',
+              height: '34px',
+              backgroundColor: ACENTO,
+              color: '#fff',
+              fontSize: '1.15rem',
+              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
+            }}
+          >
+            <i className="bi bi-cart-fill"></i>
+          </div>
+          <span className="text-white fw-semibold">Compras</span>
         </div>
-        <span className="text-white fw-semibold">Compras</span>
+
+        {/* Adentro de una sección las pantallas se llaman igual en las dos
+            (Pedidos, Pendientes): el cartel es lo único que las distingue, así
+            que va grande y con el color de su tarjeta. */}
+        {seccion && (
+          <div
+            className="d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            style={{
+              backgroundColor: seccion.fondo,
+              border: `1px solid ${seccion.borde}`,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+            }}
+            title={`Está en ${seccion.nombre}`}
+          >
+            <i className={seccion.icono} style={{ color: seccion.borde }}></i>
+            <span className="fw-bold text-white" style={{ fontSize: '0.95rem', letterSpacing: '0.3px' }}>
+              {seccion.nombre}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Lado derecho: navegación y menús de la sección */}
@@ -196,25 +240,10 @@ export default function Menu() {
           </div>
         )}
 
-        {user && (
-          <>
-            <span
-              className="text-white ps-2"
-              style={{ fontSize: '0.8rem', opacity: 0.75, borderLeft: '1px solid rgba(255,255,255,0.22)' }}
-            >
-              {user.nombre}
-            </span>
-            <button
-              onClick={salir}
-              className="btn btn-sm btn-outline-light d-flex align-items-center gap-1.5 rounded-3 px-3 py-1"
-              style={{ fontSize: '0.82rem' }}
-              title="Cerrar sesión"
-            >
-              <i className="bi bi-box-arrow-right"></i>
-              <span>Salir</span>
-            </button>
-          </>
-        )}
+        {/* La sesión es del proyecto: el mismo bloque que en Producción y en la
+            página principal. */}
+        <span style={{ width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.22)' }} />
+        <SesionUsuario />
       </div>
 
       {/* Celular: todo lo de arriba, apilado */}

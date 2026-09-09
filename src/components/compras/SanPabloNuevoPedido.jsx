@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Container, Card, Table, Button, Form, Row, Col } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
+import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
+import { Raya, BotonAccion } from './estilos'
 
 const URGENCIAS     = ['Baja', 'Media', 'Alta', 'Crítica']
 const GRUPOS_SIN_CC = ['Herreria', 'Gomeria', 'Stock', 'Otros']
+
+
+
 
 const getNombreUsuario = () => {
   try {
@@ -111,11 +117,19 @@ export default function SanPabloNuevoPedido() {
     }
     try {
       const solicita = getNombreUsuario()
-      const itemsLimpios = items.map(({ _tmpId, cant, ...rest }) => ({
-        ...rest,
-        ...(cant !== '' && cant != null ? { cant: Number(cant) } : {}),
-        ...(solicita ? { solicita } : {}),
-      }))
+      // _tmpId es de la pantalla —identifica la fila mientras se arma el
+      // pedido— y no viaja al backend. La cantidad va solo si se cargó.
+      const itemsLimpios = items.map((item) => {
+        const { cant } = item
+        const rest = { ...item }
+        delete rest._tmpId
+        delete rest.cant
+        return {
+          ...rest,
+          ...(cant !== '' && cant != null ? { cant: Number(cant) } : {}),
+          ...(solicita ? { solicita } : {}),
+        }
+      })
       await api.post('/sanpablo/pedidos', { fecha, items: itemsLimpios })
       Swal.fire({ icon: 'success', title: 'Pedido guardado', timer: 1500, showConfirmButton: false })
       navigate('/compras/sanpablo/pedidos')
@@ -129,169 +143,343 @@ export default function SanPabloNuevoPedido() {
     return <span style={{ fontWeight: 600, color: color[u] || '#6c757d' }}>{u}</span>
   }
 
+  // El encabezado de la tarjeta cambia de color al editar: es la única señal
+  // de que el formulario ya no está agregando, sino modificando una fila.
+  const colorTarjeta = editingId ? '#3730a3' : BORDO
+
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-1">
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      {/* El ancho de la página lo fija el Container: encabezado, formulario y
+          tabla comparten el mismo borde izquierdo y derecho. */}
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '1120px', width: '100%', margin: '0 auto', overflowY: 'auto' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap flex-shrink-0">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            Nuevo pedido
+          </span>
+          {items.length > 0 && (
+            <span
+              className="px-2 py-1 rounded-3"
+              style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+            >
+              {items.length} {items.length === 1 ? 'ítem' : 'ítems'}
+            </span>
+          )}
+        </div>
 
-      <div className="container d-flex justify-content-between align-items-center mb-1">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          Compras · San Pablo · Pedidos
-        </p>
-        <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-      </div>
-
-      <div className="container">
-        <h4 className="text-center mb-5" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2, marginBottom: '3rem' }}>Nuevo Pedido</h4>
-
-        <div className="card mb-3 mx-auto" style={{ maxWidth: 680 }}>
-          <div className="card-header fw-semibold d-flex justify-content-between align-items-center" style={{ backgroundColor: editingId ? '#6a4a8a' : '#4a6b8a', color: '#fff' }}>
-            <span>{editingId ? 'Editando ítem' : 'Agregar ítem'}</span>
+        {/* Carga de un ítem */}
+        <Card className="mb-3 shadow-sm border-0 rounded-3 overflow-hidden flex-shrink-0">
+          <div
+            className="d-flex justify-content-between align-items-center px-3 py-2"
+            style={{ backgroundColor: colorTarjeta, color: '#fff' }}
+          >
+            <span className="fw-semibold d-flex align-items-center gap-2" style={{ fontSize: '0.92rem' }}>
+              <i className={`bi ${editingId ? 'bi-pencil-square' : 'bi-plus-circle-fill'}`}></i>
+              <span>{editingId ? 'Editando ítem' : 'Agregar ítem'}</span>
+            </span>
             <div className="d-flex align-items-center gap-2">
-              <label className="mb-0" style={{ fontSize: 13 }}>Fecha</label>
-              <input type="date" className="form-control form-control-sm" style={{ width: 150 }}
-                value={fecha} onChange={e => setFecha(e.target.value)} />
+              <span className="fw-bold" style={{ fontSize: '0.78rem', opacity: 0.85 }}>
+                Fecha
+              </span>
+              <Form.Control
+                type="date"
+                size="sm"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="rounded-3"
+                style={{ width: '150px', fontSize: '0.82rem', height: '32px' }}
+              />
             </div>
           </div>
-          <div className="card-body">
-            <form onSubmit={agregarFila}>
-              <div className="row mb-2 g-2">
-                <div className="col-4">
-                  <label className="form-label form-label-sm w-100 text-center">Nombre repuesto*</label>
-                  <input className="form-control form-control-sm" value={itemForm.nombre_repuesto}
-                    onChange={e => setItemForm({ ...itemForm, nombre_repuesto: e.target.value })} required />
-                </div>
-                <div className="col-2">
-                  <label className="form-label form-label-sm w-100 text-center">Cant.*</label>
-                  <input type="number" min="1" className="form-control form-control-sm" value={itemForm.cant}
-                    onChange={e => setItemForm({ ...itemForm, cant: e.target.value })}
-                    onKeyDown={e => ['e','E','+','-','.'].includes(e.key) && e.preventDefault()}
-                    required />
-                </div>
-                <div className="col-1">
-                  <label className="form-label form-label-sm w-100 text-center">Un.*</label>
-                  <input className="form-control form-control-sm" placeholder="Ej: un, kg, mts" style={{ fontSize: 12 }} value={itemForm.unidad}
-                    onChange={e => setItemForm({ ...itemForm, unidad: e.target.value })} required />
-                </div>
-                <div className="col-2" style={{ position: 'relative' }}>
-                  <label className="form-label form-label-sm w-100 text-center">C.C.*</label>
-                  {GRUPOS_SIN_CC.includes(itemForm.grupo) ? (
-                    <input className="form-control form-control-sm" value="Sin CC" readOnly
-                      style={{ backgroundColor: '#f8f9fa', cursor: 'default' }} />
-                  ) : (
-                  <input
-                    className="form-control form-control-sm"
-                    placeholder={itemForm.cc ? ccLabel(itemForm.cc) : 'Buscar...'}
-                    value={ccSearch}
-                    onChange={e => { setCcSearch(e.target.value); setShowCcDrop(true) }}
-                    onFocus={() => { setCcSearch(''); setShowCcDrop(true) }}
-                    onBlur={() => setTimeout(() => setShowCcDrop(false), 150)}
-                    required={!itemForm.cc}
-                    autoComplete="off"
+
+          <Card.Body className="p-3">
+            <Form onSubmit={agregarFila}>
+              <Row className="g-3">
+                <Col md={4}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Nombre repuesto <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    className="rounded-3"
+                    style={campo}
+                    value={itemForm.nombre_repuesto}
+                    onChange={(e) => setItemForm({ ...itemForm, nombre_repuesto: e.target.value })}
+                    required
                   />
+                </Col>
+
+                <Col md={2}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Cant. <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    className="rounded-3"
+                    style={campo}
+                    value={itemForm.cant}
+                    onChange={(e) => setItemForm({ ...itemForm, cant: e.target.value })}
+                    onKeyDown={(e) => ['e', 'E', '+', '-', '.'].includes(e.key) && e.preventDefault()}
+                    required
+                  />
+                </Col>
+
+                <Col md={2}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Un. <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    className="rounded-3"
+                    style={campo}
+                    placeholder="un, kg, mts"
+                    value={itemForm.unidad}
+                    onChange={(e) => setItemForm({ ...itemForm, unidad: e.target.value })}
+                    required
+                  />
+                </Col>
+
+                {/* El C.C. se busca escribiendo: son muchos y se los conoce por
+                    el número o por la marca. */}
+                <Col md={2} style={{ position: 'relative' }}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    C.C. <span className="text-danger">*</span>
+                  </Form.Label>
+                  {GRUPOS_SIN_CC.includes(itemForm.grupo) ? (
+                    <Form.Control
+                      className="rounded-3"
+                      style={{ ...campo, backgroundColor: '#f1f5f9', cursor: 'default' }}
+                      value="Sin CC"
+                      readOnly
+                    />
+                  ) : (
+                    <Form.Control
+                      className="rounded-3"
+                      style={campo}
+                      placeholder={itemForm.cc ? ccLabel(itemForm.cc) : 'Buscar…'}
+                      value={ccSearch}
+                      onChange={(e) => {
+                        setCcSearch(e.target.value)
+                        setShowCcDrop(true)
+                      }}
+                      onFocus={() => {
+                        setCcSearch('')
+                        setShowCcDrop(true)
+                      }}
+                      onBlur={() => setTimeout(() => setShowCcDrop(false), 150)}
+                      required={!itemForm.cc}
+                      autoComplete="off"
+                    />
                   )}
+
                   {showCcDrop && ccsFiltrados.length > 0 && (
-                    <div style={{
-                      position: 'absolute', top: '100%', left: 0, zIndex: 100,
-                      background: '#fff', border: '1px solid #000',
-                      borderRadius: 4, maxHeight: 220, overflowY: 'auto', minWidth: 280,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    }}>
-                      {ccsFiltrados.map(c => (
-                        <div key={c._id} onMouseDown={() => seleccionarCc(c.cc)}
-                          style={{ padding: '5px 10px', cursor: 'pointer', fontSize: 13 }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#f0f0f0'}
-                          onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                          <strong>{c.cc}</strong>{c.marca ? ` — ${c.marca}` : ''}
+                    <div
+                      className="shadow-lg"
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '12px',
+                        zIndex: 100,
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        maxHeight: 240,
+                        overflowY: 'auto',
+                        minWidth: 280,
+                      }}
+                    >
+                      {ccsFiltrados.map((c) => (
+                        <div
+                          key={c._id}
+                          onMouseDown={() => seleccionarCc(c.cc)}
+                          style={{ padding: '6px 12px', cursor: 'pointer', fontSize: '0.85rem', color: '#334155' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = BORDO_SUAVE
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                        >
+                          <strong style={{ color: BORDO }}>{c.cc}</strong>
+                          {c.marca ? ` — ${c.marca}` : ''}
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-                <div className="col-3">
-                  <label className="form-label form-label-sm w-100 text-center">Urgencia*</label>
-                  <select className="form-select form-select-sm" value={itemForm.urgencia}
-                    onChange={e => setItemForm({ ...itemForm, urgencia: e.target.value })}>
-                    {URGENCIAS.map(u => <option key={u}>{u}</option>)}
-                  </select>
-                </div>
-              </div>
+                </Col>
 
-              <div className="row mb-3 g-2">
-                <div className="col-8">
-                  <label className="form-label form-label-sm w-100 text-center">Descripción</label>
-                  <textarea className="form-control form-control-sm" rows={2} value={itemForm.descripcion}
-                    onChange={e => setItemForm({ ...itemForm, descripcion: e.target.value })} />
-                </div>
-                <div className="col-4">
-                  <label className="form-label form-label-sm w-100 text-center">Grupo*</label>
-                  <select className="form-select form-select-sm" value={itemForm.grupo}
-                    onChange={e => handleGrupoChange(e.target.value)} required>
+                <Col md={2}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Urgencia <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Select
+                    className="rounded-3"
+                    style={campo}
+                    value={itemForm.urgencia}
+                    onChange={(e) => setItemForm({ ...itemForm, urgencia: e.target.value })}
+                  >
+                    {URGENCIAS.map((u) => (
+                      <option key={u}>{u}</option>
+                    ))}
+                  </Form.Select>
+                </Col>
+
+                <Col md={8}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Descripción</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    className="rounded-3"
+                    style={campo}
+                    value={itemForm.descripcion}
+                    onChange={(e) => setItemForm({ ...itemForm, descripcion: e.target.value })}
+                  />
+                </Col>
+
+                <Col md={4}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Grupo <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Select
+                    className="rounded-3"
+                    style={campo}
+                    value={itemForm.grupo}
+                    onChange={(e) => handleGrupoChange(e.target.value)}
+                    required
+                  >
                     <option value="">—</option>
-                    {todosGrupos.map(g => <option key={g}>{g}</option>)}
-                  </select>
-                </div>
-              </div>
+                    {todosGrupos.map((g) => (
+                      <option key={g}>{g}</option>
+                    ))}
+                  </Form.Select>
+                </Col>
+              </Row>
 
-              <div className="d-flex gap-2">
-                <button type="submit" className="btn btn-outline-dark btn-sm">
-                  {editingId ? '✓ Actualizar' : '+ Agregar fila'}
-                </button>
+              <div className="d-flex gap-2 mt-3">
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+                  style={{ backgroundColor: colorTarjeta, borderColor: colorTarjeta, fontSize: '0.84rem', fontWeight: 600 }}
+                >
+                  <i className={`bi ${editingId ? 'bi-check-lg' : 'bi-plus-lg'}`}></i>
+                  <span>{editingId ? 'Actualizar ítem' : 'Agregar ítem'}</span>
+                </Button>
+
                 {editingId && (
-                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={cancelarEdicion}>
+                  <Button
+                    type="button"
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={cancelarEdicion}
+                    className="rounded-3 px-3 py-1"
+                    style={{ fontSize: '0.84rem' }}
+                  >
                     Cancelar
-                  </button>
+                  </Button>
                 )}
               </div>
-            </form>
-          </div>
-        </div>
+            </Form>
+          </Card.Body>
+        </Card>
 
+        {/* Los ítems que ya se cargaron. Todavía no se guardó nada: esto vive
+            en memoria hasta que se aprieta Guardar pedido. */}
         {items.length > 0 && (
-          <div className="card mb-3">
-            <div className="table-responsive">
-              <table className="table table-hover table-striped mb-0">
-                <thead className="thead-light">
-                  <tr>
-                    <th>Repuesto</th>
-                    <th>Cant.</th>
-                    <th>Un.</th>
-                    <th>Descripción</th>
-                    <th>Urgencia</th>
-                    <th>Grupo</th>
-                    <th>C.C.</th>
-                    <th>Estado</th>
-                    <th></th>
+          <div
+            className="shadow-sm rounded-3 bg-white mb-3 flex-shrink-0"
+            style={{ maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+          >
+            <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '900px' }}>
+              <thead>
+                <tr>
+                  <th style={th}>Repuesto</th>
+                  <th style={thCentro}>Cant.</th>
+                  <th style={thCentro}>Un.</th>
+                  <th style={th}>Descripción</th>
+                  <th style={thCentro}>Urgencia</th>
+                  <th style={th}>Grupo</th>
+                  <th style={thCentro}>C.C.</th>
+                  <th style={thCentro}>Estado</th>
+                  <th style={thCentro}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item._tmpId} className={editingId === item._tmpId ? 'fila-editando' : ''}>
+                    <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                    <td style={tdCentro}>{item.cant}</td>
+                    <td style={tdCentro}>{item.unidad}</td>
+                    <td style={td}>{item.descripcion || <Raya />}</td>
+                    <td style={tdCentro}>{badgeUrgencia(item.urgencia)}</td>
+                    <td style={td}>{item.grupo}</td>
+                    <td style={tdCentro}>{item.cc}</td>
+                    <td style={tdCentro}>
+                      <span className="badge" style={{ backgroundColor: '#3730a3', fontSize: '0.62rem' }}>
+                        Para analisis
+                      </span>
+                    </td>
+                    <td style={tdCentro}>
+                      <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
+                        <BotonAccion
+                          icono="bi-pencil"
+                          titulo="Editar este ítem"
+                          variante="primary"
+                          onClick={() => editarFila(item)}
+                        />
+                        <BotonAccion
+                          icono="bi-trash"
+                          titulo="Quitar del pedido"
+                          variante="danger"
+                          onClick={() => quitarFila(item._tmpId)}
+                        />
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {items.map(item => (
-                    <tr key={item._tmpId} style={editingId === item._tmpId ? { backgroundColor: 'rgba(106,74,138,0.08)' } : {}}>
-                      <td>{item.nombre_repuesto}</td>
-                      <td>{item.cant}</td>
-                      <td>{item.unidad}</td>
-                      <td>{item.descripcion}</td>
-                      <td>{badgeUrgencia(item.urgencia)}</td>
-                      <td>{item.grupo}</td>
-                      <td>{item.cc}</td>
-                      <td><span className="badge bg-primary">Para analisis</span></td>
-                      <td className="text-nowrap">
-                        <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => editarFila(item)}>Editar</button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => quitarFila(item._tmpId)}>✕</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </Table>
           </div>
         )}
 
-        <div className="d-flex justify-content-end gap-2 mb-4">
-          <button className="btn btn-outline-secondary" onClick={() => navigate(-1)}>Cancelar</button>
-          <button className="btn btn-outline-dark" onClick={guardar} disabled={items.length === 0}>
-            Guardar pedido{items.length > 0 ? ` (${items.length} ítem${items.length !== 1 ? 's' : ''})` : ''}
-          </button>
+        {/* Acciones del pedido */}
+        <div className="d-flex justify-content-end gap-2 mb-4 flex-shrink-0">
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="rounded-3 px-3 py-1"
+            style={{ fontSize: '0.84rem' }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            onClick={guardar}
+            disabled={items.length === 0}
+            className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+            style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
+          >
+            <i className="bi bi-check-lg"></i>
+            <span>
+              Guardar pedido
+              {items.length > 0 ? ` (${items.length} ítem${items.length !== 1 ? 's' : ''})` : ''}
+            </span>
+          </Button>
         </div>
-      </div>
+      </Container>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import LogoNavbar from "./LogoNavbar";
+import SesionUsuario from "./SesionUsuario";
 
 const menu = [
   {
@@ -210,6 +211,10 @@ function NavbarProduccion() {
             </div>
           );
         })}
+
+        {/* La sesión es del proyecto, no de Compras: también se cierra desde acá. */}
+        <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+        <SesionUsuario />
       </div>
     </div>
   );

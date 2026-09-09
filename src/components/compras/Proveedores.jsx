@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
+import { Container, Card, Table, Button, Form, Modal, Row, Col } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
+import { BORDO, campo, th, thCentro, td, tdCentro } from './formato'
+import { Raya, BotonAccion, Buscador } from './estilos'
 
 const FORM_INIT = { razonsocial: '', contacto: '', rubro: '', cuit: '', email: '', telefono: '' }
 
@@ -89,110 +92,235 @@ export default function Proveedores() {
   )
 
   return (
-    <div className="container py-4">
-      <div className="w-75 mx-auto">
-
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h4 className="mb-0">Proveedores</h4>
-          <button className="btn btn-outline-dark" onClick={abrirNuevo}>
-            + Nuevo proveedor
-          </button>
-        </div>
-
-        <input
-          className="form-control mb-3 w-50"
-          placeholder="Buscar por razón social, contacto o rubro..."
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-        />
-
-        <div className="card">
-          <div className="table-responsive">
-            <table className="table table-hover table-striped mb-0">
-              <thead className="table-light">
-                <tr>
-                  <th>Razón Social</th>
-                  <th>Contacto</th>
-                  <th>Rubro</th>
-                  <th>CUIT</th>
-                  <th>Teléfono</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lista.map(p => (
-                  <tr key={p._id}>
-                    <td>{p.razonsocial}</td>
-                    <td>{p.contacto}</td>
-                    <td>{p.rubro}</td>
-                    <td>{p.cuit || '-'}</td>
-                    <td>{p.telefono}</td>
-                    <td className="text-nowrap">
-                      <button className="btn btn-sm btn-outline-secondary me-1" onClick={() => abrirEditar(p)}>Editar</button>
-                      <button className="btn btn-sm btn-outline-danger" onClick={() => borrar(p._id)}>Borrar</button>
-                    </td>
-                  </tr>
-                ))}
-                {lista.length === 0 && (
-                  <tr><td colSpan={6} className="text-center text-muted py-3">Sin resultados</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {showModal && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">{editId ? 'Editar proveedor' : 'Nuevo proveedor'}</h5>
-                <button type="button" className="btn-close" onClick={cerrar} />
-              </div>
-              <form onSubmit={guardar}>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Razón Social*</label>
-                    <input className="form-control" value={form.razonsocial}
-                      onChange={e => setForm({ ...form, razonsocial: e.target.value })} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Contacto*</label>
-                    <input className="form-control" value={form.contacto}
-                      onChange={e => setForm({ ...form, contacto: e.target.value })} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Rubro*</label>
-                    <input className="form-control" value={form.rubro}
-                      onChange={e => setForm({ ...form, rubro: e.target.value })} required />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">CUIT</label>
-                    <input className="form-control" value={form.cuit}
-                      onChange={e => setForm({ ...form, cuit: e.target.value })}
-                      placeholder="11 dígitos sin guiones" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Email</label>
-                    <input type="email" className="form-control" value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })} />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Teléfono*</label>
-                    <input className="form-control" value={form.telefono}
-                      onChange={e => setForm({ ...form, telefono: e.target.value })} required />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-outline-secondary" onClick={cerrar}>Cancelar</button>
-                  <button type="submit" className="btn btn-outline-dark">Guardar</button>
-                </div>
-              </form>
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      <Container
+        fluid
+        className="px-4 py-3 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '1000px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center justify-content-between gap-3 mb-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center"
+              style={{
+                width: '34px',
+                height: '34px',
+                backgroundColor: '#f59e0b',
+                color: '#fff',
+                fontSize: '1.1rem',
+                boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
+              }}
+            >
+              <i className="bi bi-truck"></i>
+            </div>
+            <div className="d-flex flex-column lh-sm">
+              <span className="fw-bold" style={{ color: BORDO, fontSize: '1rem' }}>
+                Proveedores
+              </span>
+              <span className="text-muted" style={{ fontSize: '0.78rem' }}>
+                {lista.length} {lista.length === 1 ? 'proveedor' : 'proveedores'}
+              </span>
             </div>
           </div>
+
+          <Button
+            size="sm"
+            onClick={abrirNuevo}
+            className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-2"
+            style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.82rem', fontWeight: 600 }}
+          >
+            <i className="bi bi-plus-lg"></i>
+            <span>Nuevo proveedor</span>
+          </Button>
         </div>
-      )}
+
+        {/* Buscador */}
+        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0">
+          <div style={{ width: '340px' }}>
+            <Buscador
+              valor={busqueda}
+              onChange={setBusqueda}
+              placeholder="Buscar por razón social, contacto o rubro…"
+            />
+          </div>
+        </Card>
+
+        {/* Tabla de proveedores */}
+        <div
+          className="flex-grow-1 shadow-sm rounded-3 bg-white"
+          style={{ minHeight: 0, overflowY: 'auto', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+        >
+          <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '760px' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr>
+                <th style={th}>Razón social</th>
+                <th style={th}>Contacto</th>
+                <th style={th}>Rubro</th>
+                <th style={thCentro}>CUIT</th>
+                <th style={thCentro}>Teléfono</th>
+                <th style={thCentro}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lista.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center text-muted py-4" style={td}>
+                    {busqueda ? 'Ningún proveedor coincide con la búsqueda' : 'No hay proveedores cargados'}
+                  </td>
+                </tr>
+              ) : (
+                lista.map((p) => (
+                  <tr key={p._id}>
+                    <td style={{ ...td, fontWeight: 500 }}>{p.razonsocial}</td>
+                    <td style={td}>{p.contacto || <Raya />}</td>
+                    <td style={td}>{p.rubro || <Raya />}</td>
+                    <td style={tdCentro}>{p.cuit || <Raya />}</td>
+                    <td style={tdCentro}>{p.telefono || <Raya />}</td>
+                    <td style={tdCentro}>
+                      <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
+                        <BotonAccion icono="bi-pencil" titulo="Editar" variante="primary" onClick={() => abrirEditar(p)} />
+                        <BotonAccion icono="bi-trash" titulo="Borrar" variante="danger" onClick={() => borrar(p._id)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
+        </div>
+      </Container>
+
+      {/* Modal Nuevo / Editar proveedor */}
+      <Modal show={showModal} onHide={cerrar} centered contentClassName="border-0 shadow-lg rounded-4">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: BORDO,
+            color: '#fff',
+            borderTopLeftRadius: '1rem',
+            borderTopRightRadius: '1rem',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-truck" style={{ color: '#f59e0b' }}></i>
+            <span>{editId ? 'Editar proveedor' : 'Nuevo proveedor'}</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={guardar}>
+          <Modal.Body className="p-4">
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Razón social <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.razonsocial}
+                  onChange={(e) => setForm({ ...form, razonsocial: e.target.value })}
+                  required
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Contacto <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.contacto}
+                  onChange={(e) => setForm({ ...form, contacto: e.target.value })}
+                  required
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Rubro <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.rubro}
+                  onChange={(e) => setForm({ ...form, rubro: e.target.value })}
+                  required
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">CUIT</Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.cuit}
+                  onChange={(e) => setForm({ ...form, cuit: e.target.value })}
+                  placeholder="11 dígitos sin guiones"
+                />
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Teléfono <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={form.telefono}
+                  onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+                  required
+                />
+              </Col>
+
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Email</Form.Label>
+                <Form.Control
+                  type="email"
+                  className="rounded-3"
+                  style={campo}
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer
+            className="bg-light border-0 py-2 px-4"
+            style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}
+          >
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={cerrar}
+              className="rounded-3 px-3 py-1"
+              style={{ fontSize: '0.84rem' }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+              style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
+            >
+              <i className="bi bi-check-lg"></i>
+              <span>Guardar</span>
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
     </div>
   )
 }

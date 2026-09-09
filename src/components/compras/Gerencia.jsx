@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Container, Table, Button } from 'react-bootstrap'
+import { BORDO, BORDO_SUAVE, thCentro, td, tdCentro } from './formato'
+import { BotonAccion } from './estilos'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 
@@ -29,40 +32,52 @@ export default function Gerencia() {
   const [grupos, setGrupos] = useState([])
   const [cargando, setCargando] = useState(true)
 
-  const cargar = async () => {
+  // La carga vive adentro del efecto y `cargar()` solo pide una vuelta más:
+  // así el que trae los datos es el efecto, que es quien puede cancelarse si
+  // la pantalla se cierra antes de que contesten las dos APIs.
+  const [recarga, setRecarga] = useState(0)
+  const cargar = () => {
     setCargando(true)
-    const [berdina, sanpablo] = await Promise.all([
-      api.get('/berdina/pedidos/por-estado/Autorizar').catch(() => []),
-      api.get('/sanpablo/pedidos/por-estado/Autorizar').catch(() => []),
-    ])
-    const todos = [
-      ...berdina.map(i => ({ ...i, _src: 'berdina' })),
-      ...sanpablo.map(i => ({ ...i, _src: 'sanpablo' })),
-    ]
-
-    const agrupado = Object.values(
-      todos.reduce((acc, item) => {
-        const key = `${item._src}-${item.nro_pedido}`
-        if (!acc[key]) acc[key] = { _src: item._src, nro_pedido: item.nro_pedido, fecha: item.fecha, items: [] }
-        acc[key].items.push(item)
-        return acc
-      }, {})
-    ).map(g => ({
-      ...g,
-      costo: g.items.reduce((sum, i) => sum + (calcCostoItem(i) ?? 0), 0),
-      sinPrecio: g.items.every(i => calcCostoItem(i) == null),
-      urgencia: urgenciaMasAlta(g.items),
-    })).sort((a, b) => {
-      const ua = URG_ORDER[a.urgencia] ?? 4
-      const ub = URG_ORDER[b.urgencia] ?? 4
-      return ua !== ub ? ua - ub : new Date(b.fecha) - new Date(a.fecha)
-    })
-
-    setGrupos(agrupado)
-    setCargando(false)
+    setRecarga(n => n + 1)
   }
 
-  useEffect(() => { cargar() }, [])
+  useEffect(() => {
+    let vigente = true
+    ;(async () => {
+      const [berdina, sanpablo] = await Promise.all([
+        api.get('/berdina/pedidos/por-estado/Autorizar').catch(() => []),
+        api.get('/sanpablo/pedidos/por-estado/Autorizar').catch(() => []),
+      ])
+      if (!vigente) return
+
+      const todos = [
+        ...berdina.map(i => ({ ...i, _src: 'berdina' })),
+        ...sanpablo.map(i => ({ ...i, _src: 'sanpablo' })),
+      ]
+
+      const agrupado = Object.values(
+        todos.reduce((acc, item) => {
+          const key = `${item._src}-${item.nro_pedido}`
+          if (!acc[key]) acc[key] = { _src: item._src, nro_pedido: item.nro_pedido, fecha: item.fecha, items: [] }
+          acc[key].items.push(item)
+          return acc
+        }, {})
+      ).map(g => ({
+        ...g,
+        costo: g.items.reduce((sum, i) => sum + (calcCostoItem(i) ?? 0), 0),
+        sinPrecio: g.items.every(i => calcCostoItem(i) == null),
+        urgencia: urgenciaMasAlta(g.items),
+      })).sort((a, b) => {
+        const ua = URG_ORDER[a.urgencia] ?? 4
+        const ub = URG_ORDER[b.urgencia] ?? 4
+        return ua !== ub ? ua - ub : new Date(b.fecha) - new Date(a.fecha)
+      })
+
+      setGrupos(agrupado)
+      setCargando(false)
+    })()
+    return () => { vigente = false }
+  }, [recarga])
 
   const verAnalisis = (grupo) => navigate('/compras/oc/ver', { state: { items: grupo.items } })
 
@@ -204,13 +219,12 @@ export default function Gerencia() {
       </span>
     )
   }
-
   const badgeTaller = (src) => (
     <span
       className="badge"
       style={{
-        backgroundColor: src === 'berdina' ? '#1a3326' : '#4a0812',
-        fontSize: 13,
+        backgroundColor: src === 'berdina' ? BORDO : '#166534',
+        fontSize: '0.7rem',
         letterSpacing: 0.5,
         minWidth: 32,
       }}
@@ -220,116 +234,136 @@ export default function Gerencia() {
   )
 
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-2">
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      {/* La urgencia crítica pinta la fila. Va en un bloque propio porque
+          .tabla-informe pinta el fondo sobre los td y un style en el tr no le
+          gana. */}
+      <style>{`
+        .tabla-informe.tabla-gerencia tbody tr.fila-critica > td { background-color: #fee2e2; }
+        .tabla-informe.tabla-gerencia tbody tr.fila-critica:hover > td { background-color: #fca5a5; }
+      `}</style>
 
-      <div className="container d-flex justify-content-between align-items-center mb-2">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          Gerencia
-        </p>
-        <div className="d-flex gap-2">
-          <button onClick={() => navigate('/compras/gerencia/historial')} className="btn btn-outline-dark btn-sm">Historial</button>
-          <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-        </div>
-      </div>
-
-      <div className="container">
-        <h4 className="text-center mb-4" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2 }}>
-          Para Autorizar{' '}
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '820px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            Para autorizar
+          </span>
           {!cargando && (
-            <span style={{ fontWeight: 400, fontSize: '0.75em', letterSpacing: 1, textTransform: 'none' }}>
-              ({grupos.length})
+            <span
+              className="px-2 py-1 rounded-3"
+              style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+            >
+              {grupos.length} {grupos.length === 1 ? 'pedido' : 'pedidos'}
             </span>
           )}
-        </h4>
+
+          <Button
+            size="sm"
+            onClick={() => navigate('/compras/gerencia/historial')}
+            className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+            style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+          >
+            <i className="bi bi-clock-history"></i>
+            <span>Historial</span>
+          </Button>
+        </div>
 
         {cargando ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-secondary" role="status" />
+          <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+            <div className="spinner-border" role="status" style={{ color: BORDO }} />
           </div>
         ) : (
-          <div className="card card-gerencia">
-            <div className="table-responsive">
-              <table className="table table-hover table-striped mb-0">
-                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+          <div
+            className="flex-grow-1 shadow-sm rounded-3 bg-white"
+            style={{ minHeight: 0, overflowY: 'auto', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+          >
+            <Table className="mb-0 tabla-informe tabla-compras tabla-gerencia" style={{ width: '100%', minWidth: '560px' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                <tr>
+                  <th style={{ ...thCentro, width: 90 }}>Taller</th>
+                  <th style={thCentro}>Costo</th>
+                  <th style={{ ...thCentro, width: 100 }}>Urgencia</th>
+                  <th style={{ ...thCentro, width: 140 }}>Decisión</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grupos.length === 0 ? (
                   <tr>
-                    <th className="text-center" style={{ width: 48 }}>Taller</th>
-                    <th className="text-center">Costo</th>
-                    <th className="text-center" style={{ width: 80 }}>Urgencia</th>
-                    <th className="text-center" style={{ width: 120 }}></th>
+                    <td colSpan={4} className="text-center text-muted py-4" style={td}>
+                      No hay pedidos esperando autorización
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {grupos.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-center text-muted py-4">
-                        Sin pedidos para autorizar
-                      </td>
-                    </tr>
-                  )}
-                  {grupos.map(grupo => (
+                ) : (
+                  grupos.map((grupo) => (
                     <tr
                       key={`${grupo._src}-${grupo.nro_pedido}`}
-                      className={grupo.urgencia === 'Crítica' ? 'row-critica' : ''}
-                      style={{ verticalAlign: 'middle' }}
+                      className={grupo.urgencia === 'Crítica' ? 'fila-critica' : ''}
                     >
-                      <td className="text-center">
+                      <td style={{ ...tdCentro, padding: '6px 5px' }}>
                         {badgeTaller(grupo._src)}
-                        <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 4, lineHeight: 1.3 }}>
+                        <div style={{ fontSize: '0.64rem', color: '#64748b', marginTop: 4, lineHeight: 1.3 }}>
                           {fmtNro(grupo.nro_pedido, grupo._src)}
                           {grupo.items.length > 1 && <div>{grupo.items.length} ítems</div>}
                         </div>
                       </td>
-                      <td>
-                        <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2 }}>
-                          {grupo.sinPrecio
-                            ? <span style={{ color: 'var(--color-muted)', fontWeight: 400, fontSize: 13 }}>Sin precio</span>
-                            : fmtPrecio(grupo.costo)
-                          }
-                        </div>
-                        <div className="d-flex gap-1 mt-1">
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            style={{ fontSize: 11, padding: '1px 8px', lineHeight: 1.6 }}
+
+                      <td style={{ ...td, padding: '6px 10px' }}>
+                        <div className="d-flex align-items-center gap-2">
+                          <span className="fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2 }}>
+                            {grupo.sinPrecio ? (
+                              <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                Sin precio
+                              </span>
+                            ) : (
+                              fmtPrecio(grupo.costo)
+                            )}
+                          </span>
+                          <BotonAccion
+                            icono="bi-eye"
+                            titulo="Ver el análisis de precios"
                             onClick={() => verAnalisis(grupo)}
-                          >
-                            Ver
-                          </button>
+                          />
+                          {/* El historial ya estaba escrito pero no tenía
+                              botón: es el mismo que en Pedidos y Pendientes. */}
+                          <BotonAccion
+                            icono="bi-clock-history"
+                            titulo="Historial"
+                            onClick={() => verHistorial(grupo)}
+                          />
                         </div>
                       </td>
-                      <td className="text-center">
-                        {badgeUrgencia(grupo.urgencia)}
-                      </td>
-                      <td>
-                        <div className="d-flex gap-1 justify-content-center">
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            title="Rechazar"
-                            style={{ fontSize: 15, fontWeight: 700, lineHeight: 1, padding: '3px 8px' }}
-                            onClick={() => rechazar(grupo)}
-                          >✕</button>
-                          <button
-                            className="btn btn-sm btn-outline-warning"
-                            title="Revisar"
-                            style={{ fontSize: 15, fontWeight: 700, lineHeight: 1, padding: '3px 8px' }}
-                            onClick={() => revisar(grupo)}
-                          >?</button>
-                          <button
-                            className="btn btn-sm btn-outline-success"
-                            title="Aprobar"
-                            style={{ fontSize: 15, fontWeight: 700, lineHeight: 1, padding: '3px 8px' }}
-                            onClick={() => aprobar(grupo)}
-                          >✓</button>
+
+                      <td style={tdCentro}>{badgeUrgencia(grupo.urgencia)}</td>
+
+                      <td style={tdCentro}>
+                        <div className="d-flex gap-2 justify-content-center">
+                          <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(grupo)} />
+                          <BotonAccion icono="bi-question-lg" titulo="Mandar a revisar" variante="warning" onClick={() => revisar(grupo)} />
+                          <BotonAccion icono="bi-check-lg" titulo="Aprobar" variante="success" onClick={() => aprobar(grupo)} />
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </Table>
           </div>
         )}
-      </div>
-
+      </Container>
     </div>
   )
 }

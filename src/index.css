@@ -133,6 +133,16 @@ main {
   color: #fff;
 }
 
+/* ── Sesión al pie del sidebar ──
+   El margin-top automático la empuja abajo de todo, separada de los links, y
+   la raya de arriba la despega visualmente. */
+.sidebar-sesion {
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  user-select: none;
+}
+
 /* ── Cuadros / secciones ── */
 .cuadro {
   border: 2px solid #333 !important;
@@ -179,6 +189,18 @@ main {
    alternado. */
 .tabla-informe tbody tr.fila-editando > td {
   background-color: #e0f2fe;
+}
+
+/* ── Tablas de Compras ──
+   Mismo formato que las de Producción, pero el hover y la fila de total salen
+   en verde y acá van en el bordó de la sección. El encabezado no hace falta
+   tocarlo: lo pinta el objeto `th` de compras/formato.js. */
+.tabla-informe.tabla-compras tbody tr:hover:not(.fila-total) > td {
+  background-color: #fbe9ec;
+}
+.tabla-informe.tabla-compras tbody tr.fila-total > td {
+  background-color: #fdeaee;
+  border-top: 2px solid #7a1828 !important;
 }
 
 /* ── Radio buttons ── */

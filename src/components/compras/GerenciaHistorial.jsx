@@ -1,6 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Container, Table } from 'react-bootstrap'
 import { api } from '../../services/api'
+import { BORDO, BORDO_SUAVE, thCentro, td, tdCentro } from './formato'
+
+/** La flechita que abre el filtro de una columna. Llena cuando está puesto. */
+const FlechaFiltro = ({ activo, onClick }) => (
+  <button
+    className="btn btn-link p-0 ms-1"
+    style={{
+      fontSize: '0.62rem',
+      lineHeight: 1,
+      verticalAlign: 'middle',
+      color: activo ? '#fcd34d' : 'rgba(255,255,255,0.75)',
+      textDecoration: 'none',
+    }}
+    onClick={onClick}
+    title={activo ? 'Filtro puesto' : 'Filtrar'}
+  >
+    {activo ? '▼' : '▽'}
+  </button>
+)
 
 const fmtNro = (n, src) =>
   src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
@@ -34,7 +53,6 @@ const DEC_COLOR = {
 }
 
 export default function GerenciaHistorial() {
-  const navigate = useNavigate()
   const [grupos, setGrupos] = useState([])
   const [cargando, setCargando] = useState(true)
   const [filtros, setFiltros] = useState({ taller: null, decision: null, fecha: null })
@@ -120,136 +138,183 @@ export default function GerenciaHistorial() {
   const opcionesDecision = [...new Set(grupos.map(getDecision))]
   const opcionesFecha    = [...new Set(grupos.map(getFecha))]
 
-  const FlechaFiltro = ({ col, opciones }) => (
-    <button
-      className="btn btn-link p-0 ms-1"
-      style={{ fontSize: 11, lineHeight: 1, verticalAlign: 'middle', color: filtros[col] ? '#0d6efd' : 'inherit', textDecoration: 'none' }}
-      onClick={(e) => abrirFiltro(col, e.currentTarget, opciones)}
-    >
-      {filtros[col] ? '▼' : '▽'}
-    </button>
-  )
-
   const badgeTaller = (src) => (
-    <span className="badge" style={{ backgroundColor: src === 'berdina' ? '#1a3326' : '#4a0812', fontSize: 12, letterSpacing: 0.5, minWidth: 28 }}>
+    <span
+      className="badge"
+      style={{
+        backgroundColor: src === 'berdina' ? BORDO : '#166534',
+        fontSize: '0.66rem',
+        letterSpacing: 0.5,
+        minWidth: 28,
+      }}
+    >
       {src === 'berdina' ? 'B' : 'SP'}
     </span>
   )
 
   return (
-    <div className="container-fluid flex-grow-1 d-flex flex-column pt-2">
-
-      <div className="container d-flex justify-content-between align-items-center mb-2">
-        <p className="mb-0" style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-muted)', textTransform: 'uppercase', letterSpacing: 2 }}>
-          Gerencia · Historial
-        </p>
-        <button onClick={() => navigate(-1)} className="btn btn-outline-dark btn-sm">← Volver</button>
-      </div>
-
-      <div className="container">
-        <h4 className="text-center mb-4" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 2 }}>
-          Historial
-        </h4>
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '820px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+      >
+        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
+            Historial
+          </span>
+          <span
+            className="px-2 py-1 rounded-3"
+            style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
+          >
+            {gruposFiltrados.length} {gruposFiltrados.length === 1 ? 'pedido' : 'pedidos'}
+          </span>
+        </div>
 
         {cargando ? (
-          <div className="text-center py-5">
-            <div className="spinner-border text-secondary" role="status" />
+          <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+            <div className="spinner-border" role="status" style={{ color: BORDO }} />
           </div>
         ) : (
-          <div className="card card-gerencia">
-            <div className="table-responsive">
-              <table className="table table-hover table-striped mb-0">
-                <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+          <div
+            className="flex-grow-1 shadow-sm rounded-3 bg-white"
+            style={{ minHeight: 0, overflowY: 'auto', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+          >
+            <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '560px' }}>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                <tr>
+                  <th style={{ ...thCentro, width: 110 }}>
+                    Taller
+                    <FlechaFiltro
+                      activo={!!filtros.taller}
+                      onClick={(e) => abrirFiltro('taller', e.currentTarget, opcionesTaller)}
+                    />
+                  </th>
+                  <th style={thCentro}>Monto</th>
+                  <th style={{ ...thCentro, width: 130 }}>
+                    Decisión
+                    <FlechaFiltro
+                      activo={!!filtros.decision}
+                      onClick={(e) => abrirFiltro('decision', e.currentTarget, opcionesDecision)}
+                    />
+                  </th>
+                  <th style={{ ...thCentro, width: 140 }}>
+                    Fecha
+                    <FlechaFiltro
+                      activo={!!filtros.fecha}
+                      onClick={(e) => abrirFiltro('fecha', e.currentTarget, opcionesFecha)}
+                    />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {gruposFiltrados.length === 0 ? (
                   <tr>
-                    <th className="text-center" style={{ width: 80 }}>
-                      Taller <FlechaFiltro col="taller" opciones={opcionesTaller} />
-                    </th>
-                    <th className="text-center">Monto</th>
-                    <th className="text-center" style={{ width: 110 }}>
-                      Decisión <FlechaFiltro col="decision" opciones={opcionesDecision} />
-                    </th>
-                    <th className="text-center" style={{ width: 130 }}>
-                      Fecha <FlechaFiltro col="fecha" opciones={opcionesFecha} />
-                    </th>
+                    <td colSpan={4} className="text-center text-muted py-4" style={td}>
+                      {grupos.length === 0
+                        ? 'Todavía no hay pedidos resueltos por Gerencia'
+                        : 'Ningún pedido coincide con los filtros'}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {gruposFiltrados.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="text-center text-muted py-4">
-                        {grupos.length === 0 ? 'Sin registros de Gerencia todavía' : 'Sin resultados para los filtros aplicados'}
-                      </td>
-                    </tr>
-                  )}
-                  {gruposFiltrados.map((grupo) => {
-                    const dec   = getDecision(grupo)
+                ) : (
+                  gruposFiltrados.map((grupo) => {
+                    const dec = getDecision(grupo)
                     const monto = getMonto(grupo)
                     return (
-                      <tr key={`${grupo._src}-${grupo.nro_pedido}`} style={{ verticalAlign: 'middle' }}>
-                        <td className="text-center">
+                      <tr key={`${grupo._src}-${grupo.nro_pedido}`}>
+                        <td style={tdCentro}>
                           {badgeTaller(grupo._src)}
-                          <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 3 }}>
+                          <div style={{ fontSize: '0.64rem', color: '#64748b', marginTop: 3 }}>
                             {fmtNro(grupo.nro_pedido, grupo._src)}
                           </div>
                         </td>
-                        <td style={{ fontWeight: 700, fontSize: 13 }}>
-                          {monto != null
-                            ? fmtPrecio(monto)
-                            : <span style={{ color: 'var(--color-muted)', fontWeight: 400, fontSize: 11 }}>Sin precio</span>
-                          }
+                        <td style={{ ...tdCentro, fontWeight: 700 }}>
+                          {monto != null ? (
+                            fmtPrecio(monto)
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontWeight: 400, fontStyle: 'italic' }}>Sin precio</span>
+                          )}
                         </td>
-                        <td className="text-center" style={{ fontWeight: 700, fontSize: 11, color: DEC_COLOR[dec] ?? 'inherit' }}>
-                          {dec}
-                        </td>
-                        <td style={{ fontSize: 11, color: 'var(--color-muted)' }}>
-                          {getFecha(grupo)}
-                        </td>
+                        <td style={{ ...tdCentro, fontWeight: 700, color: DEC_COLOR[dec] ?? 'inherit' }}>{dec}</td>
+                        <td style={{ ...tdCentro, color: '#64748b' }}>{getFecha(grupo)}</td>
                       </tr>
                     )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  })
+                )}
+              </tbody>
+            </Table>
           </div>
         )}
-      </div>
+      </Container>
 
-      {/* Dropdown de filtro — fuera del table para evitar clipping por overflow */}
+      {/* El desplegable del filtro va fuera de la tabla: adentro lo recortaría
+          el overflow del marco. */}
       {filtroAbierto && (
         <div
           ref={dropdownRef}
+          className="shadow-lg"
           style={{
             position: 'fixed',
             top: dropdownPos.top,
             ...(dropdownPos.left != null ? { left: dropdownPos.left } : { right: dropdownPos.right }),
             zIndex: 9999,
-            background: '#fff',
-            border: '1px solid #000',
-            borderRadius: 4,
-            minWidth: 140,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '12px',
+            minWidth: 150,
+            overflow: 'hidden',
           }}
         >
           <div
             className="px-3 py-2"
-            style={{ cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #eee', fontWeight: filtros[filtroAbierto] ? 400 : 600 }}
-            onMouseDown={(e) => { e.preventDefault(); aplicarFiltro(null) }}
+            style={{
+              cursor: 'pointer',
+              fontSize: '0.85rem',
+              borderBottom: '1px solid #e2e8f0',
+              color: filtros[filtroAbierto] ? '#334155' : BORDO,
+              fontWeight: filtros[filtroAbierto] ? 500 : 600,
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              aplicarFiltro(null)
+            }}
           >
             Todos
           </div>
-          {dropdownOpciones.map(op => (
-            <div
-              key={op}
-              className="px-3 py-2"
-              style={{ cursor: 'pointer', fontSize: 13, fontWeight: filtros[filtroAbierto] === op ? 600 : 400, background: filtros[filtroAbierto] === op ? '#f0f0f0' : 'transparent' }}
-              onMouseDown={(e) => { e.preventDefault(); aplicarFiltro(op) }}
-            >
-              {op}
-            </div>
-          ))}
+          {dropdownOpciones.map((op) => {
+            const elegida = filtros[filtroAbierto] === op
+            return (
+              <div
+                key={op}
+                className="px-3 py-2"
+                style={{
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: elegida ? 600 : 500,
+                  color: elegida ? BORDO : '#334155',
+                  backgroundColor: elegida ? BORDO_SUAVE : 'transparent',
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  aplicarFiltro(op)
+                }}
+              >
+                {op}
+              </div>
+            )
+          })}
         </div>
       )}
-
     </div>
   )
 }
