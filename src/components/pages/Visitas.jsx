@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form, Badge } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { nuevoWorkbook } from "../../helpers/excel";
-import { isMobile } from "../../utils/device";
+import { isMobile, irAlEscritorio } from "../../utils/device";
 import LogoNavbar from "../shared/LogoNavbar";
 
 import { guardarConReglaHorometro } from "../../utils/horometro";
@@ -974,6 +974,15 @@ function Visitas() {
           <h4 className="fw-bold mb-0 text-dark" style={{ fontSize: "1.25rem" }}>
             Visitas
           </h4>
+          {/* En modo celular todas las rutas vuelven a Visitas: este botón es la salida */}
+          <button
+            onClick={() => irAlEscritorio("/")}
+            className="btn btn-sm text-white d-flex align-items-center gap-1 rounded-3 px-2.5 py-1"
+            style={{ fontSize: "0.82rem", backgroundColor: "#1e293b" }}
+          >
+            <i className="bi bi-house-door-fill"></i>
+            <span>Inicio</span>
+          </button>
         </div>
       )}
 
