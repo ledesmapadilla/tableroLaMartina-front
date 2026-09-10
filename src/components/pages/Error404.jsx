@@ -6,9 +6,13 @@ function Error404() {
 
   return (
     <div
-      className="d-flex flex-column align-items-center justify-content-between min-vh-100 px-3 py-3 text-center position-relative"
+      className="d-flex flex-column align-items-center justify-content-between px-3 py-3 text-center position-relative"
       style={{
         backgroundColor: "#ffffff",
+        // Ocupa justo el alto de <main> (que ya descuenta el Footer), sin scroll.
+        // Con min-vh-100 pedía la pantalla entera y main mostraba la barra.
+        flex: 1,
+        minHeight: 0,
         overflow: "hidden",
       }}
     >
@@ -82,7 +86,7 @@ function Error404() {
             alt="Tractor Caricatura"
             className="img-fluid"
             style={{
-              maxHeight: "350px",
+              maxHeight: "min(350px, 38vh)",
               width: "auto",
               objectFit: "contain",
               mixBlendMode: "multiply",
