@@ -77,9 +77,6 @@ function CamionetasCheckList() {
   const [showHistorial, setShowHistorial] = useState(false);
   const [showNuevaParada, setShowNuevaParada] = useState(false);
   const [motivoNueva, setMotivoNueva] = useState("");
-  const [showArranque, setShowArranque] = useState(false);
-  const [fechaArranqueInput, setFechaArranqueInput] = useState("");
-  const [paradaAbiertaId, setParadaAbiertaId] = useState(null);
   const [showNuevaTarea, setShowNuevaTarea] = useState(false);
   const [motivoNuevaTarea, setMotivoNuevaTarea] = useState("");
   const [urgenciaNuevaTarea, setUrgenciaNuevaTarea] = useState("baja");
@@ -183,19 +180,39 @@ function CamionetasCheckList() {
     } catch { setParadas([]); }
   };
 
+  // El círculo solo marca la camioneta como parada. La puesta en servicio se hace
+  // desde Reparaciones al terminar la tarea: ahí se cierran las paradas y el resto
+  // de las pantallas la ven activa sin tocar el círculo.
   const alClickCirculo = async (e) => {
     e.preventDefault();
     if (!camionetaId) return;
-    if (!camionetatParada) {
-      setMotivoNueva("");
-      setShowNuevaParada(true);
-    } else {
-      const lista = await fetch(`/api/paradas/${camionetaId}`).then((r) => r.json()).catch(() => []);
-      const abierta = lista.find((p) => !p.fechaArranque);
-      setParadaAbiertaId(abierta?._id ?? null);
-      setFechaArranqueInput(new Date().toISOString().split("T")[0]);
-      setShowArranque(true);
+    if (camionetatParada) {
+      Swal.fire({
+        icon: "info",
+        title: "La camioneta está parada",
+        text: "Para ponerla en servicio, terminá la tarea en Reparaciones.",
+        width: "340px",
+        confirmButtonColor: "#1e293b",
+      });
+      return;
     }
+    // Con una parada ya abierta no se crea otra: un duplicado la dejaba parada
+    // aunque se cerrara la primera.
+    const lista = await fetch(`/api/paradas/${camionetaId}`).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    const abierta = Array.isArray(lista) ? lista.find((p) => !p.fechaArranque) : null;
+    if (abierta) {
+      setValue("camionetatParada", true);
+      Swal.fire({
+        icon: "info",
+        title: "Ya estaba parada",
+        text: `Tiene una parada abierta desde el ${formatF(abierta.fechaParada)}.`,
+        width: "340px",
+        confirmButtonColor: "#1e293b",
+      });
+      return;
+    }
+    setMotivoNueva("");
+    setShowNuevaParada(true);
   };
 
   const alClickCirculoPendiente = (e) => {
@@ -222,28 +239,17 @@ function CamionetasCheckList() {
 
   const guardarNuevaParada = async () => {
     try {
-      await fetch("/api/paradas", {
+      const res = await fetch("/api/paradas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ camioneta: camionetaId, fechaParada: fechaVal, motivo: motivoNueva }),
       });
+      if (!res.ok) {
+        Swal.fire({ icon: "error", title: "No se pudo registrar la parada" });
+        return;
+      }
       setValue("camionetatParada", true);
       setShowNuevaParada(false);
-    } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
-  };
-
-  const guardarArranque = async () => {
-    if (!fechaArranqueInput) return;
-    try {
-      if (paradaAbiertaId) {
-        await fetch(`/api/paradas/${paradaAbiertaId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fechaArranque: fechaArranqueInput }),
-        });
-      }
-      setValue("camionetatParada", false);
-      setShowArranque(false);
     } catch { Swal.fire({ icon: "error", title: "Sin conexión" }); }
   };
 
@@ -648,25 +654,6 @@ function CamionetasCheckList() {
           <Button variant="secondary" onClick={() => setShowNuevaParada(false)}>Cancelar</Button>
           <Button style={{ backgroundColor: "#8b4a4a", border: "none", color: "#fff" }} onClick={guardarNuevaParada}>
             <i className="bi bi-save me-2"></i>Confirmar parada
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Modal: Registrar arranque (circulo tildado → click) */}
-      <Modal show={showArranque} onHide={() => setShowArranque(false)} centered contentClassName="border border-dark">
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold">Registrar arranque</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="mb-3">
-            <Form.Label className="fw-semibold">Fecha de arranque</Form.Label>
-            <Form.Control type="date" className="w-50" value={fechaArranqueInput} onChange={(e) => setFechaArranqueInput(e.target.value)} autoFocus />
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowArranque(false)}>Cancelar</Button>
-          <Button style={{ backgroundColor: "#52735a", border: "none", color: "#fff" }} onClick={guardarArranque}>
-            <i className="bi bi-save me-2"></i>Confirmar arranque
           </Button>
         </Modal.Footer>
       </Modal>

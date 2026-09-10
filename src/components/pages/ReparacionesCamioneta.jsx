@@ -152,31 +152,46 @@ function ReparacionesCamioneta() {
 
           if (confirmAlta.isConfirmed) {
             const now = new Date().toISOString();
-            const promises = [];
 
-            if (paradaAbierta) {
-              promises.push(
-                fetch(`/api/paradas/${paradaAbierta._id}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ fechaArranque: now }),
-                })
-              );
-            }
-
-            trabajos
-              .filter((t) => t.maquinaParada)
-              .forEach((t) => {
-                promises.push(
+            // Se cierran TODAS las paradas abiertas, no solo la primera: con una
+            // sola sin fechaArranque el resto de las pantallas la sigue viendo parada.
+            const promises = [
+              ...paradas
+                .filter((p) => !p.fechaArranque)
+                .map((p) =>
+                  fetch(`/api/paradas/${p._id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ fechaArranque: now }),
+                  })
+                ),
+              ...trabajos
+                .filter((t) => t.maquinaParada)
+                .map((t) =>
                   fetch(`/api/trabajos-camioneta/${t._id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ maquinaParada: false }),
                   })
-                );
-              });
+                ),
+            ];
 
-            await Promise.all(promises);
+            const respuestas = await Promise.all(promises);
+            cargarDatos();
+
+            // fetch no falla con un 4xx/5xx: sin mirar res.ok se anunciaba
+            // "en servicio" aunque no se hubiera guardado.
+            if (respuestas.some((r) => !r.ok)) {
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "No se pudo poner en servicio la unidad. Probá de nuevo.",
+                width: "300px",
+                confirmButtonColor: "#1e293b",
+              });
+              return;
+            }
+
             Swal.fire({
               icon: "success",
               title: "¡Camioneta en servicio!",
