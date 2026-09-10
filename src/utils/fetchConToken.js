@@ -25,6 +25,19 @@ export function instalarFetchConToken() {
     const headers = new Headers(opciones.headers || {});
     if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
 
-    return original(entrada, { ...opciones, headers });
+    return original(entrada, { ...opciones, headers }).then((res) => {
+      // /api/auth queda afuera: ahí un 401 es "contraseña incorrecta", no sesión vencida.
+      if (res.status === 401 && !url.startsWith("/api/auth/")) cerrarSesionVencida();
+      return res;
+    });
   };
+}
+
+// El token dura 12h. Vencido, la pantalla seguía "logueada" y cada llamada
+// daba 401; se corta la sesión y se vuelve al login, igual que el servicio
+// `api` de Compras.
+function cerrarSesionVencida() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  if (window.location.pathname !== "/login") window.location.assign("/login");
 }
