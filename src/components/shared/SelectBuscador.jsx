@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // Desplegable con buscador. El <select> nativo solo salta a la opción que
 // EMPIEZA con lo tipeado, y acá las tareas, la gente y los turbos se buscan
@@ -11,8 +11,16 @@ const normalizar = (t) =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+// Fondo de la opción marcada y color de la elegida. Por defecto los verdes de
+// Producción; Compras le pasa su bordó.
+const COLORES = { marcada: "#e8f5ee", elegida: "#1b4332" };
+
+// Alto máximo de la lista abierta.
+const ALTO_LISTA = 220;
+
 function SelectBuscador({
   opciones = [], // [{ valor, texto }]
+  colores = COLORES,
   valor = "",
   onChange,
   vacio = "—", // texto de la opción que limpia la selección; null la saca
@@ -31,6 +39,7 @@ function SelectBuscador({
   const [abierto, setAbierto] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [marcada, setMarcada] = useState(0);
+  const [posicion, setPosicion] = useState(null);
 
   const caja = useRef(null);
   const propio = useRef(null);
@@ -72,11 +81,51 @@ function SelectBuscador({
     return () => document.removeEventListener("mousedown", alClicAfuera);
   }, [abierto]);
 
+  // La lista va con position: fixed, ubicada sobre el campo. Absoluta, la
+  // recortaba cualquier contenedor con overflow hidden (la tarjeta del pedido
+  // de Compras la cortaba en su borde y obligaba a scrollear adentro). Si abajo
+  // no hay lugar, se abre para arriba. Se reubica al scrollear o redimensionar.
+  useLayoutEffect(() => {
+    if (!abierto) return;
+    const ubicar = (e) => {
+      // El scroll de la propia lista no mueve el campo.
+      if (e?.target === lista.current) return;
+      const r = campo.current?.getBoundingClientRect();
+      if (!r) return;
+      const MARGEN = 8;
+      const abajo = window.innerHeight - r.bottom - MARGEN;
+      const arriba = r.top - MARGEN;
+      const haciaArriba = abajo < ALTO_LISTA && arriba > abajo;
+      setPosicion({
+        left: r.left,
+        width: r.width,
+        ...(haciaArriba
+          ? { bottom: window.innerHeight - r.top + 2, maxHeight: Math.min(ALTO_LISTA, arriba) }
+          : { top: r.bottom + 2, maxHeight: Math.min(ALTO_LISTA, abajo) }),
+      });
+    };
+    ubicar();
+    window.addEventListener("resize", ubicar);
+    // En captura: el scroll de cualquier contenedor (la página, un modal)
+    // también mueve el campo.
+    document.addEventListener("scroll", ubicar, true);
+    return () => {
+      window.removeEventListener("resize", ubicar);
+      document.removeEventListener("scroll", ubicar, true);
+    };
+  }, [abierto, campo]);
+
   // La opción marcada tiene que quedar a la vista al moverse con las flechas.
+  // Se scrollea solo la lista: scrollIntoView movía también la página.
   useEffect(() => {
     if (!abierto || !lista.current) return;
-    const fila = lista.current.children[marcada];
-    fila?.scrollIntoView({ block: "nearest" });
+    const l = lista.current;
+    const fila = l.children[marcada];
+    if (!fila) return;
+    if (fila.offsetTop < l.scrollTop) l.scrollTop = fila.offsetTop;
+    else if (fila.offsetTop + fila.offsetHeight > l.scrollTop + l.clientHeight) {
+      l.scrollTop = fila.offsetTop + fila.offsetHeight - l.clientHeight;
+    }
   }, [marcada, abierto]);
 
   const elegir = (opcion) => {
@@ -171,17 +220,18 @@ function SelectBuscador({
         }}
       ></i>
 
-      {abierto && (
+      {abierto && posicion && (
         <ul
           ref={lista}
           className="list-unstyled bg-white border rounded-3 shadow-sm mb-0 py-1"
           style={{
-            position: "absolute",
-            top: "calc(100% + 2px)",
-            left: 0,
-            width: "100%",
+            position: "fixed",
+            top: posicion.top,
+            bottom: posicion.bottom,
+            left: posicion.left,
+            width: posicion.width,
             minWidth: "180px",
-            maxHeight: "220px",
+            maxHeight: posicion.maxHeight,
             overflowY: "auto",
             zIndex: 1080,
           }}
@@ -213,8 +263,8 @@ function SelectBuscador({
               style={{
                 fontSize: "0.78rem",
                 cursor: "pointer",
-                backgroundColor: i === marcada ? "#e8f5ee" : "transparent",
-                color: o.valor === valor ? "#1b4332" : "#1e293b",
+                backgroundColor: i === marcada ? colores.marcada : "transparent",
+                color: o.valor === valor ? colores.elegida : "#1e293b",
                 fontWeight: o.valor === valor ? 600 : 400,
               }}
               onMouseEnter={() => setMarcada(i)}

@@ -1,0 +1,106 @@
+# Unificar las altas del proyecto
+
+**Estado: pendiente, no se tocó nada.** Estudio del 13/09/2026, a pedido del
+usuario: "necesito unificar todas en un solo botón, que sea común a todo el
+proyecto y logre que no haya inconsistencias… creo que hay que tratar que haya
+un solo botón de altas, con los submenús existentes".
+
+---
+
+## 1. Lo que hay hoy
+
+Nueve páginas de alta, tres menús para llegar y tres estilos.
+
+| Sector | Página | Ruta | API | Menú que la abre |
+| --- | --- | --- | --- | --- |
+| Compras | `compras/Usuarios.jsx` | `/compras/altas/usuarios` | `/usuarios` | `compras/Menu.jsx` → "Altas" (filtra por rol) |
+| Compras | `compras/Proveedores.jsx` | `/compras/altas/proveedores` | `/proveedores` | ídem |
+| Compras | `compras/CentrosCosto.jsx` | `/compras/altas/centros-costo` | `/centros-costo` | ídem |
+| Producción | `pages/ProduccionAltaCC.jsx` | `/produccion/altas/cc` | `/centros-costo` | `shared/NavbarProduccion.jsx` → "Altas" |
+| Producción | `pages/ProduccionAltaPersonal.jsx` | `/produccion/altas/personal` | `/personal` | ídem |
+| Producción | `pages/ProduccionAltaTareas.jsx` | `/produccion/altas/tareas` | `/tareas` | ídem |
+| Mantenimiento | `pages/CamionetasAltas.jsx` | `/camionetas/altas` | `/camionetas` | `shared/Sidebar.jsx` → Camionetas → "Alta Flota" (y un botón en `ResumenCheckList`) |
+| Mantenimiento | `pages/TractoresAltas.jsx` | `/tractores/altas` | `/tractores`, `/historial-tractor` | `Sidebar` → Tractores → "Alta Tractores" |
+| Mantenimiento | `pages/ColectivosAltas.jsx` | `/colectivos/altas` | `/colectivos` | `Sidebar` → Colectivos → "Alta Colectivos" |
+
+El marco de cada página lo decide `LayoutDesktop` en `App.jsx` por el prefijo
+de la URL: `/compras` lleva el `Menu` bordó, `/produccion` el
+`NavbarProduccion` verde y el resto el `Sidebar` (las altas de Mantenimiento
+además dibujan su propia barra oscura `#1e293b`).
+
+## 2. Inconsistencias encontradas
+
+1. **Dos pantallas para el mismo padrón de CC.** `CentroCosto` es un solo
+   modelo (fusionado al unificar, ver `_claude/unificacion-compras-tablero.md`),
+   pero se edita desde dos lados con campos distintos:
+   - Compras: `cc`, `grupo`, `marca`, `observaciones`.
+   - Producción: `cc`, `equipo`, `descripcion` (y el vínculo `tractor`).
+   Nadie ve la ficha completa, y borrar desde un lado lo borra del otro sin
+   aviso. El back ya separa `CAMPOS_COMPRAS` (editables en cualquier CC) de
+   `CAMPOS_EQUIPO` (bloqueados en los CC que manejan Tractores/Camionetas).
+2. **Usuarios cuelga de Compras**, pero el login es de todo el proyecto.
+3. **Permisos desparejos.**
+   - Front: las altas de Compras tienen `RutaProtegida` con roles; las de
+     Producción y Mantenimiento solo piden estar logueado (incluso un
+     solicitante entra). `PERMISOS.produccion` y `PERMISOS.mantenimiento`
+     existen en `utils/permisos.js` pero no se usan en ningún lado.
+   - Back: ningún padrón controla roles (`soloRoles` solo está en
+     `PUT /config/monto-autorizacion`). Cualquiera con sesión puede crear
+     usuarios por la API aunque la pantalla se lo esconda.
+4. **Tres estilos.** Compras usa el formato común (`tabla-informe
+   tabla-compras`, `formato.js`, `estilos.jsx`). Producción arma los `th` a
+   mano en verde sin `tabla-informe`. Mantenimiento tiene su barra oscura y
+   `th` a mano.
+5. **Funciones distintas.** Excel en Producción y Mantenimiento (no en Compras
+   ni en Camionetas); modales, confirmación de borrado y buscador distintos en
+   cada una. Las de Compras llaman con `api`; el resto con `fetch` (anda igual
+   por `utils/fetchConToken.js`).
+6. **Celular.** `App.jsx` manda todo lo que no es `/compras` a `/visitas` en el
+   teléfono. Hoy Proveedores se abre desde el celular solo porque vive bajo
+   `/compras`.
+
+## 3. Plan propuesto
+
+### Etapa 1 — un solo botón (poco riesgo, no mueve rutas)
+- Un solo archivo con la lista de altas (como `permisos.js`): ruta, nombre,
+  ícono, grupo y roles de cada una.
+- Un componente `MenuAltas` con los submenús agrupados:
+  - **Generales:** Usuarios, Centros de costo
+  - **Compras:** Proveedores
+  - **Producción:** Personal, Tareas
+  - **Flota:** Camionetas, Tractores, Colectivos
+- El mismo botón en `Sidebar`, `NavbarProduccion`, `compras/Menu.jsx` y en la
+  `PaginaPrincipal`. Cada uno ve lo que su rol le permite.
+- Salen los tres menús actuales de altas (el "Altas" de Compras, el de
+  Producción y los "Alta …" del Sidebar).
+
+### Etapa 2 — sección Altas propia
+- Rutas `/altas/usuarios`, `/altas/centros-costo`, `/altas/proveedores`,
+  `/altas/personal`, `/altas/tareas`, `/altas/camionetas`, `/altas/tractores`,
+  `/altas/colectivos`, con `<Navigate>` desde las viejas (hay un link en
+  `ResumenCheckList.jsx` a `/camionetas/altas`).
+- Un navbar propio de Altas en `LayoutDesktop` (sumarla a `sinSidebar`).
+- **Una sola pantalla de CC** con todos los campos (cc, equipo, descripción,
+  grupo, marca, observaciones), respetando los bloqueos del back para los CC
+  de Tractores y Camionetas.
+
+### Etapa 3 — mismo formato y mismos permisos
+- Una plantilla común (`PaginaAlta`): encabezado con contador y Excel,
+  buscador, `tabla-informe`, el mismo modal de alta/edición y la misma
+  confirmación de borrado. Lo más pesado es `TractoresAltas.jsx` (1223 líneas).
+- Permisos por padrón en `permisos.js`, aplicados en rutas, menú y **back**
+  (`soloRoles` en POST/PUT/DELETE de cada router). Cierra el hueco de
+  `/usuarios`.
+
+Recomendación: arrancar por la etapa 1 más la unión del CC.
+
+## 4. Decisiones que tiene que tomar el usuario
+
+1. Dónde va el botón: en los tres navbars y en la principal (recomendado) o
+   solo en la principal.
+2. Qué rol puede editar cada padrón (la definición de roles quedó pendiente
+   al unificar el login).
+3. Si se unen las dos pantallas de CC (recomendado: sí).
+4. Color o identidad de la sección Altas: uno propio o el de cada sector.
+5. Si alguna alta se tiene que poder abrir desde el celular (hoy Proveedores
+   se puede).

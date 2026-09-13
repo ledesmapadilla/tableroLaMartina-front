@@ -5,9 +5,22 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion } from './estilos'
+import SelectBuscador from '../shared/SelectBuscador'
 
 const URGENCIAS     = ['Baja', 'Media', 'Alta', 'Crítica']
 const GRUPOS_SIN_CC = ['Herreria', 'Gomeria', 'Stock', 'Otros']
+// C.C. que no son un centro del padrón: "Sin CC" (el ítem no es de ninguna
+// máquina), "Varios" (es para más de una) y "Taller" (es para el taller).
+const CC_ESPECIALES = ['Sin CC', 'Varios', 'Taller']
+// Los que no dependen del grupo: sobreviven a un cambio de grupo.
+const CC_DE_CUALQUIER_GRUPO = ['Varios', 'Taller']
+
+// Fecha de hoy en la hora local. toISOString da la de UTC, que desde las 21 hs
+// de Argentina ya es mañana: dejaría la fecha por defecto en el futuro.
+const hoyLocal = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 
 
@@ -24,7 +37,7 @@ const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', 
 
 export default function NuevoPedido() {
   const navigate = useNavigate()
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [fecha, setFecha] = useState(hoyLocal())
   const [itemForm, setItemForm] = useState(ITEM_INIT)
   const [items, setItems] = useState([])
   const [editingId, setEditingId] = useState(null)
@@ -37,21 +50,26 @@ export default function NuevoPedido() {
   }, [])
 
   const ccLabel = (cc) => {
-    if (!cc || cc === 'Sin CC') return cc || ''
+    if (!cc || CC_ESPECIALES.includes(cc)) return cc || ''
     const c = centrosCosto.find(x => x.cc === cc)
     return cc + (c?.marca ? ` — ${c.marca}` : '')
   }
 
-  const todosGrupos = [...new Set(centrosCosto.map(c => c.grupo)), ...GRUPOS_SIN_CC].sort()
+  // "Taller" no tiene centros en el padrón pero es un grupo más.
+  const todosGrupos = [...new Set([...centrosCosto.map(c => c.grupo), ...GRUPOS_SIN_CC, 'Taller'])].sort()
 
   const handleGrupoChange = (grupo) => {
     if (GRUPOS_SIN_CC.includes(grupo)) {
       setItemForm(prev => ({ ...prev, grupo, cc: 'Sin CC' }))
       setCcSearch('Sin CC')
     } else {
-      const ccSigueValido = centrosCosto.find(c => c.cc === itemForm.cc && c.grupo === grupo)
-      setItemForm(prev => ({ ...prev, grupo, cc: ccSigueValido ? prev.cc : '' }))
-      if (!ccSigueValido) setCcSearch('')
+      const ccSigueValido =
+        CC_DE_CUALQUIER_GRUPO.includes(itemForm.cc) ||
+        centrosCosto.find(c => c.cc === itemForm.cc && c.grupo === grupo)
+      // El grupo Taller trae su C.C. puesto; se puede cambiar.
+      const ccNuevo = grupo === 'Taller' ? 'Taller' : ''
+      setItemForm(prev => ({ ...prev, grupo, cc: ccSigueValido ? prev.cc : ccNuevo }))
+      if (!ccSigueValido) setCcSearch(ccNuevo)
     }
   }
 
@@ -60,9 +78,12 @@ export default function NuevoPedido() {
     setItemForm(prev => ({
       ...prev,
       cc: val,
-      grupo: val === 'Sin CC' ? prev.grupo : (centro ? centro.grupo : prev.grupo),
+      // El C.C. Taller sin grupo elegido lleva al grupo Taller.
+      grupo: val === 'Taller'
+        ? (prev.grupo || 'Taller')
+        : CC_ESPECIALES.includes(val) ? prev.grupo : (centro ? centro.grupo : prev.grupo),
     }))
-    setCcSearch(val === 'Sin CC' ? 'Sin CC' : ccLabel(val))
+    setCcSearch(ccLabel(val))
     setShowCcDrop(false)
   }
 
@@ -72,12 +93,18 @@ export default function NuevoPedido() {
     let base = itemForm.grupo
       ? centrosCosto.filter(c => c.grupo === itemForm.grupo)
       : centrosCosto
-    const conSinCc = itemForm.grupo
-      ? base
-      : [{ _id: 'sincc', cc: 'Sin CC', marca: '' }, ...base]
-    if (!ccSearch) return conSinCc
+    // "Varios" y "Taller" van siempre; "Sin CC" solo mientras no haya grupo
+    // elegido.
+    const siempre = [
+      { _id: 'varios', cc: 'Varios', marca: 'más de un C.C.' },
+      { _id: 'taller', cc: 'Taller', marca: '' },
+    ]
+    const opciones = itemForm.grupo
+      ? [...siempre, ...base]
+      : [{ _id: 'sincc', cc: 'Sin CC', marca: '' }, ...siempre, ...base]
+    if (!ccSearch) return opciones
     const q = ccSearch.toLowerCase()
-    return conSinCc.filter(c =>
+    return opciones.filter(c =>
       c.cc.toLowerCase().includes(q) ||
       (c.marca && c.marca.toLowerCase().includes(q))
     )
@@ -85,6 +112,12 @@ export default function NuevoPedido() {
 
   const agregarFila = (e) => {
     e.preventDefault()
+    // El desplegable de grupo no es un <select>: el required del navegador no
+    // lo cubre, así que el obligatorio se controla acá.
+    if (!itemForm.grupo) {
+      Swal.fire({ icon: 'warning', title: 'Falta el grupo', text: 'Elegí el grupo del ítem.' })
+      return
+    }
     if (editingId) {
       setItems(items.map(i => i._tmpId === editingId ? { ...itemForm, _tmpId: editingId } : i))
       setEditingId(null)
@@ -113,6 +146,11 @@ export default function NuevoPedido() {
   const guardar = async () => {
     if (items.length === 0) {
       Swal.fire({ icon: 'warning', title: 'Sin ítems', text: 'Agregá al menos un ítem antes de guardar.' })
+      return
+    }
+    // El calendario no deja elegir fechas futuras, pero escrita a mano sí entra.
+    if (!fecha || fecha > hoyLocal()) {
+      Swal.fire({ icon: 'warning', title: 'Fecha inválida', text: 'La fecha del pedido no puede ser posterior a hoy.' })
       return
     }
     try {
@@ -181,10 +219,13 @@ export default function NuevoPedido() {
         </div>
 
         {/* Carga de un ítem */}
-        <Card className="mb-3 shadow-sm border-0 rounded-3 overflow-hidden flex-shrink-0">
+        {/* Sin overflow-hidden: recortaba los desplegables de C.C. y grupo en
+            el borde de la tarjeta. Las esquinas del encabezado se redondean
+            a mano. */}
+        <Card className="mb-3 shadow-sm border-0 rounded-3 flex-shrink-0">
           <div
             className="d-flex justify-content-between align-items-center px-3 py-2"
-            style={{ backgroundColor: colorTarjeta, color: '#fff' }}
+            style={{ backgroundColor: colorTarjeta, color: '#fff', borderRadius: '0.5rem 0.5rem 0 0' }}
           >
             <span className="fw-semibold d-flex align-items-center gap-2" style={{ fontSize: '0.92rem' }}>
               <i className={`bi ${editingId ? 'bi-pencil-square' : 'bi-plus-circle-fill'}`}></i>
@@ -198,6 +239,7 @@ export default function NuevoPedido() {
                 type="date"
                 size="sm"
                 value={fecha}
+                max={hoyLocal()}
                 onChange={(e) => setFecha(e.target.value)}
                 className="rounded-3"
                 style={{ width: '150px', fontSize: '0.82rem', height: '32px' }}
@@ -208,6 +250,7 @@ export default function NuevoPedido() {
           <Card.Body className="p-3">
             <Form onSubmit={agregarFila}>
               <Row className="g-3">
+                {/* Todas las casillas en una fila y la descripción abajo. */}
                 <Col md={4}>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Nombre repuesto <span className="text-danger">*</span>
@@ -221,7 +264,7 @@ export default function NuevoPedido() {
                   />
                 </Col>
 
-                <Col md={2}>
+                <Col md={1}>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Cant. <span className="text-danger">*</span>
                   </Form.Label>
@@ -237,17 +280,37 @@ export default function NuevoPedido() {
                   />
                 </Col>
 
-                <Col md={2}>
+                <Col md={1}>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Un. <span className="text-danger">*</span>
                   </Form.Label>
                   <Form.Control
                     className="rounded-3"
                     style={campo}
-                    placeholder="un, kg, mts"
+                    placeholder="un/kg"
                     value={itemForm.unidad}
                     onChange={(e) => setItemForm({ ...itemForm, unidad: e.target.value })}
                     required
+                  />
+                </Col>
+
+                {/* Primero el grupo y después el C.C.: el grupo acota los C.C.
+                    que se ofrecen y en Taller o los grupos sin C.C. lo completa. */}
+                <Col md={2}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Grupo <span className="text-danger">*</span>
+                  </Form.Label>
+                  {/* Mismo desplegable con buscador que Producción, con el
+                      bordó de Compras: el select nativo centraba el texto y
+                      abría la lista del navegador, distinta a la del C.C. */}
+                  <SelectBuscador
+                    opciones={todosGrupos.map((g) => ({ valor: g, texto: g }))}
+                    valor={itemForm.grupo}
+                    onChange={handleGrupoChange}
+                    placeholder="Elegir grupo…"
+                    className="rounded-3"
+                    style={campo}
+                    colores={{ marcada: BORDO_SUAVE, elegida: BORDO }}
                   />
                 </Col>
 
@@ -336,7 +399,7 @@ export default function NuevoPedido() {
                   </Form.Select>
                 </Col>
 
-                <Col md={8}>
+                <Col md={12}>
                   <Form.Label className="fw-semibold text-dark small mb-1">Descripción</Form.Label>
                   <Form.Control
                     as="textarea"
@@ -346,24 +409,6 @@ export default function NuevoPedido() {
                     value={itemForm.descripcion}
                     onChange={(e) => setItemForm({ ...itemForm, descripcion: e.target.value })}
                   />
-                </Col>
-
-                <Col md={4}>
-                  <Form.Label className="fw-semibold text-dark small mb-1">
-                    Grupo <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Select
-                    className="rounded-3"
-                    style={campo}
-                    value={itemForm.grupo}
-                    onChange={(e) => handleGrupoChange(e.target.value)}
-                    required
-                  >
-                    <option value="">—</option>
-                    {todosGrupos.map((g) => (
-                      <option key={g}>{g}</option>
-                    ))}
-                  </Form.Select>
                 </Col>
               </Row>
 

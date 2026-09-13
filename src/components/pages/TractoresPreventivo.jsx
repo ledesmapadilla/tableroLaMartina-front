@@ -23,8 +23,34 @@ const formatFecha = (iso) => {
   return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-// Intervalo estándar de mantenimiento para tractores (en horas)
-const DEFAULT_INTERVALO_HS = 250;
+// Casi toda la flota cuenta horas, pero hay equipos que cuentan kilómetros
+// (el CC 901 es un camión): cada unidad trae su intervalo de service estándar,
+// las alternativas del formulario y el margen para avisar que está próximo.
+const UNIDADES = {
+  hs: {
+    etiqueta: "hs",
+    nombre: "Horas",
+    lectura: "Horómetro",
+    intervalo: 250,
+    margen: 50,
+    opciones: [250, 500, 1000, 100],
+  },
+  km: {
+    etiqueta: "km",
+    nombre: "Kilómetros",
+    lectura: "Kilometraje",
+    intervalo: 10000,
+    margen: 1000,
+    opciones: [10000, 5000, 15000, 20000],
+  },
+};
+const unidadDe = (tractor) => UNIDADES[tractor?.unidad] || UNIDADES.hs;
+
+// "416.540 km" / "2.450 hs", o una raya si no hay lectura.
+const conUnidad = (valor, unidad) =>
+  typeof valor === "number" && !isNaN(valor)
+    ? `${valor.toLocaleString("es-AR")} ${unidad.etiqueta}`
+    : "—";
 
 // Horas con las que hay que hacer la cuenta del service. Cuando hubo cambio de
 // horómetro la lectura sola miente: hay que sumarle las horas de los anteriores.
@@ -77,7 +103,13 @@ const BadgeOrigen = ({ origen }) => {
   );
 };
 
-function getEstadoTractor(hsActuales, hsUltimoService, intervalo = DEFAULT_INTERVALO_HS, esParado = false) {
+function getEstadoTractor(
+  hsActuales,
+  hsUltimoService,
+  intervalo = UNIDADES.hs.intervalo,
+  esParado = false,
+  margen = UNIDADES.hs.margen
+) {
   if (esParado) {
     return {
       label: "Parado",
@@ -113,7 +145,7 @@ function getEstadoTractor(hsActuales, hsUltimoService, intervalo = DEFAULT_INTER
     };
   }
 
-  if (diferencia <= 50) {
+  if (diferencia <= margen) {
     return {
       label: "Próximo",
       bg: "#fef3c7",
@@ -168,6 +200,7 @@ function TractoresPreventivo() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     reset,
     control,
     formState: { errors },
@@ -197,6 +230,12 @@ function TractoresPreventivo() {
   });
 
   const tractorSeleccionadoId = useWatch({ control, name: "tractor" });
+
+  // Unidad del equipo de cada formulario: define etiquetas e intervalos.
+  const uService = unidadDe(
+    tractores.find((t) => t._id === tractorSeleccionadoId) || tractorModalPreseleccionado
+  );
+  const uHm = unidadDe(tractorModalHm);
 
   const cargarTractores = () =>
     fetch("/api/tractores")
@@ -260,7 +299,13 @@ function TractoresPreventivo() {
     if (t?.supervisor) {
       setValue("responsable", t.supervisor);
     }
-  }, [tractorSeleccionadoId, tractores, setValue, servicioEditandoId]);
+    // Un intervalo en horas no tiene sentido para un equipo que cuenta km (ni
+    // al revés): si el elegido no es de su unidad, va el estándar de ella.
+    const unidad = unidadDe(t);
+    if (!unidad.opciones.includes(Number(getValues("intervalo")))) {
+      setValue("intervalo", unidad.intervalo);
+    }
+  }, [tractorSeleccionadoId, tractores, setValue, getValues, servicioEditandoId]);
 
   const abrirModalService = (tractorId = "") => {
     const t = tractores.find((t) => t._id === tractorId);
@@ -276,7 +321,7 @@ function TractoresPreventivo() {
       fecha: new Date().toISOString().split("T")[0],
       responsable: t?.supervisor || "",
       horometro: reg?.horometro ?? hmActualObj?.horometro ?? "",
-      intervalo: reg?.intervalo ?? 250,
+      intervalo: reg?.intervalo ?? unidadDe(t).intervalo,
       observaciones: "",
     });
     setShowModal(true);
@@ -419,9 +464,9 @@ function TractoresPreventivo() {
         title: "El horómetro es menor al registrado",
         html:
           `La última lectura de <b>CC ${tractorModalHm?.cc ?? "—"}</b> es de ` +
-          `<b>${actual.toLocaleString("es-AR")} hs</b>` +
+          `<b>${conUnidad(actual, uHm)}</b>` +
           `${hmObj?.fecha ? ` (${formatFecha(hmObj.fecha)})` : ""}` +
-          ` y estás cargando <b>${nuevo.toLocaleString("es-AR")} hs</b>.<br/><br/>` +
+          ` y estás cargando <b>${conUnidad(nuevo, uHm)}</b>.<br/><br/>` +
           (pisaLaTabla
             ? "Si continuás, la tabla va a pasar a mostrar el valor nuevo."
             : "Como la fecha que cargás es anterior, la lectura queda en el historial pero la tabla va a seguir mostrando la más reciente."),
@@ -563,7 +608,7 @@ function TractoresPreventivo() {
       fecha: s.fecha ? String(s.fecha).split("T")[0] : new Date().toISOString().split("T")[0],
       responsable: s.responsable || t?.supervisor || "",
       horometro: s.horometro ?? "",
-      intervalo: s.intervalo ?? DEFAULT_INTERVALO_HS,
+      intervalo: s.intervalo ?? unidadDe(t).intervalo,
       observaciones: s.observaciones || "",
     });
     setShowModal(true);
@@ -686,11 +731,12 @@ function TractoresPreventivo() {
       const hsActuales = horasDe(hmObj);
       const fechaHsActual = hmObj?.fecha;
       const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
-      const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
+      const unidad = unidadDe(t);
+      const intervalo = reg?.intervalo || unidad.intervalo;
       const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
 
       const estaParado = paradasTractores.has(t._id?.toString());
-      const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado);
+      const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado, unidad.margen);
 
       const fila = ws.addRow([
         idx + 1,
@@ -699,10 +745,10 @@ function TractoresPreventivo() {
         t.supervisor || "—",
         t.gruppo ? `Grupo ${t.gruppo}` : "—",
         fechaHsActual ? formatFecha(fechaHsActual) : "—",
-        hsActuales !== undefined && hsActuales !== null ? `${hsActuales.toLocaleString("es-AR")} hs` : "—",
+        conUnidad(hsActuales, unidad),
         reg ? formatFecha(reg.fecha) : "—",
-        hsUltimoService !== null ? `${hsUltimoService.toLocaleString("es-AR")} hs` : "—",
-        hsProxService !== null ? `${hsProxService.toLocaleString("es-AR")} hs` : "—",
+        conUnidad(hsUltimoService, unidad),
+        conUnidad(hsProxService, unidad),
         reg?.observaciones || "—",
         estado.label,
       ]);
@@ -1048,9 +1094,10 @@ function TractoresPreventivo() {
                 const hsActuales = horasDe(hmObj);
                 const fechaHsActual = hmObj?.fecha;
                 const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
-                const intervalo = reg?.intervalo || DEFAULT_INTERVALO_HS;
+                const unidad = unidadDe(t);
+                const intervalo = reg?.intervalo || unidad.intervalo;
                 const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
-                const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado);
+                const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado, unidad.margen);
 
                 return (
                   <tr
@@ -1145,7 +1192,7 @@ function TractoresPreventivo() {
 
                     {/* Horómetro (Horómetro actual) */}
                     <td className="fw-bold" style={{ fontSize: "0.74rem", color: "#0f172a", padding: "2px 4px" }}>
-                      {hsActuales !== undefined && hsActuales !== null ? `${hsActuales.toLocaleString("es-AR")} hs` : "—"}
+                      {conUnidad(hsActuales, unidad)}
                       <BadgeHorometro numero={hmObj?.numeroHorometro} />
                     </td>
 
@@ -1156,13 +1203,13 @@ function TractoresPreventivo() {
 
                     {/* Horómetro Service (Horómetro último service) */}
                     <td className="fw-semibold text-primary" style={{ fontSize: "0.72rem", padding: "2px 4px" }}>
-                      {hsUltimoService !== null ? `${hsUltimoService.toLocaleString("es-AR")} hs` : "—"}
+                      {conUnidad(hsUltimoService, unidad)}
                       <BadgeHorometro numero={reg?.numeroHorometro} />
                     </td>
 
                     {/* Hm. Próx. Srv. */}
                     <td className="fw-semibold" style={{ fontSize: "0.72rem", color: "#2563eb", padding: "2px 4px" }}>
-                      {hsProxService !== null ? `${hsProxService.toLocaleString("es-AR")} hs` : "—"}
+                      {conUnidad(hsProxService, unidad)}
                     </td>
 
                     {/* Obs */}
@@ -1307,7 +1354,7 @@ function TractoresPreventivo() {
               {/* Horómetro Último Service */}
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-semibold text-dark mb-1">
-                  Horómetro Último Service (Hs) <span className="text-danger">*</span>
+                  {uService.lectura} Último Service ({uService.nombre}) <span className="text-danger">*</span>
                 </Form.Label>
                 <Form.Control
                   type="number"
@@ -1329,17 +1376,19 @@ function TractoresPreventivo() {
               {/* Intervalo de Service */}
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-semibold text-dark mb-1">
-                  Intervalo Próx. Service (Horas)
+                  Intervalo Próx. Service ({uService.nombre})
                 </Form.Label>
                 <Form.Select
                   {...register("intervalo")}
                   className="rounded-3"
                   style={{ fontSize: "0.86rem" }}
                 >
-                  <option value="250">Cada 250 horas (Estándar)</option>
-                  <option value="500">Cada 500 horas</option>
-                  <option value="1000">Cada 1000 horas</option>
-                  <option value="100">Cada 100 horas</option>
+                  {uService.opciones.map((n, i) => (
+                    <option key={n} value={n}>
+                      Cada {n.toLocaleString("es-AR")} {uService.nombre.toLowerCase()}
+                      {i === 0 ? " (Estándar)" : ""}
+                    </option>
+                  ))}
                 </Form.Select>
               </Form.Group>
 
@@ -1471,7 +1520,7 @@ function TractoresPreventivo() {
               {/* Horómetro actual */}
               <Form.Group className="mb-3">
                 <Form.Label className="small fw-semibold text-dark mb-1">
-                  Horómetro Actual (Hs) <span className="text-danger">*</span>
+                  {uHm.lectura} Actual ({uHm.nombre}) <span className="text-danger">*</span>
                 </Form.Label>
                 <Form.Control
                   type="number"
@@ -1490,7 +1539,7 @@ function TractoresPreventivo() {
                 )}
                 {hmActualReferencia?.horometro !== undefined && (
                   <Form.Text className="text-muted" style={{ fontSize: "0.74rem" }}>
-                    Última lectura registrada: {hmActualReferencia.horometro.toLocaleString("es-AR")} hs
+                    Última lectura registrada: {conUnidad(hmActualReferencia.horometro, uHm)}
                     {hmActualReferencia.fecha ? ` (${formatFecha(hmActualReferencia.fecha)})` : ""}
                   </Form.Text>
                 )}
@@ -1566,6 +1615,7 @@ function TractoresPreventivo() {
             const hmObj = ultimosHorometros[historialModal?.cc] || ultimosHorometros[cleanCC];
             const fechaLecturaActual = hmObj?.fecha;
             const horometroActual = hmObj?.horometro;
+            const uHist = unidadDe(historialModal);
 
             const regTabla = ultimosServices.find(
               (u) =>
@@ -1668,9 +1718,7 @@ function TractoresPreventivo() {
                           </td>
                           <td>{fechaLecturaActual ? formatFecha(fechaLecturaActual) : "—"}</td>
                           <td className="fw-bold text-dark">
-                            {horometroActual !== undefined && horometroActual !== null
-                              ? `${horometroActual.toLocaleString("es-AR")} hs`
-                              : "—"}
+                            {conUnidad(horometroActual, uHist)}
                           </td>
                           <td><BadgeOrigen origen={hmObj?.origen} /></td>
                           <td className="text-muted">—</td>
@@ -1714,9 +1762,7 @@ function TractoresPreventivo() {
                               </td>
                               <td>{esLectura && s.fecha ? formatFecha(s.fecha) : "—"}</td>
                               <td className="fw-bold text-dark">
-                                {esLectura && typeof s.horometro === "number"
-                                  ? `${s.horometro.toLocaleString("es-AR")} hs`
-                                  : "—"}
+                                {esLectura ? conUnidad(s.horometro, uHist) : "—"}
                                 {esLectura && <BadgeHorometro numero={s.numeroHorometro ?? hmObj?.numeroHorometro} />}
                                 {esActual && (
                                   <span
@@ -1732,21 +1778,30 @@ function TractoresPreventivo() {
                               </td>
                               <td>{!esLectura && s.fecha ? formatFecha(s.fecha) : "—"}</td>
                               <td className="fw-semibold text-primary">
-                                {!esLectura && typeof s.horometro === "number"
-                                  ? `${s.horometro.toLocaleString("es-AR")} hs`
-                                  : "—"}
+                                {!esLectura ? conUnidad(s.horometro, uHist) : "—"}
                                 {!esLectura && <BadgeHorometro numero={s.numeroHorometro} />}
                               </td>
                               <td className="text-secondary fw-semibold">
                                 {!esLectura && typeof s.horometro === "number"
-                                  ? `${(s.horometro + (s.intervalo || DEFAULT_INTERVALO_HS)).toLocaleString("es-AR")} hs`
+                                  ? conUnidad(s.horometro + (s.intervalo || uHist.intervalo), uHist)
                                   : "—"}
                               </td>
                               <td className="text-start">
                                 {esActual ? "Lectura vigente" : s.observaciones || "—"}
                               </td>
                               <td>
-                                {s._id && !esActual && (
+                                {/* Las lecturas de visitas no son registros del
+                                    historial: se editan desde Visitas. */}
+                                {s._id && !esActual && s.soloLectura && (
+                                  <span
+                                    className="text-muted"
+                                    style={{ fontSize: "0.68rem" }}
+                                    title="Lectura tomada en una visita: se edita desde la pantalla de Visitas"
+                                  >
+                                    <i className="bi bi-lock me-1"></i>Visitas
+                                  </span>
+                                )}
+                                {s._id && !esActual && !s.soloLectura && (
                                   <div className="d-flex align-items-center justify-content-center gap-1">
                                     <button
                                       onClick={() =>

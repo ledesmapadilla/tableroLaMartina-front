@@ -216,10 +216,9 @@ function ProduccionCertificados({
             const isHovered = hovered === numeroMes;
             const esMesActual = numeroMes === mesEnCurso;
             const periodo = periodos.find((x) => x.mes === numeroMes);
-            // Solo los meses cerrados muestran el período: hasta que se cierra
-            // el "hasta" acompaña al día de hoy y el corte todavía no es real.
-            const rango =
-              periodo?.cerrado ? `${ddmm(periodo.desde)} al ${ddmm(periodo.hasta)}` : "";
+            // Todos los meses muestran su período: la fecha de cierre es real
+            // desde el principio (por defecto el 25), no solo al cerrar el mes.
+            const rango = periodo ? `${ddmm(periodo.desde)} al ${ddmm(periodo.hasta)}` : "";
 
             // El mes en curso va en verde claro, con borde y resplandor
             // propios: es la tarjeta a la que se entra todos los días.
@@ -269,8 +268,7 @@ function ProduccionCertificados({
                 <span className="fw-bold" style={{ fontSize: "1.2rem", letterSpacing: "0.2px" }}>
                   {mes}
                 </span>
-                {/* El certificado no cubre el mes calendario: cerrado ya tiene
-                    sus fechas reales y se muestran */}
+                {/* El certificado no cubre el mes calendario: se muestran sus fechas */}
                 {rango && (
                   <span
                     className="mt-1 d-flex align-items-center gap-1"

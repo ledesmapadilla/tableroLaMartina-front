@@ -4,11 +4,13 @@ import { Container, Card, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
-import { avisarSinOC } from './avisos'
-import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, SwitchAgrupar } from './estilos'
+import { avisarSinOC, idsARetirar } from './avisos'
+import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
+import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido, CeldaOC } from './estilos'
+import { useProveedorDeOC } from './proveedorOC'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
-const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Herreria', 'Gomeria', 'Stock', 'Otros']
+const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
 
 const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Para revision', 'Para retirar'])
 
@@ -17,7 +19,11 @@ const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}`
 export default function AnalistaPendientes() {
   const navigate = useNavigate()
   const [items, setItems]       = useState([])
-  const [agrupado, setAgrupado] = useState(true)
+  // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
+  // la misma tabla.
+  const [abiertos, setAbiertos] = useState(() => new Set())
+  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OC.
+  const proveedorDeOC = useProveedorDeOC()
   const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '' }
   const [filtros, setFiltros]   = useState(FILTROS_INIT)
   const setF     = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
@@ -81,8 +87,25 @@ export default function AnalistaPendientes() {
     oc:              colapsar(uniq(its.map(i => i.oc))),
   }))
 
-  const listaAMostrar = (agrupado ? listaAgrupada : lista)
+  // Siempre por pedido: los múltiples se abren con el ojo.
+  const listaAMostrar = listaAgrupada
     .slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+
+  const alternarAbierto = (clave) =>
+    setAbiertos((prev) => {
+      const siguiente = new Set(prev)
+      if (siguiente.has(clave)) siguiente.delete(clave)
+      else siguiente.add(clave)
+      return siguiente
+    })
+
+  // Las filas de la tabla: cada pedido y, debajo de los abiertos, sus ítems
+  // marcados como anidados. Se dibujan con la misma fila que un ítem suelto.
+  const filasAMostrar = listaAMostrar.flatMap((f) =>
+    f._agrupado && f._count > 1 && abiertos.has(f._key)
+      ? [f, ...f._items.map((i) => ({ ...i, _anidada: true }))]
+      : [f]
+  )
 
   const varios = () => <span className="text-muted fst-italic" style={{ fontSize: 12 }}>Varios</span>
 
@@ -106,30 +129,12 @@ export default function AnalistaPendientes() {
     return <span className={`badge bg-${color[norm] || 'secondary'}`}>{norm}</span>
   }
 
-  const verDetalle = (item) => {
-    const filas = item._items.map(i =>
-      `<tr>
-        <td>${i.nombre_repuesto}</td>
-        <td>${i.cant ?? '—'}</td>
-        <td>${i.unidad || '—'}</td>
-        <td>${i.cc || '—'}</td>
-        <td>${i.urgencia}</td>
-        <td>${i.grupo}</td>
-        <td>${i.solicita || '—'}</td>
-        <td>${i.estado === 'Pedido' ? 'Para analisis' : (i.estado || '—')}</td>
-      </tr>`
-    ).join('')
-    Swal.fire({
-      title: `Pedido ${fmtNro(item.nro_pedido, item._src)}`,
-      html: `<div style="overflow-x:auto">
-        <table class="table table-sm table-bordered" style="font-size:13px;text-align:left">
-          <thead><tr><th style="font-weight:normal">Repuesto</th><th style="font-weight:normal">Cant.</th><th style="font-weight:normal">Un.</th><th style="font-weight:normal">C.C.</th><th style="font-weight:normal">Urgencia</th><th style="font-weight:normal">Grupo</th><th style="font-weight:normal">Solicita</th><th style="font-weight:normal">Estado</th></tr></thead>
-          <tbody>${filas}</tbody>
-        </table></div>`,
-      width: 750,
-      confirmButtonText: 'Cerrar',
+  const verDetalle = (item) =>
+    verDetallePedido({
+      titulo: `Pedido ${fmtNro(item.nro_pedido, item._src)}`,
+      items: item._items,
+      conDescripcion: false,
     })
-  }
 
   const verMotivoRevision = async (item) => {
     try {
@@ -159,26 +164,9 @@ export default function AnalistaPendientes() {
     try {
       const base = item._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
       const hist = await api.get(`${base}/${item.pedidoId}/items/${item._id}/historial`)
-      const tieneInicio = hist.some(h => h.estado === 'Para analisis' || h.estado === 'Pedido' || h.estado === 'En analisis')
-      const histToShow = tieneInicio
-        ? hist
-        : [{ fecha: item.fecha, estado: 'Para analisis', usuario: item.solicita || 'Sin especificar', nota: 'Pedido creado' }, ...hist]
-      const filas = histToShow.map(h => {
-        const fecha = h.fecha ? new Date(h.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
-        const estadoLabel = (h.estado === 'Cancelado' || h.estado === 'Rechazado') ? `<span style="color:#dc3545;font-weight:600">Rechazado</span>` : (h.estado || '—')
-        return `<tr><td>${fecha}</td><td>${estadoLabel}</td><td>${h.usuario || '—'}${h.nota ? ` <span class="text-muted" style="font-size:11px">(${h.nota})</span>` : ''}</td></tr>`
-      }).join('')
-      Swal.fire({
-        title: `Historial - ${item.nombre_repuesto}`,
-        html: `<div style="overflow-x:auto;overflow-y:auto;max-height:400px">
-          <table class="table table-sm table-bordered" style="font-size:13px;text-align:left">
-            <thead><tr><th style="font-weight:400;text-align:center">Fecha</th><th style="font-weight:400;text-align:center">Estado</th><th style="font-weight:400;text-align:center">Usuario</th></tr></thead>
-            <tbody>${filas}</tbody>
-          </table></div>`,
-        width: 560,
-        confirmButtonText: 'Cerrar',
-        buttonsStyling: false,
-        customClass: { confirmButton: 'btn btn-outline-secondary' },
+      verHistorialPedido({
+        titulo: `Historial · ${item.nombre_repuesto}`,
+        secciones: [{ historial: conCreacion(hist, item) }],
       })
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
@@ -220,10 +208,9 @@ export default function AnalistaPendientes() {
             className="px-2 py-1 rounded-3"
             style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
           >
-            {listaAMostrar.length} {agrupado ? 'pedidos' : 'ítems'}
+            {listaAMostrar.length} pedidos
           </span>
 
-          <SwitchAgrupar id="switchAgruparAP" valor={agrupado} onChange={setAgrupado} />
         </div>
 
         {/* Filtros: los siete en una sola fila, con el rótulo arriba del campo. */}
@@ -267,7 +254,7 @@ export default function AnalistaPendientes() {
                 <th style={th}>Grupo</th>
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
-                <th style={thCentro}>O.C.</th>
+                <th style={thCentro}>O.C. · Proveedor</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
             </thead>
@@ -279,24 +266,35 @@ export default function AnalistaPendientes() {
                   </td>
                 </tr>
               ) : (
-                listaAMostrar.map((item) => {
+                filasAMostrar.map((item) => {
                   const multiple = item._agrupado && item._count > 1
                   const clickeable =
                     item.estado === 'Para revision' || item.estado === 'Para retirar'
                   return (
                     <tr
-                      key={item._agrupado ? item._key : item._id}
-                      className={item.urgencia === 'Crítica' ? 'fila-critica' : ''}
+                      key={item._agrupado ? item._key : `${item._anidada ? 'sub-' : ''}${item._id}`}
+                      className={`${item.urgencia === 'Crítica' ? 'fila-critica' : ''}${item._anidada ? ' fila-anidada' : ' inicio-pedido'}`}
                     >
                       <td style={tdCentro}>{badgeTaller(item._src)}</td>
+                      {/* El pedido múltiple y sus ítems abiertos comparten la
+                          línea bordó de la izquierda: se leen como un bloque. */}
                       <td
                         style={{
                           ...tdCentro,
                           fontWeight: multiple ? 700 : 400,
-                          borderLeft: item._agrupado && item._count > 1 ? `3px solid ${BORDO}` : undefined,
+                          whiteSpace: 'nowrap',
+                          borderLeft:
+                            (item._agrupado && item._count > 1) || item._anidada ? `3px solid ${BORDO}` : undefined,
                         }}
                       >
-                        {fmtNro(item.nro_pedido, item._src)}
+                        {item._anidada ? (
+                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src)}</span>
+                        ) : (
+                          fmtNro(item.nro_pedido, item._src)
+                        )}
+                        {item._agrupado && item._count > 1 && (
+                          <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />
+                        )}
                       </td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={tdCentro}>{item.cc === 'Varios' ? varios() : item.cc || <Raya />}</td>
@@ -329,7 +327,7 @@ export default function AnalistaPendientes() {
                           if (item.estado === 'Para revision') {
                             verMotivoRevision(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`)
+                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
                           } else if (item.estado === 'Para retirar') {
                             avisarSinOC(item)
                           }
@@ -337,7 +335,7 @@ export default function AnalistaPendientes() {
                       >
                         {badgeEstado(item.estado)}
                       </td>
-                      <td style={tdCentro}>{item.oc || <Raya />}</td>
+                      <td style={tdCentro}><CeldaOC oc={item.oc} proveedor={proveedorDeOC(item)} /></td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion

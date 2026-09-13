@@ -5,6 +5,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { CATEGORIA_COLORES, opcionesFiltroCategoria } from "../../utils/categoriasTractor";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -24,38 +25,6 @@ const pesos = (n) =>
     maximumFractionDigits: 0,
   });
 
-const CATEGORIAS = [
-  "Todas",
-  "Motor",
-  "Embrague",
-  "Transmisión / Caja",
-  "Frenos",
-  "Hidráulica",
-  "Dirección",
-  "Mecánica general",
-  "Electricidad / Luces",
-  "Neumáticos / Rodado",
-  "Chapa / Cabina",
-  "Toma de Fuerza / Levante",
-  "Service Programado",
-  "Otros",
-];
-
-const CATEGORIA_COLORES = {
-  Motor: { bg: "#fee2e2", text: "#991b1b", border: "#f87171" },
-  Embrague: { bg: "#ffedd5", text: "#9a3412", border: "#fb923c" },
-  "Transmisión / Caja": { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
-  Frenos: { bg: "#fef3c7", text: "#92400e", border: "#fcd34d" },
-  Hidráulica: { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
-  Dirección: { bg: "#e0e7ff", text: "#3730a3", border: "#818cf8" },
-  "Mecánica general": { bg: "#e2e8f0", text: "#334155", border: "#94a3b8" },
-  "Electricidad / Luces": { bg: "#fef9c3", text: "#854d0e", border: "#facc15" },
-  "Neumáticos / Rodado": { bg: "#ccfbf1", text: "#115e59", border: "#2dd4bf" },
-  "Chapa / Cabina": { bg: "#fae8ff", text: "#86198f", border: "#e879f9" },
-  "Toma de Fuerza / Levante": { bg: "#e0f2fe", text: "#0369a1", border: "#7dd3fc" },
-  "Service Programado": { bg: "#dcfce7", text: "#166534", border: "#4ade80" },
-  Otros: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
-};
 
 const estadoNormalizado = (estado) => {
   if (!estado) return "Pendiente";
@@ -87,6 +56,7 @@ function HistorialTractor() {
   // Filtros
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
+  const opcionesCategoria = useMemo(() => opcionesFiltroCategoria(trabajos), [trabajos]);
   const [filtroEstado, setFiltroEstado] = useState("Pendientes / En proceso"); // 'Pendientes / En proceso' | 'Todas' | 'Terminada' | 'En proceso' | 'Pendiente'
   const [filtroTaller, setFiltroTaller] = useState("Todos"); // 'Todos' | 'Taller Propio' | 'Tercero'
   const [filtroSoloParadas, setFiltroSoloParadas] = useState(Boolean(state?.soloParadas || state?.maquinaParada));
@@ -580,7 +550,7 @@ function HistorialTractor() {
                     fontWeight: filtroCategoria !== "Todas" ? "700" : "normal",
                   }}
                 >
-                  {CATEGORIAS.map((cat) => (
+                  {opcionesCategoria.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>

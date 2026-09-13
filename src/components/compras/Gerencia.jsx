@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { Container, Table, Button } from 'react-bootstrap'
 import { BORDO, BORDO_SUAVE, thCentro, td, tdCentro } from './formato'
 import { BotonAccion } from './estilos'
+import { verHistorialPedido, conCreacion } from './detallePedido'
+import { opcionElegida } from './precioElegido'
+import UmbralAutorizacion from './UmbralAutorizacion'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 
@@ -16,10 +19,11 @@ const fmtNro = (n, src) =>
 
 const URG_ORDER = { 'Crítica': 0, 'Alta': 1, 'Media': 2, 'Baja': 3 }
 
+// El costo sale del presupuesto que eligió el analista (el más barato si no
+// eligió otro): es el mismo con el que después se arma la orden de compra.
 const calcCostoItem = (item) => {
-  const precios = [item.precio1, item.precio2, item.precio3].filter(v => v != null && v > 0)
-  if (precios.length === 0) return null
-  return Math.min(...precios) * (item.cant || 0)
+  const elegida = opcionElegida(item)
+  return elegida ? elegida.precio * (item.cant || 0) : null
 }
 
 const urgenciaMasAlta = (items) =>
@@ -91,32 +95,13 @@ export default function Gerencia() {
             .catch(() => ({ item, hist: [] }))
         )
       )
-      const seccionesHTML = historiales.map(({ item, hist }) => {
-        const tieneInicio = hist.some(h => h.estado === 'Para analisis' || h.estado === 'Pedido' || h.estado === 'En analisis')
-        const histToShow = tieneInicio
-          ? hist
-          : [{ fecha: grupo.fecha, estado: 'Para analisis', usuario: item.solicita || 'Sin especificar', nota: 'Pedido creado' }, ...hist]
-        const filas = histToShow.map(h => {
-          const fecha = h.fecha ? new Date(h.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
-          const label = (h.estado === 'Cancelado' || h.estado === 'Rechazado')
-            ? `<span style="color:#dc3545;font-weight:600">${h.estado}</span>`
-            : (h.estado || '—')
-          return `<tr><td>${fecha}</td><td>${label}</td><td>${h.usuario || '—'}${h.nota ? ` <span style="color:#888;font-size:11px">(${h.nota})</span>` : ''}</td></tr>`
-        }).join('')
-        const header = grupo.items.length > 1
-          ? `<div style="font-weight:600;font-size:13px;margin:10px 0 4px">${item.nombre_repuesto}</div>`
-          : ''
-        return `${header}<table class="table table-sm table-bordered mb-2" style="font-size:12px;text-align:left">
-          <thead><tr><th style="font-weight:400">Fecha</th><th style="font-weight:400">Estado</th><th style="font-weight:400">Usuario</th></tr></thead>
-          <tbody>${filas}</tbody></table>`
-      }).join('')
-      Swal.fire({
-        title: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src)}`,
-        html: `<div style="overflow-y:auto;max-height:400px;text-align:left">${seccionesHTML}</div>`,
-        width: 560,
-        confirmButtonText: 'Cerrar',
-        buttonsStyling: false,
-        customClass: { confirmButton: 'btn btn-outline-secondary' },
+      // Una tabla por ítem; con varios, cada una lleva el nombre del repuesto.
+      verHistorialPedido({
+        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src)}`,
+        secciones: historiales.map(({ item, hist }) => ({
+          subtitulo: grupo.items.length > 1 ? item.nombre_repuesto : '',
+          historial: conCreacion(hist, { fecha: grupo.fecha, solicita: item.solicita }),
+        })),
       })
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
@@ -282,6 +267,9 @@ export default function Gerencia() {
           </Button>
         </div>
 
+        {/* Desde qué monto un pedido llega acá. Es el mismo valor que ve el
+            comprador: se cambia desde cualquiera de las dos pantallas. */}
+        <UmbralAutorizacion />
         {cargando ? (
           <div className="flex-grow-1 d-flex align-items-center justify-content-center">
             <div className="spinner-border" role="status" style={{ color: BORDO }} />
@@ -291,19 +279,21 @@ export default function Gerencia() {
             className="flex-grow-1 shadow-sm rounded-3 bg-white"
             style={{ minHeight: 0, overflowY: 'auto', overflowX: 'auto', border: '1px solid #cbd5e1' }}
           >
-            <Table className="mb-0 tabla-informe tabla-compras tabla-gerencia" style={{ width: '100%', minWidth: '560px' }}>
+            {/* Gerencia decide desde el celular: tres columnas con los datos
+                apilados en cada celda, para que entre sin scroll lateral, y
+                botones de tamaño dedo. */}
+            <Table className="mb-0 tabla-informe tabla-compras tabla-gerencia" style={{ width: '100%' }}>
               <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr>
-                  <th style={{ ...thCentro, width: 90 }}>Taller</th>
+                  <th style={thCentro}>Pedido</th>
                   <th style={thCentro}>Costo</th>
-                  <th style={{ ...thCentro, width: 100 }}>Urgencia</th>
-                  <th style={{ ...thCentro, width: 140 }}>Decisión</th>
+                  <th style={thCentro}>Decisión</th>
                 </tr>
               </thead>
               <tbody>
                 {grupos.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="text-center text-muted py-4" style={td}>
+                    <td colSpan={3} className="text-center text-muted py-4" style={td}>
                       No hay pedidos esperando autorización
                     </td>
                   </tr>
@@ -319,23 +309,25 @@ export default function Gerencia() {
                           {fmtNro(grupo.nro_pedido, grupo._src)}
                           {grupo.items.length > 1 && <div>{grupo.items.length} ítems</div>}
                         </div>
+                        <div style={{ marginTop: 4 }}>{badgeUrgencia(grupo.urgencia)}</div>
                       </td>
 
-                      <td style={{ ...td, padding: '6px 10px' }}>
-                        <div className="d-flex align-items-center gap-2">
-                          <span className="fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2 }}>
-                            {grupo.sinPrecio ? (
-                              <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.8rem', fontStyle: 'italic' }}>
-                                Sin precio
-                              </span>
-                            ) : (
-                              fmtPrecio(grupo.costo)
-                            )}
-                          </span>
+                      <td style={{ ...tdCentro, padding: '6px 5px' }}>
+                        <div className="fw-bold" style={{ fontSize: '1rem', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
+                          {grupo.sinPrecio ? (
+                            <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: '0.8rem', fontStyle: 'italic' }}>
+                              Sin precio
+                            </span>
+                          ) : (
+                            fmtPrecio(grupo.costo)
+                          )}
+                        </div>
+                        <div className="d-flex gap-2 justify-content-center mt-1">
                           <BotonAccion
                             icono="bi-eye"
                             titulo="Ver el análisis de precios"
                             onClick={() => verAnalisis(grupo)}
+                            grande
                           />
                           {/* El historial ya estaba escrito pero no tenía
                               botón: es el mismo que en Pedidos y Pendientes. */}
@@ -343,17 +335,16 @@ export default function Gerencia() {
                             icono="bi-clock-history"
                             titulo="Historial"
                             onClick={() => verHistorial(grupo)}
+                            grande
                           />
                         </div>
                       </td>
 
-                      <td style={tdCentro}>{badgeUrgencia(grupo.urgencia)}</td>
-
-                      <td style={tdCentro}>
+                      <td style={{ ...tdCentro, padding: '6px 5px' }}>
                         <div className="d-flex gap-2 justify-content-center">
-                          <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(grupo)} />
-                          <BotonAccion icono="bi-question-lg" titulo="Mandar a revisar" variante="warning" onClick={() => revisar(grupo)} />
-                          <BotonAccion icono="bi-check-lg" titulo="Aprobar" variante="success" onClick={() => aprobar(grupo)} />
+                          <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(grupo)} grande />
+                          <BotonAccion icono="bi-question-lg" titulo="Mandar a revisar" variante="warning" onClick={() => revisar(grupo)} grande />
+                          <BotonAccion icono="bi-check-lg" titulo="Aprobar" variante="success" onClick={() => aprobar(grupo)} grande />
                         </div>
                       </td>
                     </tr>

@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { guardarConReglaHorometro } from "../../utils/horometro";
+import { CATEGORIAS_TRACTOR } from "../../utils/categoriasTractor";
 
 const hoyStr = () => {
   const now = new Date();
@@ -472,19 +473,11 @@ function ReportarFallaTractor() {
                     style={{ fontSize: "0.84rem" }}
                   >
                     <option value="">-- Seleccione una categoría --</option>
-                    <option value="Motor">Motor</option>
-                    <option value="Transmisión / Caja">Transmisión / Caja</option>
-                    <option value="Embrague">Embrague</option>
-                    <option value="Hidráulico">Hidráulico</option>
-                    <option value="Frenos">Frenos</option>
-                    <option value="Dirección">Dirección</option>
-                    <option value="Mecánica general">Mecánica general</option>
-                    <option value="Electricidad / Luces">Electricidad / Luces</option>
-                    <option value="Horómetro">Horómetro</option>
-                    <option value="Rodado / Cubiertas">Rodado / Cubiertas</option>
-                    <option value="Implementos / Enganche">Implementos / Enganche</option>
-                    <option value="Service Programado">Service Programado</option>
-                    <option value="Otros">Otros</option>
+                    {CATEGORIAS_TRACTOR.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
                   </Form.Select>
                 </Form.Group>
               </Col>

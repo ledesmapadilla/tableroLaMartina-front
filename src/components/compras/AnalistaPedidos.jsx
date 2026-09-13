@@ -2,24 +2,28 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Container, Card, Table, Button, Form, Modal, Row, Col } from 'react-bootstrap'
 import Swal from 'sweetalert2'
+import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
+import UmbralAutorizacion from './UmbralAutorizacion'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
-import { avisarSinOC } from './avisos'
+import { avisarSinOC, idsARetirar } from './avisos'
 import {
   Raya,
   BotonAccion,
   BotonLimpiar,
   FiltroTexto,
   FiltroSelect,
-  SwitchAgrupar,
+  OjoPedido,
+  CeldaOC,
 } from './estilos'
+import { useProveedorDeOC } from './proveedorOC'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
 const ESTADOS        = ['Para analisis', 'Para hacer OC', 'Autorizar', 'Para retirar', 'Rechazado']
-const GRUPOS         = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Herreria', 'Gomeria', 'Stock', 'Otros']
+const GRUPOS         = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
 const ESTABLECIMIENTOS = ['Berdina', 'San Pablo']
 
 const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', urgencia: 'Media', grupo: 'Tractores', cc: '', estado: 'Pendiente' }
@@ -33,13 +37,20 @@ export default function AnalistaPedidos() {
   const [editItemId, setEditItemId] = useState(null)
   const [editSrc, setEditSrc] = useState(null)
   const [showModal, setShowModal] = useState(false)
-  const [agrupado, setAgrupado] = useState(true)
+  // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
+  // la misma tabla.
+  const [abiertos, setAbiertos] = useState(() => new Set())
+  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OC.
+  const proveedorDeOC = useProveedorDeOC()
   const [selectedId, setSelectedId] = useState(null)
   const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '', estado: esComprador ? 'Para hacer OC' : 'Para analisis', establecimiento: '' }
   const [filtros, setFiltros] = useState(FILTROS_INIT)
   const setF = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
-  const limpiar = () => setFiltros(FILTROS_INIT)
-  const hayFiltros = Object.keys(filtros).some(k => filtros[k] !== FILTROS_INIT[k])
+  // La pantalla arranca filtrada por su etapa, pero la cruz aparece apenas
+  // hay algún filtro puesto y los saca todos, como en el resto de Compras:
+  // antes se veía con todo en "Todos" y al tocarla volvía a filtrar.
+  const limpiar = () => setFiltros(Object.fromEntries(Object.keys(FILTROS_INIT).map((k) => [k, ''])))
+  const hayFiltros = Object.values(filtros).some((v) => v !== '')
 
   // La carga vive adentro del efecto y `cargar()` solo pide una vuelta más:
   // así el que trae los datos es el efecto, que es quien puede cancelarse si
@@ -83,10 +94,9 @@ export default function AnalistaPedidos() {
     if (filtros.urgencia && item.urgencia !== filtros.urgencia) return false
     if (filtros.grupo && item.grupo !== filtros.grupo) return false
     if (filtros.solicita && !item.solicita?.toLowerCase().includes(filtros.solicita.toLowerCase())) return false
-    if (filtros.estado) {
-      if (filtros.estado === 'Para analisis') { if (normEstado !== 'Para analisis' && item.estado !== 'Para retirar') return false }
-      else { if (normEstado !== filtros.estado) return false }
-    }
+    // "Para analisis" muestra solo lo que está para analizar: antes dejaba
+    // pasar también los "Para retirar", que tienen su propia opción.
+    if (filtros.estado && normEstado !== filtros.estado) return false
     if (filtros.establecimiento && item._src !== filtros.establecimiento.toLowerCase().replace(' ', '')) return false
     return true
   })
@@ -121,14 +131,25 @@ export default function AnalistaPedidos() {
     oc:              colapsar(uniq(items.map(i => i.oc))),
   }))
 
-  const conteosPedido = lista.reduce((acc, i) => {
-    const k = `${i._src}-${i.nro_pedido}`
-    acc[k] = (acc[k] || 0) + 1
-    return acc
-  }, {})
-
-  const listaAMostrar = (agrupado ? listaAgrupada : lista)
+  // Siempre por pedido: los múltiples se abren con el ojo.
+  const listaAMostrar = listaAgrupada
     .slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+
+  const alternarAbierto = (clave) =>
+    setAbiertos((prev) => {
+      const siguiente = new Set(prev)
+      if (siguiente.has(clave)) siguiente.delete(clave)
+      else siguiente.add(clave)
+      return siguiente
+    })
+
+  // Las filas de la tabla: cada pedido y, debajo de los abiertos, sus ítems
+  // marcados como anidados. Se dibujan con la misma fila que un ítem suelto.
+  const filasAMostrar = listaAMostrar.flatMap((f) =>
+    f._agrupado && f._count > 1 && abiertos.has(f._key)
+      ? [f, ...f._items.map((i) => ({ ...i, _anidada: true }))]
+      : [f]
+  )
 
   const abrirEditar = (item) => {
     setForm({
@@ -236,31 +257,8 @@ export default function AnalistaPedidos() {
     });
   }
 
-  const verDetalle = (item) => {
-    const filas = item._items.map(i =>
-      `<tr>
-        <td>${i.nombre_repuesto}</td>
-        <td>${i.cant ?? '—'}</td>
-        <td>${i.unidad || '—'}</td>
-        <td>${i.cc || '—'}</td>
-        <td>${i.urgencia}</td>
-        <td>${i.grupo}</td>
-        <td>${i.descripcion || '—'}</td>
-        <td>${i.solicita || '—'}</td>
-        <td>${i.estado === 'Pedido' ? 'Para analisis' : (i.estado || '—')}</td>
-      </tr>`
-    ).join('')
-    Swal.fire({
-      title: `Pedido ${fmtNro(item.nro_pedido, item._src)}`,
-      html: `<div style="overflow-x:auto">
-        <table class="table table-sm table-bordered" style="font-size:13px;text-align:left">
-          <thead><tr><th style="font-weight:normal">Repuesto</th><th style="font-weight:normal">Cant.</th><th style="font-weight:normal">Un.</th><th style="font-weight:normal">C.C.</th><th style="font-weight:normal">Urgencia</th><th style="font-weight:normal">Grupo</th><th style="font-weight:normal">Descripción</th><th style="font-weight:normal">Solicita</th><th style="font-weight:normal">Estado</th></tr></thead>
-          <tbody>${filas}</tbody>
-        </table></div>`,
-      width: 750,
-      confirmButtonText: 'Cerrar',
-    })
-  }
+  const verDetalle = (item) =>
+    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src)}`, items: item._items })
 
   const verMotivoRevision = async (item) => {
     try {
@@ -338,26 +336,9 @@ export default function AnalistaPedidos() {
     try {
       const base = item._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
       const hist = await api.get(`${base}/${item.pedidoId}/items/${item._id}/historial`)
-      const tieneInicio = hist.some(h => h.estado === 'Para analisis' || h.estado === 'Pedido' || h.estado === 'En analisis')
-      const histToShow = tieneInicio
-        ? hist
-        : [{ fecha: item.fecha, estado: 'Para analisis', usuario: item.solicita || 'Sin especificar', nota: 'Pedido creado' }, ...hist]
-      const filas = histToShow.map(h => {
-        const fecha = h.fecha ? new Date(h.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
-        const estadoLabel = (h.estado === 'Cancelado' || h.estado === 'Rechazado') ? `<span style="color:#dc3545;font-weight:600">Rechazado</span>` : (h.estado || '—')
-        return `<tr><td>${fecha}</td><td>${estadoLabel}</td><td>${h.usuario || '—'}${h.nota ? ` <span class="text-muted" style="font-size:11px">(${h.nota})</span>` : ''}</td></tr>`
-      }).join('')
-      Swal.fire({
-        title: `Historial - ${item.nombre_repuesto}`,
-        html: `<div style="overflow-x:auto;overflow-y:auto;max-height:400px">
-          <table class="table table-sm table-bordered" style="font-size:13px;text-align:left">
-            <thead><tr><th style="font-weight:400;text-align:center">Fecha</th><th style="font-weight:400;text-align:center">Estado</th><th style="font-weight:400;text-align:center">Usuario</th></tr></thead>
-            <tbody>${filas}</tbody>
-          </table></div>`,
-        width: 560,
-        confirmButtonText: 'Cerrar',
-        buttonsStyling: false,
-        customClass: { confirmButton: 'btn btn-outline-secondary' },
+      verHistorialPedido({
+        titulo: `Historial · ${item.nombre_repuesto}`,
+        secciones: [{ historial: conCreacion(hist, item) }],
       })
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
@@ -376,7 +357,14 @@ export default function AnalistaPedidos() {
     if (e === 'Varios') return varios()
     if (e === 'Para revision') return <span className="badge bg-warning">Para revision</span>
     const norm = e === 'Pedido' || e === 'En analisis' ? 'Para analisis' : e
-    if (norm === 'Autorizar') return <span className="badge" style={{ backgroundColor: '#8b2035' }}>Para autorizar</span>
+    // Se lee como botón: lleva al análisis que hizo el analista.
+    if (norm === 'Autorizar') {
+      return (
+        <span className="badge" style={{ backgroundColor: '#8b2035' }} title="Ver el análisis del analista">
+          <i className="bi bi-clipboard-data me-1"></i>Autorizar Gcia.
+        </span>
+      )
+    }
     if (e === 'Retirado') return <span className="badge" style={{ backgroundColor: '#6f42c1' }}>Retirado</span>
     const color = { 'Para analisis': 'primary', 'Para hacer OC': 'info', Pendiente: 'secondary', 'En proceso': 'warning', 'Para retirar': 'success', Completado: 'success', Cancelado: 'danger', Rechazado: 'danger' }
     return <span className={`badge bg-${color[norm] || 'secondary'}`}>{norm}</span>
@@ -417,7 +405,7 @@ export default function AnalistaPedidos() {
         .tabla-informe.tabla-analista tbody tr.fila-critica > td { background-color: #fee2e2; }
         .tabla-informe.tabla-analista tbody tr.fila-critica:hover > td { background-color: #fca5a5; }
         .tabla-informe.tabla-analista tbody tr.fila-elegida > td { background-color: #e0f2fe; }
-        .tabla-informe.tabla-analista thead th { font-weight: ${agrupado ? 700 : 600}; }
+        .tabla-informe.tabla-analista thead th { font-weight: 700; }
       `}</style>
 
       {/* El ancho de la página lo fija el Container: encabezado, filtros y
@@ -439,8 +427,6 @@ export default function AnalistaPedidos() {
             {esComprador ? 'Para hacer OC' : 'Para análisis'} · {listaAMostrar.length}
           </span>
 
-          <SwitchAgrupar id="switchAgruparA" valor={agrupado} onChange={setAgrupado} />
-
           {/* El comprador arma la orden; el analista analiza el ítem elegido. */}
           {esComprador ? (
             <Button
@@ -450,13 +436,13 @@ export default function AnalistaPedidos() {
               style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
             >
               <i className="bi bi-receipt"></i>
-              <span>Orden de compra</span>
+              <span>Generar orden de compra</span>
             </Button>
           ) : (
             <Button
               size="sm"
               onClick={() => {
-                const item = selectedId ? listaAMostrar.find((i) => i._id === selectedId) : null
+                const item = selectedId ? lista.find((i) => i._id === selectedId) : null
                 navigate('/compras/analista/analizar', { state: item ? { item } : undefined })
               }}
               className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
@@ -483,11 +469,7 @@ export default function AnalistaPedidos() {
 
         {/* El comprador tiene que saber a partir de qué monto hay que pedir
             autorización a Gerencia. */}
-        {esComprador && (
-          <div className="mb-2" style={{ fontSize: '0.8rem', color: '#64748b' }}>
-            Mayor de $200.000 → <span style={{ color: '#dc2626', fontWeight: 700 }}>Autorizar</span>
-          </div>
-        )}
+        {esComprador && <UmbralAutorizacion />}
 
         {/* Filtros: los nueve en una sola fila, con el rótulo arriba del campo. */}
         <Card className="mb-3 p-2 shadow-sm border-0 rounded-3">
@@ -532,7 +514,7 @@ export default function AnalistaPedidos() {
                 <th style={th}>Grupo</th>
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
-                <th style={thCentro}>O.C.</th>
+                <th style={thCentro}>O.C. · Proveedor</th>
                 <th style={{ ...thCentro, width: 110 }}>Acciones</th>
               </tr>
             </thead>
@@ -544,14 +526,18 @@ export default function AnalistaPedidos() {
                   </td>
                 </tr>
               ) : (
-                listaAMostrar.map((item) => {
-                  const id = item._agrupado ? item._key : item._id
-                  const elegida = selectedId === item._id
-                  const multiple = item._agrupado
-                    ? item._count > 1
-                    : conteosPedido[`${item._src}-${item.nro_pedido}`] > 1
+                filasAMostrar.map((item) => {
+                  const id = item._agrupado ? item._key : `sub-${item._id}`
+                  const multiple = item._agrupado && item._count > 1
+                  // El ítem que representa la fila cuando es uno solo: un
+                  // pedido de un ítem o un ítem abierto con el ojo. Esas filas
+                  // se eligen, se editan, se rechazan y se analizan.
+                  const unItem = item._anidada ? item : item._count === 1 ? item._items[0] : null
+                  const porItem = Boolean(unItem)
+                  const elegida = porItem && selectedId === unItem._id
                   const clickeableEstado =
-                    (!agrupado && (item.estado === 'Autorizar' || item.estado === 'Para hacer OC')) ||
+                    item.estado === 'Autorizar' ||
+                    item.estado === 'Para hacer OC' ||
                     item.estado === 'Rechazado' ||
                     item.estado === 'Cancelado' ||
                     item.estado === 'Para revision' ||
@@ -560,21 +546,32 @@ export default function AnalistaPedidos() {
                   return (
                     <tr
                       key={id}
-                      className={`${item.urgencia === 'Crítica' ? 'fila-critica' : ''}${elegida ? ' fila-elegida' : ''}`}
-                      style={{ cursor: !agrupado ? 'pointer' : 'default' }}
+                      className={`${item.urgencia === 'Crítica' ? 'fila-critica' : ''}${elegida ? ' fila-elegida' : ''}${item._anidada ? ' fila-anidada' : ' inicio-pedido'}`}
+                      style={{ cursor: porItem ? 'pointer' : 'default' }}
                       onClick={() => {
-                        if (!agrupado) setSelectedId(elegida ? null : item._id)
+                        if (porItem) setSelectedId(elegida ? null : unItem._id)
                       }}
                     >
                       <td style={tdCentro}>{badgeEstablecimiento(item._src)}</td>
+                      {/* El pedido múltiple y sus ítems abiertos comparten la
+                          línea bordó de la izquierda: se leen como un bloque. */}
                       <td
                         style={{
                           ...tdCentro,
                           fontWeight: multiple ? 700 : 400,
-                          borderLeft: item._agrupado && item._count > 1 ? `3px solid ${BORDO}` : undefined,
+                          whiteSpace: 'nowrap',
+                          borderLeft:
+                            (item._agrupado && item._count > 1) || item._anidada ? `3px solid ${BORDO}` : undefined,
                         }}
                       >
-                        {fmtNro(item.nro_pedido, item._src)}
+                        {item._anidada ? (
+                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src)}</span>
+                        ) : (
+                          fmtNro(item.nro_pedido, item._src)
+                        )}
+                        {item._agrupado && item._count > 1 && (
+                          <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />
+                        )}
                       </td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={tdCentro}>{item.cc === 'Varios' ? varios() : item.cc || <Raya />}</td>
@@ -605,14 +602,18 @@ export default function AnalistaPedidos() {
                         style={{ ...tdCentro, cursor: clickeableEstado ? 'pointer' : undefined }}
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (!agrupado && (item.estado === 'Autorizar' || item.estado === 'Para hacer OC')) {
-                            navigate('/compras/analista/analizar', { state: { item, esComprador } })
+                          if (item.estado === 'Autorizar' || item.estado === 'Para hacer OC') {
+                            // Abre el análisis ya hecho para verlo; un pedido
+                            // múltiple muestra todos sus ítems en ese estado.
+                            navigate('/compras/analista/analizar', {
+                              state: { item: unItem || item._items[0], esComprador },
+                            })
                           } else if (item.estado === 'Rechazado' || item.estado === 'Cancelado') {
                             verMotivoRechazo(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para revision') {
                             verMotivoRevision(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`)
+                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
                           } else if (item.estado === 'Para retirar') {
                             avisarSinOC(item)
                           } else if (item.estado === 'Retirado') {
@@ -622,7 +623,7 @@ export default function AnalistaPedidos() {
                       >
                         {badgeEstado(item.estado)}
                       </td>
-                      <td style={tdCentro}>{item.oc || <Raya />}</td>
+                      <td style={tdCentro}><CeldaOC oc={item.oc} proveedor={proveedorDeOC(item)} /></td>
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion
@@ -631,13 +632,13 @@ export default function AnalistaPedidos() {
                             onClick={() => verHistorial(item._agrupado ? item._items[0] : item)}
                             deshabilitado={item._agrupado && item._count > 1}
                           />
-                          {!agrupado && (
-                            <BotonAccion icono="bi-pencil" titulo="Editar" variante="primary" onClick={() => abrirEditar(item)} />
+                          {porItem && (
+                            <BotonAccion icono="bi-pencil" titulo="Editar" variante="primary" onClick={() => abrirEditar(unItem)} />
                           )}
-                          {!agrupado && (
-                            <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(item)} />
+                          {porItem && (
+                            <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(unItem)} />
                           )}
-                          {agrupado && item._count > 1 && (
+                          {item._count > 1 && (
                             <BotonAccion icono="bi-list-ul" titulo="Ver el detalle" onClick={() => verDetalle(item)} />
                           )}
                         </div>

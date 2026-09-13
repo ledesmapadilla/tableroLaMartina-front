@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { guardarConReglaHorometro } from "../../utils/horometro";
+import { CATEGORIAS_TRACTOR } from "../../utils/categoriasTractor";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -27,22 +28,8 @@ const hoyStr = () => {
 
 const ESTADOS = ["Pendiente", "En proceso", "Terminada"];
 
-// Mismas categorias que ofrece el reporte de falla
-const PARTES = [
-  "Motor",
-  "Transmisión / Caja",
-  "Embrague",
-  "Hidráulico",
-  "Frenos",
-  "Dirección",
-  "Mecánica general",
-  "Electricidad / Luces",
-  "Horómetro",
-  "Rodado / Cubiertas",
-  "Implementos / Enganche",
-  "Service Programado",
-  "Otros",
-];
+// La lista única de categorías, la misma del reporte de falla y los filtros.
+const PARTES = CATEGORIAS_TRACTOR;
 const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
 
 const URGENCIAS = ["baja", "media", "alta"];

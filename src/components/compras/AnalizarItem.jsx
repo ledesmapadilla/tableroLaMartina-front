@@ -6,21 +6,48 @@ import { api } from '../../services/api'
 import { getArchivo, setArchivo, removeArchivo, fileADataURL } from '../../services/archivoPrototipo'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya } from './estilos'
+import { opcionesDePrecio, opcionMinima, opcionElegida } from './precioElegido'
+import { useMontoAutorizacion } from './montoAutorizacion'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 const esParaAnalisis = (e) => e === 'Para analisis' || e === 'En analisis' || e === 'Pedido' || e === 'Para revision'
+
+// Un ítem que ya pasó el análisis (para autorizar, para hacer OC) no se vuelve
+// a analizar: se abre para ver lo que cargó el analista, sin editar. Entonces
+// se muestran los ítems del pedido que están en ese mismo estado.
+const estadoVistoDe = (state) =>
+  state?.item && !esParaAnalisis(state.item.estado) ? state.item.estado : null
+const itemEnVista = (estadoVisto) => (i) =>
+  estadoVisto ? i.estado === estadoVisto : esParaAnalisis(i.estado)
+const NOMBRE_ESTADO = { Autorizar: 'Autorizar Gcia.' }
+
+// Un análisis ya hecho se puede corregir mientras no haya orden de compra.
+const ESTADOS_EDITABLES = ['Autorizar', 'Para hacer OC']
 
 const fmtPrecio = (v) =>
   v === '' || v === null || v === undefined
     ? ''
     : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(v)
 
-const FORM_ITEM_INIT = { stock: '', proveedor1: '', precio1: '', proveedor2: '', precio2: '', proveedor3: '', precio3: '' }
+// `elegido` vacío es "el más barato"; 1, 2 o 3, el presupuesto elegido a mano.
+const FORM_ITEM_INIT = { stock: '', proveedor1: '', precio1: '', proveedor2: '', precio2: '', proveedor3: '', precio3: '', elegido: '' }
 
-export default function AnalizarItem() {
+// `soloVer` lo pone la ruta de los talleres (/compras/pedidos/analisis): el
+// solicitante mira el análisis pero nunca lo procesa, aunque llegue sin ítem.
+export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
   const navigate = useNavigate()
   const { state } = useLocation()
   const esComprador = !!state?.esComprador
+  const estadoVisto = estadoVistoDe(state)
+  const enVista = itemEnVista(estadoVisto)
+  // El analista puede reabrir un análisis ya hecho para corregirlo; el
+  // comprador y los talleres solo lo miran.
+  const [editando, setEditando] = useState(false)
+  // Desde este monto el pedido va a Gerencia; lo definen gerente y superadmin.
+  const { monto: montoAutorizacion } = useMontoAutorizacion()
+  const puedeEditar =
+    Boolean(estadoVisto) && ESTADOS_EDITABLES.includes(estadoVisto) && !soloVerForzado && !esComprador
+  const soloVer = soloVerForzado || esComprador || (Boolean(estadoVisto) && !editando)
   const dropdownRef = useRef(null)
 
   const [pedidos, setPedidos] = useState([])
@@ -33,6 +60,7 @@ export default function AnalizarItem() {
   const [archivosMap, setArchivosMap] = useState({}) // itemId -> { name, url }  (prototipo front: aún sin backend)
 
   useEffect(() => {
+    const enVista = itemEnVista(estadoVistoDe(state))
     Promise.all([
       api.get('/berdina/pedidos').catch(() => []),
       api.get('/sanpablo/pedidos').catch(() => []),
@@ -41,13 +69,13 @@ export default function AnalizarItem() {
       const todos = [
         ...berdina.map(p => ({ ...p, _src: 'berdina' })),
         ...sanpablo.map(p => ({ ...p, _src: 'sanpablo' })),
-      ].filter(p => (p.items || []).some(i => esParaAnalisis(i.estado)))
+      ].filter(p => (p.items || []).some(i => enVista(i)))
       setPedidos(todos)
       setProveedores(provs)
 
       const initForms = (pedido) => {
         const mapa = {}
-        ;(pedido.items || []).filter(i => esParaAnalisis(i.estado)).forEach(i => {
+        ;(pedido.items || []).filter(i => enVista(i)).forEach(i => {
           mapa[i._id] = {
             stock:      i.stock      != null ? String(i.stock)      : '',
             proveedor1: i.proveedor1 ?? '',
@@ -56,6 +84,7 @@ export default function AnalizarItem() {
             precio2:    i.precio2    != null ? String(i.precio2)    : '',
             proveedor3: i.proveedor3 ?? '',
             precio3:    i.precio3    != null ? String(i.precio3)    : '',
+            elegido:    i.elegido    != null ? String(i.elegido)    : '',
           }
         })
         setFormsMap(mapa)
@@ -69,7 +98,7 @@ export default function AnalizarItem() {
         if (pedido) {
           initForms(pedido)
           const archivos = {}
-          ;(pedido.items || []).filter(i => esParaAnalisis(i.estado)).forEach(i => {
+          ;(pedido.items || []).filter(i => enVista(i)).forEach(i => {
             const a = getArchivo(i._id)
             if (a) archivos[i._id] = a
           })
@@ -91,19 +120,18 @@ export default function AnalizarItem() {
     fmtNro(p.nro_pedido, p._src).toLowerCase().includes(busqueda.toLowerCase())
   )
 
-  const esMultiple = (p) => (p.items || []).filter(i => esParaAnalisis(i.estado)).length > 1
+  const esMultiple = (p) => (p.items || []).filter(i => enVista(i)).length > 1
 
   const pedidoSeleccionado = pedidos.find(p => `${p._src}-${p.nro_pedido}` === selectedKey)
   const itemsAMostrar = pedidoSeleccionado
-    ? (pedidoSeleccionado.items || []).filter(i => esParaAnalisis(i.estado))
+    ? (pedidoSeleccionado.items || []).filter(i => enVista(i))
     : []
 
   const calcularMontoTotal = () =>
     itemsAMostrar.reduce((acc, item) => {
-      const form = formsMap[item._id] || FORM_ITEM_INIT
-      const precios = [form.precio1, form.precio2, form.precio3].map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0)
-      const precioMin = precios.length > 0 ? Math.min(...precios) : 0
-      return acc + precioMin * (item.cant || 0)
+      // El monto que decide si va a autorizar sale del presupuesto elegido.
+      const elegida = opcionElegida(formsMap[item._id] || FORM_ITEM_INIT)
+      return acc + (elegida ? elegida.precio : 0) * (item.cant || 0)
     }, 0)
 
   const elegirPedido = (p) => {
@@ -112,13 +140,13 @@ export default function AnalizarItem() {
     setBusqueda(fmtNro(p.nro_pedido, p._src))
     setShowDropdown(false)
     const archivos = {}
-    ;(p.items || []).filter(i => esParaAnalisis(i.estado)).forEach(i => {
+    ;(p.items || []).filter(i => enVista(i)).forEach(i => {
       const a = getArchivo(i._id)
       if (a) archivos[i._id] = a
     })
     setArchivosMap(archivos)
     const mapa = {}
-    ;(p.items || []).filter(i => esParaAnalisis(i.estado)).forEach(i => {
+    ;(p.items || []).filter(i => enVista(i)).forEach(i => {
       mapa[i._id] = {
         stock:      i.stock      != null ? String(i.stock)      : '',
         proveedor1: i.proveedor1 ?? '',
@@ -127,9 +155,16 @@ export default function AnalizarItem() {
         precio2:    i.precio2    != null ? String(i.precio2)    : '',
         proveedor3: i.proveedor3 ?? '',
         precio3:    i.precio3    != null ? String(i.precio3)    : '',
+        elegido:    i.elegido    != null ? String(i.elegido)    : '',
       }
     })
     setFormsMap(mapa)
+  }
+
+  // Cancelar la edición descarta lo tocado: se vuelve a cargar lo guardado.
+  const cancelarEdicion = () => {
+    setEditando(false)
+    if (pedidoSeleccionado) elegirPedido(pedidoSeleccionado)
   }
 
   // --- Archivo (prototipo front): se guarda en sessionStorage vía archivoPrototipo ---
@@ -164,7 +199,7 @@ export default function AnalizarItem() {
           >
             <i className="bi bi-paperclip" /> {archivo.name}
           </a>
-          {!esComprador && (
+          {!soloVer && (
             <button
               className="btn btn-sm btn-link text-danger p-0"
               style={{ lineHeight: 1 }}
@@ -178,13 +213,13 @@ export default function AnalizarItem() {
       )
     }
     return (
-      <label className={`btn btn-sm btn-outline-dark mb-0${esComprador ? ' disabled' : ''}`} style={{ fontSize: 12 }}>
+      <label className={`btn btn-sm btn-outline-dark mb-0${soloVer ? ' disabled' : ''}`} style={{ fontSize: 12 }}>
         <i className="bi bi-upload" /> Subir
         <input
           type="file"
           accept=".pdf,image/*"
           hidden
-          disabled={esComprador}
+          disabled={soloVer}
           onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(item._id, f); e.target.value = '' }}
         />
       </label>
@@ -202,10 +237,15 @@ export default function AnalizarItem() {
   const procesar = async () => {
     if (!pedidoSeleccionado || itemsAMostrar.length === 0) return
     const monto = calcularMontoTotal()
-    const nuevoEstado = monto >= 200000 ? 'Autorizar' : 'Para hacer OC'
+    const nuevoEstado = monto >= montoAutorizacion ? 'Autorizar' : 'Para hacer OC'
+    // Al corregir un análisis el estado se recalcula con la misma regla: si
+    // ahora supera el monto, vuelve a Gerencia para autorizar.
+    const cambiaEstado = editando && nuevoEstado !== estadoVisto
     const result = await Swal.fire({
-      title: '¿Procesar pedido?',
-      html: `Monto total: <b>${fmtPrecio(monto)}</b><br/>Estado → <b>${nuevoEstado}</b>`,
+      title: editando ? '¿Guardar los cambios del análisis?' : '¿Procesar pedido?',
+      html:
+        `Monto total: <b>${fmtPrecio(monto)}</b><br/>Estado → <b>${NOMBRE_ESTADO[nuevoEstado] || nuevoEstado}</b>` +
+        (cambiaEstado ? '<br/><small style="color:#b45309">El pedido cambia de estado.</small>' : ''),
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Procesar',
@@ -217,17 +257,23 @@ export default function AnalizarItem() {
       const base = pedidoSeleccionado._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
       await Promise.all(itemsAMostrar.map(item => {
         const form = formsMap[item._id] || FORM_ITEM_INIT
-        const toNum = (v) => { const n = parseFloat(v); return isNaN(n) ? undefined : n }
+        // Vacío va como null y no como undefined: undefined no viaja en el
+        // JSON, y al corregir un análisis un precio o proveedor borrado
+        // quedaba con el valor viejo.
+        const toNum = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n }
         return api.put(`${base}/${pedidoSeleccionado._id}/items/${item._id}`, {
           estado:     nuevoEstado,
           usuario:    'Analista',
+          // El historial tiene que distinguir la corrección del primer análisis.
+          ...(editando ? { nota: 'Análisis editado' } : {}),
           stock:      toNum(form.stock),
-          proveedor1: form.proveedor1 || undefined,
+          proveedor1: form.proveedor1 || null,
           precio1:    toNum(form.precio1),
-          proveedor2: form.proveedor2 || undefined,
+          proveedor2: form.proveedor2 || null,
           precio2:    toNum(form.precio2),
-          proveedor3: form.proveedor3 || undefined,
+          proveedor3: form.proveedor3 || null,
           precio3:    toNum(form.precio3),
+          elegido:    toNum(form.elegido),
         })
       }))
       await Swal.fire({ icon: 'success', title: 'Procesado', timer: 1500, showConfirmButton: false })
@@ -252,7 +298,7 @@ export default function AnalizarItem() {
         onBlur={() => setFoco(item._id, campo, false)}
         onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
         placeholder="$"
-        disabled={esComprador}
+        disabled={soloVer}
       />
     )
   }
@@ -265,10 +311,46 @@ export default function AnalizarItem() {
         style={form[campo] ? { backgroundImage: 'none' } : {}}
         value={form[campo]}
         onChange={e => setF(item._id, campo, e.target.value)}
-        disabled={esComprador}
+        disabled={soloVer}
       >
         <option value="">—</option>
         {proveedores.map(p => <option key={p._id} value={p._id}>{p.razonsocial}</option>)}
+      </select>
+    )
+  }
+
+  // En el resumen, el proveedor con el que se cuenta cada ítem. Por defecto el
+  // más barato; el analista puede elegir cualquiera que tenga precio. Elegir
+  // el más barato lo deja en automático, así sigue al mínimo si cambian los
+  // precios.
+  const nombreProveedor = (id) => proveedores.find((p) => p._id === id)?.razonsocial || ''
+  const selectorProveedor = (item, opciones, elegida) => {
+    if (!elegida) return <Raya />
+    const etiqueta = (o) => nombreProveedor(o.proveedor) || `Proveedor ${o.n}`
+    if (soloVer) {
+      return (
+        <span>
+          {etiqueta(elegida)}
+          {!elegida.esMinima && (
+            <span className="text-muted" style={{ fontSize: '0.66rem' }}> · elegido, no es el más bajo</span>
+          )}
+        </span>
+      )
+    }
+    const minima = opcionMinima(opciones)
+    return (
+      <select
+        className="form-select form-select-sm"
+        style={{ fontSize: '0.74rem', minWidth: 180 }}
+        value={String(elegida.n)}
+        onChange={(e) => setF(item._id, 'elegido', Number(e.target.value) === minima.n ? '' : e.target.value)}
+      >
+        {opciones.map((o) => (
+          <option key={o.n} value={o.n}>
+            {etiqueta(o)} — {fmtPrecio(o.precio)}
+            {o.n === minima.n ? ' (más bajo)' : ''}
+          </option>
+        ))}
       </select>
     )
   }
@@ -294,7 +376,7 @@ export default function AnalizarItem() {
         {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-3 flex-wrap flex-shrink-0">
           <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
-            Analizar ítem
+            {editando ? 'Editar análisis' : soloVer ? 'Análisis del pedido' : 'Analizar ítem'}
           </span>
           <span
             className="px-2 py-1 rounded-3"
@@ -302,18 +384,47 @@ export default function AnalizarItem() {
           >
             precios sin IVA
           </span>
+          {estadoVisto && (
+            <span className="badge" style={{ backgroundColor: '#8b2035', fontSize: '0.72rem' }}>
+              {NOMBRE_ESTADO[estadoVisto] || estadoVisto}
+            </span>
+          )}
 
-          {/* El comprador solo mira: el análisis lo carga el analista. */}
-          {!esComprador && (
+          {/* Solo el analista procesa. Un análisis ya hecho se abre para verlo
+              y, mientras no haya orden de compra, se puede reabrir y corregir. */}
+          {puedeEditar && !editando && (
+            <Button
+              size="sm"
+              disabled={itemsAMostrar.length === 0}
+              onClick={() => setEditando(true)}
+              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+              style={{ backgroundColor: '#b45309', borderColor: '#b45309', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+            >
+              <i className="bi bi-pencil-square"></i>
+              <span>Editar análisis</span>
+            </Button>
+          )}
+          {editando && (
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={cancelarEdicion}
+              className="rounded-3 px-3 ms-auto"
+              style={{ fontSize: '0.78rem', height: '30px' }}
+            >
+              Cancelar
+            </Button>
+          )}
+          {!soloVer && (
             <Button
               size="sm"
               disabled={itemsAMostrar.length === 0}
               onClick={procesar}
-              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+              className={`rounded-3 px-3 d-flex align-items-center gap-2${editando ? '' : ' ms-auto'}`}
               style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
             >
               <i className="bi bi-check-lg"></i>
-              <span>Procesar</span>
+              <span>{editando ? 'Guardar cambios' : 'Procesar'}</span>
             </Button>
           )}
         </div>
@@ -391,7 +502,7 @@ export default function AnalizarItem() {
                       {fmtNro(p.nro_pedido, p._src)}
                       {multiple && (
                         <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
-                          ({(p.items || []).filter((i) => esParaAnalisis(i.estado)).length} ítems)
+                          ({(p.items || []).filter((i) => enVista(i)).length} ítems)
                         </span>
                       )}
                     </div>
@@ -456,7 +567,7 @@ export default function AnalizarItem() {
                         value={(formsMap[item._id] || FORM_ITEM_INIT).stock}
                         onChange={(e) => setF(item._id, 'stock', e.target.value)}
                         placeholder="0"
-                        disabled={esComprador}
+                        disabled={soloVer}
                       />
                     </td>
                     <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor1')}</td>
@@ -473,18 +584,17 @@ export default function AnalizarItem() {
           </Table>
         </div>
 
-        {/* Resumen: qué sale el pedido tomando el menor de los tres precios */}
+        {/* Resumen: qué sale el pedido con el presupuesto que vale para cada
+            ítem (el más barato, salvo que se elija otro). */}
         {itemsAMostrar.length > 0 &&
           (() => {
             const filas = itemsAMostrar.map((item) => {
               const form = formsMap[item._id] || FORM_ITEM_INIT
-              const precios = [form.precio1, form.precio2, form.precio3]
-                .map((v) => parseFloat(v))
-                .filter((v) => !isNaN(v) && v > 0)
-              const precioMin = precios.length > 0 ? Math.min(...precios) : null
+              const opciones = opcionesDePrecio(form)
+              const elegida = opcionElegida(form)
               const cant = item.cant || 0
-              const total = precioMin !== null ? precioMin * cant : null
-              return { item, precioMin, cant, total }
+              const total = elegida ? elegida.precio * cant : null
+              return { item, opciones, elegida, cant, total }
             })
             const sumaTotal = filas.reduce((acc, r) => acc + (r.total || 0), 0)
 
@@ -496,7 +606,7 @@ export default function AnalizarItem() {
 
                 <div
                   className="shadow-sm rounded-3 bg-white"
-                  style={{ width: '640px', maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
+                  style={{ width: '820px', maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
                 >
                   <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%' }}>
                     <thead>
@@ -504,17 +614,19 @@ export default function AnalizarItem() {
                         <th style={thCentro}>Fecha</th>
                         <th style={th}>Repuesto</th>
                         <th style={thCentro}>Cant.</th>
+                        <th style={th}>Proveedor</th>
                         <th style={thCentro}>Precio unit.</th>
                         <th style={thCentro}>Precio total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filas.map(({ item, precioMin, cant, total }) => (
+                      {filas.map(({ item, opciones, elegida, cant, total }) => (
                         <tr key={item._id}>
                           <td style={tdCentro}>{fecha}</td>
                           <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
                           <td style={tdCentro}>{cant || <Raya />}</td>
-                          <td style={tdCentro}>{precioMin !== null ? fmtPrecio(precioMin) : <Raya />}</td>
+                          <td style={{ ...td, padding: '2px 5px' }}>{selectorProveedor(item, opciones, elegida)}</td>
+                          <td style={tdCentro}>{elegida ? fmtPrecio(elegida.precio) : <Raya />}</td>
                           <td style={{ ...tdCentro, fontWeight: 600 }}>
                             {total !== null ? fmtPrecio(total) : <Raya />}
                           </td>
@@ -524,7 +636,8 @@ export default function AnalizarItem() {
                       {/* La fila de total va con la clase fila-total, si no el
                           hover le gana al fondo. */}
                       <tr className="fila-total">
-                        <td style={{ ...td, fontWeight: 700, color: BORDO }}>MÍNIMO</td>
+                        <td style={{ ...td, fontWeight: 700, color: BORDO }}>TOTAL</td>
+                        <td style={td} />
                         <td style={td} />
                         <td style={td} />
                         <td style={td} />
@@ -535,10 +648,13 @@ export default function AnalizarItem() {
                 </div>
 
                 <div className="mt-2 text-center" style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                  Precio de mínima del pedido{' '}
+                  Total del pedido{' '}
                   <span className="fw-bold" style={{ color: BORDO }}>
                     {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src) : ''}
                   </span>
+                  {filas.some((f) => f.elegida && !f.elegida.esMinima)
+                    ? ', con proveedores elegidos a mano'
+                    : ', con el precio más bajo de cada ítem'}
                 </div>
               </div>
             )

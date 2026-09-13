@@ -202,6 +202,18 @@ main {
   background-color: #fdeaee;
   border-top: 2px solid #7a1828 !important;
 }
+/* Ítems de un pedido múltiple abierto con el ojo: van debajo del pedido, con
+   un fondo apenas bordó para que se lean como parte de él. El hover y la fila
+   crítica (que cada pantalla define después) le siguen ganando. */
+.tabla-informe.tabla-compras tbody tr.fila-anidada > td {
+  background-color: #fdf4f5;
+}
+/* Donde empieza otro pedido la línea es más marcada: un pedido y los ítems
+   que se le abren con el ojo se leen como un bloque. El !important es para
+   ganarle al borde fino de .tabla-informe, que también lo lleva. */
+.tabla-informe.tabla-compras tbody tr.inicio-pedido:not(:first-child) > td {
+  border-top: 2px solid #64748b !important;
+}
 
 /* ── Radio buttons ── */
 input[type="radio"] {
@@ -279,6 +291,13 @@ input[type="number"] {
 .btn:hover, button:hover {
   transform: scale(1.06);
   box-shadow: 3px 3px 8px rgba(0,0,0,0.35);
+}
+
+/* Los botones de las barras de filtros no se agrandan: la barra scrollea de
+   costado y el zoom hacía aparecer la barra de scroll, el mouse quedaba
+   afuera, el botón volvía a su tamaño y todo temblaba en bucle. */
+.sin-zoom:hover {
+  transform: none !important;
 }
 
 /* Prevenir saltos de layout y trabas en el scroll de las tablas */

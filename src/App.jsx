@@ -170,6 +170,9 @@ function LayoutDesktop() {
               <Route path="/compras/sanpablo/pedidos" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloPedidos /></RutaProtegida>} />
               <Route path="/compras/sanpablo/pedidos/nuevo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloNuevoPedido /></RutaProtegida>} />
               <Route path="/compras/sanpablo/pendientes" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Pendientes taller="sanpablo" /></RutaProtegida>} />
+              {/* El análisis de un pedido, solo para verlo: lo abren los talleres
+                  desde "Para autorizar". El que se carga y procesa es /compras/analista/analizar. */}
+              <Route path="/compras/pedidos/analisis" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><AnalizarItem soloVer /></RutaProtegida>} />
 
               <Route path="/compras/analista" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><Analista /></RutaProtegida>} />
               <Route path="/compras/analista/pedidos" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPedidos key="analista" /></RutaProtegida>} />

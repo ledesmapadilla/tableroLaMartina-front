@@ -20,13 +20,6 @@ const MESES = [
 
 const soloFecha = (iso) => (iso || "").slice(0, 10);
 
-const hoyStr = () => {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
-};
-
 const formatFecha = (iso) => {
   const [a, m, d] = soloFecha(iso).split("-");
   return d ? `${d}/${m}/${a}` : "—";
@@ -126,16 +119,17 @@ function ProduccionInformeMes() {
         const res = await fetch(`/api/periodos/${anio}/${mes}`);
         const data = await res.json();
         const estaCerrado = Boolean(data.cerrado);
-        // Mientras la certificación está abierta el período llega hasta hoy,
-        // igual que en la planilla de carga.
-        const rango = {
-          desde: soloFecha(data.desde),
-          hasta: estaCerrado ? soloFecha(data.hasta) : hoyStr(),
-        };
+        // El período llega hasta su fecha de cierre (por defecto el 25), igual
+        // que en la planilla de carga; `periodo` suma los partes posteriores
+        // que se dejaron en este mes con una explicación.
+        const rango = { desde: soloFecha(data.desde), hasta: soloFecha(data.hasta) };
         setCerrado(estaCerrado);
         setPeriodo(rango);
 
-        const resPartes = await fetch(`/api/partes?desde=${rango.desde}&hasta=${rango.hasta}`);
+        const clave = `${anio}-${String(mes).padStart(2, "0")}`;
+        const resPartes = await fetch(
+          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}`
+        );
         const lista = resPartes.ok ? await resPartes.json() : [];
         setPartes(Array.isArray(lista) ? lista : []);
       } catch {

@@ -257,6 +257,7 @@ function TractoresAltas() {
       supervisor: "",
       encargadoGral: "",
       gruppo: 1,
+      unidad: "hs",
     });
     setShowModal(true);
   };
@@ -268,6 +269,7 @@ function TractoresAltas() {
     setValue("supervisor", t.supervisor || "");
     setValue("encargadoGral", t.encargadoGral || "");
     setValue("gruppo", t.gruppo ?? 1);
+    setValue("unidad", t.unidad || "hs");
     setShowModal(true);
   };
 
@@ -989,7 +991,7 @@ function TractoresAltas() {
                 />
               </Col>
 
-              <Col md={12}>
+              <Col md={8}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Descripción / Modelo</Form.Label>
                 <Form.Control
                   placeholder="Ej: John Deere 5075E 4WD / Pauny 280A"
@@ -1003,6 +1005,21 @@ function TractoresAltas() {
                 <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
                   {errors.descripcion?.message}
                 </Form.Control.Feedback>
+              </Col>
+
+              {/* Los camiones (como el CC 901) cuentan km: define el intervalo
+                  de service y las etiquetas del preventivo. */}
+              <Col md={4}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Cuenta en</Form.Label>
+                <Form.Select
+                  size="sm"
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem", height: "36px" }}
+                  {...register("unidad")}
+                >
+                  <option value="hs">Horas (service c/250 hs)</option>
+                  <option value="km">Kilómetros (service c/10.000 km)</option>
+                </Form.Select>
               </Col>
             </Row>
           </Modal.Body>

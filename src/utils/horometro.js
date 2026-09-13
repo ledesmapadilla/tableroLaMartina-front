@@ -17,41 +17,118 @@ const formatearFecha = (iso) => {
   return d ? `${d}/${m}/${a}` : iso;
 };
 
+// Visitas, Preventivo y Reparaciones cargan el horómetro dentro de un Modal de
+// react-bootstrap, que se devuelve el foco apenas sale de él: un cartel con
+// campo colgado del body queda sin poder escribirse. Se lo dibuja dentro del
+// modal abierto (el de más arriba) para que el foco no salga de ahí.
+const dentroDelModal = () => {
+  const abiertos = document.querySelectorAll(".modal.show");
+  return abiertos.length ? abiertos[abiertos.length - 1] : "body";
+};
+
+// Cómo se nombra cada fuente de lectura en los avisos.
+const FUENTES = {
+  service: "service",
+  reparacion: "reparación",
+  visita: "visita",
+  parte: "parte diario",
+  "horometro:manual": "carga manual",
+  "horometro:produccion": "historial (parte diario)",
+  "horometro:reparacion": "historial (reparación)",
+  "horometro:visita": "historial (visita)",
+  "horometro:service": "historial (service)",
+};
+const CAMPOS = { horomIngreso: "ingreso", horomSalida: "salida" };
+
+export const etiquetaFuente = (fuente, campo) => {
+  const base = FUENTES[fuente] || String(fuente || "").replace(/^horometro:/, "historial ");
+  return CAMPOS[campo] ? `${base} (${CAMPOS[campo]})` : base;
+};
+
+// Las cuatro salidas del aviso. Sweetalert trae tres botones, así que se
+// dibujan a mano, cada uno con su explicación debajo.
+const OPCIONES = [
+  {
+    accion: "chequear",
+    titulo: "Chequear información",
+    color: "#15803d",
+    fondo: "#f0fdf4",
+    texto: () => "Vuelvo al formulario a revisar el número que cargué.",
+  },
+  {
+    accion: "descartar",
+    titulo: "Descartar cambio",
+    color: "#475569",
+    fondo: "#f8fafc",
+    texto: ({ descartarCancela }) =>
+      descartarCancela
+        ? "No se guarda esta lectura; queda vigente la anterior."
+        : "Guardo sin esta lectura; queda vigente la anterior.",
+  },
+  {
+    accion: "cambio",
+    titulo: "Cambio de horómetro",
+    color: "#b45309",
+    fondo: "#fffbeb",
+    texto: () => "Se reemplazó el equipo por uno nuevo que arranca de cero.",
+  },
+  {
+    accion: "correccion",
+    titulo: "Corrección de lectura anterior",
+    color: "#1d4ed8",
+    fondo: "#eff6ff",
+    texto: ({ ultima }) =>
+      `La lectura nueva está bien: el que estaba mal cargado es el ${ultima?.horometro}.`,
+  },
+];
+
 /**
- * Muestra el aviso con las tres alternativas.
- * Devuelve "verificar" | "descartar" | "cambio" | null (si cerró el cartel).
+ * Muestra el aviso con las cuatro alternativas.
+ * Devuelve "chequear" | "descartar" | "cambio" | "correccion" | null (si
+ * cerró el cartel).
  */
-export const preguntarQueHacer = async (conflicto) => {
+export const preguntarQueHacer = async (conflicto, { descartarCancela = false } = {}) => {
   const { lectura, ultima } = conflicto || {};
-  const res = await Swal.fire({
+  let elegida = null;
+
+  const botones = OPCIONES.map(
+    (o) => `
+      <button type="button" data-accion="${o.accion}"
+        style="display:block;width:100%;text-align:left;padding:.55rem .75rem;cursor:pointer;
+               border:1px solid ${o.color};border-radius:8px;background:${o.fondo}">
+        <div style="font-weight:700;color:${o.color}">${o.titulo}</div>
+        <div style="font-size:.8rem;color:#475569;margin-top:.1rem">
+          ${o.texto({ ultima, descartarCancela })}
+        </div>
+      </button>`
+  ).join("");
+
+  await Swal.fire({
     icon: "warning",
     title: "El horómetro retrocede",
     html: `
       <div style="text-align:left;font-size:0.92rem;line-height:1.5">
         <div>Lectura cargada: <b>${lectura}</b></div>
-        <div>Último registrado: <b>${ultima?.horometro}</b> (${formatearFecha(ultima?.fecha)})</div>
-        <hr style="margin:.6rem 0">
-        <div><b>Verificar</b>: vuelvo al campo y corrijo el número.</div>
-        <div><b>Descartar</b>: guardo sin horómetro; queda vigente el anterior.</div>
-        <div><b>Cambio de horómetro</b>: se reemplazó el equipo por uno nuevo.</div>
+        <div>
+          Último registrado: <b>${ultima?.horometro}</b>
+          (${formatearFecha(ultima?.fecha)} · ${etiquetaFuente(ultima?.fuente, ultima?.campo)})
+        </div>
+        <div style="display:grid;gap:.5rem;margin-top:.8rem">${botones}</div>
       </div>`,
-    showConfirmButton: true,
-    showDenyButton: true,
-    showCancelButton: true,
-    confirmButtonText: "Verificar",
-    denyButtonText: "Cambio de horómetro",
-    cancelButtonText: "Descartar",
-    confirmButtonColor: "#15803d",
-    denyButtonColor: "#b45309",
-    cancelButtonColor: "#64748b",
-    reverseButtons: true,
-    width: "520px",
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: "540px",
+    didOpen: (popup) => {
+      popup.querySelectorAll("[data-accion]").forEach((boton) =>
+        boton.addEventListener("click", () => {
+          elegida = boton.dataset.accion;
+          Swal.close();
+        })
+      );
+    },
   });
 
-  if (res.isConfirmed) return "verificar";
-  if (res.isDenied) return "cambio";
-  if (res.dismiss === Swal.DismissReason.cancel) return "descartar";
-  return null;
+  return elegida;
 };
 
 /**
@@ -62,7 +139,7 @@ export const preguntarQueHacer = async (conflicto) => {
  * lectura. `tractor` es el id contra el que se registraría un cambio.
  *
  * Devuelve { ok, res, cuerpo, cancelado }. Con cancelado:true el usuario eligió
- * verificar o cerró el cartel: no hay que mostrar ningún error.
+ * chequear o cerró el cartel: no hay que mostrar ningún error.
  */
 export const guardarConReglaHorometro = async ({
   enviar,
@@ -74,28 +151,33 @@ export const guardarConReglaHorometro = async ({
 }) => {
   let res = await enviar({ sinHorometro: false });
   let accion = null;
+  const cancelar = () => ({ ok: false, cancelado: true, accion });
 
-  if (res.status === 409) {
+  // Corregir la lectura anterior puede destapar otra que también queda por
+  // encima (la corregida no era la única mal cargada): se vuelve a preguntar
+  // hasta que el guardado pase o el usuario desista.
+  while (res.status === 409) {
     const conflicto = await res.json().catch(() => ({}));
     if (!esConflictoHorometro(res.status, conflicto)) {
       return { ok: false, res, cuerpo: conflicto };
     }
 
-    accion = await preguntarQueHacer(conflicto);
-    if (accion === "verificar" || accion === null) return { ok: false, cancelado: true, accion };
+    accion = await preguntarQueHacer(conflicto, { descartarCancela });
+    if (accion === "chequear" || accion === null) return cancelar();
 
     if (accion === "descartar") {
-      if (descartarCancela) return { ok: false, cancelado: true, accion };
+      if (descartarCancela) return cancelar();
       res = await enviar({ sinHorometro: true });
-    } else {
-      const cambio = await registrarCambioDeHorometro({
-        tractor: tractor || conflicto.tractor,
-        fecha,
-        conflicto,
-      });
-      if (!cambio) return { ok: false, cancelado: true, accion };
-      res = await enviar({ sinHorometro: false });
+      continue;
     }
+
+    const datos = { tractor: tractor || conflicto.tractor, fecha, conflicto };
+    const resuelto =
+      accion === "cambio"
+        ? await registrarCambioDeHorometro(datos)
+        : await corregirLecturaAnterior(datos);
+    if (!resuelto) return cancelar();
+    res = await enviar({ sinHorometro: false });
   }
 
   if (res.ok) return { ok: true, res, accion };
@@ -111,6 +193,7 @@ export const registrarCambioDeHorometro = async ({ tractor, fecha, conflicto }) 
 
   const { value: horas } = await Swal.fire({
     title: "Cambio de horómetro",
+    target: dentroDelModal(),
     html: `
       <div style="text-align:left;font-size:0.9rem;line-height:1.5">
         ¿Cuántas horas alcanzó a marcar el <b>horómetro anterior</b> antes de
@@ -162,6 +245,90 @@ export const registrarCambioDeHorometro = async ({ tractor, fecha, conflicto }) 
       showConfirmButton: false,
     });
     return cambio;
+  } catch {
+    Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
+    return null;
+  }
+};
+
+/**
+ * Corrige la última lectura registrada, cuando la mal cargada era esa y no la
+ * nueva. Pide el valor correcto y el backend lo reescribe en todas las
+ * fuentes donde figura. Devuelve el resultado, o null si se canceló o falló.
+ */
+export const corregirLecturaAnterior = async ({ tractor, conflicto }) => {
+  const { lectura, ultima } = conflicto || {};
+  if (!ultima) return null;
+
+  const { value: valor } = await Swal.fire({
+    title: "Corrección de lectura anterior",
+    target: dentroDelModal(),
+    html: `
+      <div style="text-align:left;font-size:0.9rem;line-height:1.5">
+        La lectura del <b>${formatearFecha(ultima.fecha)}</b>
+        (${etiquetaFuente(ultima.fuente, ultima.campo)}) figura con
+        <b>${ultima.horometro}</b>. ¿Cuál es el valor correcto?
+        <div style="color:#64748b;margin-top:.4rem">
+          Se corrige en todos los registros del tractor donde figura esa lectura
+          ese día. Después se guarda la lectura nueva (${lectura}).
+        </div>
+      </div>`,
+    input: "number",
+    inputAttributes: { min: "0", step: "any" },
+    showCancelButton: true,
+    confirmButtonText: "Corregir",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#1d4ed8",
+    cancelButtonColor: "#64748b",
+    inputValidator: (v) => {
+      if (v === "" || v === null || Number(v) < 0) return "Indique el valor correcto";
+      if (Number(v) === Number(ultima.horometro)) return "Es el mismo valor que ya estaba registrado";
+      // Si la corrección no baja del valor nuevo, el guardado vuelve a frenar.
+      if (Number(v) > Number(lectura)) {
+        return `Con ese valor la lectura ${lectura} seguiría retrocediendo. Si el ${ultima.horometro} estaba bien, elija Cambio de horómetro.`;
+      }
+      return undefined;
+    },
+  });
+
+  if (valor === undefined) return null;
+
+  try {
+    const res = await fetch("/api/horometros-tractor/corregir-lectura", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tractor,
+        fecha: ultima.fecha,
+        valorAnterior: ultima.horometro,
+        valorNuevo: Number(valor),
+      }),
+    });
+    const cuerpo = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo corregir",
+        text: cuerpo.mensaje || cuerpo.error || "No se pudo corregir la lectura",
+      });
+      return null;
+    }
+
+    const lugares = [
+      ...new Set((cuerpo.corregidas || []).map((c) => etiquetaFuente(c.fuente, c.campo))),
+    ];
+    await Swal.fire({
+      icon: "success",
+      title: "Lectura corregida",
+      html: `
+        <div style="font-size:0.9rem;line-height:1.5">
+          ${ultima.horometro} → <b>${Number(valor)}</b> (${formatearFecha(ultima.fecha)})
+          <div style="color:#64748b;margin-top:.3rem">Se corrigió en: ${lugares.join(", ")}</div>
+        </div>`,
+      timer: 2600,
+      showConfirmButton: false,
+    });
+    return cuerpo;
   } catch {
     Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
     return null;

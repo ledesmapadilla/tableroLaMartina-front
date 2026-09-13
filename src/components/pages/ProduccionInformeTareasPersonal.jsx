@@ -22,13 +22,6 @@ const MESES = [
 
 const soloFecha = (iso) => (iso || "").slice(0, 10);
 
-const hoyStr = () => {
-  const d = new Date();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${mm}-${dd}`;
-};
-
 const formatFecha = (iso) => {
   const [a, m, d] = soloFecha(iso).split("-");
   return d ? `${d}/${m}/${a}` : "—";
@@ -293,19 +286,18 @@ function ProduccionInformeTareasPersonal() {
 
         const data = await resPeriodo.json();
         const estaCerrado = Boolean(data.cerrado);
-        // Mientras la certificación está abierta el período llega hasta hoy,
-        // igual que en la planilla de carga.
-        const rango = {
-          desde: soloFecha(data.desde),
-          hasta: estaCerrado ? soloFecha(data.hasta) : hoyStr(),
-        };
+        // El período llega hasta su fecha de cierre (por defecto el 25), igual
+        // que en la planilla de carga; `periodo` suma los partes posteriores
+        // que se dejaron en este mes con una explicación.
+        const rango = { desde: soloFecha(data.desde), hasta: soloFecha(data.hasta) };
         setCerrado(estaCerrado);
         setPeriodo(rango);
 
         // `resumen=1`: el informe suma cantidades y filtra, no necesita
         // horarios, horómetros ni combustible. Es la mitad del cuerpo.
+        const clave = `${anio}-${String(mes).padStart(2, "0")}`;
         const resPartes = await fetch(
-          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&resumen=1`
+          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}&resumen=1`
         );
         const lista = resPartes.ok ? await resPartes.json() : [];
         const precios = resVariables.ok ? await resVariables.json() : [];

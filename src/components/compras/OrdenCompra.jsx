@@ -5,6 +5,7 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion } from './estilos'
+import { opcionElegida } from './precioElegido'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
@@ -13,15 +14,33 @@ const fmtPrecio = (v) =>
     ? ''
     : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(v)
 
-const minPrecioProveedor = (item) => {
-  const candidatos = [
-    { v: item.precio1, id: item.proveedor1 },
-    { v: item.precio2, id: item.proveedor2 },
-    { v: item.precio3, id: item.proveedor3 },
-  ].filter(x => x.v && x.v > 0)
-  if (candidatos.length === 0) return { precio: null, proveedor_id: null }
-  const min = candidatos.reduce((a, b) => a.v <= b.v ? a : b)
-  return { precio: min.v, proveedor_id: min.id }
+// Con qué presupuesto se compra: el que eligió el analista, o el más barato
+// si no eligió otro. Es el mismo que usa Gerencia para el costo.
+const precioElegidoProveedor = (item) => {
+  const elegida = opcionElegida(item)
+  return elegida
+    ? { precio: elegida.precio, proveedor_id: elegida.proveedor || null }
+    : { precio: null, proveedor_id: null }
+}
+
+// Compra parcial: se compra menos de lo pedido. Lo que falta queda pendiente
+// para el comprador o se rechaza con motivo (el backend lo separa en otro ítem).
+const esParcial = (i) => i.cant_pedida != null && Number(i.cant) >= 1 && Number(i.cant) < i.cant_pedida
+const restoDe = (i) => i.cant_pedida - Number(i.cant)
+
+// Lo que impide sumar un ítem a la orden, o null si está bien.
+const problemaDeCompra = (i) => {
+  const cant = Number(i.cant)
+  if (!Number.isInteger(cant) || cant < 1) {
+    return `${i.nombre_repuesto}: indicá cuánto se compra, en unidades enteras. Para no comprar nada, usá Rechazar.`
+  }
+  if (i.cant_pedida != null && cant > i.cant_pedida) {
+    return `${i.nombre_repuesto}: no se puede comprar más de lo pedido (${i.cant_pedida}).`
+  }
+  if (esParcial(i) && i.resto === 'rechazar' && !String(i.motivo_resto || '').trim()) {
+    return `${i.nombre_repuesto}: escribí el motivo del rechazo de las ${restoDe(i)} que no se compran.`
+  }
+  return null
 }
 
 export default function OrdenCompra() {
@@ -34,6 +53,13 @@ export default function OrdenCompra() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [selectedKey, setSelectedKey] = useState(null)
   const [previewItems, setPreviewItems] = useState([])
+  // De qué pedido es la vista previa: puede quedar a la vista mientras en el
+  // buscador ya se marcó otro.
+  const [previewKey, setPreviewKey] = useState(null)
+  // Alto que ocupó la vista previa: al sumarla a la orden su lugar queda
+  // reservado con ese alto, así la tabla de la orden no salta para arriba.
+  const refVista = useRef(null)
+  const [altoVista, setAltoVista] = useState(0)
   const [obsPreview, setObsPreview] = useState({})
   const [focusPrecio, setFocusPrecio] = useState({})
   const [ocItems, setOcItems] = useState([])
@@ -64,22 +90,33 @@ export default function OrdenCompra() {
   const pedidosAceptados = new Set(ocItems.map(i => i.pedidoId))
   const pedidosFiltrados = pedidos.filter(p =>
     fmtNro(p.nro_pedido, p._src).toLowerCase().includes(busqueda.toLowerCase()) &&
-    !pedidosAceptados.has(p._id)
+    !pedidosAceptados.has(p._id) &&
+    // Un pedido cuyos ítems se rechazaron todos ya no tiene nada para comprar.
+    (p.items || []).some(i => i.estado === 'Para hacer OC')
   )
   const ocItemCount = (p) => (p.items || []).filter(i => i.estado === 'Para hacer OC').length
   const esMultiple = (p) => ocItemCount(p) > 1
 
   const pedidoSeleccionado = pedidos.find(p => `${p._src}-${p.nro_pedido}` === selectedKey)
+  const pedidoEnVista = pedidos.find(p => `${p._src}-${p.nro_pedido}` === previewKey)
 
-  const elegirPedido = (p) => {
-    const key = `${p._src}-${p.nro_pedido}`
-    setSelectedKey(key)
+  // Buscar un pedido solo lo marca: "Elegir" lo pasa a la vista previa.
+  const marcarPedido = (p) => {
+    setSelectedKey(`${p._src}-${p.nro_pedido}`)
     setBusqueda(fmtNro(p.nro_pedido, p._src))
     setShowDropdown(false)
+  }
+
+  // "Elegir": los ítems del pedido marcado van a la vista previa, todavía
+  // editables. Recién "Sumar a OC" los pasa a la orden.
+  const elegirPedido = () => {
+    const p = pedidoSeleccionado
+    if (!p) return
+    setPreviewKey(selectedKey)
     const items = (p.items || [])
       .filter(i => i.estado === 'Para hacer OC')
       .map(i => {
-        const { precio, proveedor_id } = minPrecioProveedor(i)
+        const { precio, proveedor_id } = precioElegidoProveedor(i)
         return {
           ...i,
           pedidoId: p._id,
@@ -89,6 +126,10 @@ export default function OrdenCompra() {
           precio_unitario: precio,
           precio_total: precio != null ? precio * (i.cant || 0) : null,
           proveedor_id,
+          // Lo pedido queda fijo: "cant" es lo que se compra y puede bajar.
+          cant_pedida: typeof i.cant === 'number' ? i.cant : null,
+          resto: 'pendiente',
+          motivo_resto: '',
         }
       })
     setPreviewItems(items)
@@ -115,13 +156,65 @@ export default function OrdenCompra() {
 
   const aceptar = () => {
     if (previewItems.length === 0) return
+    const problema = previewItems.map(problemaDeCompra).find(Boolean)
+    if (problema) {
+      Swal.fire({ icon: 'warning', title: 'Revisá la vista previa', text: problema })
+      return
+    }
+    setAltoVista(refVista.current?.offsetHeight || 0)
     setOcItems(prev => [
       ...prev,
       ...previewItems.map(i => ({ ...i, observaciones: obsPreview[i._id] || '' })),
     ])
     setPreviewItems([])
+    setPreviewKey(null)
     setSelectedKey(null)
     setBusqueda('')
+  }
+
+  // Rechazo total de un ítem, sin orden de compra: queda "Rechazado" con el
+  // motivo (el taller lo ve al tocar el estado) y sale de la vista previa.
+  const rechazarItem = async (item) => {
+    const { value: motivo, isConfirmed } = await Swal.fire({
+      title: 'Rechazar ítem',
+      text: `${item.nombre_repuesto}${item.cant_pedida != null ? ` · ${item.cant_pedida} ${item.unidad || ''}` : ''}`,
+      input: 'textarea',
+      inputLabel: 'Motivo del rechazo',
+      inputPlaceholder: 'Explicá el motivo…',
+      showCancelButton: true,
+      confirmButtonText: 'Rechazar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      inputValidator: (v) => (!v?.trim() ? 'El motivo es obligatorio' : undefined),
+    })
+    if (!isConfirmed) return
+    try {
+      const base = item._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+      await api.put(`${base}/${item.pedidoId}/items/${item._id}`, {
+        estado: 'Rechazado',
+        usuario: 'Comprador',
+        nota: motivo.trim(),
+      })
+      // Ya no está para comprar: sale de la vista previa y del pedido en pantalla.
+      const quedan = previewItems.filter((i) => i._id !== item._id)
+      setPreviewItems(quedan)
+      if (quedan.length === 0) {
+        setPreviewKey(null)
+        setSelectedKey(null)
+        setBusqueda('')
+      }
+      setPedidos((prev) =>
+        prev.map((p) =>
+          p._id !== item.pedidoId
+            ? p
+            : { ...p, items: p.items.map((i) => (i._id === item._id ? { ...i, estado: 'Rechazado' } : i)) }
+        )
+      )
+      Swal.fire({ icon: 'success', title: 'Ítem rechazado', timer: 1400, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
   }
 
   const quitarItem = (itemId) => setOcItems(prev => prev.filter(i => i._id !== itemId))
@@ -156,7 +249,10 @@ export default function OrdenCompra() {
           nro_pedido:      i.nro_pedido,
           _src:            i._src,
           nombre_repuesto: i.nombre_repuesto,
-          cant:            i.cant,
+          cant:            Number(i.cant),
+          // Compra parcial: qué hacer con lo que no se compra (el backend lo
+          // separa en otro ítem del pedido).
+          resto:           esParcial(i) ? { accion: i.resto, motivo: i.motivo_resto } : null,
           precio_unitario: i.precio_unitario,
           precio_total:    i.precio_total,
           proveedor:       i.proveedor_id,
@@ -256,7 +352,7 @@ export default function OrdenCompra() {
                     return (
                       <div
                         key={key}
-                        onMouseDown={() => elegirPedido(p)}
+                        onMouseDown={() => marcarPedido(p)}
                         style={{
                           padding: '6px 12px',
                           cursor: 'pointer',
@@ -285,41 +381,61 @@ export default function OrdenCompra() {
               )}
             </div>
 
+            {/* Pasa el pedido marcado a la vista previa; no lo suma todavía. */}
             <Button
               size="sm"
-              disabled={previewItems.length === 0}
-              onClick={aceptar}
+              disabled={!pedidoSeleccionado || previewKey === selectedKey}
+              onClick={elegirPedido}
               className="rounded-3 px-3 d-flex align-items-center gap-2"
               style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.8rem', height: '32px', fontWeight: 600 }}
-              title="Sumar estos ítems a la orden"
+              title="Ver los ítems del pedido en la vista previa"
             >
-              <i className="bi bi-plus-lg"></i>
-              <span>Sumar a la orden</span>
+              <i className="bi bi-check2"></i>
+              <span>Elegir</span>
             </Button>
           </div>
         </Card>
 
-        {/* Vista previa: lo que se va a sumar, todavía editable */}
-        {previewItems.length > 0 && (
-          <div className="mb-3 flex-shrink-0">
-            <div className="fw-bold mb-1" style={{ color: BORDO, fontSize: '0.82rem' }}>
-              Vista previa — pedido{' '}
-              {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src) : ''}
+        {/* Vista previa: lo que se va a sumar, todavía editable. Su lugar queda
+            reservado aunque se vacíe: así la tabla de la orden no salta para
+            arriba al tocar "Sumar a OC". */}
+        {(previewItems.length > 0 || ocItems.length > 0) && (
+          <div ref={refVista} className="mb-3 flex-shrink-0" style={{ minHeight: altoVista }}>
+            {previewItems.length > 0 ? (
+            <>
+            {/* Se revisa y se corrige acá; "Sumar a OC" lo pasa a la orden. */}
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <span className="fw-bold" style={{ color: BORDO, fontSize: '0.82rem' }}>
+                Vista previa — pedido{' '}
+                {pedidoEnVista ? fmtNro(pedidoEnVista.nro_pedido, pedidoEnVista._src) : ''}
+              </span>
+              <Button
+                size="sm"
+                onClick={aceptar}
+                className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+                style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.8rem', height: '30px', fontWeight: 600 }}
+                title="Pasar estos ítems al listado de la orden"
+              >
+                <i className="bi bi-plus-lg"></i>
+                <span>Sumar a OC</span>
+              </Button>
             </div>
             <div
               className="shadow-sm rounded-3 bg-white"
               style={{ maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
             >
-              <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '1000px' }}>
+              <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '1250px' }}>
                 <thead>
                   <tr>
                     <th style={thCentro}>Fecha</th>
                     <th style={th}>Repuesto</th>
-                    <th style={thCentro}>Cant.</th>
+                    <th style={thCentro}>Comprar</th>
                     <th style={thCentro}>Precio unit.</th>
                     <th style={thCentro}>Precio total</th>
                     <th style={thCentro}>Proveedor</th>
+                    <th style={th}>Resto</th>
                     <th style={th}>Observaciones</th>
+                    <th style={{ ...thCentro, width: 70 }}>Rechazar</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -329,16 +445,26 @@ export default function OrdenCompra() {
                         {item.fecha?.slice(0, 10).split('-').reverse().join('/')}
                       </td>
                       <td style={{ ...td, padding: '4px 5px', fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                      {/* Cuánto se compra; arranca en lo pedido y puede bajar. */}
                       <td style={{ ...td, padding: '4px 5px' }}>
-                        <Form.Control
-                          type="number"
-                          min="0"
-                          size="sm"
-                          className="rounded-3"
-                          style={{ width: 70, fontSize: '0.8rem', height: '30px' }}
-                          value={item.cant ?? ''}
-                          onChange={(e) => updatePreviewItem(item._id, 'cant', e.target.value)}
-                        />
+                        <div className="d-flex align-items-center gap-1">
+                          <Form.Control
+                            type="number"
+                            min="1"
+                            max={item.cant_pedida ?? undefined}
+                            step="1"
+                            size="sm"
+                            className="rounded-3"
+                            style={{ width: 70, fontSize: '0.8rem', height: '30px' }}
+                            value={item.cant ?? ''}
+                            onChange={(e) => updatePreviewItem(item._id, 'cant', e.target.value)}
+                          />
+                          {item.cant_pedida != null && (
+                            <span className="text-muted" style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
+                              de {item.cant_pedida}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ ...td, padding: '4px 5px' }}>
                         <Form.Control
@@ -378,6 +504,35 @@ export default function OrdenCompra() {
                           ))}
                         </Form.Select>
                       </td>
+                      {/* Si se compra menos de lo pedido: qué pasa con el resto. */}
+                      <td style={{ ...td, padding: '4px 5px' }}>
+                        {esParcial(item) ? (
+                          <div className="d-flex flex-column gap-1">
+                            <Form.Select
+                              size="sm"
+                              className="rounded-3"
+                              style={{ minWidth: 170, fontSize: '0.78rem', height: '30px' }}
+                              value={item.resto}
+                              onChange={(e) => updatePreviewItem(item._id, 'resto', e.target.value)}
+                            >
+                              <option value="pendiente">Dejar {restoDe(item)} pendientes</option>
+                              <option value="rechazar">Rechazar {restoDe(item)}</option>
+                            </Form.Select>
+                            {item.resto === 'rechazar' && (
+                              <Form.Control
+                                size="sm"
+                                className="rounded-3"
+                                style={{ fontSize: '0.78rem', height: '30px' }}
+                                value={item.motivo_resto}
+                                onChange={(e) => updatePreviewItem(item._id, 'motivo_resto', e.target.value)}
+                                placeholder="Motivo del rechazo…"
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <Raya />
+                        )}
+                      </td>
                       <td style={{ ...td, padding: '4px 5px' }}>
                         <Form.Control
                           size="sm"
@@ -388,17 +543,37 @@ export default function OrdenCompra() {
                           placeholder="Observaciones…"
                         />
                       </td>
+                      <td style={tdCentro}>
+                        <div className="d-flex justify-content-center">
+                          <BotonAccion
+                            icono="bi-x-lg"
+                            titulo="Rechazar el ítem entero, sin comprarlo"
+                            variante="danger"
+                            onClick={() => rechazarItem(item)}
+                          />
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             </div>
+            </>
+            ) : (
+              <div
+                className="d-flex align-items-center justify-content-center rounded-3 text-muted"
+                style={{ minHeight: altoVista || 90, border: '1px dashed #cbd5e1', fontSize: '0.82rem' }}
+              >
+                Vista previa vacía: buscá otro pedido y tocá «Elegir».
+              </div>
+            )}
           </div>
         )}
 
-        {/* Lo que ya entró en la orden */}
+        {/* Lo que ya entró en la orden: más abajo y separado de la vista
+            previa, para que no se confunda lo que se revisa con lo que ya entró. */}
         {ocItems.length > 0 && (
-          <div className="flex-shrink-0 pb-3">
+          <div className="flex-shrink-0 pb-3 mt-3 pt-3" style={{ borderTop: '2px solid #e2e8f0' }}>
             <div className="fw-bold mb-1" style={{ color: BORDO, fontSize: '0.82rem' }}>
               Ítems en la orden
             </div>
@@ -421,12 +596,30 @@ export default function OrdenCompra() {
                   </tr>
                 </thead>
                 <tbody>
-                  {ocItems.map((item) => (
-                    <tr key={item._id}>
+                  {/* Donde cambia el pedido respecto de la fila anterior, la
+                      línea es más marcada (clase inicio-pedido, en index.css). */}
+                  {ocItems.map((item, idx) => (
+                    <tr
+                      key={item._id}
+                      className={
+                        idx > 0 &&
+                        `${item._src}-${item.nro_pedido}` !==
+                          `${ocItems[idx - 1]._src}-${ocItems[idx - 1].nro_pedido}`
+                          ? 'inicio-pedido'
+                          : undefined
+                      }
+                    >
                       <td style={tdCentro}>{fmtNro(item.nro_pedido, item._src)}</td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
-                      <td style={tdCentro}>{item.cant || <Raya />}</td>
+                      <td style={tdCentro}>
+                        {item.cant || <Raya />}
+                        {esParcial(item) && (
+                          <div style={{ fontSize: '0.66rem', color: item.resto === 'rechazar' ? '#dc2626' : '#b45309' }}>
+                            de {item.cant_pedida} · {restoDe(item)} {item.resto === 'rechazar' ? 'rechazadas' : 'pendientes'}
+                          </div>
+                        )}
+                      </td>
                       <td style={tdCentro}>
                         {item.precio_unitario != null ? fmtPrecio(item.precio_unitario) : <Raya />}
                       </td>
@@ -482,7 +675,9 @@ export default function OrdenCompra() {
         {ocItems.length === 0 && previewItems.length === 0 && (
           <div className="flex-grow-1 d-flex align-items-center justify-content-center">
             <span className="text-muted" style={{ fontSize: '0.9rem' }}>
-              Elegí un pedido para empezar la orden de compra.
+              {pedidoSeleccionado
+                ? 'Tocá «Elegir» para ver los ítems del pedido.'
+                : 'Buscá un pedido para empezar la orden de compra.'}
             </span>
           </div>
         )}

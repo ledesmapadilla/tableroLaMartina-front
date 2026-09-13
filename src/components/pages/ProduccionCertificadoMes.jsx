@@ -5,11 +5,7 @@ import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { unirClientes } from "../../utils/clientes";
-import {
-  esConflictoHorometro,
-  preguntarQueHacer,
-  registrarCambioDeHorometro,
-} from "../../utils/horometro";
+import { guardarConReglaHorometro } from "../../utils/horometro";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -173,6 +169,11 @@ function ProduccionCertificadoMes() {
   const [ccTexto, setCcTexto] = useState("");
 
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
+  // Clave del certificado ("2026-08"): marca los partes con fecha posterior al
+  // cierre que se dejaron en este mes con una explicación.
+  const clavePeriodo = `${anio}-${String(mes).padStart(2, "0")}`;
+  const nombreMes = MESES[Number(mes) - 1] || "";
+  const mesSiguiente = MESES[Number(mes) % 12] || "";
 
   // ── carga de datos ────────────────────────────────────────────────
   const cargarPeriodo = async () => {
@@ -182,12 +183,10 @@ function ProduccionCertificadoMes() {
       const estaCerrado = Boolean(data.cerrado);
       setCerrado(estaCerrado);
       setFechaCierre(soloFecha(data.fechaCierre) || null);
-      // Mientras la certificación está abierta el "hasta" acompaña al día de
-      // hoy; al cerrarla queda fijo en la fecha de cierre.
-      const rango = {
-        desde: soloFecha(data.desde),
-        hasta: estaCerrado ? soloFecha(data.hasta) : hoyStr(),
-      };
+      // El "hasta" es la fecha de cierre (por defecto el 25), también con la
+      // certificación abierta: nada posterior entra en este mes salvo que se
+      // lo deje con una explicación.
+      const rango = { desde: soloFecha(data.desde), hasta: soloFecha(data.hasta) };
       setPeriodo(rango);
       return rango;
     } catch {
@@ -198,7 +197,9 @@ function ProduccionCertificadoMes() {
   const cargarPartes = async (rango) => {
     if (!rango?.desde || !rango?.hasta) return;
     try {
-      const res = await fetch(`/api/partes?desde=${rango.desde}&hasta=${rango.hasta}`);
+      const res = await fetch(
+        `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clavePeriodo}`
+      );
       const data = res.ok ? await res.json() : [];
       setPartes(Array.isArray(data) ? data : []);
     } catch {
@@ -215,8 +216,10 @@ function ProduccionCertificadoMes() {
     const dia = soloFecha(parte.fecha);
     setPartes((actuales) => {
       const resto = actuales.filter((x) => x._id !== parte._id);
-      // Un parte fuera del período no pertenece a esta planilla.
-      if (rango?.desde && rango?.hasta && (dia < rango.desde || dia > rango.hasta)) return resto;
+      // Un parte fuera del período no pertenece a esta planilla, salvo que se
+      // lo haya dejado en este mes con una explicación.
+      const fuera = rango?.desde && rango?.hasta && (dia < rango.desde || dia > rango.hasta);
+      if (fuera && parte.periodo !== clavePeriodo) return resto;
       return [...resto, parte].sort(
         (a, b) =>
           soloFecha(a.fecha).localeCompare(soloFecha(b.fecha)) ||
@@ -257,7 +260,6 @@ function ProduccionCertificadoMes() {
       // está lejos. Los partes sí necesitan el rango.
       const [rango] = await Promise.all([cargarPeriodo(), cargarPadrones()]);
       await cargarPartes(rango);
-      setForm((f) => ({ ...f, fecha: hoyStr() }));
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anio, mes]);
@@ -301,16 +303,17 @@ function ProduccionCertificadoMes() {
     return true;
   };
 
-  // Fecha del último parte cargado en el período. Es hasta donde llega de
-  // verdad la planilla: mientras la certificación está abierta el "hasta"
-  // acompaña al día de hoy, que casi nunca es el día del último parte.
+  // Fecha del último parte del rango. Los que se dejaron en este mes con fecha
+  // posterior al cierre no cuentan: no dependen del "hasta" y no se caen si se
+  // cierra antes.
   const ultimaCarga = useMemo(
     () =>
       partes.reduce((mayor, p) => {
+        if (p.periodo === clavePeriodo) return mayor;
         const dia = soloFecha(p.fecha);
         return dia > mayor ? dia : mayor;
       }, ""),
-    [partes]
+    [partes, clavePeriodo]
   );
 
   /**
@@ -322,7 +325,9 @@ function ProduccionCertificadoMes() {
     if (!ultimaCarga || fecha === ultimaCarga) return true;
 
     const anterior = fecha < ultimaCarga;
-    const fuera = anterior ? partes.filter((x) => soloFecha(x.fecha) > fecha).length : 0;
+    const fuera = anterior
+      ? partes.filter((x) => x.periodo !== clavePeriodo && soloFecha(x.fecha) > fecha).length
+      : 0;
 
     const res = await avisar({
       icon: "warning",
@@ -352,10 +357,10 @@ function ProduccionCertificadoMes() {
   };
 
   const cerrarCertificacion = async () => {
-    // Viene puesta la del último parte cargado; se puede cambiar, y si se
-    // cambia hay que confirmarla. Al corregir se vuelve a preguntar con lo
-    // que se había escrito.
-    let propuesta = ultimaCarga || periodo.hasta || hoyStr();
+    // Viene puesta la fecha de cierre del período (por defecto el 25); se
+    // puede cambiar, y si no coincide con el último parte hay que confirmarla.
+    // Al corregir se vuelve a preguntar con lo que se había escrito.
+    let propuesta = periodo.hasta || ultimaCarga || hoyStr();
     let fecha;
 
     for (;;) {
@@ -406,48 +411,99 @@ function ProduccionCertificadoMes() {
   };
 
   /**
-   * La planilla solo lista los partes del período. Si la fecha queda afuera el
-   * parte se guarda igual pero desaparece de la vista, y parece que no se
-   * hubiera guardado: antes de eso se avisa y se deja decidir.
+   * A qué certificado va el parte según su fecha. Devuelve los campos que hay
+   * que sumarle al guardado, o null si el usuario prefiere corregir la fecha.
+   *  - Dentro del período: va a esta planilla.
+   *  - Anterior al período: se guarda igual pero no aparece acá; se avisa,
+   *    porque si no parece que no se hubiera guardado.
+   *  - Posterior a la fecha de cierre: por regla va al mes siguiente. Para
+   *    dejarlo en este hay que explicar por qué; la explicación se anota en
+   *    observaciones y el parte queda asignado a este certificado.
    */
-  const confirmarFechaFueraDePeriodo = async (fecha) => {
+  const resolverFechaDelParte = async (fecha) => {
     const dia = soloFecha(fecha);
-    if (!dia || !periodo.desde || !periodo.hasta) return true;
-    if (dia >= periodo.desde && dia <= periodo.hasta) return true;
+    const porFecha = { periodo: null, motivoFueraDeCierre: "" };
+    if (!dia || !periodo.desde || !periodo.hasta) return porFecha;
+    if (dia >= periodo.desde && dia <= periodo.hasta) return porFecha;
 
-    const posterior = dia > periodo.hasta;
+    if (dia < periodo.desde) {
+      const res = await avisar({
+        icon: "warning",
+        title: "Fecha anterior al período",
+        width: "380px",
+        html: `
+          <div style="text-align:left;font-size:0.84rem;line-height:1.5">
+            <div>Fecha del parte: <b>${formatFecha(dia)}</b></div>
+            <div>Período de la certificación: <b>${formatFecha(periodo.desde)}</b> al
+              <b>${formatFecha(periodo.hasta)}</b></div>
+            <hr style="margin:.55rem 0">
+            <div>La fecha es <b>anterior</b> al período, así que el parte
+              <b>no va a aparecer en esta planilla</b>.</div>
+          </div>`,
+        showCancelButton: true,
+        confirmButtonText: "Guardar igual",
+        cancelButtonText: "Corregir la fecha",
+        confirmButtonColor: "#b45309",
+        cancelButtonColor: "#15803d",
+        reverseButtons: true,
+      });
+      return res.isConfirmed ? porFecha : null;
+    }
+
+    // Posterior al cierre. Si el parte ya estaba en este mes con su
+    // explicación, se respeta y no se vuelve a preguntar.
+    const previo = editando ? partes.find((x) => x._id === editando) : null;
+    if (previo?.periodo === clavePeriodo && previo.motivoFueraDeCierre) {
+      return { periodo: clavePeriodo, motivoFueraDeCierre: previo.motivoFueraDeCierre };
+    }
+
     const res = await avisar({
       icon: "warning",
-      title: "Fecha fuera del período",
-      width: "380px",
+      title: "Fecha posterior al cierre",
+      width: "420px",
       html: `
         <div style="text-align:left;font-size:0.84rem;line-height:1.5">
           <div>Fecha del parte: <b>${formatFecha(dia)}</b></div>
-          <div>Período de la certificación: <b>${formatFecha(periodo.desde)}</b> al
-            <b>${formatFecha(periodo.hasta)}</b></div>
+          <div>Cierre de ${nombreMes}: <b>${formatFecha(periodo.hasta)}</b></div>
           <hr style="margin:.55rem 0">
-          <div>La fecha es <b>${posterior ? "posterior" : "anterior"}</b> al período, así que el
-            parte <b>no va a aparecer en esta planilla</b>.${
-              posterior
-                ? " Mientras la certificación esté abierta el período llega hasta hoy."
-                : ""
-            }</div>
+          <div>Por su fecha el parte corresponde a <b>${mesSiguiente}</b>. Para dejarlo
+            en <b>${nombreMes}</b> explique por qué: la explicación queda en
+            observaciones.</div>
         </div>`,
+      input: "textarea",
+      inputPlaceholder: "Explicación",
+      inputAttributes: { maxlength: "200" },
+      showDenyButton: true,
       showCancelButton: true,
-      confirmButtonText: "Guardar igual",
+      confirmButtonText: `Dejar en ${nombreMes}`,
+      denyButtonText: `Pasar a ${mesSiguiente}`,
       cancelButtonText: "Corregir la fecha",
       confirmButtonColor: "#b45309",
-      cancelButtonColor: "#15803d",
-      reverseButtons: true,
+      denyButtonColor: "#1b4332",
+      cancelButtonColor: "#64748b",
+      // Solo se valida al dejarlo en este mes: pasarlo al siguiente no pide nada.
+      inputValidator: (v) =>
+        !(v || "").trim() ? "Escriba la explicación para dejarlo en este mes" : undefined,
     });
-    return res.isConfirmed;
+    if (res.isDenied) return porFecha;
+    if (!res.isConfirmed) return null;
+
+    const motivo = String(res.value || "").trim();
+    const nota = `Posterior al cierre: ${motivo}`;
+    const obs = (form.observacion || "").trim();
+    return {
+      periodo: clavePeriodo,
+      motivoFueraDeCierre: motivo,
+      observacion: obs ? `${obs} · ${nota}` : nota,
+    };
   };
 
   // ── alta / edición de partes ──────────────────────────────────────
   const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
   const limpiarForm = () => {
-    setForm({ ...FORM_VACIO, fecha: form.fecha });
+    // La fecha arranca vacía también después de guardar: se completa en cada parte.
+    setForm(FORM_VACIO);
     setCcTexto("");
     setEditando(null);
     refPersona.current?.focus();
@@ -497,41 +553,26 @@ function ProduccionCertificadoMes() {
       return;
     }
 
-    // Un parte fuera del período se guarda igual, pero no aparece en esta
-    // planilla: sin el aviso da la sensación de que no se guardó nada.
-    if (!(await confirmarFechaFueraDePeriodo(form.fecha))) return;
+    // A qué certificado va el parte según su fecha: la fecha de cierre manda.
+    const segunFecha = await resolverFechaDelParte(form.fecha);
+    if (!segunFecha) return;
+    const datos = { ...form, ...segunFecha };
 
     setGuardando(true);
     try {
-      let res = await enviarParte(form);
+      // El horómetro retrocede: el aviso común lo resuelve con el usuario y
+      // reintenta. Descartar guarda el parte sin la lectura, así queda vigente
+      // el horómetro anterior.
+      const tractorId = centros.find((c) => c._id === form.cc)?.tractor;
+      const { ok, res, cuerpo, cancelado } = await guardarConReglaHorometro({
+        tractor: typeof tractorId === "object" ? tractorId?._id : tractorId,
+        fecha: form.fecha,
+        enviar: ({ sinHorometro }) =>
+          enviarParte(sinHorometro ? { ...datos, horomIngreso: "", horomSalida: "" } : datos),
+      });
+      if (cancelado) return;
 
-      // El horómetro retrocede: se resuelve con el usuario y se reintenta.
-      if (res.status === 409) {
-        const conflicto = await res.json().catch(() => ({}));
-        if (!esConflictoHorometro(res.status, conflicto)) {
-          avisar({ icon: "error", title: "Error", text: conflicto.error || "No se pudo guardar" });
-          return;
-        }
-
-        const accion = await preguntarQueHacer(conflicto);
-        if (accion === "verificar" || accion === null) return;
-
-        if (accion === "descartar") {
-          // Se guarda el parte sin la lectura; queda vigente el horómetro anterior.
-          res = await enviarParte({ ...form, horomIngreso: "", horomSalida: "" });
-        } else if (accion === "cambio") {
-          const tractorId = centros.find((c) => c._id === form.cc)?.tractor;
-          const cambio = await registrarCambioDeHorometro({
-            tractor: typeof tractorId === "object" ? tractorId?._id : tractorId,
-            fecha: form.fecha,
-            conflicto,
-          });
-          if (!cambio) return;
-          res = await enviarParte(form);
-        }
-      }
-
-      if (res.ok) {
+      if (ok) {
         const eraEdicion = Boolean(editando);
         const guardado = await res.json().catch(() => null);
         // Si por lo que sea no vino el parte, se recarga el período completo.
@@ -545,8 +586,8 @@ function ProduccionCertificadoMes() {
           showConfirmButton: false,
         });
       } else {
-        const err = await res.json().catch(() => ({}));
-        avisar({ icon: "error", title: "Error", text: err.error || "No se pudo guardar" });
+        // El cuerpo del error ya lo leyó guardarConReglaHorometro.
+        avisar({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar" });
       }
     } catch {
       avisar({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
@@ -1028,6 +1069,7 @@ function ProduccionCertificadoMes() {
               size="sm"
               value={periodo.hasta}
               disabled={cerrado}
+              title="Fecha de cierre: por defecto el 25. Un parte posterior va al mes siguiente, salvo que se lo deje en este con una explicación."
               onChange={(e) => setPeriodo((p) => ({ ...p, hasta: e.target.value }))}
               style={{ fontSize: "0.78rem", height: "30px", width: "140px" }}
             />
@@ -1481,7 +1523,25 @@ function ProduccionCertificadoMes() {
               ) : (
                 partesFiltrados.map((p) => (
                   <tr key={p._id} className={editando === p._id ? "fila-editando" : undefined}>
-                    <td className="fw-semibold text-dark">{formatFecha(p.fecha)}</td>
+                    <td className="fw-semibold text-dark">
+                      {formatFecha(p.fecha)}
+                      {/* Posterior al cierre pero dejado en este mes: con su
+                          explicación va en ámbar; sin ella en rojo, hasta que
+                          se la cargue editando el parte. */}
+                      {periodo.hasta && soloFecha(p.fecha) > periodo.hasta && (
+                        <i
+                          className={`bi ${
+                            p.motivoFueraDeCierre ? "bi-info-circle-fill" : "bi-exclamation-triangle-fill"
+                          } ms-1`}
+                          style={{ color: p.motivoFueraDeCierre ? "#b45309" : "#dc2626" }}
+                          title={
+                            p.motivoFueraDeCierre
+                              ? `Posterior al cierre: ${p.motivoFueraDeCierre}`
+                              : "Posterior al cierre y sin explicación: edite el parte para cargarla"
+                          }
+                        ></i>
+                      )}
+                    </td>
                     <td className="text-start ps-2">{p.persona?.apellidoNombre || "—"}</td>
                     <td className="text-secondary">{p.horaIngreso || "—"}</td>
                     <td className="text-secondary">{p.horaEgreso || "—"}</td>
