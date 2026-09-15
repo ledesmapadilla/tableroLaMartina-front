@@ -158,6 +158,8 @@ function ResumenCamionetas() {
   };
 
   const totalCams = camionetas.length;
+  const hoy = new Date();
+  const mesEnCurso = anio === hoy.getFullYear() ? hoy.getMonth() : -1;
 
   return (
     <div
@@ -334,6 +336,7 @@ function ResumenCamionetas() {
             {MESES.map((mes, i) => {
               const info = getCheckListInfo(i);
               const esImpar = (i + 1) % 2 !== 0;
+              const esMesEnCurso = i === mesEnCurso;
 
               // Colores CheckList
               const clIsPendiente = info !== null && info.pendientes > 0;
@@ -353,19 +356,23 @@ function ResumenCamionetas() {
               return (
                 <div
                   key={mes}
-                  className="bg-white shadow-sm rounded-3 d-flex overflow-hidden"
+                  className={`bg-white rounded-3 d-flex overflow-hidden ${esMesEnCurso ? "" : "shadow-sm"}`}
                   style={{
-                    border: "1px solid #cbd5e1",
+                    border: `1px solid ${esMesEnCurso ? "#3b82f6" : "#cbd5e1"}`,
                     minHeight: "92px",
                     transition: "all 0.2s ease",
+                    // Anillo por fuera del borde: resalta sin cambiar el tamaño de la tarjeta
+                    ...(esMesEnCurso && {
+                      boxShadow: "0 0 0 2px #3b82f6, 0 6px 18px rgba(59, 130, 246, 0.25)",
+                    }),
                   }}
                 >
                   {/* Lado Izquierdo: Nombre del Mes (Texto estático, no es botón) */}
                   <div
-                    className="d-flex align-items-center justify-content-center text-white fw-bold user-select-none"
+                    className="d-flex flex-column align-items-center justify-content-center text-white fw-bold user-select-none"
                     style={{
                       width: "40%",
-                      backgroundColor: "#1e293b",
+                      backgroundColor: esMesEnCurso ? "#3b82f6" : "#1e293b",
                       fontSize: "1rem",
                       letterSpacing: "0.4px",
                       textAlign: "center",
@@ -373,6 +380,20 @@ function ResumenCamionetas() {
                     }}
                   >
                     <span>{mes}</span>
+                    {esMesEnCurso && (
+                      <span
+                        className="rounded-pill mt-1 px-2"
+                        style={{
+                          backgroundColor: "rgba(255, 255, 255, 0.22)",
+                          fontSize: "0.62rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.6px",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        En curso
+                      </span>
+                    )}
                   </div>
 
                   {/* Lado Derecho: Check List + Kilometraje */}
