@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
-import { useAuth } from '../../context/AuthContext'
-import { PERMISOS } from '../../utils/permisos'
+import { usePermisos } from '../../context/permisos'
+import { GRUPO } from '../../utils/permisosCatalogo'
 
 // Las secciones de Compras. Es la entrada: todo lo demás cuelga de una de
 // estas. Para sumar otra alcanza con agregar una entrada acá y su ruta en
 // App.jsx.
 //
-// Los roles salen de PERMISOS, que es con lo que App.jsx protege cada ruta:
-// así una tarjeta no puede quedar visible para quien después rebota.
+// Quién ve cada una sale de la tabla de Roles (`permiso`), la misma con la que
+// App.jsx controla las rutas: así una tarjeta no puede quedar visible para
+// quien después rebota.
 //
 // Cada una lleva su color, para distinguirlas de un vistazo. Berdina se queda
 // con el bordó, que es el de Compras en la página principal; los roles llevan
@@ -21,7 +22,7 @@ const SECCIONES = [
     subtitulo: 'Pedidos y pendientes del taller',
     icono: 'bi bi-building-fill',
     destino: '/compras/berdina',
-    roles: PERMISOS.comprasGeneral,
+    permiso: GRUPO.comprasTaller,
     colores: {
       fondo: 'linear-gradient(135deg, #7a1828 0%, #9d2235 100%)',
       fondoHover: 'linear-gradient(135deg, #4a0812 0%, #7a1828 100%)',
@@ -36,7 +37,7 @@ const SECCIONES = [
     subtitulo: 'Pedidos y pendientes del taller',
     icono: 'bi bi-tree-fill',
     destino: '/compras/sanpablo',
-    roles: PERMISOS.comprasGeneral,
+    permiso: GRUPO.comprasTaller,
     colores: {
       fondo: 'linear-gradient(135deg, #14532d 0%, #166534 100%)',
       fondoHover: 'linear-gradient(135deg, #052e16 0%, #14532d 100%)',
@@ -51,7 +52,7 @@ const SECCIONES = [
     subtitulo: 'Análisis de los pedidos y sus precios',
     icono: 'bi bi-clipboard-data-fill',
     destino: '/compras/analista',
-    roles: PERMISOS.comprasAnalista,
+    permiso: 'compras.analista',
     colores: {
       fondo: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)',
       fondoHover: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)',
@@ -63,10 +64,10 @@ const SECCIONES = [
   {
     id: 'comprador',
     titulo: 'Comprador',
-    subtitulo: 'Armado de las órdenes de compra',
+    subtitulo: 'Armado de las órdenes de pago',
     icono: 'bi bi-cart-fill',
     destino: '/compras/comprador',
-    roles: PERMISOS.comprasAnalista,
+    permiso: 'compras.comprador',
     colores: {
       fondo: 'linear-gradient(135deg, #155e75 0%, #0e7490 100%)',
       fondoHover: 'linear-gradient(135deg, #083344 0%, #155e75 100%)',
@@ -81,7 +82,7 @@ const SECCIONES = [
     subtitulo: 'Autorización de pedidos e historial',
     icono: 'bi bi-patch-check-fill',
     destino: '/compras/gerencia',
-    roles: PERMISOS.comprasGerencia,
+    permiso: 'compras.gerencia',
     colores: {
       fondo: 'linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)',
       fondoHover: 'linear-gradient(135deg, #081c15 0%, #1b4332 100%)',
@@ -94,10 +95,10 @@ const SECCIONES = [
 
 export default function Inicio() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { puede } = usePermisos()
   const [hovered, setHovered] = useState(null)
 
-  const visibles = user ? SECCIONES.filter((s) => s.roles.includes(user.rol)) : []
+  const visibles = SECCIONES.filter((s) => puede(s.permiso))
 
   // Tres tarjetas por fila como máximo: más chicas no se leen. Con una o dos
   // el ancho se achica para que no queden estiradas a lo ancho de la pantalla.

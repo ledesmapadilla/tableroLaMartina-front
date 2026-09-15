@@ -7,6 +7,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { guardarConReglaHorometro } from "../../utils/horometro";
+import { usePermisos } from "../../context/permisos";
 
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
@@ -161,6 +162,10 @@ function getEstadoTractor(
 }
 
 function TractoresPreventivo() {
+  // Ver sin editar (tabla de Roles): los botones que cargan service, horómetro
+  // u observaciones quedan a la vista pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("tractores.preventivo", "editar");
   const navigate = useNavigate();
   const [tractores, setTractores] = useState([]);
   const [ultimosServices, setUltimosServices] = useState([]);
@@ -1127,12 +1132,14 @@ function TractoresPreventivo() {
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = "#1e293b";
                           }}
-                          title="Cargar último service para este tractor"
+                          disabled={sinEditar}
+                          title={sinEditar ? "Sin permiso para editar" : "Cargar último service para este tractor"}
                         >
                           + Service
                         </button>
                         <button
                           onClick={() => abrirModalHorometro(t)}
+                          disabled={sinEditar}
                           className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
                           style={{
                             backgroundColor: "#0d9488",
@@ -1893,7 +1900,7 @@ function TractoresPreventivo() {
             variant="primary"
             size="sm"
             onClick={guardarObservacion}
-            disabled={guardandoObs}
+            disabled={guardandoObs || sinEditar}
             className="rounded-2 px-3 fw-semibold text-white"
             style={{
               backgroundColor: "#1e293b",

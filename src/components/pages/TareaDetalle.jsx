@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { Container, Button, Form, Table, InputGroup } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { nuevoWorkbook } from "../../helpers/excel";
+import { usePermisos } from "../../context/permisos";
 
 const SOMBRA = "3px 3px 6px rgba(0,0,0,0.35)";
 const FILA_VACIA        = { nombre: "", costo: "", observaciones: "" };
@@ -23,6 +24,10 @@ const ESTADO_LABELS = { pendiente: "Pendiente", "en proceso": "En proceso", term
 const RESP_OTRO = "__otro__";
 
 function TareaDetalle() {
+  // Ver sin editar (tabla de Roles): el formulario queda a la vista pero
+  // deshabilitado.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("camionetas.tareas", "editar");
   const { camionetaId, trabajoId } = useParams();
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -254,6 +259,15 @@ function TareaDetalle() {
         </span>
         {marca ? <span className="text-muted fs-5 fw-normal ms-2">— {marca}</span> : ""}
       </h3>
+
+      {/* Todo lo que se carga va en un fieldset: sin permiso de edición
+          (Roles) lo deshabilita de una. */}
+      <fieldset disabled={sinEditar}>
+      {sinEditar && (
+        <div className="w-75 mx-auto alert alert-secondary py-1 px-2 mb-3" style={{ fontSize: "0.85rem" }}>
+          <i className="bi bi-lock-fill me-1"></i>Solo lectura: tu rol puede ver la tarea pero no editarla.
+        </div>
+      )}
 
       {/* Estado */}
       <div className="w-75 mx-auto mb-3 d-flex align-items-center gap-3">
@@ -531,6 +545,7 @@ function TareaDetalle() {
           </Table>
         </div>
       </div>
+      </fieldset>
 
     </Container>
   );

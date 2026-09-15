@@ -6,8 +6,8 @@ import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
-import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido, CeldaOC } from './estilos'
-import { useProveedorDeOC } from './proveedorOC'
+import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido, CeldaOP } from './estilos'
+import { useProveedorDeOP } from './proveedorOP'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
@@ -22,8 +22,8 @@ export default function AnalistaPendientes() {
   // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
   // la misma tabla.
   const [abiertos, setAbiertos] = useState(() => new Set())
-  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OC.
-  const proveedorDeOC = useProveedorDeOC()
+  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OP.
+  const proveedorDeOP = useProveedorDeOP()
   const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '' }
   const [filtros, setFiltros]   = useState(FILTROS_INIT)
   const setF     = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
@@ -254,7 +254,7 @@ export default function AnalistaPendientes() {
                 <th style={th}>Grupo</th>
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
-                <th style={thCentro}>O.C. · Proveedor</th>
+                <th style={thCentro}>O.P. · Proveedor</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
             </thead>
@@ -327,7 +327,7 @@ export default function AnalistaPendientes() {
                           if (item.estado === 'Para revision') {
                             verMotivoRevision(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
+                            navigate(`/compras/op/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
                           } else if (item.estado === 'Para retirar') {
                             avisarSinOC(item)
                           }
@@ -335,7 +335,7 @@ export default function AnalistaPendientes() {
                       >
                         {badgeEstado(item.estado)}
                       </td>
-                      <td style={tdCentro}><CeldaOC oc={item.oc} proveedor={proveedorDeOC(item)} /></td>
+                      <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion

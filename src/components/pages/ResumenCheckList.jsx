@@ -3,12 +3,17 @@ import { useNavigate } from "react-router-dom";
 import { Container, Table, Button, Form } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const MESES = ["enero", "marzo", "mayo", "julio", "septiembre", "noviembre"];
 const AÑO_DESDE = 2026;
 const AÑOS = Array.from({ length: 6 }, (_, i) => AÑO_DESDE + i);
 
 function ResumenCheckList() {
+  // Ver sin editar (tabla de Roles): el check list de cada mes se abre en el
+  // formulario, que es de carga; sin permiso el botón queda deshabilitado.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("camionetas.checklist", "editar");
   const navigate = useNavigate();
   const [año, setAño] = useState(2026);
   const [camionetas, setCamionetas] = useState([]);
@@ -514,6 +519,7 @@ function ResumenCheckList() {
                           <td key={mes} style={{ padding: "4px 3px" }}>
                             <button
                               onClick={() => navigate("/camionetas/checklist/form", { state: { mes, camionetaId: c._id } })}
+                              disabled={sinEditar}
                               className="btn btn-sm py-0.5 px-2 rounded-2 shadow-sm d-inline-flex align-items-center justify-content-center gap-1"
                               style={{
                                 backgroundColor: badgeInfo.bg,
@@ -524,7 +530,7 @@ function ResumenCheckList() {
                                 minWidth: "85px",
                                 transition: "all 0.15s ease",
                               }}
-                              title={`Abrir Check List de ${mes}`}
+                              title={sinEditar ? "Sin permiso para editar" : `Abrir Check List de ${mes}`}
                             >
                               {badgeInfo.icon && <i className={badgeInfo.icon}></i>}
                               <span>{badgeInfo.label}</span>

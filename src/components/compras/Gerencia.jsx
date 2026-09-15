@@ -20,7 +20,7 @@ const fmtNro = (n, src) =>
 const URG_ORDER = { 'Crítica': 0, 'Alta': 1, 'Media': 2, 'Baja': 3 }
 
 // El costo sale del presupuesto que eligió el analista (el más barato si no
-// eligió otro): es el mismo con el que después se arma la orden de compra.
+// eligió otro): es el mismo con el que después se arma la orden de pago.
 const calcCostoItem = (item) => {
   const elegida = opcionElegida(item)
   return elegida ? elegida.precio * (item.cant || 0) : null
@@ -83,7 +83,7 @@ export default function Gerencia() {
     return () => { vigente = false }
   }, [recarga])
 
-  const verAnalisis = (grupo) => navigate('/compras/oc/ver', { state: { items: grupo.items } })
+  const verAnalisis = (grupo) => navigate('/compras/op/ver', { state: { items: grupo.items } })
 
   const verHistorial = async (grupo) => {
     try {
@@ -113,7 +113,7 @@ export default function Gerencia() {
     const { isConfirmed } = await Swal.fire({
       title: '¿Aprobar pedido?',
       html: `<div style="font-weight:600;margin-bottom:6px">${nro}</div>
-             <div style="font-size:13px;color:#555">${grupo.items.length > 1 ? `${grupo.items.length} ítems` : grupo.items[0].nombre_repuesto} → <strong>Para hacer OC</strong></div>`,
+             <div style="font-size:13px;color:#555">${grupo.items.length > 1 ? `${grupo.items.length} ítems` : grupo.items[0].nombre_repuesto} → <strong>Para hacer OP</strong></div>`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Aprobar',
@@ -125,7 +125,7 @@ export default function Gerencia() {
     try {
       const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
       await Promise.all(grupo.items.map(item =>
-        api.put(`${base}/${item.pedidoId}/items/${item._id}`, { estado: 'Para hacer OC', usuario: 'Gerencia' })
+        api.put(`${base}/${item.pedidoId}/items/${item._id}`, { estado: 'Para hacer OP', usuario: 'Gerencia' })
       ))
       cargar()
       Swal.fire({ icon: 'success', title: 'Aprobado', timer: 1500, showConfirmButton: false })

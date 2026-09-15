@@ -133,6 +133,33 @@ main {
   color: #fff;
 }
 
+/* Título de grupo dentro del submenú de Altas (Generales, Compras…). Se
+   muestra y se esconde con los rótulos, al pasar el mouse. */
+.sidebar-submenu-titulo {
+  padding: 8px 19px 2px 30px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar:hover .sidebar-submenu-titulo {
+  opacity: 1;
+}
+
+/* Un botón deshabilitado (por ejemplo, sin permiso de edición en Roles)
+   muestra igual su aviso y el cursor de prohibido al pasar el mouse.
+   Bootstrap le saca los eventos del mouse; el click igual no dispara, porque
+   el botón está deshabilitado. */
+.btn:disabled {
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+
 /* ── Sesión al pie del sidebar ──
    El margin-top automático la empuja abajo de todo, separada de los links, y
    la raya de arriba la despega visualmente. */

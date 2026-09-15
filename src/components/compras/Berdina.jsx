@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
+import { usePermisos } from '../../context/permisos'
 
 // Qué se puede hacer dentro del taller. Cada una lleva su color: son cosas
 // distintas y de un vistazo se tiene que ver cuál es cuál. Pedidos se queda
@@ -11,6 +12,7 @@ const OPCIONES = [
     titulo: 'Pedidos',
     subtitulo: 'Pedidos del taller y carga de uno nuevo',
     icono: 'bi bi-cart-fill',
+    permiso: 'compras.pedidos',
     destino: '/compras/berdina/pedidos',
     colores: {
       fondo: 'linear-gradient(135deg, #7a1828 0%, #9d2235 100%)',
@@ -25,6 +27,7 @@ const OPCIONES = [
     titulo: 'Pendientes',
     subtitulo: 'Lo pedido que todavía no se resolvió',
     icono: 'bi bi-hourglass-split',
+    permiso: 'compras.pendientes',
     destino: '/compras/berdina/pendientes',
     colores: {
       fondo: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)',
@@ -51,6 +54,7 @@ const OPCIONES = [
 ]
 
 export default function Berdina() {
+  const { puede } = usePermisos()
   const navigate = useNavigate()
   const [hovered, setHovered] = useState(null)
 
@@ -84,7 +88,7 @@ export default function Berdina() {
               margin: '0 auto',
             }}
           >
-            {OPCIONES.map((o) => {
+            {OPCIONES.filter((o) => !o.permiso || puede(o.permiso)).map((o) => {
               const isHovered = hovered === o.id
               return (
                 <div

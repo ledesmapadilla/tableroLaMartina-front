@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import { usePermisos } from "../../context/permisos";
+import { GRUPO } from "../../utils/permisosCatalogo";
 
 const MESES = [
   "Enero",
@@ -29,6 +31,7 @@ const OPCIONES = [
     titulo: "Datos certificación",
     subtitulo: "Carga de los partes diarios del mes",
     icono: "bi bi-file-earmark-text-fill",
+    permiso: "produccion.certificacion",
     destino: "planilla",
     colores: {
       fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
@@ -43,6 +46,7 @@ const OPCIONES = [
     titulo: "Informes",
     subtitulo: "Resúmenes y exportaciones del período",
     icono: "bi bi-bar-chart-fill",
+    permiso: GRUPO.produccionInformes,
     destino: "informes",
     colores: {
       fondo: "linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)",
@@ -55,6 +59,7 @@ const OPCIONES = [
 ];
 
 function ProduccionCertificadoMenu() {
+  const { puede } = usePermisos();
   const { anio, mes } = useParams();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
@@ -97,7 +102,7 @@ function ProduccionCertificadoMenu() {
               margin: "0 auto",
             }}
           >
-            {OPCIONES.map((o) => {
+            {OPCIONES.filter((o) => !o.permiso || puede(o.permiso)).map((o) => {
               const isHovered = hovered === o.id;
               return (
                 <div

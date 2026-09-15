@@ -7,6 +7,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { compararCC } from "../../utils/ordenCC";
+import { usePermisos } from "../../context/permisos";
 
 const API = "/api/tractores";
 const API_HISTORIAL = "/api/historial-tractor";
@@ -206,6 +207,10 @@ function SearchableInputDropdown({
 }
 
 function TractoresAltas() {
+  // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista
+  // pero deshabilitados. El historial de cambios se sigue viendo.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("altas.tractores", "editar");
   const navigate = useNavigate();
   const [tractores, setTractores] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -580,6 +585,7 @@ function TractoresAltas() {
             variant="primary"
             size="sm"
             onClick={abrirNuevo}
+            disabled={sinEditar}
             className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
             style={{
               backgroundColor: "#1e293b",
@@ -885,17 +891,19 @@ function TractoresAltas() {
                           </button>
                           <button
                             onClick={() => abrirEditar(t)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-1"
                             style={{ width: "24px", height: "24px" }}
-                            title="Editar tractor"
+                            title={sinEditar ? "Sin permiso para editar" : "Editar tractor"}
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
                           <button
                             onClick={() => eliminar(t._id)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
                             style={{ width: "24px", height: "24px" }}
-                            title="Eliminar tractor"
+                            title={sinEditar ? "Sin permiso para editar" : "Eliminar tractor"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
                           </button>
@@ -1008,7 +1016,8 @@ function TractoresAltas() {
               </Col>
 
               {/* Los camiones (como el CC 901) cuentan km: define el intervalo
-                  de service y las etiquetas del preventivo. */}
+                  de service, las etiquetas del preventivo y que en el padrón
+                  de CC figure como "Camión" y no como "Tractor". */}
               <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Cuenta en</Form.Label>
                 <Form.Select
@@ -1017,8 +1026,8 @@ function TractoresAltas() {
                   style={{ fontSize: "0.85rem", height: "36px" }}
                   {...register("unidad")}
                 >
-                  <option value="hs">Horas (service c/250 hs)</option>
-                  <option value="km">Kilómetros (service c/10.000 km)</option>
+                  <option value="hs">Horas — tractor (service c/250 hs)</option>
+                  <option value="km">Kilómetros — camión (service c/10.000 km)</option>
                 </Form.Select>
               </Col>
             </Row>

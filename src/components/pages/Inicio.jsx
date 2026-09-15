@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
+import { GRUPO } from "../../utils/permisosCatalogo";
 
 const secciones = [
   {
@@ -9,6 +11,7 @@ const secciones = [
     titulo: "Camionetas",
     subtitulo: "Flota, checklist, services y reparaciones",
     ruta: "/camionetas",
+    permiso: GRUPO.camionetas,
     bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
     hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
     accentColor: "#3b82f6",
@@ -19,6 +22,7 @@ const secciones = [
     titulo: "Tractores",
     subtitulo: "Maquinaria agrícola, grupos y mantenimiento",
     ruta: "/tractores",
+    permiso: GRUPO.tractores,
     bg: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
     hoverBg: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
     accentColor: "#10b981",
@@ -39,6 +43,7 @@ const secciones = [
     titulo: "Colectivos",
     subtitulo: "Preventivo y reparaciones de los colectivos",
     ruta: "/colectivo",
+    permiso: GRUPO.colectivos,
     bg: "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
     hoverBg: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",
     accentColor: "#ef4444",
@@ -49,6 +54,7 @@ const secciones = [
     titulo: "Visitas",
     subtitulo: "Control de ingresos",
     ruta: "/visitas",
+    permiso: "mantenimiento.visitas",
     bg: "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
     hoverBg: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
     accentColor: "#06b6d4",
@@ -60,8 +66,11 @@ function Inicio() {
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
 
-  const mainCards = secciones.filter((s) => s.ruta !== "/visitas");
-  const visitasCard = secciones.find((s) => s.ruta === "/visitas");
+  const { puede } = usePermisos();
+  // Solo las tarjetas que el rol puede ver (tabla de Roles).
+  const visibles = secciones.filter((s) => !s.permiso || puede(s.permiso));
+  const mainCards = visibles.filter((s) => s.ruta !== "/visitas");
+  const visitasCard = visibles.find((s) => s.ruta === "/visitas");
 
   return (
     <div

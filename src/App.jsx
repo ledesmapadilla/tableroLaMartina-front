@@ -5,6 +5,9 @@ import { isMobile } from "./utils/device";
 // Unificada con el Tablero el 06/09/2026. Las pantallas viven en
 // components/compras y cuelgan de /compras/*.
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { PermisosProvider } from "./context/PermisosContext";
+import { usePermisos } from "./context/permisos";
+import { reglaDeRuta } from "./utils/permisosRutas";
 import MenuCompras from "./components/compras/Menu";
 import RutaProtegida from "./components/shared/RutaProtegida";
 import Login from "./components/shared/Login";
@@ -21,19 +24,19 @@ import Analista from "./components/compras/Analista";
 import AnalistaPedidos from "./components/compras/AnalistaPedidos";
 import AnalistaPendientes from "./components/compras/AnalistaPendientes";
 import AnalizarItem from "./components/compras/AnalizarItem";
-import OrdenCompra from "./components/compras/OrdenCompra";
+import OrdenPago from "./components/compras/OrdenPago";
 import Gerencia from "./components/compras/Gerencia";
 import GerenciaHistorial from "./components/compras/GerenciaHistorial";
-import VerOC from "./components/compras/VerOC";
+import VerOP from "./components/compras/VerOP";
 import Usuarios from "./components/compras/Usuarios";
+import Roles from "./components/compras/Roles";
 import Proveedores from "./components/compras/Proveedores";
-import CentrosCosto from "./components/compras/CentrosCosto";
 
 import Sidebar from "./components/shared/Sidebar";
 import Footer from "./components/shared/Footer";
 import PaginaPrincipal from "./components/pages/PaginaPrincipal";
 import Inicio from "./components/pages/Inicio";
-import ProduccionAltaCC from "./components/pages/ProduccionAltaCC";
+import AltaCentrosCosto from "./components/pages/AltaCentrosCosto";
 import ProduccionAltaPersonal from "./components/pages/ProduccionAltaPersonal";
 import ProduccionAltaTareas from "./components/pages/ProduccionAltaTareas";
 import ProduccionEstablecimientos from "./components/pages/ProduccionEstablecimientos";
@@ -115,9 +118,12 @@ function App() {
   // AuthProvider envuelve todo: el login cubre el proyecto entero.
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <LayoutDesktop />
-      </BrowserRouter>
+      {/* Qué ve y qué edita el usuario logueado, según su rol. */}
+      <PermisosProvider>
+        <BrowserRouter>
+          <LayoutDesktop />
+        </BrowserRouter>
+      </PermisosProvider>
     </AuthProvider>
   );
 }
@@ -137,9 +143,18 @@ function LayoutDesktop() {
   // ruta por ruta: así ninguna pantalla nueva puede quedar abierta por olvido.
   // Las excepciones están en RUTAS_PUBLICAS (hoy Visitas y el propio login).
   const { user } = useAuth();
+  const { puede, cargados } = usePermisos();
   if (!user && !esRutaPublica(pathname)) {
     return <Navigate to="/login" replace state={{ desde: pathname }} />;
   }
+
+  // Qué pantallas ve cada rol (Altas › Usuarios › Roles), también en un solo
+  // punto: las reglas están en utils/permisosRutas.js. Mientras llegan los
+  // permisos no se muestra nada, para no dejar ver un instante lo que después
+  // rebota; si el rol no ve la pantalla, vuelve a la principal.
+  const regla = user ? reglaDeRuta(pathname) : null;
+  if (regla && !cargados) return null;
+  if (regla && !puede(regla.permiso, regla.accion)) return <Navigate to="/" replace />;
 
   return (
       <div className="app-wrapper">
@@ -161,36 +176,40 @@ function LayoutDesktop() {
               
               <Route path="/compras" element={<RutaProtegida><InicioCompras /></RutaProtegida>} />
 
-              <Route path="/compras/berdina" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Berdina /></RutaProtegida>} />
-              <Route path="/compras/berdina/pedidos" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><BerdinaPedidos /></RutaProtegida>} />
-              <Route path="/compras/berdina/pedidos/nuevo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><NuevoPedido /></RutaProtegida>} />
-              <Route path="/compras/berdina/pendientes" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Pendientes taller="berdina" /></RutaProtegida>} />
+              <Route path="/compras/berdina" element={<RutaProtegida><Berdina /></RutaProtegida>} />
+              <Route path="/compras/berdina/pedidos" element={<RutaProtegida><BerdinaPedidos /></RutaProtegida>} />
+              <Route path="/compras/berdina/pedidos/nuevo" element={<RutaProtegida><NuevoPedido /></RutaProtegida>} />
+              <Route path="/compras/berdina/pendientes" element={<RutaProtegida><Pendientes taller="berdina" /></RutaProtegida>} />
 
-              <Route path="/compras/sanpablo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloCompras /></RutaProtegida>} />
-              <Route path="/compras/sanpablo/pedidos" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloPedidos /></RutaProtegida>} />
-              <Route path="/compras/sanpablo/pedidos/nuevo" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><SanPabloNuevoPedido /></RutaProtegida>} />
-              <Route path="/compras/sanpablo/pendientes" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><Pendientes taller="sanpablo" /></RutaProtegida>} />
+              <Route path="/compras/sanpablo" element={<RutaProtegida><SanPabloCompras /></RutaProtegida>} />
+              <Route path="/compras/sanpablo/pedidos" element={<RutaProtegida><SanPabloPedidos /></RutaProtegida>} />
+              <Route path="/compras/sanpablo/pedidos/nuevo" element={<RutaProtegida><SanPabloNuevoPedido /></RutaProtegida>} />
+              <Route path="/compras/sanpablo/pendientes" element={<RutaProtegida><Pendientes taller="sanpablo" /></RutaProtegida>} />
               {/* El análisis de un pedido, solo para verlo: lo abren los talleres
                   desde "Para autorizar". El que se carga y procesa es /compras/analista/analizar. */}
-              <Route path="/compras/pedidos/analisis" element={<RutaProtegida roles={PERMISOS.comprasGeneral}><AnalizarItem soloVer /></RutaProtegida>} />
+              <Route path="/compras/pedidos/analisis" element={<RutaProtegida><AnalizarItem soloVer /></RutaProtegida>} />
 
-              <Route path="/compras/analista" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><Analista /></RutaProtegida>} />
-              <Route path="/compras/analista/pedidos" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPedidos key="analista" /></RutaProtegida>} />
-              <Route path="/compras/analista/pendientes" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPendientes /></RutaProtegida>} />
-              <Route path="/compras/analista/analizar" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalizarItem /></RutaProtegida>} />
+              <Route path="/compras/analista" element={<RutaProtegida><Analista /></RutaProtegida>} />
+              <Route path="/compras/analista/pedidos" element={<RutaProtegida><AnalistaPedidos key="analista" /></RutaProtegida>} />
+              <Route path="/compras/analista/pendientes" element={<RutaProtegida><AnalistaPendientes /></RutaProtegida>} />
+              <Route path="/compras/analista/analizar" element={<RutaProtegida><AnalizarItem /></RutaProtegida>} />
 
-              <Route path="/compras/comprador" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><AnalistaPedidos key="comprador" /></RutaProtegida>} />
-              <Route path="/compras/comprador/oc" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><OrdenCompra /></RutaProtegida>} />
+              <Route path="/compras/comprador" element={<RutaProtegida><AnalistaPedidos key="comprador" /></RutaProtegida>} />
+              <Route path="/compras/comprador/op" element={<RutaProtegida><OrdenPago /></RutaProtegida>} />
 
-              <Route path="/compras/gerencia" element={<RutaProtegida roles={PERMISOS.comprasGerencia}><Gerencia /></RutaProtegida>} />
-              <Route path="/compras/gerencia/historial" element={<RutaProtegida roles={PERMISOS.comprasGerencia}><GerenciaHistorial /></RutaProtegida>} />
+              <Route path="/compras/gerencia" element={<RutaProtegida><Gerencia /></RutaProtegida>} />
+              <Route path="/compras/gerencia/historial" element={<RutaProtegida><GerenciaHistorial /></RutaProtegida>} />
 
-              <Route path="/compras/oc/ver" element={<RutaProtegida><VerOC /></RutaProtegida>} />
-              <Route path="/compras/oc/:nro" element={<RutaProtegida><VerOC /></RutaProtegida>} />
+              <Route path="/compras/op/ver" element={<RutaProtegida><VerOP /></RutaProtegida>} />
+              <Route path="/compras/op/:nro" element={<RutaProtegida><VerOP /></RutaProtegida>} />
 
               <Route path="/compras/altas/usuarios" element={<RutaProtegida roles={PERMISOS.comprasUsuarios}><Usuarios /></RutaProtegida>} />
-              <Route path="/compras/altas/proveedores" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><Proveedores /></RutaProtegida>} />
-              <Route path="/compras/altas/centros-costo" element={<RutaProtegida roles={PERMISOS.comprasAnalista}><CentrosCosto /></RutaProtegida>} />
+              {/* Qué ve y qué edita cada rol: solo el superadmin, como Usuarios. */}
+              <Route path="/compras/altas/usuarios/roles" element={<RutaProtegida roles={PERMISOS.comprasUsuarios}><Roles /></RutaProtegida>} />
+              <Route path="/compras/altas/proveedores" element={<RutaProtegida><Proveedores /></RutaProtegida>} />
+              {/* El CC es un solo padrón: la misma pantalla que /produccion/altas/cc,
+                  dentro de la barra de Compras (y así llega desde el celular). */}
+              <Route path="/compras/altas/centros-costo" element={<RutaProtegida><AltaCentrosCosto /></RutaProtegida>} />
               {/* Producción entra por los establecimientos: todo lo demás
                   cuelga de uno de ellos. */}
               <Route path="/produccion" element={<ProduccionEstablecimientos />} />
@@ -221,21 +240,23 @@ function LayoutDesktop() {
               {/* Variables es una sola para todos los meses: no lleva año ni mes */}
               <Route path="/produccion/certificados/variables" element={<ProduccionVariables />} />
               <Route path="/produccion/altas" element={<Error404 />} />
-              <Route path="/produccion/altas/cc" element={<ProduccionAltaCC />} />
-              <Route path="/produccion/altas/personal" element={<ProduccionAltaPersonal />} />
-              <Route path="/produccion/altas/tareas" element={<ProduccionAltaTareas />} />
+              {/* Quién ve cada alta sale de la tabla de Roles: lo controla
+                  reglaDeRuta, arriba, y el botón Altas usa lo mismo. */}
+              <Route path="/produccion/altas/cc" element={<RutaProtegida><AltaCentrosCosto /></RutaProtegida>} />
+              <Route path="/produccion/altas/personal" element={<RutaProtegida><ProduccionAltaPersonal /></RutaProtegida>} />
+              <Route path="/produccion/altas/tareas" element={<RutaProtegida><ProduccionAltaTareas /></RutaProtegida>} />
               <Route path="/camionetas" element={<Camionetas />} />
               <Route path="/camionetas/preventivo" element={<CamionetasPreventivo />} />
               <Route path="/camionetas/reparaciones" element={<Navigate to="/camionetas/services/reparaciones" replace />} />
               <Route path="/camionetas/resumen" element={<ResumenCamionetas />} />
-              <Route path="/camionetas/altas" element={<CamionetasAltas />} />
+              <Route path="/camionetas/altas" element={<RutaProtegida><CamionetasAltas /></RutaProtegida>} />
               <Route path="/camionetas/checklist" element={<ResumenCheckList />} />
               <Route path="/camionetas/checklist/form" element={<CamionetasCheckList />} />
               <Route path="/tractores" element={<Tractores />} />
               <Route path="/tractores/preventivo" element={<TractoresPreventivo />} />
               <Route path="/tractores/reparaciones" element={<TractoresReparaciones />} />
               <Route path="/tractores/services/reparaciones" element={<Navigate to="/tractores/reparaciones" replace />} />
-              <Route path="/tractores/altas" element={<TractoresAltas />} />
+              <Route path="/tractores/altas" element={<RutaProtegida><TractoresAltas /></RutaProtegida>} />
               <Route path="/tractores/grupo/:grupoId" element={<TractoresGrupo />} />
               <Route path="/tractores/grupo/:grupoId/resumen" element={<ResumenReparacionesTractores />} />
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId" element={<ReparacionesTractor />} />
@@ -249,7 +270,7 @@ function LayoutDesktop() {
               <Route path="/colectivo" element={<Colectivo />} />
               <Route path="/colectivo/preventivo" element={<ColectivosPreventivo />} />
               <Route path="/colectivo/reparaciones" element={<ColectivosReparaciones />} />
-              <Route path="/colectivos/altas" element={<ColectivosAltas />} />
+              <Route path="/colectivos/altas" element={<RutaProtegida><ColectivosAltas /></RutaProtegida>} />
               <Route path="/camionetas/services" element={<CamionetasServices />} />
               <Route path="/camionetas/services/kilometros" element={<ServicesKilometros />} />
               <Route path="/camionetas/services/ultimo-service" element={<ServicesUltimoService />} />

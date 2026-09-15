@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const GRUPOS = {
   1: { label: "Grupo 1", supervisor: "Jorge Rosas" },
@@ -14,6 +15,7 @@ const GRUPOS = {
 };
 
 function ReparacionesTractor() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const { grupoId, tractorId } = useParams();
   const { state } = useLocation();
@@ -41,6 +43,7 @@ function ReparacionesTractor() {
       id: "reportar",
       titulo: "Reporte Falla",
       subtitulo: "Registrar novedades, problemas o mejoras requeridas",
+      permiso: "tractores.reportar",
       ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/reportar`,
       bg: "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
       hoverBg: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",
@@ -51,6 +54,7 @@ function ReparacionesTractor() {
       id: "tareas",
       titulo: "Tareas",
       subtitulo: "Gestión de tareas, diagnósticos y repuestos",
+      permiso: "tractores.tareas",
       ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/tareas`,
       bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
       hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
@@ -61,6 +65,7 @@ function ReparacionesTractor() {
       id: "historial",
       titulo: "Historial",
       subtitulo: "Registro histórico de reparaciones del tractor",
+      permiso: "tractores.historial",
       ruta: `/tractores/grupo/${grupoId}/reparaciones/${tractorId}/historial`,
       bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
       hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
@@ -176,7 +181,7 @@ function ReparacionesTractor() {
             width: "100%",
           }}
         >
-          {tarjetas.map((t) => {
+          {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
             const isHovered = hoveredCard === t.id;
             return (
               <div

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const tarjetas = [
   {
     id: "preventivo",
     titulo: "Preventivo",
     subtitulo: "Control preventivo, services y relevamiento",
+    permiso: "colectivos.preventivo",
     ruta: "/colectivo/preventivo",
     bg: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
     hoverBg: "linear-gradient(135deg, #022c22 0%, #064e3b 100%)",
@@ -17,6 +19,7 @@ const tarjetas = [
     id: "reparaciones",
     titulo: "Reparaciones",
     subtitulo: "Tareas y reparaciones de los colectivos",
+    permiso: "colectivos.reparaciones",
     ruta: "/colectivo/reparaciones",
     bg: "linear-gradient(135deg, #312e81 0%, #4338ca 100%)",
     hoverBg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
@@ -26,6 +29,7 @@ const tarjetas = [
 ];
 
 function Colectivo() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
 
@@ -98,7 +102,7 @@ function Colectivo() {
             width: "100%",
           }}
         >
-          {tarjetas.map((t) => {
+          {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
             const isHovered = hoveredCard === t.id;
             return (
               <div

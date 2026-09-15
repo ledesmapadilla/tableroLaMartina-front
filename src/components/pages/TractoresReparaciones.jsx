@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 // Triángulo rojo chillón con signo de exclamación blanco y opacidad oscura de contraste
 function IconoAlertaTractor({ size = 24 }) {
@@ -116,6 +117,7 @@ const gruposInfo = [
 ];
 
 function TractoresReparaciones() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const [tractores, setTractores] = useState([]);
   const [paradosIds, setParadosIds] = useState(new Set());
@@ -283,8 +285,11 @@ function TractoresReparaciones() {
         </div>
       </div>
 
-      {/* Botón Resumen General Arriba a la Izquierda con Formato del Proyecto */}
-      <div className="px-4 pt-3 pb-1 d-flex justify-content-start flex-shrink-0">
+      {/* Botón Resumen General Arriba a la Izquierda con Formato del Proyecto.
+          Solo si el rol ve la Planilla general (tabla de Roles). */}
+      <div
+        className={`px-4 pt-3 pb-1 ${puede("tractores.planilla") ? "d-flex" : "d-none"} justify-content-start flex-shrink-0`}
+      >
         <button
           onClick={() => navigate("/tractores/services/reparaciones/resumen")}
           className="btn d-inline-flex align-items-center gap-2 rounded-3 px-3 py-1.5 text-white"

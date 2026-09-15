@@ -5,6 +5,7 @@ import { Button, Modal, Form, Table, Container } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { nuevoWorkbook } from "../../helpers/excel";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
@@ -81,6 +82,10 @@ function getEstadoColectivo(kmActuales, kmUltimoService, intervalo = DEFAULT_INT
 }
 
 function ColectivosPreventivo() {
+  // Ver sin editar (tabla de Roles): los botones que cargan service,
+  // kilometraje u observaciones quedan a la vista pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("colectivos.preventivo", "editar");
   const navigate = useNavigate();
   const [colectivos, setColectivos] = useState([]);
   const [ultimosServices, setUltimosServices] = useState([]);
@@ -980,12 +985,14 @@ function ColectivosPreventivo() {
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = "#1e293b";
                           }}
-                          title="Cargar último service para este colectivo"
+                          disabled={sinEditar}
+                          title={sinEditar ? "Sin permiso para editar" : "Cargar último service para este colectivo"}
                         >
                           + Service
                         </button>
                         <button
                           onClick={() => abrirModalKilometraje(c)}
+                          disabled={sinEditar}
                           className="btn btn-sm py-0.5 px-2 rounded-2 text-white shadow-sm"
                           style={{
                             backgroundColor: "#0d9488",
@@ -1684,7 +1691,7 @@ function ColectivosPreventivo() {
             variant="primary"
             size="sm"
             onClick={guardarObservacion}
-            disabled={guardandoObs}
+            disabled={guardandoObs || sinEditar}
             className="rounded-2 px-3 fw-semibold text-white"
             style={{
               backgroundColor: "#1e293b",

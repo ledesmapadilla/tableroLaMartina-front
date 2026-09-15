@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 function ServicesReparaciones() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const [camionetas, setCamionetas] = useState([]);
   const [conTareaPendiente, setConTareaPendiente] = useState(new Set());
@@ -91,8 +93,11 @@ function ServicesReparaciones() {
         </div>
       </div>
 
-      {/* Botón Resumen General Arriba a la Izquierda con Formato del Proyecto */}
-      <div className="px-4 pt-3 pb-1 d-flex justify-content-start flex-shrink-0">
+      {/* Botón Resumen General Arriba a la Izquierda con Formato del Proyecto.
+          Solo si el rol ve la Planilla general (tabla de Roles). */}
+      <div
+        className={`px-4 pt-3 pb-1 ${puede("camionetas.planilla") ? "d-flex" : "d-none"} justify-content-start flex-shrink-0`}
+      >
         <button
           onClick={() => navigate("/camionetas/services/reparaciones/resumen")}
           className="btn d-inline-flex align-items-center gap-2 rounded-3 px-3 py-1.5 text-white"

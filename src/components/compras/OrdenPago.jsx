@@ -43,7 +43,7 @@ const problemaDeCompra = (i) => {
   return null
 }
 
-export default function OrdenCompra() {
+export default function OrdenPago() {
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
 
@@ -62,7 +62,7 @@ export default function OrdenCompra() {
   const [altoVista, setAltoVista] = useState(0)
   const [obsPreview, setObsPreview] = useState({})
   const [focusPrecio, setFocusPrecio] = useState({})
-  const [ocItems, setOcItems] = useState([])
+  const [opItems, setOpItems] = useState([])
 
   useEffect(() => {
     Promise.all([
@@ -73,7 +73,7 @@ export default function OrdenCompra() {
       const todos = [
         ...berdina.map(p => ({ ...p, _src: 'berdina' })),
         ...sanpablo.map(p => ({ ...p, _src: 'sanpablo' })),
-      ].filter(p => (p.items || []).some(i => i.estado === 'Para hacer OC'))
+      ].filter(p => (p.items || []).some(i => i.estado === 'Para hacer OP'))
       setPedidos(todos)
       setProveedores(provs)
     })
@@ -87,15 +87,15 @@ export default function OrdenCompra() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const pedidosAceptados = new Set(ocItems.map(i => i.pedidoId))
+  const pedidosAceptados = new Set(opItems.map(i => i.pedidoId))
   const pedidosFiltrados = pedidos.filter(p =>
     fmtNro(p.nro_pedido, p._src).toLowerCase().includes(busqueda.toLowerCase()) &&
     !pedidosAceptados.has(p._id) &&
     // Un pedido cuyos ítems se rechazaron todos ya no tiene nada para comprar.
-    (p.items || []).some(i => i.estado === 'Para hacer OC')
+    (p.items || []).some(i => i.estado === 'Para hacer OP')
   )
-  const ocItemCount = (p) => (p.items || []).filter(i => i.estado === 'Para hacer OC').length
-  const esMultiple = (p) => ocItemCount(p) > 1
+  const opItemCount = (p) => (p.items || []).filter(i => i.estado === 'Para hacer OP').length
+  const esMultiple = (p) => opItemCount(p) > 1
 
   const pedidoSeleccionado = pedidos.find(p => `${p._src}-${p.nro_pedido}` === selectedKey)
   const pedidoEnVista = pedidos.find(p => `${p._src}-${p.nro_pedido}` === previewKey)
@@ -108,13 +108,13 @@ export default function OrdenCompra() {
   }
 
   // "Elegir": los ítems del pedido marcado van a la vista previa, todavía
-  // editables. Recién "Sumar a OC" los pasa a la orden.
+  // editables. Recién "Sumar a OP" los pasa a la orden.
   const elegirPedido = () => {
     const p = pedidoSeleccionado
     if (!p) return
     setPreviewKey(selectedKey)
     const items = (p.items || [])
-      .filter(i => i.estado === 'Para hacer OC')
+      .filter(i => i.estado === 'Para hacer OP')
       .map(i => {
         const { precio, proveedor_id } = precioElegidoProveedor(i)
         return {
@@ -162,7 +162,7 @@ export default function OrdenCompra() {
       return
     }
     setAltoVista(refVista.current?.offsetHeight || 0)
-    setOcItems(prev => [
+    setOpItems(prev => [
       ...prev,
       ...previewItems.map(i => ({ ...i, observaciones: obsPreview[i._id] || '' })),
     ])
@@ -172,7 +172,7 @@ export default function OrdenCompra() {
     setBusqueda('')
   }
 
-  // Rechazo total de un ítem, sin orden de compra: queda "Rechazado" con el
+  // Rechazo total de un ítem, sin orden de pago: queda "Rechazado" con el
   // motivo (el taller lo ve al tocar el estado) y sale de la vista previa.
   const rechazarItem = async (item) => {
     const { value: motivo, isConfirmed } = await Swal.fire({
@@ -217,21 +217,21 @@ export default function OrdenCompra() {
     }
   }
 
-  const quitarItem = (itemId) => setOcItems(prev => prev.filter(i => i._id !== itemId))
+  const quitarItem = (itemId) => setOpItems(prev => prev.filter(i => i._id !== itemId))
 
-  const total = ocItems.reduce((acc, i) => acc + (i.precio_total || 0), 0)
+  const total = opItems.reduce((acc, i) => acc + (i.precio_total || 0), 0)
 
-  const establecimiento = ocItems.length === 0
+  const establecimiento = opItems.length === 0
     ? null
-    : ocItems.every(i => i._src === 'berdina') ? 'berdina'
-    : ocItems.every(i => i._src === 'sanpablo') ? 'sanpablo'
+    : opItems.every(i => i._src === 'berdina') ? 'berdina'
+    : opItems.every(i => i._src === 'sanpablo') ? 'sanpablo'
     : 'mixto'
 
-  const generarOC = async () => {
-    if (ocItems.length === 0) return
+  const generarOP = async () => {
+    if (opItems.length === 0) return
     const result = await Swal.fire({
-      title: '¿Generar Orden de Compra?',
-      html: `<b>${ocItems.length} ítem${ocItems.length > 1 ? 's' : ''}</b><br/>Total: <b>${fmtPrecio(total)}</b>`,
+      title: '¿Generar Orden de Pago?',
+      html: `<b>${opItems.length} ítem${opItems.length > 1 ? 's' : ''}</b><br/>Total: <b>${fmtPrecio(total)}</b>`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Generar',
@@ -240,10 +240,10 @@ export default function OrdenCompra() {
     })
     if (!result.isConfirmed) return
     try {
-      const oc = await api.post('/oc', {
+      const op = await api.post('/op', {
         establecimiento,
         total,
-        items: ocItems.map(i => ({
+        items: opItems.map(i => ({
           pedidoId:        i.pedidoId,
           itemId:          i._id,
           nro_pedido:      i.nro_pedido,
@@ -260,7 +260,7 @@ export default function OrdenCompra() {
           fecha:           i.fecha,
         })),
       })
-      await Swal.fire({ icon: 'success', title: `OC generada: ${oc.nro_oc_display}`, timer: 2000, showConfirmButton: false })
+      await Swal.fire({ icon: 'success', title: `OP generada: ${op.nro_oc_display}`, timer: 2000, showConfirmButton: false })
       navigate(-1)
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
@@ -286,14 +286,14 @@ export default function OrdenCompra() {
         {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-3 flex-wrap flex-shrink-0">
           <span className="fw-bold" style={{ color: BORDO, fontSize: '1.05rem' }}>
-            Orden de compra
+            Orden de pago
           </span>
-          {ocItems.length > 0 && (
+          {opItems.length > 0 && (
             <span
               className="px-2 py-1 rounded-3"
               style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
             >
-              {ocItems.length} {ocItems.length === 1 ? 'ítem' : 'ítems'} · {fmtPrecio(total)}
+              {opItems.length} {opItems.length === 1 ? 'ítem' : 'ítems'} · {fmtPrecio(total)}
             </span>
           )}
         </div>
@@ -371,7 +371,7 @@ export default function OrdenCompra() {
                         {fmtNro(p.nro_pedido, p._src)}
                         {esMultiple(p) && (
                           <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
-                            ({ocItemCount(p)} ítems)
+                            ({opItemCount(p)} ítems)
                           </span>
                         )}
                       </div>
@@ -398,12 +398,12 @@ export default function OrdenCompra() {
 
         {/* Vista previa: lo que se va a sumar, todavía editable. Su lugar queda
             reservado aunque se vacíe: así la tabla de la orden no salta para
-            arriba al tocar "Sumar a OC". */}
-        {(previewItems.length > 0 || ocItems.length > 0) && (
+            arriba al tocar "Sumar a OP". */}
+        {(previewItems.length > 0 || opItems.length > 0) && (
           <div ref={refVista} className="mb-3 flex-shrink-0" style={{ minHeight: altoVista }}>
             {previewItems.length > 0 ? (
             <>
-            {/* Se revisa y se corrige acá; "Sumar a OC" lo pasa a la orden. */}
+            {/* Se revisa y se corrige acá; "Sumar a OP" lo pasa a la orden. */}
             <div className="d-flex align-items-center gap-2 mb-1">
               <span className="fw-bold" style={{ color: BORDO, fontSize: '0.82rem' }}>
                 Vista previa — pedido{' '}
@@ -417,7 +417,7 @@ export default function OrdenCompra() {
                 title="Pasar estos ítems al listado de la orden"
               >
                 <i className="bi bi-plus-lg"></i>
-                <span>Sumar a OC</span>
+                <span>Sumar a OP</span>
               </Button>
             </div>
             <div
@@ -572,7 +572,7 @@ export default function OrdenCompra() {
 
         {/* Lo que ya entró en la orden: más abajo y separado de la vista
             previa, para que no se confunda lo que se revisa con lo que ya entró. */}
-        {ocItems.length > 0 && (
+        {opItems.length > 0 && (
           <div className="flex-shrink-0 pb-3 mt-3 pt-3" style={{ borderTop: '2px solid #e2e8f0' }}>
             <div className="fw-bold mb-1" style={{ color: BORDO, fontSize: '0.82rem' }}>
               Ítems en la orden
@@ -598,13 +598,13 @@ export default function OrdenCompra() {
                 <tbody>
                   {/* Donde cambia el pedido respecto de la fila anterior, la
                       línea es más marcada (clase inicio-pedido, en index.css). */}
-                  {ocItems.map((item, idx) => (
+                  {opItems.map((item, idx) => (
                     <tr
                       key={item._id}
                       className={
                         idx > 0 &&
                         `${item._src}-${item.nro_pedido}` !==
-                          `${ocItems[idx - 1]._src}-${ocItems[idx - 1].nro_pedido}`
+                          `${opItems[idx - 1]._src}-${opItems[idx - 1].nro_pedido}`
                           ? 'inicio-pedido'
                           : undefined
                       }
@@ -661,23 +661,23 @@ export default function OrdenCompra() {
             <div className="d-flex justify-content-center">
               <Button
                 size="sm"
-                onClick={generarOC}
+                onClick={generarOP}
                 className="rounded-3 px-4 py-1 shadow-sm d-flex align-items-center gap-2"
                 style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.86rem', fontWeight: 600 }}
               >
                 <i className="bi bi-receipt"></i>
-                <span>Generar orden de compra</span>
+                <span>Generar orden de pago</span>
               </Button>
             </div>
           </div>
         )}
 
-        {ocItems.length === 0 && previewItems.length === 0 && (
+        {opItems.length === 0 && previewItems.length === 0 && (
           <div className="flex-grow-1 d-flex align-items-center justify-content-center">
             <span className="text-muted" style={{ fontSize: '0.9rem' }}>
               {pedidoSeleccionado
                 ? 'Tocá «Elegir» para ver los ítems del pedido.'
-                : 'Buscá un pedido para empezar la orden de compra.'}
+                : 'Buscá un pedido para empezar la orden de pago.'}
             </span>
           </div>
         )}

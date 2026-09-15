@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const tarjetas = [
   {
     id: "kilometros",
     titulo: "Kilómetros",
     subtitulo: "Registro y control de odómetros mensuales",
+    permiso: "camionetas.kilometros",
     ruta: "/camionetas/services/kilometros",
     bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
     hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
@@ -17,6 +19,7 @@ const tarjetas = [
     id: "ultimo-service",
     titulo: "Último Service",
     subtitulo: "Control de fechas e intervalos cada 10.000 Km",
+    permiso: "camionetas.ultimoService",
     ruta: "/camionetas/services/ultimo-service",
     bg: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
     hoverBg: "linear-gradient(135deg, #052e16 0%, #14532d 100%)",
@@ -27,6 +30,7 @@ const tarjetas = [
     id: "checklist",
     titulo: "Check List",
     subtitulo: "Control bimestral de estado y novedades",
+    permiso: "camionetas.checklist",
     ruta: "/camionetas/checklist",
     bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
     hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
@@ -36,6 +40,7 @@ const tarjetas = [
 ];
 
 function CamionetasPreventivo() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
 
@@ -119,7 +124,7 @@ function CamionetasPreventivo() {
               justifyContent: "center",
             }}
           >
-            {tarjetas.map((t) => {
+            {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
               const isHovered = hoveredCard === t.id;
               return (
                 <div

@@ -28,7 +28,7 @@ export const td = { fontSize: '0.7rem', padding: '1px 5px', verticalAlign: 'midd
 export const tdCentro = { ...td, textAlign: 'center' }
 
 /**
- * Variante grande, para las tablas de pocas filas —la orden de compra tiene
+ * Variante grande, para las tablas de pocas filas —la orden de pago tiene
  * uno o dos ítems—, donde las filas finas del informe dejan media pantalla
  * vacía. Mismo formato, con más aire y letra más grande.
  */

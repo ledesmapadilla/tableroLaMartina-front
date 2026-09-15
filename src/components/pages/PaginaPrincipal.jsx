@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SesionUsuario from "../shared/SesionUsuario";
+import MenuAltas from "../shared/MenuAltas";
+import { usePermisos } from "../../context/permisos";
+import { GRUPO } from "../../utils/permisosCatalogo";
 
 const secciones = [
   {
     id: "compras",
     titulo: "Compras",
-    subtitulo: "Pedidos, proveedores y órdenes de compra",
+    subtitulo: "Pedidos, proveedores y órdenes de pago",
     ruta: "/compras",
+    permiso: GRUPO.compras,
     bg: "linear-gradient(135deg, #7a1828 0%, #9d2235 100%)",
     hoverBg: "linear-gradient(135deg, #4a0812 0%, #7a1828 100%)",
     accentColor: "#f59e0b",
@@ -18,6 +22,7 @@ const secciones = [
     titulo: "Mantenimiento",
     subtitulo: "Camionetas, tractores, colectivos y visitas",
     ruta: "/inicio",
+    permiso: GRUPO.mantenimiento,
     bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
     hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
     accentColor: "#3b82f6",
@@ -30,6 +35,7 @@ const secciones = [
     // Entra directo a los meses de certificados: es la única sección de
     // Producción que se usa todos los días.
     ruta: "/produccion",
+    permiso: GRUPO.produccion,
     bg: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
     hoverBg: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
     accentColor: "#10b981",
@@ -39,6 +45,7 @@ const secciones = [
 
 function PaginaPrincipal() {
   const navigate = useNavigate();
+  const { puede } = usePermisos();
   const [hoveredCard, setHoveredCard] = useState(null);
 
   return (
@@ -55,9 +62,13 @@ function PaginaPrincipal() {
         userSelect: "none",
       }}
     >
-      {/* La sesión es del proyecto: se cierra desde acá, sin entrar a ninguna
-          sección. */}
-      <div className="d-flex justify-content-end px-4 pt-3 flex-shrink-0">
+      {/* Arriba a la derecha, las altas (el mismo botón que en los navbars) y
+          la sesión, que es del proyecto: se cierra desde acá, sin entrar a
+          ninguna sección. */}
+      <div className="d-flex justify-content-end align-items-center gap-3 px-4 pt-3 flex-shrink-0">
+        <MenuAltas
+          colores={{ activo: "rgba(255, 255, 255, 0.15)", acento: "#334155", marca: "#0f172a", marcaFondo: "#f1f5f9" }}
+        />
         <SesionUsuario mostrarRol />
       </div>
 
@@ -89,7 +100,7 @@ function PaginaPrincipal() {
             width: "100%",
           }}
         >
-          {secciones.map((s) => {
+          {secciones.filter((s) => !s.permiso || puede(s.permiso)).map((s) => {
             const isHovered = hoveredCard === s.id;
             return (
               <div

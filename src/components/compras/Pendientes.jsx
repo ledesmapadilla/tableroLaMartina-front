@@ -14,16 +14,16 @@ import {
   FiltroTexto,
   FiltroSelect,
   OjoPedido,
-  CeldaOC,
+  CeldaOP,
 } from './estilos'
-import { useProveedorDeOC } from './proveedorOC'
+import { useProveedorDeOP } from './proveedorOP'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
 
 // Todo lo que el taller pidió y todavía no terminó: en análisis, esperando a
-// Gerencia, para hacer la OC o para retirar.
-const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Para revision', 'Autorizar', 'Para hacer OC', 'Para retirar'])
+// Gerencia, para hacer la OP o para retirar.
+const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Para revision', 'Autorizar', 'Para hacer OP', 'Para retirar'])
 
 export default function Pendientes({ taller }) {
   const navigate = useNavigate()
@@ -35,8 +35,8 @@ export default function Pendientes({ taller }) {
   // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
   // la misma tabla.
   const [abiertos, setAbiertos] = useState(() => new Set())
-  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OC.
-  const proveedorDeOC = useProveedorDeOC()
+  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OP.
+  const proveedorDeOP = useProveedorDeOP()
   const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '' }
   const [filtros, setFiltros]   = useState(FILTROS_INIT)
   const setF     = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
@@ -133,7 +133,7 @@ export default function Pendientes({ taller }) {
         </span>
       )
     }
-    const color = { 'Para analisis': 'primary', 'Para hacer OC': 'info', 'Para retirar': 'success' }
+    const color = { 'Para analisis': 'primary', 'Para hacer OP': 'info', 'Para retirar': 'success' }
     return <span className={`badge bg-${color[norm] || 'secondary'}`}>{norm}</span>
   }
 
@@ -196,7 +196,7 @@ export default function Pendientes({ taller }) {
       { titulo: "Grupo", ancho: 16 },
       { titulo: "Solicita", ancho: 18 },
       { titulo: "Estado", ancho: 14 },
-      { titulo: "O.C.", ancho: 12 },
+      { titulo: "O.P.", ancho: 12 },
     ],
       filas: lista.map((item) => [
       fmtNro(item.nro_pedido),
@@ -308,7 +308,7 @@ export default function Pendientes({ taller }) {
                 <th style={th}>Grupo</th>
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
-                <th style={thCentro}>O.C. · Proveedor</th>
+                <th style={thCentro}>O.P. · Proveedor</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
             </thead>
@@ -386,7 +386,7 @@ export default function Pendientes({ taller }) {
                           } else if (item.estado === 'Para revision') {
                             verMotivoRevision(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
+                            navigate(`/compras/op/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
                           } else if (item.estado === 'Para retirar') {
                             avisarSinOC(item)
                           }
@@ -394,7 +394,7 @@ export default function Pendientes({ taller }) {
                       >
                         {badgeEstado(item.estado)}
                       </td>
-                      <td style={tdCentro}><CeldaOC oc={item.oc} proveedor={proveedorDeOC(item)} /></td>
+                      <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion

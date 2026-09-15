@@ -12,7 +12,7 @@ import { useMontoAutorizacion } from './montoAutorizacion'
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 const esParaAnalisis = (e) => e === 'Para analisis' || e === 'En analisis' || e === 'Pedido' || e === 'Para revision'
 
-// Un ítem que ya pasó el análisis (para autorizar, para hacer OC) no se vuelve
+// Un ítem que ya pasó el análisis (para autorizar, para hacer OP) no se vuelve
 // a analizar: se abre para ver lo que cargó el analista, sin editar. Entonces
 // se muestran los ítems del pedido que están en ese mismo estado.
 const estadoVistoDe = (state) =>
@@ -21,8 +21,8 @@ const itemEnVista = (estadoVisto) => (i) =>
   estadoVisto ? i.estado === estadoVisto : esParaAnalisis(i.estado)
 const NOMBRE_ESTADO = { Autorizar: 'Autorizar Gcia.' }
 
-// Un análisis ya hecho se puede corregir mientras no haya orden de compra.
-const ESTADOS_EDITABLES = ['Autorizar', 'Para hacer OC']
+// Un análisis ya hecho se puede corregir mientras no haya orden de pago.
+const ESTADOS_EDITABLES = ['Autorizar', 'Para hacer OP']
 
 const fmtPrecio = (v) =>
   v === '' || v === null || v === undefined
@@ -237,7 +237,7 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
   const procesar = async () => {
     if (!pedidoSeleccionado || itemsAMostrar.length === 0) return
     const monto = calcularMontoTotal()
-    const nuevoEstado = monto >= montoAutorizacion ? 'Autorizar' : 'Para hacer OC'
+    const nuevoEstado = monto >= montoAutorizacion ? 'Autorizar' : 'Para hacer OP'
     // Al corregir un análisis el estado se recalcula con la misma regla: si
     // ahora supera el monto, vuelve a Gerencia para autorizar.
     const cambiaEstado = editando && nuevoEstado !== estadoVisto
@@ -391,7 +391,7 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
           )}
 
           {/* Solo el analista procesa. Un análisis ya hecho se abre para verlo
-              y, mientras no haya orden de compra, se puede reabrir y corregir. */}
+              y, mientras no haya orden de pago, se puede reabrir y corregir. */}
           {puedeEditar && !editando && (
             <Button
               size="sm"

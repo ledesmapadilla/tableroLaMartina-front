@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 function CamionetaMenuReparaciones() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const { camionetaId } = useParams();
   const { state } = useLocation();
@@ -27,6 +29,7 @@ function CamionetaMenuReparaciones() {
       id: "reportar",
       titulo: "Reportar Falla",
       subtitulo: "Registrar novedades, problemas o mejoras requeridas",
+      permiso: "camionetas.reportar",
       ruta: `/camionetas/services/reparaciones/${camionetaId}/reportar`,
       bg: "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
       hoverBg: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",
@@ -37,6 +40,7 @@ function CamionetaMenuReparaciones() {
       id: "tareas",
       titulo: "Tareas",
       subtitulo: "Gestión de tareas, diagnósticos y repuestos",
+      permiso: "camionetas.tareas",
       ruta: `/camionetas/services/reparaciones/${camionetaId}/tareas`,
       bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
       hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
@@ -47,6 +51,7 @@ function CamionetaMenuReparaciones() {
       id: "historial",
       titulo: "Historial",
       subtitulo: "Registro histórico de reparaciones",
+      permiso: "camionetas.historial",
       ruta: `/camionetas/services/reparaciones/${camionetaId}/historial`,
       bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
       hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
@@ -151,7 +156,7 @@ function CamionetaMenuReparaciones() {
             width: "100%",
           }}
         >
-          {tarjetas.map((t) => {
+          {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
             const isHovered = hoveredCard === t.id;
             return (
               <div

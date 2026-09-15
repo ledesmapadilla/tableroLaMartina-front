@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "react-bootstrap";
 import Swal from "sweetalert2";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -50,6 +51,10 @@ const estadoNormalizado = (estado) => {
 const ESTADOS_REP = ["Pedido", "Pendiente", "En taller", "Colocado"];
 
 function ReparacionesCamioneta() {
+  // Ver sin editar (tabla de Roles): los botones y campos de la tarea quedan a
+  // la vista pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("camionetas.tareas", "editar");
   const navigate = useNavigate();
   const { camionetaId } = useParams();
   const { state } = useLocation();
@@ -651,8 +656,9 @@ function ReparacionesCamioneta() {
                       <button
                         type="button"
                         onClick={(e) => handleAbrirEdicion(t, e)}
+                        disabled={sinEditar}
                         className="btn btn-sm btn-link text-primary p-0 ms-1 opacity-75 hover-opacity-100"
-                        title="Editar tarea"
+                        title={sinEditar ? "Sin permiso para editar" : "Editar tarea"}
                         style={{ lineHeight: 1 }}
                       >
                         <i className="bi bi-pencil-square" style={{ fontSize: "0.85rem" }}></i>
@@ -660,8 +666,9 @@ function ReparacionesCamioneta() {
                       <button
                         type="button"
                         onClick={(e) => handleEliminarTarea(t._id, e)}
+                        disabled={sinEditar}
                         className="btn btn-sm btn-link text-danger p-0 opacity-75 hover-opacity-100"
-                        title="Eliminar tarea"
+                        title={sinEditar ? "Sin permiso para editar" : "Eliminar tarea"}
                         style={{ lineHeight: 1 }}
                       >
                         <i className="bi bi-trash3" style={{ fontSize: "0.85rem" }}></i>
@@ -686,12 +693,20 @@ function ReparacionesCamioneta() {
           </div>
         </div>
 
-        {/* Panel Derecho: Área de Diagnóstico y Plan de Reparación */}
+        {/* Panel Derecho: Área de Diagnóstico y Plan de Reparación. Es un
+            fieldset: sin permiso de edición (Roles) deshabilita de una todos
+            los campos y botones del panel. */}
         {tareaSeleccionada ? (
-          <div
+          <fieldset
+            disabled={sinEditar}
             className="flex-grow-1 bg-white rounded-4 shadow-sm border p-4 d-flex flex-column"
-            style={{ borderColor: "#cbd5e1", overflowY: "auto" }}
+            style={{ borderColor: "#cbd5e1", overflowY: "auto", minWidth: 0 }}
           >
+            {sinEditar && (
+              <div className="alert alert-secondary py-1 px-2 mb-3" style={{ fontSize: "0.8rem" }}>
+                <i className="bi bi-lock-fill me-1"></i>Solo lectura: tu rol puede ver las tareas pero no editarlas.
+              </div>
+            )}
             {/* Cabecera de la Tarea Activa */}
             <div className="d-flex flex-wrap align-items-center justify-content-between pb-3 mb-3 border-bottom gap-2">
               <div>
@@ -994,7 +1009,7 @@ function ReparacionesCamioneta() {
                 style={{ fontSize: "0.85rem" }}
               />
             </Form.Group>
-          </div>
+          </fieldset>
         ) : (
           <div className="flex-grow-1 bg-white rounded-4 shadow-sm border p-5 d-flex flex-column align-items-center justify-content-center text-muted" style={{ borderColor: "#cbd5e1" }}>
             <i className="bi bi-tools fs-1 mb-2 opacity-50"></i>

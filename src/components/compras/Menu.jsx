@@ -2,34 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import LogoNavbar from '../shared/LogoNavbar'
 import SesionUsuario from '../shared/SesionUsuario'
+import MenuAltas from '../shared/MenuAltas'
 import { useAuth } from '../../context/AuthContext'
-import { PERMISOS } from '../../utils/permisos'
+import { usePermisos } from '../../context/permisos'
+import { altasDe, rutaDeAlta } from '../../utils/altas'
+import { nombreRol } from '../../utils/permisosCatalogo'
 
-// Los padrones de Compras. Es el único desplegable de la barra: a las
-// secciones (Berdina, San Pablo, Analista, Comprador, Gerencia) se entra por
-// las tarjetas de Inicio, igual que en Producción se entra por las suyas.
-//
-// Los roles salen de PERMISOS, el mismo con el que App.jsx protege cada ruta.
-const ALTAS = [
-  {
-    to: '/compras/altas/usuarios',
-    label: 'Usuarios',
-    icon: 'bi bi-person-badge-fill',
-    roles: PERMISOS.comprasUsuarios,
-  },
-  {
-    to: '/compras/altas/proveedores',
-    label: 'Proveedores',
-    icon: 'bi bi-truck',
-    roles: PERMISOS.comprasAnalista,
-  },
-  {
-    to: '/compras/altas/centros-costo',
-    label: 'Centros de Costo (CC)',
-    icon: 'bi bi-diagram-3-fill',
-    roles: PERMISOS.comprasAnalista,
-  },
-]
+// A las secciones (Berdina, San Pablo, Analista, Comprador, Gerencia) se entra
+// por las tarjetas de Inicio, igual que en Producción se entra por las suyas.
+// El único desplegable de la barra es el de Altas, que es el mismo en todo el
+// proyecto (utils/altas.js).
 
 // Bordó y ámbar: los colores de Compras en la página principal.
 const FONDO = '#7a1828'
@@ -67,17 +49,14 @@ export default function Menu() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuth()
-  const [abierto, setAbierto] = useState(false)
+  const { puede } = usePermisos()
   const [menuMovil, setMenuMovil] = useState(false)
   const navRef = useRef(null)
 
   // Cerrar lo que esté abierto al navegar o al hacer click afuera. Se cierra
   // en el propio click y no en un efecto sobre pathname: el efecto encadena un
   // render de más en cada navegación.
-  const cerrar = () => {
-    setAbierto(false)
-    setMenuMovil(false)
-  }
+  const cerrar = () => setMenuMovil(false)
 
   const ir = (ruta) => {
     cerrar()
@@ -98,8 +77,9 @@ export default function Menu() {
     navigate('/login', { replace: true })
   }
 
-  const altasVisibles = user ? ALTAS.filter((a) => a.roles.includes(user.rol)) : []
-  const enAltas = location.pathname.startsWith('/compras/altas')
+  // En el panel del celular van solo las altas que viven en Compras: fuera de
+  // /compras el Tablero no se abre en el teléfono.
+  const altasCelular = altasDe(user, puede).filter((a) => rutaDeAlta(a, 'compras').startsWith('/compras'))
   const seccion = seccionDe(location.pathname)
 
   return (
@@ -191,54 +171,8 @@ export default function Menu() {
           <span>Volver</span>
         </button>
 
-        {altasVisibles.length > 0 && (
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setAbierto((v) => !v)}
-              className="btn btn-sm d-flex align-items-center gap-2 rounded-3 px-3 py-1 text-white"
-              style={btnSeccion(abierto || enAltas)}
-            >
-              <i className="bi bi-plus-circle-fill"></i>
-              <span>Altas</span>
-              <i className={`bi bi-chevron-${abierto ? 'up' : 'down'} small opacity-75`}></i>
-            </button>
-
-            {abierto && (
-              <div
-                className="shadow-lg"
-                style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 8px)',
-                  right: 0,
-                  minWidth: '210px',
-                  backgroundColor: '#ffffff',
-                  borderRadius: '12px',
-                  border: '1px solid #e2e8f0',
-                  overflow: 'hidden',
-                  zIndex: 40,
-                }}
-              >
-                {altasVisibles.map((a) => (
-                  <NavLink
-                    key={a.to}
-                    to={a.to}
-                    onClick={cerrar}
-                    className="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
-                    style={({ isActive }) => ({
-                      color: isActive ? FONDO : '#334155',
-                      backgroundColor: isActive ? '#fef3c7' : 'transparent',
-                      fontWeight: isActive ? 600 : 500,
-                      fontSize: '0.88rem',
-                    })}
-                  >
-                    <i className={a.icon} style={{ color: ACTIVO, minWidth: '20px' }}></i>
-                    <span>{a.label}</span>
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Altas: el mismo botón en todo el proyecto (utils/altas.js). */}
+        <MenuAltas seccion="compras" colores={{ activo: ACTIVO, acento: ACTIVO, marca: FONDO, marcaFondo: '#fef3c7' }} />
 
         {/* La sesión es del proyecto: el mismo bloque que en Producción y en la
             página principal. */}
@@ -275,7 +209,7 @@ export default function Menu() {
               className="px-3 py-2 text-white"
               style={{ fontSize: '0.8rem', opacity: 0.75 }}
             >
-              {user.nombre} · {user.rol}
+              {user.nombre} · {nombreRol(user.rol)}
             </div>
           )}
 
@@ -288,15 +222,15 @@ export default function Menu() {
             <span>Volver</span>
           </button>
 
-          {altasVisibles.map((a) => (
+          {altasCelular.map((a) => (
             <NavLink
               key={a.to}
-              to={a.to}
+              to={rutaDeAlta(a, 'compras')}
               onClick={cerrar}
               className="btn btn-sm w-100 text-start d-flex align-items-center gap-2 rounded-3 px-3 py-2 text-white mb-1"
               style={({ isActive }) => btnSeccion(isActive)}
             >
-              <i className={a.icon}></i>
+              <i className={a.icono}></i>
               <span>{a.label}</span>
             </NavLink>
           ))}

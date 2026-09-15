@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col } from "react-bootstrap";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const API = "/api/camionetas";
 
@@ -104,6 +105,10 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
 }
 
 function CamionetasAltas() {
+  // Ver sin editar (tabla de Roles): nueva, editar y borrar quedan a la vista
+  // pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("altas.camionetas", "editar");
   const navigate = useNavigate();
   const [camionetas, setCamionetas] = useState([]);
   const [paradasAbiertas, setParadasAbiertas] = useState(new Set());
@@ -378,6 +383,7 @@ function CamionetasAltas() {
             variant="success"
             size="sm"
             onClick={abrirNuevo}
+            disabled={sinEditar}
             className="d-inline-flex align-items-center rounded-3 px-3 py-1.5 shadow-sm"
             style={{
               backgroundColor: "#15803d",
@@ -483,17 +489,19 @@ function CamionetasAltas() {
                         <div className="d-flex justify-content-center align-items-center gap-1.5">
                           <button
                             onClick={() => abrirEditar(c)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-1"
                             style={{ width: "24px", height: "24px" }}
-                            title="Editar camioneta"
+                            title={sinEditar ? "Sin permiso para editar" : "Editar camioneta"}
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
                           <button
                             onClick={() => eliminar(c._id)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
                             style={{ width: "24px", height: "24px" }}
-                            title="Eliminar camioneta"
+                            title={sinEditar ? "Sin permiso para editar" : "Eliminar camioneta"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
                           </button>

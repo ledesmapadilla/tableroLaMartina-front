@@ -2,12 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
+import { GRUPO } from "../../utils/permisosCatalogo";
 
 const tarjetas = [
   {
     id: "preventivo",
     titulo: "Preventivo",
     subtitulo: "Control preventivo, itinerarios y relevamiento",
+    permiso: "tractores.preventivo",
     ruta: "/tractores/preventivo",
     bg: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
     hoverBg: "linear-gradient(135deg, #022c22 0%, #064e3b 100%)",
@@ -18,6 +21,7 @@ const tarjetas = [
     id: "reparaciones",
     titulo: "Reparaciones",
     subtitulo: "Tareas y reparaciones por grupo y tractor",
+    permiso: GRUPO.tractoresReparaciones,
     ruta: "/tractores/reparaciones",
     bg: "linear-gradient(135deg, #312e81 0%, #4338ca 100%)",
     hoverBg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
@@ -27,6 +31,7 @@ const tarjetas = [
 ];
 
 function Tractores() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
   const [totalTractores, setTotalTractores] = useState(0);
@@ -112,7 +117,7 @@ function Tractores() {
             width: "100%",
           }}
         >
-          {tarjetas.map((t) => {
+          {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
             const isHovered = hoveredCard === t.id;
             return (
               <div

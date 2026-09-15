@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const API = "/api/colectivos";
 
@@ -112,6 +113,10 @@ function SearchableInputDropdown({
 }
 
 function ColectivosAltas() {
+  // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista
+  // pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("altas.colectivos", "editar");
   const navigate = useNavigate();
   const [colectivos, setColectivos] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -430,6 +435,7 @@ function ColectivosAltas() {
             variant="primary"
             size="sm"
             onClick={abrirNuevo}
+            disabled={sinEditar}
             className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
             style={{
               backgroundColor: "#1e293b",
@@ -635,17 +641,19 @@ function ColectivosAltas() {
                         <div className="d-flex justify-content-center align-items-center gap-1.5">
                           <button
                             onClick={() => abrirEditar(c)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-1"
                             style={{ width: "24px", height: "24px" }}
-                            title="Editar colectivo"
+                            title={sinEditar ? "Sin permiso para editar" : "Editar colectivo"}
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
                           <button
                             onClick={() => eliminar(c._id)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
                             style={{ width: "24px", height: "24px" }}
-                            title="Eliminar colectivo"
+                            title={sinEditar ? "Sin permiso para editar" : "Eliminar colectivo"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
                           </button>

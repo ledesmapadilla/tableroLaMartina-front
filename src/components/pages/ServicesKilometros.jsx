@@ -7,6 +7,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 
 import { getEstado } from "../../utils/serviceHelpers";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
@@ -83,6 +84,10 @@ function ResponsableDropdown({ value, onChange, onSelect, camionetas, dropOpen, 
 }
 
 function ServicesKilometros() {
+  // Ver sin editar (tabla de Roles): los botones que cargan o editan quedan a
+  // la vista pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("camionetas.kilometros", "editar");
   const navigate = useNavigate();
 
   const [año, setAnio] = useState(2026);
@@ -620,6 +625,7 @@ function ServicesKilometros() {
               variant="dark"
               size="sm"
               onClick={() => abrirKmModal()}
+              disabled={sinEditar}
               className="d-inline-flex align-items-center rounded-3 px-3 py-1.5 shadow-sm"
               style={{
                 backgroundColor: "#1e293b",
@@ -761,7 +767,8 @@ function ServicesKilometros() {
                                   e.currentTarget.style.backgroundColor = "transparent";
                                   e.currentTarget.style.borderColor = "transparent";
                                 }}
-                                title="Clic para editar odómetro"
+                                disabled={sinEditar}
+                                title={sinEditar ? "Sin permiso para editar" : "Clic para editar odómetro"}
                               >
                                 {isSinDatos ? "S/ Datos" : Number(reg.kms).toLocaleString("es-AR")}
                               </button>
@@ -770,6 +777,7 @@ function ServicesKilometros() {
                             ) : (
                               <button
                                 onClick={() => abrirKmModal(c._id, mes)}
+                                disabled={sinEditar}
                                 className="btn btn-sm p-0 rounded-circle d-inline-flex align-items-center justify-content-center"
                                 style={{
                                   width: "22px",

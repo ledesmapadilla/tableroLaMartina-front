@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 // Triángulo rojo chillón con signo de exclamación blanco y opacidad oscura de contraste
 function IconoAlertaTractor({ size = 20 }) {
@@ -82,6 +83,7 @@ const GRUPOS = {
 };
 
 function TractoresGrupo() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const { grupoId } = useParams();
   const [tractores, setTractores] = useState([]);
@@ -197,7 +199,7 @@ function TractoresGrupo() {
       >
         <button
           onClick={() => navigate(`/tractores/grupo/${grupoId}/resumen`)}
-          className="btn d-inline-flex align-items-center gap-2 rounded-3 px-3 py-1.5 text-white"
+          className={`btn ${puede("tractores.planilla") ? "d-inline-flex" : "d-none"} align-items-center gap-2 rounded-3 px-3 py-1.5 text-white`}
           style={{
             background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
             border: "1px solid rgba(255, 255, 255, 0.12)",

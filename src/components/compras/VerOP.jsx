@@ -15,7 +15,7 @@ import {
 import { Raya } from './estilos'
 import { opcionElegida } from './precioElegido'
 
-/** Un dato suelto de la ficha de la OC: rótulo chico arriba, valor abajo. */
+/** Un dato suelto de la ficha de la OP: rótulo chico arriba, valor abajo. */
 const Dato = ({ etiqueta, valor, destacado = false }) => (
   <div className="d-flex flex-column lh-sm">
     <span className="fw-bold text-uppercase" style={{ fontSize: '0.72rem', color: '#64748b', letterSpacing: '0.5px' }}>
@@ -54,7 +54,7 @@ const establecimientoLabel = (e) =>
 /**
  * En modo análisis, la fila de cada ítem: el presupuesto que eligió el
  * analista (el más barato si no eligió otro). Es el mismo con el que se
- * decidió si iba a Gerencia y con el que se arma la orden de compra; antes
+ * decidió si iba a Gerencia y con el que se arma la orden de pago; antes
  * acá se tomaba siempre el mínimo. Sin ningún precio, el primer proveedor.
  */
 const filaElegidaDeItem = (item) => {
@@ -79,16 +79,16 @@ const filaElegidaDeItem = (item) => {
   }
 }
 
-export default function VerOC() {
+export default function VerOP() {
   const { nro } = useParams()
   const navigate = useNavigate()
   const { state } = useLocation()
   const modoAnalisis = !!state?.item || !!state?.items
-  // Desde una tabla de pedidos la OC se abre para retirar un ítem, o los de
-  // un pedido: solo esos se marcan. Sin esa lista se retira la OC entera.
+  // Desde una tabla de pedidos la OP se abre para retirar un ítem, o los de
+  // un pedido: solo esos se marcan. Sin esa lista se retira la OP entera.
   const retirar = state?.retirar
 
-  const [oc, setOc] = useState(null)
+  const [op, setOp] = useState(null)
   const [proveedores, setProveedores] = useState([])
   const [error, setError] = useState(null)
 
@@ -100,7 +100,7 @@ export default function VerOC() {
         const filas = itemsArr.map(filaElegidaDeItem).filter(Boolean)
         const total = filas.reduce((sum, f) => sum + (f.precio_total ?? 0), 0)
         const ref = itemsArr[0]
-        setOc({
+        setOp({
           nro_oc_display: fmtNro(ref.nro_pedido, ref._src),
           fecha:          ref.fecha,
           establecimiento: ref._src,
@@ -113,10 +113,10 @@ export default function VerOC() {
     }
 
     Promise.all([
-      api.get(`/oc/by-display/${encodeURIComponent(nro)}`),
+      api.get(`/op/by-display/${encodeURIComponent(nro)}`),
       api.get('/proveedores').catch(() => []),
     ])
-      .then(([ocData, provs]) => { setOc(ocData); setProveedores(provs) })
+      .then(([opData, provs]) => { setOp(opData); setProveedores(provs) })
       .catch(err => setError(err.message))
     // state no cambia mientras no se navegue: react-router devuelve la misma
     // location, así que ponerlo acá no dispara una recarga de más.
@@ -125,8 +125,8 @@ export default function VerOC() {
   const provNombre = (id) =>
     proveedores.find(p => p._id === id)?.razonsocial || id || '—'
 
-  const aRetirar = (oc?.items || []).filter((it) => !retirar || retirar.includes(String(it.itemId)))
-  const retiroParcial = aRetirar.length < (oc?.items || []).length
+  const aRetirar = (op?.items || []).filter((it) => !retirar || retirar.includes(String(it.itemId)))
+  const retiroParcial = aRetirar.length < (op?.items || []).length
 
   /**
    * Pide quién retiró, cuándo y alguna observación, y pasa a Retirado los
@@ -137,7 +137,7 @@ export default function VerOC() {
     const hoy = hoyLocal()
     const aviso = retiroParcial
       ? `Solo se marca${aRetirar.length === 1 ? '' : 'n'}: <strong>${escaparHtml(aRetirar.map((i) => i.nombre_repuesto).join(', '))}</strong>`
-      : 'Se actualizará el estado de todos los ítems de esta OC.'
+      : 'Se actualizará el estado de todos los ítems de esta OP.'
     const rotulo = 'display:block;font-weight:600;font-size:0.8rem;color:#475569;margin:12px 0 4px'
     const campo = 'width:100%;margin:0;font-size:0.9rem;box-sizing:border-box'
     const { value: retiro, isConfirmed } = await Swal.fire({
@@ -202,7 +202,7 @@ export default function VerOC() {
       </div>
     )
 
-  if (!oc)
+  if (!op)
     return (
       <div
         className="d-flex align-items-center justify-content-center"
@@ -212,7 +212,7 @@ export default function VerOC() {
       </div>
     )
 
-  // En modo análisis la última columna es el presupuesto adjunto; en una OC ya
+  // En modo análisis la última columna es el presupuesto adjunto; en una OP ya
   // emitida, las observaciones. Siempre son siete.
   const COLUMNAS = 7
 
@@ -250,40 +250,40 @@ export default function VerOC() {
       <Container
         fluid
         className="px-3 py-2 d-flex flex-column flex-grow-1"
-        // Una OC emitida va más angosta: son pocos ítems y lo que importa es
+        // Una OP emitida va más angosta: son pocos ítems y lo que importa es
         // dónde retirarlos. El análisis de precios conserva el ancho completo.
-        style={{ maxWidth: oc._modoAnalisis ? '1280px' : '960px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+        style={{ maxWidth: op._modoAnalisis ? '1280px' : '960px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
       >
         {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
           <span className="fw-bold" style={{ color: BORDO, fontSize: '1.15rem' }}>
-            {oc._modoAnalisis ? 'Análisis de precios' : 'Orden de compra'}
+            {op._modoAnalisis ? 'Análisis de precios' : 'Orden de pago'}
           </span>
           <span
             className="px-2 py-1 rounded-3"
             style={{ fontSize: '0.82rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 700, letterSpacing: '0.5px' }}
           >
-            {oc.nro_oc_display}
+            {op.nro_oc_display}
           </span>
         </div>
 
-        {/* Ficha de la OC */}
+        {/* Ficha de la OP */}
         <Card className="mb-3 px-4 py-3 shadow-sm border-0 rounded-3">
           <div className="d-flex flex-wrap align-items-center gap-4">
-            <Dato etiqueta={oc._modoAnalisis ? 'N° Pedido' : 'N° OC'} valor={oc.nro_oc_display} destacado />
-            <Dato etiqueta="Fecha" valor={fmtFecha(oc.fecha)} />
+            <Dato etiqueta={op._modoAnalisis ? 'N° Pedido' : 'N° OP'} valor={op.nro_oc_display} destacado />
+            <Dato etiqueta="Fecha" valor={fmtFecha(op.fecha)} />
             <Dato
-              etiqueta={oc._modoAnalisis ? 'Taller' : 'Establecimiento'}
-              valor={establecimientoLabel(oc.establecimiento)}
+              etiqueta={op._modoAnalisis ? 'Taller' : 'Establecimiento'}
+              valor={establecimientoLabel(op.establecimiento)}
             />
 
             <div className="ms-auto text-end">
               <div className="fw-bold text-uppercase" style={{ fontSize: '0.72rem', color: '#64748b', letterSpacing: '0.5px' }}>
-                {oc._modoAnalisis ? 'Total presupuestado' : 'Total'}
+                {op._modoAnalisis ? 'Total presupuestado' : 'Total'}
               </div>
               <div className="fw-bold" style={{ fontSize: '1.6rem', color: BORDO, lineHeight: 1.2 }}>
-                {fmtPrecio(oc.total)}
-                {oc._modoAnalisis && (
+                {fmtPrecio(op.total)}
+                {op._modoAnalisis && (
                   <span style={{ fontSize: '0.78rem', fontWeight: 400, color: '#64748b', marginLeft: 4 }}>+ IVA</span>
                 )}
               </div>
@@ -295,7 +295,7 @@ export default function VerOC() {
             hay que buscar. Es lo que necesita quien va a retirar la compra. */}
         {/* Va con marco verde, el color de retirar, para que se separe del
             bordó del resto de la pantalla. */}
-        {!oc._modoAnalisis && porProveedor.length > 0 && (
+        {!op._modoAnalisis && porProveedor.length > 0 && (
           <div
             className="mb-3 flex-shrink-0 rounded-3 px-3 py-2"
             style={{ border: '2px solid #16a34a', backgroundColor: '#f0fdf4' }}
@@ -305,7 +305,7 @@ export default function VerOC() {
               Dónde retirar
               {retiroParcial && (
                 <span className="fw-normal" style={{ fontSize: '0.8rem', color: '#64748b', marginLeft: 6 }}>
-                  · {aRetirar.length} de {(oc.items || []).length} ítems de la OC
+                  · {aRetirar.length} de {(op.items || []).length} ítems de la OP
                 </span>
               )}
             </div>
@@ -347,13 +347,13 @@ export default function VerOC() {
             de precios lo mira Gerencia desde el teléfono y siete columnas no
             entran. La tabla queda para pantallas medianas en adelante. */}
         <div className="d-md-none flex-grow-1 d-flex flex-column gap-2" style={{ minHeight: 0, overflowY: 'auto' }}>
-          {(oc.items || []).length === 0 ? (
+          {(op.items || []).length === 0 ? (
             <div className="text-center text-muted py-4" style={{ fontSize: '0.85rem' }}>
               Esta orden no tiene ítems
             </div>
           ) : (
             <>
-              {(oc.items || []).map((item, idx) => (
+              {(op.items || []).map((item, idx) => (
                 <div
                   key={idx}
                   className="bg-white shadow-sm rounded-3 px-3 py-2 flex-shrink-0"
@@ -372,15 +372,15 @@ export default function VerOC() {
                     {item.precio_unitario == null ? <Raya /> : fmtPrecio(item.precio_unitario)}
                   </div>
                   <div style={{ fontSize: '0.84rem', marginTop: 2 }}>
-                    <span style={oc._modoAnalisis ? { color: '#334155' } : { color: BORDO, fontWeight: 700 }}>
+                    <span style={op._modoAnalisis ? { color: '#334155' } : { color: BORDO, fontWeight: 700 }}>
                       <i className="bi bi-shop me-1"></i>
                       {provNombre(item.proveedor)}
                     </span>
-                    {oc._modoAnalisis && item.esMinima === false && (
+                    {op._modoAnalisis && item.esMinima === false && (
                       <div style={{ fontSize: '0.74rem', color: '#b45309' }}>elegido, no es el más bajo</div>
                     )}
                   </div>
-                  {oc._modoAnalisis && item.archivo && (
+                  {op._modoAnalisis && item.archivo && (
                     <a
                       href={typeof item.archivo === 'string' ? item.archivo : item.archivo.dataURL}
                       target="_blank"
@@ -392,7 +392,7 @@ export default function VerOC() {
                       <span>Ver presupuesto</span>
                     </a>
                   )}
-                  {!oc._modoAnalisis && item.observaciones && (
+                  {!op._modoAnalisis && item.observaciones && (
                     <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: 2 }}>{item.observaciones}</div>
                   )}
                 </div>
@@ -403,11 +403,11 @@ export default function VerOC() {
                 style={{ backgroundColor: BORDO_SUAVE, borderTop: `2px solid ${BORDO}` }}
               >
                 <span className="fw-bold" style={{ color: BORDO, fontSize: '0.84rem' }}>
-                  {oc._modoAnalisis ? 'TOTAL PRESUPUESTADO' : 'TOTAL'}
+                  {op._modoAnalisis ? 'TOTAL PRESUPUESTADO' : 'TOTAL'}
                 </span>
                 <span className="fw-bold" style={{ color: BORDO }}>
-                  {fmtPrecio(oc.total)}
-                  {oc._modoAnalisis && (
+                  {fmtPrecio(op.total)}
+                  {op._modoAnalisis && (
                     <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b', marginLeft: 3 }}>+ IVA</span>
                   )}
                 </span>
@@ -429,7 +429,7 @@ export default function VerOC() {
         >
           <Table
             className="mb-0 tabla-informe tabla-compras"
-            style={{ width: '100%', minWidth: oc._modoAnalisis ? '900px' : '720px' }}
+            style={{ width: '100%', minWidth: op._modoAnalisis ? '900px' : '720px' }}
           >
             <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
@@ -439,13 +439,13 @@ export default function VerOC() {
                 <th style={thCentro}>Precio unit.</th>
                 <th style={thCentro}>Precio total</th>
                 <th style={th}>Proveedor</th>
-                <th style={oc._modoAnalisis ? thCentro : th}>
-                  {oc._modoAnalisis ? 'Presupuesto' : 'Observaciones'}
+                <th style={op._modoAnalisis ? thCentro : th}>
+                  {op._modoAnalisis ? 'Presupuesto' : 'Observaciones'}
                 </th>
               </tr>
             </thead>
             <tbody>
-              {(oc.items || []).length === 0 ? (
+              {(op.items || []).length === 0 ? (
                 <tr>
                   <td colSpan={COLUMNAS} className="text-center text-muted py-4" style={td}>
                     Esta orden no tiene ítems
@@ -453,8 +453,8 @@ export default function VerOC() {
                 </tr>
               ) : (
                 <>
-                  {/* Los ítems de la OC que no se retiran ahora quedan atenuados. */}
-                  {(oc.items || []).map((item, idx) => (
+                  {/* Los ítems de la OP que no se retiran ahora quedan atenuados. */}
+                  {(op.items || []).map((item, idx) => (
                     <tr
                       key={idx}
                       style={aRetirar.includes(item) ? undefined : { opacity: 0.4 }}
@@ -467,19 +467,19 @@ export default function VerOC() {
                       <td style={{ ...tdCentro, fontWeight: 600 }}>
                         {item.precio_total == null ? <Raya /> : fmtPrecio(item.precio_total)}
                       </td>
-                      {/* En una OC emitida el proveedor es a dónde hay que ir a
+                      {/* En una OP emitida el proveedor es a dónde hay que ir a
                           retirar: va destacado. */}
-                      <td style={oc._modoAnalisis ? td : { ...td, fontWeight: 700, color: BORDO }}>
+                      <td style={op._modoAnalisis ? td : { ...td, fontWeight: 700, color: BORDO }}>
                         {provNombre(item.proveedor)}
                         {/* El gerente tiene que ver que no es el presupuesto más barato. */}
-                        {oc._modoAnalisis && item.esMinima === false && (
+                        {op._modoAnalisis && item.esMinima === false && (
                           <span style={{ fontSize: '0.72rem', color: '#b45309', marginLeft: 6 }}>
                             elegido, no es el más bajo
                           </span>
                         )}
                       </td>
 
-                      {oc._modoAnalisis ? (
+                      {op._modoAnalisis ? (
                         <td style={tdCentro}>
                           {item.archivo ? (
                             <a
@@ -507,14 +507,14 @@ export default function VerOC() {
                       hover le gana al fondo. */}
                   <tr className="fila-total">
                     <td style={{ ...td, fontWeight: 700, color: BORDO }}>
-                      {oc._modoAnalisis ? 'TOTAL PRESUPUESTADO' : 'TOTAL'}
+                      {op._modoAnalisis ? 'TOTAL PRESUPUESTADO' : 'TOTAL'}
                     </td>
                     <td style={td} />
                     <td style={td} />
                     <td style={td} />
                     <td style={{ ...tdCentro, fontWeight: 700, color: BORDO }}>
-                      {fmtPrecio(oc.total)}
-                      {oc._modoAnalisis && (
+                      {fmtPrecio(op.total)}
+                      {op._modoAnalisis && (
                         <span style={{ fontSize: '0.62rem', fontWeight: 400, color: '#64748b', marginLeft: 3 }}>
                           + IVA
                         </span>
@@ -529,9 +529,9 @@ export default function VerOC() {
           </Table>
         </div>
 
-        {/* Solo una OC emitida se puede marcar como retirada: en modo análisis
+        {/* Solo una OP emitida se puede marcar como retirada: en modo análisis
             todavía no hay nada que retirar. */}
-        {!oc._modoAnalisis && (
+        {!op._modoAnalisis && (
           <div className="d-flex justify-content-center gap-3 mt-3 flex-shrink-0">
             <Button
               variant="outline-secondary"

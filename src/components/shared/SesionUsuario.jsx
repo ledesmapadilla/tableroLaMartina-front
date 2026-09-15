@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { nombreRol } from '../../utils/permisosCatalogo'
 
 /**
  * Quién está logueado y el botón para salir.
@@ -30,7 +31,7 @@ export default function SesionUsuario({ mostrarRol = false }) {
         </span>
         {mostrarRol && (
           <span className="text-white" style={{ fontSize: '0.68rem', opacity: 0.7 }}>
-            {user.rol}
+            {nombreRol(user.rol)}
           </span>
         )}
       </div>

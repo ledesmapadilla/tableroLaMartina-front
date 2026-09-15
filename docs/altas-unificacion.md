@@ -1,9 +1,12 @@
 # Unificar las altas del proyecto
 
-**Estado: pendiente, no se tocó nada.** Estudio del 13/09/2026, a pedido del
-usuario: "necesito unificar todas en un solo botón, que sea común a todo el
-proyecto y logre que no haya inconsistencias… creo que hay que tratar que haya
-un solo botón de altas, con los submenús existentes".
+**Estado: etapa 1 y la unión del CC hechas el 13/09/2026 (ver §5). Faltan
+las etapas 2 y 3.** Estudio del 13/09/2026, a pedido del usuario: "necesito
+unificar todas en un solo botón, que sea común a todo el proyecto y logre que
+no haya inconsistencias… creo que hay que tratar que haya un solo botón de
+altas, con los submenús existentes".
+
+Las secciones 1 y 2 describen cómo estaba **antes** del cambio.
 
 ---
 
@@ -104,3 +107,38 @@ Recomendación: arrancar por la etapa 1 más la unión del CC.
 4. Color o identidad de la sección Altas: uno propio o el de cada sector.
 5. Si alguna alta se tiene que poder abrir desde el celular (hoy Proveedores
    se puede).
+
+Decidido el 13/09/2026: (1) navbars + principal, (2) se mantienen los permisos
+de hoy, (3) sí, un solo CC. Quedan para la etapa 2: (4) color de Altas y
+(5) celular.
+
+## 5. Hecho el 13/09/2026 (etapa 1 + CC)
+
+- **`src/utils/altas.js`**: la lista única (grupo, nombre, ícono, ruta, roles)
+  y los ayudantes `altasDe`, `altasPorGrupo`, `rutaDeAlta`, `esRutaDeAlta`.
+  Para sumar o sacar un alta, o cambiar quién la ve, se toca solo esto.
+- **`src/components/shared/MenuAltas.jsx`**: el botón "Altas" con el
+  desplegable agrupado. Va en `NavbarProduccion`, en `compras/Menu.jsx`
+  (`seccion="compras"`) y en `PaginaPrincipal`. El `Sidebar` arma su submenú
+  "Altas" con la misma lista; los "Alta …" de cada vehículo se sacaron y
+  Camionetas, Tractores y Colectivos quedaron como links directos.
+- En el panel del celular de Compras van solo las altas que viven bajo
+  `/compras` (Usuarios, Proveedores, CC): fuera de `/compras` el Tablero no
+  se abre en el teléfono.
+- **Permisos (los de antes):** Usuarios solo superadmin; CC y Proveedores
+  todos menos solicitante (`comprasAnalista`); Personal y Tareas todos menos
+  solicitante (`produccion`); Camionetas, Tractores y Colectivos todos
+  (`mantenimiento`). Ahora `App.jsx` protege también las rutas de Producción y
+  Flota con esos roles, así que el solicitante ya no entra a Personal, Tareas
+  ni CC por la dirección.
+- **Un solo CC:** `src/components/pages/AltaCentrosCosto.jsx` reemplaza a
+  `compras/CentrosCosto.jsx` y `pages/ProduccionAltaCC.jsx` (borradas). Ficha
+  entera (CC, equipo, descripción, grupo, marca, observaciones), formato común
+  de tablas, Excel con todas las columnas, grupo con sugerencias de los que ya
+  existen. En los CC de Tractores y Camionetas solo se editan grupo, marca y
+  observaciones, y no se borran (candado), igual que en el back. Se abre en
+  `/produccion/altas/cc` y en `/compras/altas/centros-costo`, cada una con la
+  barra y el color de su sección.
+
+Pendiente: etapa 2 (sección `/altas/...` con su navbar y redirecciones) y
+etapa 3 (plantilla común para las demás altas y permisos en el back).

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import SoloSiPuede from "../shared/SoloSiPuede";
 
 // El primer año con certificados. No se puede retroceder más allá.
 const ANIO_INICIAL = 2026;
@@ -149,7 +150,9 @@ function ProduccionCertificados({
         </div>
 
         {/* Variables: no depende del mes ni del año, son las mismas para todos
-            los períodos. Por eso va arriba de la grilla y con otro color. */}
+            los períodos. Por eso va arriba de la grilla y con otro color.
+            Solo si el rol ve Variables (tabla de Roles). */}
+        <SoloSiPuede permiso="produccion.variables">
         <div
           className="d-flex align-items-center justify-content-center gap-3 px-4 py-2 mb-3"
           style={{
@@ -199,6 +202,7 @@ function ProduccionCertificados({
             </span>
           </div>
         </div>
+        </SoloSiPuede>
 
         {/* Tarjetas de los meses. Arrancan arriba: el sobrante de alto queda
             abajo y separa la última fila del footer. */}

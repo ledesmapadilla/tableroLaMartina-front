@@ -14,14 +14,14 @@ import {
   FiltroTexto,
   FiltroSelect,
   OjoPedido,
-  CeldaOC,
+  CeldaOP,
 } from './estilos'
-import { useProveedorDeOC } from './proveedorOC'
+import { useProveedorDeOP } from './proveedorOP'
 
 const fmtNro = (n) => `SP-${String(n).padStart(3, '0')}`
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
-const ESTADOS   = ['Para analisis', 'Para hacer OC', 'Autorizar', 'Para retirar', 'Rechazado']
+const ESTADOS   = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Rechazado']
 
 // Un ítem se edita solo mientras el paso siguiente no lo procesó: cuando el
 // analista lo toma, lo cargado queda como está.
@@ -40,8 +40,8 @@ export default function SanPabloPedidos() {
   // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
   // la misma tabla.
   const [abiertos, setAbiertos] = useState(() => new Set())
-  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OC.
-  const proveedorDeOC = useProveedorDeOC()
+  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OP.
+  const proveedorDeOP = useProveedorDeOP()
   const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '', estado: '' }
   const [filtros, setFiltros] = useState(FILTROS_INIT)
   const setF = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
@@ -190,7 +190,7 @@ export default function SanPabloPedidos() {
       { titulo: "Grupo", ancho: 16 },
       { titulo: "Solicita", ancho: 18 },
       { titulo: "Estado", ancho: 14 },
-      { titulo: "O.C.", ancho: 12 },
+      { titulo: "O.P.", ancho: 12 },
     ],
       filas: lista.map((item) => [
       fmtNro(item.nro_pedido),
@@ -316,7 +316,7 @@ export default function SanPabloPedidos() {
       )
     }
     if (e === 'Retirado') return <span className="badge" style={{ backgroundColor: '#6f42c1' }}>Retirado</span>
-    const color = { 'Para analisis': 'primary', 'Para hacer OC': 'info', Pendiente: 'secondary', 'En proceso': 'warning', 'Para retirar': 'success', Completado: 'success', Cancelado: 'danger', Rechazado: 'danger' }
+    const color = { 'Para analisis': 'primary', 'Para hacer OP': 'info', Pendiente: 'secondary', 'En proceso': 'warning', 'Para retirar': 'success', Completado: 'success', Cancelado: 'danger', Rechazado: 'danger' }
     return <span className={`badge bg-${color[norm] || 'secondary'}`}>{norm}</span>
   }
 
@@ -425,7 +425,7 @@ export default function SanPabloPedidos() {
                 <th style={th}>Grupo</th>
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
-                <th style={thCentro}>O.C. · Proveedor</th>
+                <th style={thCentro}>O.P. · Proveedor</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
             </thead>
@@ -513,7 +513,7 @@ export default function SanPabloPedidos() {
                           } else if (item.estado === 'Para revision') {
                             verMotivoRevision(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
+                            navigate(`/compras/op/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
                           } else if (item.estado === 'Para retirar') {
                             avisarSinOC(item)
                           } else if (item.estado === 'Retirado') {
@@ -523,7 +523,7 @@ export default function SanPabloPedidos() {
                       >
                         {badgeEstado(item.estado)}
                       </td>
-                      <td style={tdCentro}><CeldaOC oc={item.oc} proveedor={proveedorDeOC(item)} /></td>
+                      <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion

@@ -15,14 +15,14 @@ import {
   FiltroTexto,
   FiltroSelect,
   OjoPedido,
-  CeldaOC,
+  CeldaOP,
 } from './estilos'
-import { useProveedorDeOC } from './proveedorOC'
+import { useProveedorDeOP } from './proveedorOP'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
-const ESTADOS        = ['Para analisis', 'Para hacer OC', 'Autorizar', 'Para retirar', 'Rechazado']
+const ESTADOS        = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Rechazado']
 const GRUPOS         = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
 const ESTABLECIMIENTOS = ['Berdina', 'San Pablo']
 
@@ -40,10 +40,10 @@ export default function AnalistaPedidos() {
   // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
   // la misma tabla.
   const [abiertos, setAbiertos] = useState(() => new Set())
-  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OC.
-  const proveedorDeOC = useProveedorDeOC()
+  // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OP.
+  const proveedorDeOP = useProveedorDeOP()
   const [selectedId, setSelectedId] = useState(null)
-  const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '', estado: esComprador ? 'Para hacer OC' : 'Para analisis', establecimiento: '' }
+  const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '', estado: esComprador ? 'Para hacer OP' : 'Para analisis', establecimiento: '' }
   const [filtros, setFiltros] = useState(FILTROS_INIT)
   const setF = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
   // La pantalla arranca filtrada por su etapa, pero la cruz aparece apenas
@@ -235,7 +235,7 @@ export default function AnalistaPedidos() {
         { titulo: "Grupo", ancho: 16 },
         { titulo: "Solicita", ancho: 18 },
         { titulo: "Estado", ancho: 14 },
-        { titulo: "O.C.", ancho: 12 },
+        { titulo: "O.P.", ancho: 12 },
       ],
       filas: lista.map((item) => [
         item._src === "berdina" ? "Berdina" : "San Pablo",
@@ -366,7 +366,7 @@ export default function AnalistaPedidos() {
       )
     }
     if (e === 'Retirado') return <span className="badge" style={{ backgroundColor: '#6f42c1' }}>Retirado</span>
-    const color = { 'Para analisis': 'primary', 'Para hacer OC': 'info', Pendiente: 'secondary', 'En proceso': 'warning', 'Para retirar': 'success', Completado: 'success', Cancelado: 'danger', Rechazado: 'danger' }
+    const color = { 'Para analisis': 'primary', 'Para hacer OP': 'info', Pendiente: 'secondary', 'En proceso': 'warning', 'Para retirar': 'success', Completado: 'success', Cancelado: 'danger', Rechazado: 'danger' }
     return <span className={`badge bg-${color[norm] || 'secondary'}`}>{norm}</span>
   }
 
@@ -424,19 +424,19 @@ export default function AnalistaPedidos() {
             className="px-2 py-1 rounded-3"
             style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
           >
-            {esComprador ? 'Para hacer OC' : 'Para análisis'} · {listaAMostrar.length}
+            {esComprador ? 'Para hacer OP' : 'Para análisis'} · {listaAMostrar.length}
           </span>
 
           {/* El comprador arma la orden; el analista analiza el ítem elegido. */}
           {esComprador ? (
             <Button
               size="sm"
-              onClick={() => navigate('/compras/comprador/oc')}
+              onClick={() => navigate('/compras/comprador/op')}
               className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
               style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
             >
               <i className="bi bi-receipt"></i>
-              <span>Generar orden de compra</span>
+              <span>Generar orden de pago</span>
             </Button>
           ) : (
             <Button
@@ -514,7 +514,7 @@ export default function AnalistaPedidos() {
                 <th style={th}>Grupo</th>
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
-                <th style={thCentro}>O.C. · Proveedor</th>
+                <th style={thCentro}>O.P. · Proveedor</th>
                 <th style={{ ...thCentro, width: 110 }}>Acciones</th>
               </tr>
             </thead>
@@ -537,7 +537,7 @@ export default function AnalistaPedidos() {
                   const elegida = porItem && selectedId === unItem._id
                   const clickeableEstado =
                     item.estado === 'Autorizar' ||
-                    item.estado === 'Para hacer OC' ||
+                    item.estado === 'Para hacer OP' ||
                     item.estado === 'Rechazado' ||
                     item.estado === 'Cancelado' ||
                     item.estado === 'Para revision' ||
@@ -602,7 +602,7 @@ export default function AnalistaPedidos() {
                         style={{ ...tdCentro, cursor: clickeableEstado ? 'pointer' : undefined }}
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (item.estado === 'Autorizar' || item.estado === 'Para hacer OC') {
+                          if (item.estado === 'Autorizar' || item.estado === 'Para hacer OP') {
                             // Abre el análisis ya hecho para verlo; un pedido
                             // múltiple muestra todos sus ítems en ese estado.
                             navigate('/compras/analista/analizar', {
@@ -613,7 +613,7 @@ export default function AnalistaPedidos() {
                           } else if (item.estado === 'Para revision') {
                             verMotivoRevision(item._agrupado ? item._items[0] : item)
                           } else if (item.estado === 'Para retirar' && item.oc && item.oc !== 'Varios') {
-                            navigate(`/compras/oc/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
+                            navigate(`/compras/op/${encodeURIComponent(item.oc)}`, { state: { retirar: idsARetirar(item) } })
                           } else if (item.estado === 'Para retirar') {
                             avisarSinOC(item)
                           } else if (item.estado === 'Retirado') {
@@ -623,7 +623,7 @@ export default function AnalistaPedidos() {
                       >
                         {badgeEstado(item.estado)}
                       </td>
-                      <td style={tdCentro}><CeldaOC oc={item.oc} proveedor={proveedorDeOC(item)} /></td>
+                      <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion

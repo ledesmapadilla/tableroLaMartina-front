@@ -3,10 +3,15 @@ import { useForm } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
+import { usePermisos } from "../../context/permisos";
 
 const API = "/api/personal";
 
 function ProduccionAltaPersonal() {
+  // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista
+  // pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("altas.personal", "editar");
   const [personal, setPersonal] = useState([]);
   const [busqueda, setBusqueda] = useState("");
 
@@ -236,6 +241,7 @@ function ProduccionAltaPersonal() {
               variant="primary"
               size="sm"
               onClick={abrirNuevo}
+              disabled={sinEditar}
               className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
               style={{
                 backgroundColor: "#1b4332",
@@ -358,17 +364,19 @@ function ProduccionAltaPersonal() {
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
                           <button
                             onClick={() => abrirEditar(p)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
                             style={{ width: "24px", height: "24px" }}
-                            title="Editar"
+                            title={sinEditar ? "Sin permiso para editar" : "Editar"}
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
                           </button>
                           <button
                             onClick={() => eliminar(p)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                             style={{ width: "24px", height: "24px" }}
-                            title="Eliminar"
+                            title={sinEditar ? "Sin permiso para editar" : "Eliminar"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
                           </button>

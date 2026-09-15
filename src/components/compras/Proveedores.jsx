@@ -4,10 +4,15 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, campo, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion, Buscador } from './estilos'
+import { usePermisos } from '../../context/permisos'
 
 const FORM_INIT = { razonsocial: '', contacto: '', rubro: '', cuit: '', email: '', telefono: '' }
 
 export default function Proveedores() {
+  // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista
+  // pero deshabilitados.
+  const { puede } = usePermisos()
+  const sinEditar = !puede('altas.proveedores', 'editar')
   const [proveedores, setProveedores] = useState([])
   const [form, setForm] = useState(FORM_INIT)
   const [editId, setEditId] = useState(null)
@@ -136,6 +141,8 @@ export default function Proveedores() {
           <Button
             size="sm"
             onClick={abrirNuevo}
+            disabled={sinEditar}
+            title={sinEditar ? 'Sin permiso para editar' : undefined}
             className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-2"
             style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.82rem', fontWeight: 600 }}
           >
@@ -188,8 +195,20 @@ export default function Proveedores() {
                     <td style={tdCentro}>{p.telefono || <Raya />}</td>
                     <td style={tdCentro}>
                       <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
-                        <BotonAccion icono="bi-pencil" titulo="Editar" variante="primary" onClick={() => abrirEditar(p)} />
-                        <BotonAccion icono="bi-trash" titulo="Borrar" variante="danger" onClick={() => borrar(p._id)} />
+                        <BotonAccion
+                          icono="bi-pencil"
+                          titulo={sinEditar ? 'Sin permiso para editar' : 'Editar'}
+                          variante="primary"
+                          onClick={() => abrirEditar(p)}
+                          deshabilitado={sinEditar}
+                        />
+                        <BotonAccion
+                          icono="bi-trash"
+                          titulo={sinEditar ? 'Sin permiso para editar' : 'Borrar'}
+                          variante="danger"
+                          onClick={() => borrar(p._id)}
+                          deshabilitado={sinEditar}
+                        />
                       </div>
                     </td>
                   </tr>

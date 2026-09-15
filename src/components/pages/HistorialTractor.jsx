@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { CATEGORIA_COLORES, opcionesFiltroCategoria } from "../../utils/categoriasTractor";
+import { usePermisos } from "../../context/permisos";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -45,6 +46,10 @@ const GRUPOS = {
 };
 
 function HistorialTractor() {
+  // Ver sin editar (tabla de Roles): el borrar queda a la vista pero
+  // deshabilitado.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("tractores.historial", "editar");
   const navigate = useNavigate();
   const { grupoId, tractorId } = useParams();
   const { state } = useLocation();
@@ -433,7 +438,9 @@ function HistorialTractor() {
         </div>
       </div>
 
-      <Container fluid className="px-4 py-3">
+      {/* Tarjeta, filtros y tabla comparten el ancho: más angosto que la
+          pantalla, centrado, para que la tabla no se estire de más. */}
+      <Container fluid className="px-4 py-3" style={{ maxWidth: "1300px", margin: "0 auto" }}>
         {/* Fila Superior: Tarjeta Centrada de Tareas Pendientes / En Proceso y Botón de Excel a la derecha */}
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div style={{ width: "100px" }}></div> {/* Espaciador balanceador */}
@@ -654,7 +661,11 @@ function HistorialTractor() {
           </div>
         </Card>
 
-        {/* Contenedor de la Tabla */}
+        {/* Tabla con el formato común del proyecto (clase .tabla-informe), el
+            mismo que la Planilla General de Reparaciones de Tractores:
+            encabezado verde, letra chica y filas finas. Las filas de una
+            unidad parada van en rojo con la clase global tr-parada, que le
+            gana al fondo de la tabla. */}
         <div
           className="shadow-sm bg-white"
           style={{
@@ -671,141 +682,56 @@ function HistorialTractor() {
               overflowX: "auto",
             }}
           >
-            <Table
-              hover
-              className="align-middle mb-0"
-              style={{
-                fontSize: "0.84rem",
-                borderCollapse: "separate",
-                borderSpacing: 0,
-              }}
-            >
+            <table className="tabla-informe align-middle mb-0" style={{ fontSize: "0.7rem", width: "100%" }}>
               <thead
                 style={{
                   position: "sticky",
                   top: 0,
                   zIndex: 2,
+                  backgroundColor: "#1b4332",
+                  color: "#fff",
                 }}
               >
-                <tr className="align-middle">
-                  <th
-                    style={{
-                      width: "105px",
-                      padding: "11px 14px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Fecha
-                  </th>
-                  <th
-                    style={{
-                      width: "155px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Categoría
-                  </th>
-                  <th
-                    style={{
-                      minWidth: "220px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Diagnóstico
-                  </th>
-                  <th
-                    style={{
-                      minWidth: "240px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Reparación
-                  </th>
-                  <th
-                    style={{
-                      width: "150px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Taller
-                  </th>
-                  <th
-                    style={{
-                      width: "120px",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      textAlign: "center",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Repuestos
-                  </th>
-                  <th
-                    style={{
-                      width: "115px",
-                      textAlign: "center",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Estado
-                  </th>
-                  <th
-                    style={{
-                      width: "115px",
-                      textAlign: "center",
-                      backgroundColor: "#1e293b",
-                      color: "#ffffff",
-                      fontWeight: "normal",
-                      fontSize: "0.82rem",
-                      borderBottom: "1px solid #334155",
-                    }}
-                  >
-                    Acción
-                  </th>
+                <tr className="fw-normal align-middle">
+                  {[
+                    { h: "Fecha", w: "90px" },
+                    { h: "Categoría", w: "145px" },
+                    { h: "Diagnóstico", min: "210px" },
+                    { h: "Reparación", min: "220px" },
+                    { h: "Taller", w: "135px" },
+                    { h: "Repuestos", w: "105px" },
+                    { h: "Estado", w: "105px" },
+                    { h: "Acción", w: "60px" },
+                  ].map(({ h, w, min }) => (
+                    <th
+                      key={h}
+                      style={{
+                        width: w,
+                        minWidth: min,
+                        backgroundColor: "#1b4332",
+                        color: "#fff",
+                        padding: "3px 5px",
+                        fontSize: "0.66rem",
+                        fontWeight: 600,
+                        textAlign: "center",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {cargando ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-5 text-muted">
+                    <td colSpan={8} className="text-center py-4 text-muted">
                       <div className="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                       Cargando historial de reparaciones...
                     </td>
                   </tr>
                 ) : trabajosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-5 text-muted">
+                    <td colSpan={8} className="text-center py-4 text-muted">
                       <i className="bi bi-inbox fs-2 d-block mb-2 text-secondary opacity-50"></i>
                       {busqueda ||
                       filtroCategoria !== "Todas" ||
@@ -824,93 +750,84 @@ function HistorialTractor() {
                     const esParadaFila = Boolean(t.maquinaParada || estaParada);
 
                     return (
-                      <tr
-                        key={t._id}
-                        className={esParadaFila ? "tr-parada" : ""}
-                        style={{
-                          backgroundColor: esParadaFila ? "#fee2e2" : undefined,
-                        }}
-                      >
+                      <tr key={t._id} className={esParadaFila ? "tr-parada" : ""}>
                         {/* Fecha */}
-                        <td
-                          className="fw-semibold text-dark text-center"
-                          style={{ borderBottom: "1px solid #f1f5f9" }}
-                        >
+                        <td className="fw-semibold text-dark text-center" style={{ padding: "2px 5px" }}>
                           {formatF(t.fecha)}
                         </td>
 
                         {/* Categoría */}
-                        <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
-                            className="badge fw-medium px-2 py-1"
+                            className="badge fw-medium px-2 py-0.5"
                             style={{
                               backgroundColor: estiloCat.bg,
                               color: estiloCat.text,
                               border: `1px solid ${estiloCat.border}`,
-                              fontSize: "0.75rem",
-                              borderRadius: "6px",
+                              fontSize: "0.68rem",
+                              borderRadius: "5px",
                             }}
                           >
                             {t.parte || "Mecánica general"}
                           </span>
                         </td>
 
-                        {/* Diagnóstico */}
-                        <td style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        {/* Diagnóstico (clicable para ver la ficha) */}
+                        <td style={{ padding: "2px 5px" }}>
                           <div
                             className="fw-medium text-dark text-truncate"
-                            style={{ maxWidth: "260px" }}
+                            style={{ maxWidth: "230px", cursor: "pointer" }}
                             title={t.diagnostico || t.descripcion || "—"}
+                            onClick={() => abrirDetalle(t)}
                           >
                             {t.diagnostico || t.descripcion || "—"}
                           </div>
                           {t.maquinaParada && (
                             <span
-                              className="badge bg-danger-subtle text-danger border border-danger-subtle px-1.5 py-0.5 mt-1"
-                              style={{ fontSize: "0.68rem" }}
+                              className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0 mt-0.5"
+                              style={{ fontSize: "0.64rem" }}
                             >
                               <i className="bi bi-exclamation-triangle-fill me-1"></i>Parada
                             </span>
                           )}
                         </td>
 
-                        {/* Reparación Realizada */}
-                        <td style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        {/* Reparación realizada */}
+                        <td style={{ padding: "2px 5px" }}>
                           <div
                             className="text-secondary text-truncate"
-                            style={{ maxWidth: "280px" }}
+                            style={{ maxWidth: "240px", cursor: "pointer" }}
                             title={t.reparacion || t.descripcion || "—"}
+                            onClick={() => abrirDetalle(t)}
                           >
                             {t.reparacion || t.descripcion || <span className="text-muted fst-italic">Sin detalle de avance</span>}
                           </div>
                         </td>
 
                         {/* Taller */}
-                        <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           {t.taller === "Tercero" ? (
                             <span
-                              className="badge px-2 py-1 fw-medium"
+                              className="badge px-1.5 py-0.5 fw-medium"
                               style={{
                                 backgroundColor: "#fed7aa",
                                 color: "#9a3412",
                                 border: "1px solid #f97316",
-                                fontSize: "0.74rem",
-                                borderRadius: "6px",
+                                fontSize: "0.68rem",
                               }}
-                              title={`Taller Externo: ${t.nombreTaller || "Tercero"}`}
+                              title={`Taller externo: ${t.nombreTaller || "Tercero"}`}
                             >
                               <i className="bi bi-building me-1"></i>
-                              {t.nombreTaller ? t.nombreTaller : "Tercero"}
+                              {t.nombreTaller || "Tercero"}
                             </span>
                           ) : (
                             <span
-                              className="badge px-2 py-1 fw-medium"
+                              className="badge px-1.5 py-0.5 fw-medium"
                               style={{
-                                backgroundColor: "#e2e8f0",
-                                color: "#334155",
-                                border: "1px solid #94a3b8",
-                                fontSize: "0.74rem",
-                                borderRadius: "6px",
+                                backgroundColor: "#f0fdf4",
+                                color: "#166534",
+                                border: "1px solid #bbf7d0",
+                                fontSize: "0.68rem",
                               }}
                             >
                               <i className="bi bi-wrench me-1"></i>T. Propio
@@ -918,12 +835,12 @@ function HistorialTractor() {
                           )}
                         </td>
 
-                        {/* Repuestos */}
-                        <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        {/* Repuestos (clicable para ver la ficha) */}
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           {t.repuestos && t.repuestos.length > 0 ? (
                             <span
-                              className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"
-                              style={{ fontSize: "0.74rem", cursor: "pointer" }}
+                              className="badge bg-primary-subtle text-primary border border-primary-subtle px-1.5 py-0.5"
+                              style={{ fontSize: "0.68rem", cursor: "pointer" }}
                               onClick={() => abrirDetalle(t)}
                               title="Ver repuestos utilizados"
                             >
@@ -936,45 +853,45 @@ function HistorialTractor() {
                         </td>
 
                         {/* Estado */}
-                        <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td className="text-center" style={{ padding: "2px 5px" }}>
                           <span
-                            className="badge px-2 py-1 fw-semibold"
+                            className="badge px-1.5 py-0.5 fw-semibold"
                             style={{
                               backgroundColor: esTerminada ? "#dcfce7" : esEnProceso ? "#fef3c7" : "#fee2e2",
                               color: esTerminada ? "#15803d" : esEnProceso ? "#b45309" : "#b91c1c",
-                              border: `1px solid ${
-                                esTerminada ? "#86efac" : esEnProceso ? "#fde047" : "#fca5a5"
-                              }`,
-                              fontSize: "0.76rem",
-                              borderRadius: "6px",
+                              border: `1px solid ${esTerminada ? "#86efac" : esEnProceso ? "#fde047" : "#fca5a5"}`,
+                              fontSize: "0.68rem",
+                              borderRadius: "4px",
                             }}
                           >
                             {esTerminada ? "Terminada" : esEnProceso ? "En proceso" : "Pendiente"}
                           </span>
                         </td>
 
-                        {/* Acción */}
-                        <td className="text-center" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <div className="d-inline-flex align-items-center gap-1.5">
-                            <button
-                              type="button"
+                        {/* Acciones: ver la ficha y borrar */}
+                        <td className="text-center" style={{ padding: "2px 4px" }}>
+                          <div className="d-inline-flex align-items-center gap-1">
+                            <Button
+                              variant="outline-dark"
+                              size="sm"
+                              className="p-0 d-inline-flex align-items-center justify-content-center rounded-2"
+                              style={{ width: "22px", height: "22px", fontSize: "0.72rem" }}
                               onClick={() => abrirDetalle(t)}
-                              className="btn btn-sm btn-outline-dark d-inline-flex align-items-center gap-1 rounded-3 px-2 py-1"
-                              style={{ fontSize: "0.76rem" }}
                               title="Ver ficha completa"
                             >
                               <i className="bi bi-eye"></i>
-                              <span>Ver</span>
-                            </button>
-                            <button
-                              type="button"
+                            </Button>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              className="p-0 d-inline-flex align-items-center justify-content-center rounded-2"
+                              style={{ width: "22px", height: "22px", fontSize: "0.72rem" }}
                               onClick={() => handleEliminarTrabajo(t._id)}
-                              className="btn btn-sm btn-outline-danger d-inline-flex align-items-center justify-content-center rounded-3 p-1"
-                              style={{ width: "26px", height: "26px" }}
-                              title="Eliminar del historial"
+                              disabled={sinEditar}
+                              title={sinEditar ? "Sin permiso para editar" : "Eliminar del historial"}
                             >
-                              <i className="bi bi-trash3" style={{ fontSize: "0.75rem" }}></i>
-                            </button>
+                              <i className="bi bi-trash3"></i>
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -982,7 +899,7 @@ function HistorialTractor() {
                   })
                 )}
               </tbody>
-            </Table>
+            </table>
           </div>
         </div>
       </Container>

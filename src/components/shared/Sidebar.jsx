@@ -1,35 +1,26 @@
 import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import TractorIcon from "./TractorIcon";
+import { IconoAlta } from "./MenuAltas";
 import { useAuth } from "../../context/AuthContext";
+import { altasPorGrupo, esRutaDeAlta } from "../../utils/altas";
+import { usePermisos } from "../../context/permisos";
+import { GRUPO } from "../../utils/permisosCatalogo";
 
+// Las altas de cada vehículo ya no cuelgan de él: están todas juntas en
+// "Altas", la misma lista que el botón de los navbars (utils/altas.js).
+// `permiso`: el link se ve si el rol ve alguna de esas pantallas (Roles).
 const links = [
   { to: "/", label: "Principal", icon: "bi bi-house-fill", end: true },
-  { to: "/inicio", label: "Mantenimiento", icon: "bi bi-tools", end: true },
-  {
-    to: "/camionetas",
-    label: "Camionetas",
-    icon: "bi bi-car-front-fill",
-    submenu: [
-      { to: "/camionetas/altas", label: "Alta Flota", icon: "bi bi-plus-circle-fill" },
-    ],
-  },
+  { to: "/inicio", label: "Mantenimiento", icon: "bi bi-tools", end: true, permiso: GRUPO.mantenimiento },
+  { to: "/camionetas", label: "Camionetas", icon: "bi bi-car-front-fill", permiso: GRUPO.camionetas },
   {
     to: "/tractores",
     label: "Tractores",
+    permiso: GRUPO.tractores,
     customIcon: <TractorIcon size="1.25rem" color="#fff" style={{ minWidth: "24px" }} />,
-    submenu: [
-      { to: "/tractores/altas", label: "Alta Tractores", icon: "bi bi-plus-circle-fill" },
-    ],
   },
-  {
-    to: "/colectivo",
-    label: "Colectivos",
-    icon: "bi bi-bus-front-fill",
-    submenu: [
-      { to: "/colectivos/altas", label: "Alta Colectivos", icon: "bi bi-plus-circle-fill" },
-    ],
-  },
+  { to: "/colectivo", label: "Colectivos", icon: "bi bi-bus-front-fill", permiso: GRUPO.colectivos },
 ];
 
 function Icono({ icon, customIcon }) {
@@ -42,6 +33,8 @@ function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { puede } = usePermisos();
+  const gruposAltas = altasPorGrupo(user, puede);
 
   const salir = () => {
     logout();
@@ -79,50 +72,56 @@ function Sidebar() {
         />
       </NavLink>
 
-      {links.map((link) =>
-        link.submenu ? (
-          <div key={link.to}>
-            <div
-              className="sidebar-link sidebar-link--parent"
-              onClick={() => toggle(link.to)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && toggle(link.to)}
-            >
-              <Icono icon={link.icon} customIcon={link.customIcon} />
-              <span className="sidebar-label">{link.label}</span>
-              <i className={`bi bi-chevron-${open[link.to] ? "up" : "down"} sidebar-label sidebar-chevron`}></i>
-            </div>
+      {links.filter((l) => !l.permiso || puede(l.permiso)).map((link) => (
+        <NavLink
+          key={link.to}
+          to={link.to}
+          end={link.end}
+          className={({ isActive }) => `sidebar-link${isActive ? " sidebar-link--active" : ""}`}
+        >
+          <Icono icon={link.icon} customIcon={link.customIcon} />
+          <span className="sidebar-label">{link.label}</span>
+        </NavLink>
+      ))}
 
-            {open[link.to] && (
-              <div className="sidebar-submenu">
-                {link.submenu.map((sub) => (
-                  <NavLink
-                    key={sub.to}
-                    to={sub.to}
-                    onClick={() => setOpen({})}
-                    className={({ isActive }) =>
-                      `sidebar-submenu-link${isActive ? " sidebar-submenu-link--active" : ""}`
-                    }
-                  >
-                    <i className={sub.icon} style={{ minWidth: "24px" }}></i>
-                    <span className="sidebar-label">{sub.label}</span>
-                  </NavLink>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.end}
-            className={({ isActive }) => `sidebar-link${isActive ? " sidebar-link--active" : ""}`}
+      {/* Altas de todo el proyecto, agrupadas: las que el rol puede abrir. */}
+      {gruposAltas.length > 0 && (
+        <div>
+          <div
+            className={`sidebar-link sidebar-link--parent${esRutaDeAlta(location.pathname) ? " sidebar-link--active" : ""}`}
+            onClick={() => toggle("altas")}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === "Enter" && toggle("altas")}
           >
-            <Icono icon={link.icon} customIcon={link.customIcon} />
-            <span className="sidebar-label">{link.label}</span>
-          </NavLink>
-        )
+            <i className="bi bi-plus-circle-fill" style={{ minWidth: "24px" }}></i>
+            <span className="sidebar-label">Altas</span>
+            <i className={`bi bi-chevron-${open.altas ? "up" : "down"} sidebar-label sidebar-chevron`}></i>
+          </div>
+
+          {open.altas && (
+            <div className="sidebar-submenu">
+              {gruposAltas.map((g) => (
+                <div key={g.grupo}>
+                  <div className="sidebar-submenu-titulo">{g.grupo}</div>
+                  {g.altas.map((a) => (
+                    <NavLink
+                      key={a.to}
+                      to={a.to}
+                      onClick={() => setOpen({})}
+                      className={({ isActive }) =>
+                        `sidebar-submenu-link${isActive ? " sidebar-submenu-link--active" : ""}`
+                      }
+                    >
+                      <IconoAlta icono={a.icono} />
+                      <span className="sidebar-label">{a.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {/* La sesión es del proyecto, no de Compras: se cierra también desde acá.

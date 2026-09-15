@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import { usePermisos } from "../../context/permisos";
 
 const MESES = [
   "Enero",
@@ -26,6 +27,7 @@ const INFORMES = [
     titulo: "Informe del mes",
     subtitulo: "Personal, centros de costo, combustible, producción y rendimiento",
     icono: "bi bi-clipboard-data-fill",
+    permiso: "produccion.informeMes",
     destino: "mes",
     colores: {
       fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
@@ -40,6 +42,7 @@ const INFORMES = [
     titulo: "Contable - Pagos",
     subtitulo: "Lo que se le certifica a cada persona, con descuentos y totales",
     icono: "bi bi-cash-coin",
+    permiso: "produccion.contable",
     destino: "tareas-personal",
     colores: {
       fondo: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
@@ -52,6 +55,7 @@ const INFORMES = [
 ];
 
 function ProduccionInformesMenu() {
+  const { puede } = usePermisos();
   const { anio, mes } = useParams();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
@@ -97,7 +101,7 @@ function ProduccionInformesMenu() {
               margin: "0 auto",
             }}
           >
-            {INFORMES.map((i) => {
+            {INFORMES.filter((i) => !i.permiso || puede(i.permiso)).map((i) => {
               const isHovered = hovered === i.id;
               return (
                 <div

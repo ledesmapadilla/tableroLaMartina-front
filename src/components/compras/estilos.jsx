@@ -13,11 +13,11 @@ import { BORDO } from './formato'
 export const Raya = () => <span style={{ color: '#cbd5e1' }}>—</span>
 
 /**
- * La celda de O.C. de las tablas de pedidos: el número de la orden y, al
+ * La celda de O.P. de las tablas de pedidos: el número de la orden y, al
  * lado, a qué proveedor se le compró. Si la fila junta órdenes distintas va
  * "Varios" solo.
  */
-export const CeldaOC = ({ oc, proveedor }) => {
+export const CeldaOP = ({ oc, proveedor }) => {
   if (!oc) return <Raya />
   return (
     <span>

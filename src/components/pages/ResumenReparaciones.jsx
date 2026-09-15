@@ -4,6 +4,7 @@ import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "re
 import { nuevoWorkbook } from "../../helpers/excel";
 import Swal from "sweetalert2";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -46,6 +47,10 @@ const CATEGORIA_COLORES = {
 };
 
 function ResumenReparaciones() {
+  // Ver sin editar (tabla de Roles): el borrar queda a la vista pero
+  // deshabilitado.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("camionetas.planilla", "editar");
   const navigate = useNavigate();
   const [trabajos, setTrabajos] = useState([]);
   const [camionetas, setCamionetas] = useState([]);
@@ -974,7 +979,8 @@ function ResumenReparaciones() {
                             className="rounded-3 px-2 py-0.5"
                             style={{ fontSize: "0.68rem" }}
                             onClick={() => handleEliminarTrabajo(t._id)}
-                            title="Eliminar reparación"
+                            disabled={sinEditar}
+                            title={sinEditar ? "Sin permiso para editar" : "Eliminar reparación"}
                           >
                             <i className="bi bi-trash3-fill"></i>
                           </Button>

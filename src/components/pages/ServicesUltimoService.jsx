@@ -7,6 +7,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 
 import { getIntervalKm, getEstado } from "../../utils/serviceHelpers";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
@@ -17,6 +18,10 @@ const formatFecha = (iso) => {
 };
 
 function ServicesUltimoService() {
+  // Ver sin editar (tabla de Roles): los botones que cargan o editan quedan a
+  // la vista pero deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("camionetas.ultimoService", "editar");
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [camionetas, setCamionetas] = useState([]);
@@ -672,6 +677,7 @@ function ServicesUltimoService() {
                 type="text"
                 value={telefonoAviso}
                 onChange={(e) => setTelefonoAviso(e.target.value)}
+                disabled={sinEditar}
                 onKeyDown={(e) => e.key === "Enter" && guardarTelefono()}
                 placeholder="5491123456789"
                 className="border-0 bg-transparent px-2"
@@ -679,7 +685,7 @@ function ServicesUltimoService() {
               />
               <button
                 onClick={guardarTelefono}
-                disabled={guardandoTel}
+                disabled={guardandoTel || sinEditar}
                 className="btn btn-sm btn-outline-secondary py-1 px-3 rounded-2 fw-semibold"
                 style={{ fontSize: "0.76rem" }}
               >
@@ -776,6 +782,7 @@ function ServicesUltimoService() {
                       <td style={{ padding: "2px 2px" }}>
                         <button
                           onClick={() => abrirModal(c._id)}
+                          disabled={sinEditar}
                           className="btn btn-sm py-0.5 px-1.5 rounded-2 text-white shadow-sm"
                           style={{
                             backgroundColor: "#1e293b",
@@ -918,6 +925,7 @@ function ServicesUltimoService() {
                               return (
                                 <button
                                   onClick={() => marcarWhatsapp(c._id, false)}
+                                  disabled={sinEditar}
                                   className="btn btn-sm py-1 px-2 d-inline-flex align-items-center gap-1"
                                   style={{
                                     backgroundColor: "#dcfce7",
@@ -1128,7 +1136,7 @@ function ServicesUltimoService() {
             type="button"
             size="sm"
             onClick={guardarObservacion}
-            disabled={guardandoObs}
+            disabled={guardandoObs || sinEditar}
             className="rounded-3 px-3.5 py-1 text-white"
             style={{ backgroundColor: "#1e293b", borderColor: "#1e293b", fontSize: "0.8rem" }}
           >

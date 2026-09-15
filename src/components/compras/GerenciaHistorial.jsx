@@ -26,7 +26,7 @@ const calcCostoItem = (item) => {
 // Lo que decidió Gerencia, según el estado en que dejó el pedido. "Para
 // analisis" es como quedaban los mandados a revisar antes de "Para revision".
 const DECISION = {
-  'Para hacer OC': 'Aprobado',
+  'Para hacer OP': 'Aprobado',
   'Para revision': 'A revisar',
   'Para analisis': 'A revisar',
   Rechazado:       'Rechazado',

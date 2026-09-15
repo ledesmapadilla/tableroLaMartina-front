@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Container, Card, Table, Button, Form, Modal, Row, Col } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, campo, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion, Buscador } from './estilos'
+import { NOMBRES_ROL, nombreRol } from '../../utils/permisosCatalogo'
 
 const FORM_INIT = { nombre: '', usuario: '', password: '', rol: 'solicitante' }
 
 export default function Usuarios() {
+  const navigate = useNavigate()
   const [usuarios, setUsuarios] = useState([])
   const [form, setForm] = useState(FORM_INIT)
   const [editId, setEditId] = useState(null)
@@ -130,15 +133,28 @@ export default function Usuarios() {
             </div>
           </div>
 
-          <Button
-            size="sm"
-            onClick={abrirNuevo}
-            className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-2"
-            style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.82rem', fontWeight: 600 }}
-          >
-            <i className="bi bi-plus-lg"></i>
-            <span>Nuevo usuario</span>
-          </Button>
+          <div className="d-flex align-items-center gap-2">
+            {/* Qué ve y qué edita cada rol. */}
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => navigate('/compras/altas/usuarios/roles')}
+              className="rounded-3 px-3 py-1 d-flex align-items-center gap-2"
+              style={{ fontSize: '0.82rem', fontWeight: 600 }}
+            >
+              <i className="bi bi-shield-lock"></i>
+              <span>Roles</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={abrirNuevo}
+              className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-2"
+              style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.82rem', fontWeight: 600 }}
+            >
+              <i className="bi bi-plus-lg"></i>
+              <span>Nuevo usuario</span>
+            </Button>
+          </div>
         </div>
 
         {/* Buscador */}
@@ -182,7 +198,7 @@ export default function Usuarios() {
                     <td style={td}>{u.password || <Raya />}</td>
                     <td style={tdCentro}>
                       <span className="badge" style={{ backgroundColor: '#334155', fontSize: '0.62rem' }}>
-                        {u.rol}
+                        {nombreRol(u.rol)}
                       </span>
                     </td>
                     <td style={tdCentro}>
@@ -269,11 +285,11 @@ export default function Usuarios() {
                   value={form.rol}
                   onChange={(e) => setForm({ ...form, rol: e.target.value })}
                 >
-                  <option value="superadmin">Superadministrador</option>
-                  <option value="solicitante">Solicitante</option>
-                  <option value="analista">Analista</option>
-                  <option value="comprador">Comprador</option>
-                  <option value="gerente">Gerente</option>
+                  {Object.entries(NOMBRES_ROL).map(([valor, nombre]) => (
+                    <option key={valor} value={valor}>
+                      {nombre}
+                    </option>
+                  ))}
                 </Form.Select>
               </Col>
             </Row>

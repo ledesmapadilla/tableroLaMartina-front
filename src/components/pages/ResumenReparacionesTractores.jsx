@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { CATEGORIA_COLORES, opcionesFiltroCategoria } from "../../utils/categoriasTractor";
+import { usePermisos } from "../../context/permisos";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -61,6 +62,10 @@ const GRUPOS = {
 };
 
 function ResumenReparacionesTractores() {
+  // Ver sin editar (tabla de Roles): el borrar queda a la vista pero
+  // deshabilitado.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("tractores.planilla", "editar");
   const navigate = useNavigate();
   const { grupoId } = useParams();
   const { state } = useLocation();
@@ -1188,7 +1193,8 @@ function ResumenReparacionesTractores() {
                               className="p-0 d-inline-flex align-items-center justify-content-center rounded-2"
                               style={{ width: "22px", height: "22px", fontSize: "0.72rem" }}
                               onClick={() => handleEliminarTrabajo(t._id)}
-                              title="Eliminar trabajo"
+                              disabled={sinEditar}
+                              title={sinEditar ? "Sin permiso para editar" : "Eliminar trabajo"}
                             >
                               <i className="bi bi-trash3-fill"></i>
                             </Button>

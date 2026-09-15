@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
+import { usePermisos } from "../../context/permisos";
 
 const tarjetas = [
   {
@@ -8,6 +9,7 @@ const tarjetas = [
     titulo: "Kilómetros",
     subtitulo: "Registro y control de odómetros mensuales",
     badge: "Odómetros",
+    permiso: "camionetas.kilometros",
     ruta: "/camionetas/services/kilometros",
     bg: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
     hoverBg: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
@@ -19,6 +21,7 @@ const tarjetas = [
     titulo: "Último Service",
     subtitulo: "Control de fechas e intervalos cada 10.000 Km",
     badge: "Intervalos & Alertas",
+    permiso: "camionetas.ultimoService",
     ruta: "/camionetas/services/ultimo-service",
     bg: "linear-gradient(135deg, #14532d 0%, #166534 100%)",
     hoverBg: "linear-gradient(135deg, #052e16 0%, #14532d 100%)",
@@ -28,6 +31,7 @@ const tarjetas = [
 ];
 
 function CamionetasServices() {
+  const { puede } = usePermisos();
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
 
@@ -118,7 +122,7 @@ function CamionetasServices() {
             width: "100%",
           }}
         >
-          {tarjetas.map((t) => {
+          {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
             const isHovered = hoveredCard === t.id;
             return (
               <div
