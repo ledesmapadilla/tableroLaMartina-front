@@ -113,8 +113,10 @@ function SearchableInputDropdown({
 }
 
 function ColectivosAltas() {
-  // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista
-  // pero deshabilitados.
+  // El alta y la baja de un colectivo se hacen en Centros de costo (un CC de
+  // equipo Colectivo aparece acá solo). El CC del colectivo es su patente.
+  // Esta pantalla solo administra. Ver sin editar (tabla de Roles): editar
+  // queda a la vista pero deshabilitado.
   const { puede } = usePermisos();
   const sinEditar = !puede("altas.colectivos", "editar");
   const navigate = useNavigate();
@@ -150,21 +152,9 @@ function ColectivosAltas() {
     cargar();
   }, []);
 
-  const abrirNuevo = () => {
-    setEditando(null);
-    reset({
-      cc: "",
-      patente: "",
-      descripcion: "",
-      supervisor: "",
-    });
-    setShowModal(true);
-  };
-
   const abrirEditar = (c) => {
     setEditando(c._id);
     setValue("cc", c.cc);
-    setValue("patente", c.patente || "");
     setValue("descripcion", c.descripcion || "");
     setValue("supervisor", c.supervisor || "");
     setShowModal(true);
@@ -178,14 +168,11 @@ function ColectivosAltas() {
 
   const onSubmit = async (data) => {
     try {
-      const url = editando ? `${API}/${editando}` : API;
-      const method = editando ? "PUT" : "POST";
-      const payload = {
-        ...data,
-        patente: (data.patente || "").trim().toUpperCase(),
-      };
-      const res = await fetch(url, {
-        method,
+      // El CC (la patente) no viaja: es del padrón y no se cambia desde acá.
+      const payload = { ...data };
+      delete payload.cc;
+      const res = await fetch(`${API}/${editando}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -194,7 +181,7 @@ function ColectivosAltas() {
         cargar();
         Swal.fire({
           icon: "success",
-          title: editando ? "Colectivo actualizado" : "Colectivo registrado",
+          title: "Colectivo actualizado",
           timer: 1500,
           showConfirmButton: false,
         });
@@ -204,24 +191,6 @@ function ColectivosAltas() {
       }
     } catch {
       Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
-    }
-  };
-
-  const eliminar = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar colectivo?",
-      text: "Esta acción quitará el colectivo de la flota",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#64748b",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
-    if (result.isConfirmed) {
-      await fetch(`${API}/${id}`, { method: "DELETE" });
-      cargar();
-      Swal.fire({ icon: "success", title: "Colectivo eliminado", timer: 1200, showConfirmButton: false });
     }
   };
 
@@ -248,7 +217,6 @@ function ColectivosAltas() {
     const matchBusqueda =
       !q ||
       (c.cc || "").toLowerCase().includes(q) ||
-      (c.patente || "").toLowerCase().includes(q) ||
       (c.descripcion || "").toLowerCase().includes(q) ||
       (c.supervisor || "").toLowerCase().includes(q);
 
@@ -260,7 +228,7 @@ function ColectivosAltas() {
 
   const exportarExcel = async () => {
     const titulo = "Alta de Flota — Colectivos";
-    const columnas = ["#", "CC / Colectivo", "Patente", "Supervisor", "Descripción / Modelo"];
+    const columnas = ["#", "CC / Patente", "Supervisor", "Descripción / Modelo"];
     const fechaHoy = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
     const wb = await nuevoWorkbook();
@@ -297,7 +265,6 @@ function ColectivosAltas() {
       const fila = ws.addRow([
         idx + 1,
         c.cc,
-        c.patente || "—",
         c.supervisor || "—",
         c.descripcion || "—",
       ]);
@@ -310,12 +277,11 @@ function ColectivosAltas() {
           right: { style: "thin", color: { argb: "FFE2E8F0" } },
         };
       });
-      fila.getCell(5).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
       { width: 6 },
-      { width: 16 },
       { width: 16 },
       { width: 24 },
       { width: 40 },
@@ -416,7 +382,7 @@ function ColectivosAltas() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: "1140px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
-        {/* Fila Superior: Botones Excel y Nuevo Colectivo arriba de los filtros */}
+        {/* Fila Superior: Excel y el acceso a Centros de costo, donde se dan de alta y de baja */}
         <div className="d-flex align-items-center justify-content-end gap-3 mb-3">
           <Button
             variant="success"
@@ -431,21 +397,24 @@ function ColectivosAltas() {
             <span>Excel</span>
           </Button>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={abrirNuevo}
-            disabled={sinEditar}
-            className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
-            style={{
-              backgroundColor: "#1e293b",
-              borderColor: "#1e293b",
-              fontSize: "0.82rem",
-              fontWeight: 600,
-            }}
-          >
-            <span>Nuevo Colectivo</span>
-          </Button>
+          {puede("altas.centrosCosto") && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate("/produccion/altas/cc")}
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3.5 py-1.5 shadow-sm"
+              style={{
+                backgroundColor: "#1e293b",
+                borderColor: "#1e293b",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+              }}
+              title="Los colectivos se dan de alta y de baja como CC de equipo Colectivo (el código es la patente)"
+            >
+              <i className="bi bi-diagram-3-fill"></i>
+              <span>Altas y bajas en Centros de costo</span>
+            </Button>
+          )}
         </div>
 
         {/* Barra de Filtros */}
@@ -465,7 +434,7 @@ function ColectivosAltas() {
                 </span>
                 <Form.Control
                   type="text"
-                  placeholder="Buscar CC, patente, descripción..."
+                  placeholder="Buscar CC (patente), descripción..."
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   className={`border-start-0 ps-0 ${busqueda ? "fw-bold filtro-activo" : ""}`}
@@ -554,8 +523,7 @@ function ColectivosAltas() {
               <tr className="fw-normal align-middle">
                 {[
                   { h: "#", w: "45px" },
-                  { h: "CC / Colectivo", w: "110px" },
-                  { h: "Patente", w: "125px" },
+                  { h: "CC / Patente", w: "125px" },
                   { h: "Supervisor", w: "180px" },
                   { h: "Descripción / Modelo", izq: true },
                   { h: "Acciones", w: "95px" },
@@ -580,7 +548,7 @@ function ColectivosAltas() {
             <tbody>
               {colectivosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
+                  <td colSpan={5} className="text-muted py-4" style={{ fontSize: "0.85rem" }}>
                     {busqueda || filtroSupervisor !== "Todos"
                       ? "No se encontraron colectivos con los filtros seleccionados"
                       : "No hay colectivos registrados en la flota"}
@@ -611,26 +579,6 @@ function ColectivosAltas() {
                           {c.cc}
                         </span>
                       </td>
-                      <td>
-                        {c.patente ? (
-                          <span
-                            className="badge px-2 py-0.5 shadow-sm"
-                            style={{
-                              backgroundColor: "#f1f5f9",
-                              color: "#0f172a",
-                              border: "1px solid #94a3b8",
-                              fontSize: "0.7rem",
-                              letterSpacing: "1px",
-                              borderRadius: "6px",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {c.patente}
-                          </span>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
                       <td className="text-secondary fw-medium">
                         {c.supervisor || "—"}
                       </td>
@@ -648,15 +596,6 @@ function ColectivosAltas() {
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
-                          <button
-                            onClick={() => eliminar(c._id)}
-                            disabled={sinEditar}
-                            className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
-                            style={{ width: "24px", height: "24px" }}
-                            title={sinEditar ? "Sin permiso para editar" : "Eliminar colectivo"}
-                          >
-                            <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -668,7 +607,7 @@ function ColectivosAltas() {
         </div>
       </Container>
 
-      {/* Modal Nuevo / Editar Colectivo */}
+      {/* Modal Editar Colectivo */}
       <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border-0 shadow-lg rounded-4 overflow-visible">
         <Modal.Header
           closeButton
@@ -683,45 +622,22 @@ function ColectivosAltas() {
         >
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <i className="bi bi-bus-front-fill" style={{ fontSize: "1.25rem", color: "#ef4444" }}></i>
-            <span>{editando ? "Editar Colectivo" : "Nuevo Colectivo"}</span>
+            <span>Editar Colectivo</span>
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Row className="g-3">
-              <Col md={5}>
-                <Form.Label className="fw-semibold text-dark small mb-1">
-                  CC / Identificación <span className="text-danger">*</span>
-                </Form.Label>
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">CC / Patente</Form.Label>
+                {/* Fijo: la patente es el CC, que se da de alta en Centros de costo. */}
                 <Form.Control
-                  placeholder="Ej: 01, 150, C-04"
-                  className="rounded-3"
-                  style={{ fontSize: "0.85rem" }}
-                  {...register("cc", {
-                    required: "El CC es requerido",
-                    maxLength: { value: 50, message: "Máximo 50 caracteres" },
-                  })}
-                  isInvalid={!!errors.cc}
-                />
-                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.cc?.message}
-                </Form.Control.Feedback>
-              </Col>
-
-              <Col md={7}>
-                <Form.Label className="fw-semibold text-dark small mb-1">Patente</Form.Label>
-                <Form.Control
-                  placeholder="Ej: EQB 118"
-                  className="rounded-3 text-uppercase"
+                  className="rounded-3 bg-light"
                   style={{ fontSize: "0.85rem", letterSpacing: "0.5px" }}
-                  {...register("patente", {
-                    maxLength: { value: 20, message: "Máximo 20 caracteres" },
-                  })}
-                  isInvalid={!!errors.patente}
+                  readOnly
+                  title="La patente es el CC: se da de alta en Centros de costo"
+                  {...register("cc")}
                 />
-                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.patente?.message}
-                </Form.Control.Feedback>
               </Col>
 
               <Col md={12}>

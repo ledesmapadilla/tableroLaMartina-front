@@ -55,6 +55,7 @@ const REGLAS = [
   // ── Tractores ──
   [/^\/tractores\/altas/, "altas.tractores"],
   [/^\/tractores\/preventivo/, "tractores.preventivo"],
+  [/^\/tractores\/repuestos/, "tractores.repuestos"],
   [/^\/tractores\/(services\/reparaciones|grupo\/[^/]+)\/resumen/, "tractores.planilla"],
   [/^\/tractores\/grupo\/[^/]+\/reparaciones\/[^/]+\/reportar/, "tractores.reportar"],
   [/^\/tractores\/grupo\/[^/]+\/reparaciones\/[^/]+\/tareas/, "tractores.tareas"],

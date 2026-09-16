@@ -7,10 +7,11 @@ import { nombreRol } from '../../utils/permisosCatalogo'
  *
  * El login es del proyecto entero, no de una sección: se entra una vez y la
  * sesión vale para Compras, Mantenimiento y Producción. Por eso esto vive acá
- * y va en las cuatro entradas —la página principal y los tres navbars—, para
- * no tener que pasar por Compras solo para cerrar sesión.
+ * y va en las entradas —la página principal, la de Mantenimiento y los
+ * navbars de Compras y Producción—, para no tener que pasar por Compras solo
+ * para cerrar sesión.
  *
- * Va sobre fondos oscuros, que es lo que tienen las cuatro.
+ * Va sobre fondos oscuros, que es lo que tienen todas.
  */
 export default function SesionUsuario({ mostrarRol = false }) {
   const { user, logout } = useAuth()

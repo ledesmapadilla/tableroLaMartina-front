@@ -323,7 +323,7 @@ function ResumenReparacionesTractores() {
     const ws = wb.addWorksheet("Planilla General Reparaciones");
 
     const titulo = esModoGrupo
-      ? `PLANILLA DE REPARACIONES - ${infoGrupo.label.toUpperCase()} (${infoGrupo.supervisor.toUpperCase()})`
+      ? `PLANILLA DE REPARACIONES - ${infoGrupo.label.toUpperCase()}`
       : "PLANILLA GENERAL DE REPARACIONES - MAQUINARIA Y TRACTORES";
     const fechaHoy = formatF(new Date().toISOString());
 
@@ -420,7 +420,7 @@ function ResumenReparacionesTractores() {
         : [
             `CC ${ccActual}`,
             tractorInfo.descripcion || "-",
-            `${tractorInfo.infoG.label} (${tractorInfo.infoG.supervisor})`,
+            tractorInfo.infoG.label,
             formatF(t.fecha),
             t.horometro ? `${t.horometro} hs` : "-",
             t.parte || "Mecánica general",
@@ -559,7 +559,6 @@ function ResumenReparacionesTractores() {
                 >
                   {infoGrupo.label}
                 </span>
-                <span className="text-light opacity-75 small">• Supervisor: {infoGrupo.supervisor}</span>
               </>
             ) : (
               <span className="text-light opacity-75 small">Todos los Tractores</span>
@@ -621,7 +620,6 @@ function ResumenReparacionesTractores() {
             {esModoGrupo ? (
               <div className="d-flex align-items-center justify-content-center gap-2">
                 <h5 className="fw-bold text-dark mb-0 fs-5">{infoGrupo.label}</h5>
-                <span className="text-muted small">• Supervisor: {infoGrupo.supervisor}</span>
               </div>
             ) : (
               <div className="d-flex align-items-center justify-content-center gap-2">
@@ -1242,7 +1240,7 @@ function ResumenReparacionesTractores() {
                             CC {info.cleanCC}
                           </div>
                           <div className="text-muted small">
-                            {info.infoG.label} ({info.infoG.supervisor})
+                            {info.infoG.label}
                           </div>
                           {info.descripcion && (
                             <div className="text-muted small">{info.descripcion}</div>

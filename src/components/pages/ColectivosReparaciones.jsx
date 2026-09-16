@@ -157,7 +157,7 @@ function ColectivosReparaciones() {
                   }}
                   onMouseEnter={() => setHoveredCard(c._id)}
                   onMouseLeave={() => setHoveredCard(null)}
-                  title={`CC ${c.cc}${c.patente ? ` — ${c.patente}` : ""}`}
+                  title={`CC ${c.cc}${c.descripcion ? ` — ${c.descripcion}` : ""}`}
                 >
                   <i
                     className="bi bi-bus-front-fill mb-1"
@@ -167,21 +167,6 @@ function ColectivosReparaciones() {
                   <span className="fw-bold" style={{ fontSize: "1.02rem", letterSpacing: "0.3px" }}>
                     CC {c.cc}
                   </span>
-
-                  {c.patente && (
-                    <span
-                      className="badge mt-1 px-2 py-1"
-                      style={{
-                        backgroundColor: "rgba(255, 255, 255, 0.14)",
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
-                        fontSize: "0.68rem",
-                        fontWeight: 600,
-                        letterSpacing: "0.4px",
-                      }}
-                    >
-                      {c.patente}
-                    </span>
-                  )}
                 </div>
               );
             })}

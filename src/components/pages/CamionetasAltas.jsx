@@ -105,8 +105,10 @@ function SelectResponsableDown({ value, onChange, options, isInvalid, errorMsg }
 }
 
 function CamionetasAltas() {
-  // Ver sin editar (tabla de Roles): nueva, editar y borrar quedan a la vista
-  // pero deshabilitados.
+  // El alta y la baja de una camioneta se hacen en Centros de costo (un CC de
+  // equipo Camioneta, con la patente como código, aparece acá solo): esta
+  // pantalla solo administra. Ver sin editar (tabla de Roles): editar queda a
+  // la vista pero deshabilitado.
   const { puede } = usePermisos();
   const sinEditar = !puede("altas.camionetas", "editar");
   const navigate = useNavigate();
@@ -145,12 +147,6 @@ function CamionetasAltas() {
     cargar();
   }, []);
 
-  const abrirNuevo = () => {
-    setEditando(null);
-    reset();
-    setShowModal(true);
-  };
-
   const formatTelefono = (tel) => {
     if (!tel) return "";
     const str = String(tel).trim();
@@ -163,7 +159,6 @@ function CamionetasAltas() {
   const abrirEditar = (c) => {
     setEditando(c._id);
     setValue("marca", c.marca);
-    setValue("patente", c.patente);
     setValue("responsable", c.responsable);
     setValue("telefono", formatTelefono(c.telefono));
     setShowModal(true);
@@ -177,14 +172,13 @@ function CamionetasAltas() {
 
   const onSubmit = async (data) => {
     try {
-      const url = editando ? `${API}/${editando}` : API;
-      const method = editando ? "PUT" : "POST";
+      // La patente no viaja: es el CC y no se cambia desde acá.
       const payload = {
         ...data,
         telefono: formatTelefono(data.telefono),
       };
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(`${API}/${editando}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -193,7 +187,7 @@ function CamionetasAltas() {
         cargar();
         Swal.fire({
           icon: "success",
-          title: editando ? "Equipo actualizado" : "Equipo registrado",
+          title: "Camioneta actualizada",
           timer: 1500,
           showConfirmButton: false,
         });
@@ -203,24 +197,6 @@ function CamionetasAltas() {
       }
     } catch {
       Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
-    }
-  };
-
-  const eliminar = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar equipo?",
-      text: "Esta acción quitará la camioneta de la flota",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#64748b",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
-    if (result.isConfirmed) {
-      await fetch(`${API}/${id}`, { method: "DELETE" });
-      cargar();
-      Swal.fire({ icon: "success", title: "Equipo eliminado", timer: 1200, showConfirmButton: false });
     }
   };
 
@@ -378,22 +354,25 @@ function CamionetasAltas() {
             )}
           </div>
 
-          {/* Botón Nueva Camioneta */}
-          <Button
-            variant="success"
-            size="sm"
-            onClick={abrirNuevo}
-            disabled={sinEditar}
-            className="d-inline-flex align-items-center rounded-3 px-3 py-1.5 shadow-sm"
-            style={{
-              backgroundColor: "#15803d",
-              borderColor: "#15803d",
-              fontSize: "0.84rem",
-              fontWeight: 600,
-            }}
-          >
-            <span>Nueva Camioneta</span>
-          </Button>
+          {/* Las camionetas se dan de alta y de baja en Centros de costo */}
+          {puede("altas.centrosCosto") && (
+            <Button
+              variant="success"
+              size="sm"
+              onClick={() => navigate("/produccion/altas/cc")}
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3 py-1.5 shadow-sm"
+              style={{
+                backgroundColor: "#15803d",
+                borderColor: "#15803d",
+                fontSize: "0.84rem",
+                fontWeight: 600,
+              }}
+              title="Las camionetas se dan de alta y de baja como CC de equipo Camioneta (el código es la patente)"
+            >
+              <i className="bi bi-diagram-3-fill"></i>
+              <span>Altas y bajas en Centros de costo</span>
+            </Button>
+          )}
         </div>
 
         {/* Tabla de Camionetas */}
@@ -496,15 +475,6 @@ function CamionetasAltas() {
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
-                          <button
-                            onClick={() => eliminar(c._id)}
-                            disabled={sinEditar}
-                            className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
-                            style={{ width: "24px", height: "24px" }}
-                            title={sinEditar ? "Sin permiso para editar" : "Eliminar camioneta"}
-                          >
-                            <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -516,7 +486,7 @@ function CamionetasAltas() {
         </div>
       </Container>
 
-      {/* Modal Nueva / Editar Camioneta */}
+      {/* Modal Editar Camioneta */}
       <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border-0 shadow-lg rounded-4 overflow-visible">
         <Modal.Header
           closeButton
@@ -525,7 +495,7 @@ function CamionetasAltas() {
         >
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
             <i className="bi bi-car-front-fill text-info"></i>
-            <span>{editando ? "Editar Camioneta" : "Nueva Camioneta"}</span>
+            <span>Editar Camioneta</span>
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit(onSubmit)}>
@@ -550,29 +520,15 @@ function CamionetasAltas() {
               </Col>
 
               <Col md={6}>
-                <Form.Label className="fw-semibold text-dark small mb-1">Patente</Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">Patente (CC)</Form.Label>
+                {/* Fija: es el código del CC, que se da de alta en Centros de costo. */}
                 <Form.Control
-                  placeholder="Ej: AB123CD"
-                  className="rounded-3 text-uppercase"
+                  className="rounded-3 bg-light"
                   style={{ fontSize: "0.85rem" }}
-                  {...register("patente", {
-                    required: "La patente es requerida",
-                    pattern: {
-                      value: /^[A-Za-z]{2,3}[0-9]{3}[A-Za-z]{0,2}$/,
-                      message: "Formato inválido (Ej: ABC123 o AB123CD)",
-                    },
-                    validate: (val) => {
-                      const dup = camionetas.find(
-                        (c) => c.patente.toUpperCase() === val.toUpperCase() && c._id !== editando
-                      );
-                      return !dup || "La patente ya está registrada";
-                    },
-                  })}
-                  isInvalid={!!errors.patente}
+                  value={camionetas.find((c) => c._id === editando)?.patente || ""}
+                  readOnly
+                  title="La patente es el CC: se da de alta en Centros de costo"
                 />
-                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.patente?.message}
-                </Form.Control.Feedback>
               </Col>
 
               <Col md={12}>

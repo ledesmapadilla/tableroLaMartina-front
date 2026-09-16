@@ -17,6 +17,17 @@ const tarjetas = [
     accentColor: "#34d399",
     icono: "bi bi-shield-check",
   },
+  // La chica del medio, con el estilo de la de Visitas en Mantenimiento.
+  {
+    id: "repuestos",
+    titulo: "Repuestos",
+    permiso: "tractores.repuestos",
+    ruta: "/tractores/repuestos",
+    chica: true,
+    bg: "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
+    hoverBg: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
+    icono: "bi bi-box-seam",
+  },
   {
     id: "reparaciones",
     titulo: "Reparaciones",
@@ -104,7 +115,7 @@ function Tractores() {
         </div>
       </div>
 
-      {/* Contenedor Central con las 2 Tarjetas Principales */}
+      {/* Contenedor Central: las 2 tarjetas principales y la chica en el medio */}
       <div
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
         style={{ overflow: "hidden" }}
@@ -113,12 +124,55 @@ function Tractores() {
           className="d-flex justify-content-center align-items-center"
           style={{
             gap: "2.5rem",
-            maxWidth: "880px",
+            maxWidth: "960px",
             width: "100%",
           }}
         >
           {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
             const isHovered = hoveredCard === t.id;
+            if (t.chica) {
+              return (
+                <div
+                  key={t.ruta}
+                  className="d-flex flex-column align-items-center justify-content-center text-white text-center p-2 flex-shrink-0"
+                  style={{
+                    background: isHovered ? t.hoverBg : t.bg,
+                    borderRadius: "18px",
+                    boxShadow: isHovered
+                      ? "0 16px 32px rgba(0,0,0,0.5), 0 0 20px rgba(6, 182, 212, 0.4)"
+                      : "0 8px 24px rgba(0,0,0,0.35)",
+                    border: "2px solid rgba(255, 255, 255, 0.3)",
+                    cursor: "pointer",
+                    transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
+                    transform: isHovered ? "scale(1.08)" : "scale(1)",
+                    width: "104px",
+                    height: "70px",
+                    userSelect: "none",
+                  }}
+                  onClick={() => navigate(t.ruta)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(t.ruta)}
+                  onMouseEnter={() => setHoveredCard(t.id)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                >
+                  <div
+                    className="d-flex align-items-center justify-content-center mb-1"
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      borderRadius: "8px",
+                      backgroundColor: "rgba(255, 255, 255, 0.15)",
+                    }}
+                  >
+                    <i className={t.icono} style={{ fontSize: "1.1rem", color: "#67e8f9" }}></i>
+                  </div>
+                  <span className="fw-bold text-center mb-0" style={{ fontSize: "0.9rem" }}>
+                    {t.titulo}
+                  </span>
+                </div>
+              );
+            }
             return (
               <div
                 key={t.ruta}

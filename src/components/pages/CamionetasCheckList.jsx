@@ -173,6 +173,12 @@ function CamionetasCheckList() {
     if (c?.responsable) setValue("encargado", c.responsable);
   }, [camionetaId, camionetas]);
 
+  // Los responsables que ofrece el desplegable: los cargados en las camionetas
+  // más los que todavía no tienen una asignada.
+  const responsables = [
+    ...new Set([...camionetas.map((c) => c.responsable).filter(Boolean), "Mario Bustos", "Alejandro Banegas"]),
+  ].sort();
+
   const cargarParadas = async (id) => {
     try {
       const r = await fetch(`/api/paradas/${id}`);
@@ -449,11 +455,7 @@ function CamionetasCheckList() {
                   overflowY: "auto",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 }}>
-                  {camionetas
-                    .map((c) => c.responsable)
-                    .filter(Boolean)
-                    .filter((v, i, arr) => arr.indexOf(v) === i)
-                    .sort()
+                  {responsables
                     .filter((r) => r.toLowerCase().includes(filtro.toLowerCase()))
                     .map((r) => (
                       <div

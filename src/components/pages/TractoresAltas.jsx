@@ -207,8 +207,10 @@ function SearchableInputDropdown({
 }
 
 function TractoresAltas() {
-  // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista
-  // pero deshabilitados. El historial de cambios se sigue viendo.
+  // El alta y la baja de un tractor se hacen en Centros de costo (un CC de
+  // equipo Tractor o Camión aparece acá solo): esta pantalla solo administra y
+  // agrupa. Ver sin editar (tabla de Roles): editar queda a la vista pero
+  // deshabilitado. El historial de cambios se sigue viendo.
   const { puede } = usePermisos();
   const sinEditar = !puede("altas.tractores", "editar");
   const navigate = useNavigate();
@@ -254,19 +256,6 @@ function TractoresAltas() {
     cargar();
   }, []);
 
-  const abrirNuevo = () => {
-    setEditando(null);
-    reset({
-      cc: "",
-      descripcion: "",
-      supervisor: "",
-      encargadoGral: "",
-      gruppo: 1,
-      unidad: "hs",
-    });
-    setShowModal(true);
-  };
-
   const abrirEditar = (t) => {
     setEditando(t._id);
     setValue("cc", t.cc);
@@ -286,14 +275,11 @@ function TractoresAltas() {
 
   const onSubmit = async (data) => {
     try {
-      const url = editando ? `${API}/${editando}` : API;
-      const method = editando ? "PUT" : "POST";
-      const payload = {
-        ...data,
-        gruppo: Number(data.gruppo),
-      };
-      const res = await fetch(url, {
-        method,
+      // El CC no viaja: es del padrón y no se cambia desde acá.
+      const payload = { ...data, gruppo: Number(data.gruppo) };
+      delete payload.cc;
+      const res = await fetch(`${API}/${editando}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
@@ -302,7 +288,7 @@ function TractoresAltas() {
         cargar();
         Swal.fire({
           icon: "success",
-          title: editando ? "Tractor actualizado" : "Tractor registrado",
+          title: "Tractor actualizado",
           timer: 1500,
           showConfirmButton: false,
         });
@@ -312,24 +298,6 @@ function TractoresAltas() {
       }
     } catch {
       Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
-    }
-  };
-
-  const eliminar = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar tractor?",
-      text: "Esta acción quitará el tractor de la flota",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#64748b",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-    });
-    if (result.isConfirmed) {
-      await fetch(`${API}/${id}`, { method: "DELETE" });
-      cargar();
-      Swal.fire({ icon: "success", title: "Tractor eliminado", timer: 1200, showConfirmButton: false });
     }
   };
 
@@ -566,7 +534,7 @@ function TractoresAltas() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: "1140px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
-        {/* Fila Superior: Botones Excel y Nuevo Tractor arriba de los filtros con buen espacio */}
+        {/* Fila Superior: Excel y el acceso a Centros de costo, donde se dan de alta y de baja */}
         <div className="d-flex align-items-center justify-content-end gap-3 mb-3">
           <Button
             variant="success"
@@ -581,21 +549,24 @@ function TractoresAltas() {
             <span>Excel</span>
           </Button>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={abrirNuevo}
-            disabled={sinEditar}
-            className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
-            style={{
-              backgroundColor: "#1e293b",
-              borderColor: "#1e293b",
-              fontSize: "0.82rem",
-              fontWeight: 600,
-            }}
-          >
-            <span>Nuevo Tractor</span>
-          </Button>
+          {puede("altas.centrosCosto") && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => navigate("/produccion/altas/cc")}
+              className="d-inline-flex align-items-center gap-1.5 rounded-3 px-3.5 py-1.5 shadow-sm"
+              style={{
+                backgroundColor: "#1e293b",
+                borderColor: "#1e293b",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+              }}
+              title="Los tractores se dan de alta y de baja como CC de equipo Tractor o Camión"
+            >
+              <i className="bi bi-diagram-3-fill"></i>
+              <span>Altas y bajas en Centros de costo</span>
+            </Button>
+          )}
         </div>
 
         {/* Barra de Filtros */}
@@ -898,15 +869,6 @@ function TractoresAltas() {
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.7rem" }}></i>
                           </button>
-                          <button
-                            onClick={() => eliminar(t._id)}
-                            disabled={sinEditar}
-                            className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-1"
-                            style={{ width: "24px", height: "24px" }}
-                            title={sinEditar ? "Sin permiso para editar" : "Eliminar tractor"}
-                          >
-                            <i className="bi bi-trash" style={{ fontSize: "0.7rem" }}></i>
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -918,7 +880,7 @@ function TractoresAltas() {
         </div>
       </Container>
 
-      {/* Modal Nueva / Editar Tractor */}
+      {/* Modal Editar Tractor */}
       <Modal show={showModal} onHide={cerrarModal} centered contentClassName="border-0 shadow-lg rounded-4 overflow-visible">
         <Modal.Header
           closeButton
@@ -933,29 +895,22 @@ function TractoresAltas() {
         >
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <TractorIcon size="1.25rem" color="#10b981" />
-            <span>{editando ? "Editar Tractor" : "Nuevo Tractor"}</span>
+            <span>Editar Tractor</span>
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Row className="g-3">
               <Col md={5}>
-                <Form.Label className="fw-semibold text-dark small mb-1">
-                  CC / Identificación <span className="text-danger">*</span>
-                </Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">CC / Identificación</Form.Label>
+                {/* Fijo: el CC se da de alta en Centros de costo y no cambia. */}
                 <Form.Control
-                  placeholder="Ej: 01, 150, T-04"
-                  className="rounded-3"
+                  className="rounded-3 bg-light"
                   style={{ fontSize: "0.85rem" }}
-                  {...register("cc", {
-                    required: "El CC es requerido",
-                    maxLength: { value: 50, message: "Máximo 50 caracteres" },
-                  })}
-                  isInvalid={!!errors.cc}
+                  readOnly
+                  title="El CC se da de alta en Centros de costo"
+                  {...register("cc")}
                 />
-                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.cc?.message}
-                </Form.Control.Feedback>
               </Col>
 
               <Col md={7}>
@@ -966,13 +921,13 @@ function TractoresAltas() {
                   style={{ fontSize: "0.85rem", height: "36px" }}
                   {...register("gruppo", { required: true })}
                 >
-                  <option value={1}>Grupo 1 (Jorge Rosas)</option>
-                  <option value={2}>Grupo 2 (Guillermo Bustos)</option>
-                  <option value={3}>Grupo 3 (Carlos Chumiento)</option>
-                  <option value={4}>Grupo 4 (brandan alejandro)</option>
-                  <option value={5}>Grupo 5 (Elio Rojas)</option>
-                  <option value={6}>Berdina (Kevin)</option>
-                  <option value={7}>San Pablo (Victor)</option>
+                  <option value={1}>Grupo 1</option>
+                  <option value={2}>Grupo 2</option>
+                  <option value={3}>Grupo 3</option>
+                  <option value={4}>Grupo 4</option>
+                  <option value={5}>Grupo 5</option>
+                  <option value={6}>Berdina</option>
+                  <option value={7}>San Pablo</option>
                   <option value={8}>En desuso</option>
                 </Form.Select>
               </Col>

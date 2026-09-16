@@ -29,24 +29,41 @@ const EQUIPOS = [
   "Abonadora",
   "Camioneta",
   "Camión",
+  "Colectivo",
   "Otros",
 ];
 
-// Equipos cuyo padrón se maneja en su propia pantalla: acá no se dan de alta
-// ni de baja, y no se les cambia el CC, el equipo ni la descripción. Sí se les
-// completan los datos de Compras (grupo, marca, observaciones). Es la misma
-// regla que aplica el back (centroscosto.controller.js).
-const EQUIPOS_GESTIONADOS = {
+// Equipos de Flota. Acá es la única alta y la única baja de todo CC (15/09/2026):
+// al crear uno de estos, la unidad aparece sola en su pantalla, donde se la
+// administra y se la agrupa. Una vez creado, su código y su equipo quedan
+// fijos (horómetros, services e historial guardan una copia del código) y la
+// descripción se edita en la ficha de Flota. Es la misma regla que aplica el
+// back (centroscosto.controller.js).
+const EQUIPOS_FLOTA = {
   Tractor: "Tractores",
+  Camión: "Tractores",
   Camioneta: "Camionetas",
+  Colectivo: "Colectivos",
 };
+const pantallaDeEquipo = (equipo) => EQUIPOS_FLOTA[(equipo || "").trim()] || null;
 
-// Qué pantalla manda sobre un CC. El que está enlazado a un tractor es de
-// Tractores aunque su equipo diga "Camión" (el CC 901 es un camión cargado en
-// Tractores para llevar sus services por km); si no, se decide por el equipo.
-const pantallaQueManda = (c) =>
-  c.tractor ? "Tractores" : EQUIPOS_GESTIONADOS[(c.equipo || "").trim()] || null;
-const EQUIPOS_ELEGIBLES = EQUIPOS.filter((e) => !EQUIPOS_GESTIONADOS[e]);
+// Los grupos en los que puede nacer un tractor (el número es Tractor.gruppo).
+// "En desuso" no es un alta. Pendiente: que los grupos sean un padrón propio y
+// no una lista escrita en cada pantalla (docs/altas-unificacion.md §6).
+const GRUPOS_TRACTOR = [
+  [1, "Grupo 1"],
+  [2, "Grupo 2"],
+  [3, "Grupo 3"],
+  [4, "Grupo 4"],
+  [5, "Grupo 5"],
+  [6, "Berdina"],
+  [7, "San Pablo"],
+];
+
+// Qué pantalla de Flota tiene la unidad de un CC. El que está enlazado a un
+// tractor es de Tractores aunque su equipo diga "Camión" (el CC 901 es un
+// camión cargado en Tractores para llevar sus services por km).
+const pantallaQueManda = (c) => (c.tractor ? "Tractores" : pantallaDeEquipo(c.equipo));
 
 // El listado va agrupado por equipo, en el orden de EQUIPOS, y dentro de cada
 // equipo por número de CC. Los que no tienen equipo cargado van al final.
@@ -61,7 +78,9 @@ const ordenarCentros = (lista) =>
     return dif !== 0 ? dif : compararCC(a.cc, b.cc);
   });
 
-const FORM_INIT = { cc: "", equipo: "", descripcion: "", grupo: "", marca: "", observaciones: "" };
+// `gruppo` es el grupo del tractor (solo cuando el CC es un Tractor o Camión
+// nuevo); `grupo` es el de Compras.
+const FORM_INIT = { cc: "", equipo: "", descripcion: "", grupo: "", marca: "", observaciones: "", gruppo: "" };
 const FILTROS_INIT = { buscar: "", equipo: "", grupo: "" };
 const COLUMNAS = 7;
 
@@ -122,16 +141,6 @@ export default function AltaCentrosCosto() {
     return true;
   });
 
-  const avisarGestionado = (c) => {
-    const pantalla = pantallaQueManda(c);
-    return Swal.fire({
-      icon: "info",
-      title: `Se administra desde ${pantalla}`,
-      text: `El CC ${c.cc} se da de alta y de baja en la pantalla de ${pantalla}. Desde acá solo se completan el grupo, la marca y las observaciones.`,
-      confirmButtonColor: color,
-    });
-  };
-
   const abrirNuevo = () => {
     setEditando(null);
     setForm(FORM_INIT);
@@ -147,6 +156,7 @@ export default function AltaCentrosCosto() {
       grupo: c.grupo || "",
       marca: c.marca || "",
       observaciones: c.observaciones || "",
+      gruppo: "",
     });
     setShowModal(true);
   };
@@ -157,20 +167,22 @@ export default function AltaCentrosCosto() {
     setForm(FORM_INIT);
   };
 
-  const gestionadoEnEdicion = Boolean(editando) && Boolean(pantallaQueManda(editando));
+  const flotaEnEdicion = Boolean(editando) && Boolean(pantallaQueManda(editando));
+  // A qué pantalla de Flota va a ir el CC que se está creando (o un CC suelto
+  // al que se le pone un equipo de Flota).
+  const vaAFlota = !flotaEnEdicion && pantallaDeEquipo(form.equipo);
 
   // Un equipo viejo que ya no está en la lista se sigue ofreciendo: si no, el
   // selector lo mostraría vacío y al guardar se borraría.
-  const opcionesEquipo =
-    form.equipo && !EQUIPOS_ELEGIBLES.includes(form.equipo) ? [...EQUIPOS_ELEGIBLES, form.equipo] : EQUIPOS_ELEGIBLES;
+  const opcionesEquipo = form.equipo && !EQUIPOS.includes(form.equipo) ? [...EQUIPOS, form.equipo] : EQUIPOS;
 
   const guardar = async (e) => {
     e.preventDefault();
     const eraEdicion = Boolean(editando);
-    const limpio = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, (v || "").trim()]));
-    // En un CC de Tractores o Camionetas solo viajan los datos de Compras: el
-    // resto se cambia en la pantalla del equipo.
-    const datos = gestionadoEnEdicion
+    const limpio = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, String(v ?? "").trim()]));
+    // En un CC de Flota solo viajan los datos de Compras: el código y el
+    // equipo quedan fijos y la descripción se edita en Flota.
+    const datos = flotaEnEdicion
       ? { grupo: limpio.grupo, marca: limpio.marca, observaciones: limpio.observaciones }
       : limpio;
     try {
@@ -181,7 +193,8 @@ export default function AltaCentrosCosto() {
       Swal.fire({
         icon: "success",
         title: eraEdicion ? "CC actualizado" : "CC registrado",
-        timer: 1500,
+        text: vaAFlota ? `Ya está en ${vaAFlota}: completale ahí los datos y el grupo.` : undefined,
+        timer: vaAFlota ? 2600 : 1500,
         showConfirmButton: false,
       });
     } catch (err) {
@@ -190,13 +203,12 @@ export default function AltaCentrosCosto() {
   };
 
   const eliminar = async (c) => {
-    if (pantallaQueManda(c)) {
-      avisarGestionado(c);
-      return;
-    }
+    const pantalla = pantallaQueManda(c);
     const { isConfirmed } = await Swal.fire({
       title: `¿Borrar el CC ${c.cc}?`,
-      text: "Se quita del padrón de todo el proyecto: deja de aparecer en Producción y en Compras.",
+      text: pantalla
+        ? `Se quita del padrón y de ${pantalla}. Si tiene historial no se borra: un tractor pasa a "En desuso".`
+        : "Se quita del padrón de todo el proyecto: deja de aparecer en Producción y en Compras.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, borrar",
@@ -206,9 +218,11 @@ export default function AltaCentrosCosto() {
     });
     if (!isConfirmed) return;
     try {
-      await api.delete(`/centros-costo/${c._id}`);
+      const r = await api.delete(`/centros-costo/${c._id}`);
       cargar();
-      Swal.fire({ icon: "success", title: "CC borrado", timer: 1200, showConfirmButton: false });
+      // Un tractor con historial no se borra: el back lo pasa a En desuso.
+      if (r?.desuso) Swal.fire({ icon: "info", title: "Pasó a En desuso", text: r.message, confirmButtonColor: color });
+      else Swal.fire({ icon: "success", title: "CC borrado", timer: 1200, showConfirmButton: false });
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo borrar", text: err.message });
     }
@@ -381,23 +395,15 @@ export default function AltaCentrosCosto() {
                             onClick={() => abrirEditar(c)}
                             deshabilitado={sinEditar}
                           />
-                          {/* Los de Tractores y Camionetas se borran en su
-                              pantalla: el candado lo explica. */}
-                          {pantalla ? (
-                            <BotonAccion
-                              icono="bi-lock-fill"
-                              titulo={`Se da de alta y de baja en ${pantalla}`}
-                              onClick={() => avisarGestionado(c)}
-                            />
-                          ) : (
-                            <BotonAccion
-                              icono="bi-trash"
-                              titulo={sinEditar ? "Sin permiso para editar" : "Borrar"}
-                              variante="danger"
-                              onClick={() => eliminar(c)}
-                              deshabilitado={sinEditar}
-                            />
-                          )}
+                          <BotonAccion
+                            icono="bi-trash"
+                            titulo={
+                              sinEditar ? "Sin permiso para editar" : pantalla ? `Borrar (sale de ${pantalla})` : "Borrar"
+                            }
+                            variante="danger"
+                            onClick={() => eliminar(c)}
+                            deshabilitado={sinEditar}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -436,14 +442,24 @@ export default function AltaCentrosCosto() {
         </Modal.Header>
         <Form onSubmit={guardar}>
           <Modal.Body className="p-4">
-            {gestionadoEnEdicion && (
+            {flotaEnEdicion && (
               <div
                 className="mb-3 px-3 py-2 rounded-3"
                 style={{ backgroundColor: "#f1f5f9", fontSize: "0.8rem", color: "#475569" }}
               >
                 <i className="bi bi-lock-fill me-1"></i>
-                El CC, el equipo y la descripción se cambian en la pantalla de{" "}
-                {pantallaQueManda(editando)}. Acá se completan los datos de Compras.
+                Es un CC de {pantallaQueManda(editando)}: el código y el equipo quedan fijos y la descripción
+                se edita en {pantallaQueManda(editando)}. Acá se completan los datos de Compras.
+              </div>
+            )}
+            {vaAFlota && (
+              <div
+                className="mb-3 px-3 py-2 rounded-3"
+                style={{ backgroundColor: colorSuave, fontSize: "0.8rem", color }}
+              >
+                <i className="bi bi-info-circle-fill me-1"></i>
+                Al guardar se agrega a {vaAFlota}, donde se le completan los datos y el grupo.
+                {["Camioneta", "Colectivo"].includes(form.equipo) && " El CC es la patente."}
               </div>
             )}
 
@@ -458,14 +474,14 @@ export default function AltaCentrosCosto() {
                   value={form.cc}
                   onChange={(e) => setForm({ ...form, cc: e.target.value })}
                   maxLength={50}
-                  disabled={gestionadoEnEdicion}
+                  disabled={flotaEnEdicion}
                   required
                 />
               </Col>
 
               <Col xs={7}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Equipo</Form.Label>
-                {gestionadoEnEdicion ? (
+                {flotaEnEdicion ? (
                   <Form.Control className="rounded-3" style={campo} value={form.equipo} disabled />
                 ) : (
                   <Form.Select
@@ -484,6 +500,30 @@ export default function AltaCentrosCosto() {
                 )}
               </Col>
 
+              {/* El tractor nace en el grupo que se elige acá; después se lo
+                  puede mover desde Tractores. */}
+              {vaAFlota === "Tractores" && (
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Grupo del tractor <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Select
+                    className="rounded-3"
+                    style={campo}
+                    value={form.gruppo}
+                    onChange={(e) => setForm({ ...form, gruppo: e.target.value })}
+                    required
+                  >
+                    <option value="">— Elegir grupo —</option>
+                    {GRUPOS_TRACTOR.map(([n, nombre]) => (
+                      <option key={n} value={n}>
+                        {nombre}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Col>
+              )}
+
               <Col xs={12}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Descripción</Form.Label>
                 <Form.Control
@@ -492,7 +532,7 @@ export default function AltaCentrosCosto() {
                   value={form.descripcion}
                   onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
                   maxLength={120}
-                  disabled={gestionadoEnEdicion}
+                  disabled={flotaEnEdicion}
                 />
               </Col>
 

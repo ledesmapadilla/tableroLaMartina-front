@@ -35,7 +35,7 @@ const SUPERVISORES_POR_GRUPO = {
   2: "Guillermo Bustos",
   3: "Carlos Chumiento",
   4: "brandan alejandro",
-  5: "Elio Rojas (parado)",
+  5: "Elio Rojas",
 };
 
 const ITINERARIO = [
@@ -1271,12 +1271,9 @@ function Visitas() {
                     .filter(Boolean)
                 ),
               ];
-              const supervisorTexto =
-                g === 5
-                  ? "Elio Rojas (parado)"
-                  : sups.length
-                  ? sups.join(", ")
-                  : SUPERVISORES_POR_GRUPO[g] || "—";
+              // Los supervisores de los tractores del grupo; la lista fija solo
+              // si el grupo no tiene tractores.
+              const supervisorTexto = sups.length ? sups.join(", ") : SUPERVISORES_POR_GRUPO[g] || "—";
               return (
                 <div key={g} className="d-flex align-items-center gap-2">
                   <span

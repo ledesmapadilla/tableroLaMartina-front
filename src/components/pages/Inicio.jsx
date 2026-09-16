@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
+import MenuAltas from "../shared/MenuAltas";
+import SesionUsuario from "../shared/SesionUsuario";
 import { usePermisos } from "../../context/permisos";
 import { GRUPO } from "../../utils/permisosCatalogo";
 
@@ -100,8 +102,14 @@ function Inicio() {
           </span>
         </div>
 
-        {/* Espaciador derecho para equilibrio visual */}
-        <div style={{ width: "46px" }}></div>
+        {/* Altas y la sesión, como en la principal: desde que no hay sidebar,
+            es la entrada de Mantenimiento que los tiene a mano. */}
+        <div className="d-flex align-items-center gap-3">
+          <MenuAltas
+            colores={{ activo: "rgba(255, 255, 255, 0.15)", acento: "#334155", marca: "#0f172a", marcaFondo: "#f1f5f9" }}
+          />
+          <SesionUsuario />
+        </div>
       </div>
 
       {/* Contenedor Central — Sin Scroll, limpio y centrado */}

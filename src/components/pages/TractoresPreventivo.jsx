@@ -8,6 +8,7 @@ import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { guardarConReglaHorometro } from "../../utils/horometro";
 import { usePermisos } from "../../context/permisos";
+import { compararCC } from "../../utils/ordenCC";
 
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
@@ -119,11 +120,13 @@ function getEstadoTractor(
     };
   }
 
+  // Sin service cargado se marca igual que atrasado: es una alerta, no un
+  // estado neutro.
   if (typeof hsUltimoService !== "number" || isNaN(hsUltimoService)) {
     return {
       label: "Sin service",
-      bg: "#f1f5f9",
-      color: "#64748b",
+      bg: "#dc2626",
+      color: "#ffffff",
     };
   }
 
@@ -652,18 +655,22 @@ function TractoresPreventivo() {
     }
   };
 
-  const tractoresFiltrados = tractores.filter((t) => {
-    const matchBusqueda =
-      (t.cc || "").toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
-      (t.descripcion || "").toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
-      (t.supervisor || "").toLowerCase().includes(filtroBusqueda.toLowerCase());
+  // Ordenados por número de CC (la tabla y el Excel). El back los manda por
+  // grupo y supervisor.
+  const tractoresFiltrados = tractores
+    .filter((t) => {
+      const matchBusqueda =
+        (t.cc || "").toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
+        (t.descripcion || "").toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
+        (t.supervisor || "").toLowerCase().includes(filtroBusqueda.toLowerCase());
 
-    if (!matchBusqueda) return false;
+      if (!matchBusqueda) return false;
 
-    if (filtroGrupo === "TODOS") return true;
-    if (filtroGrupo === "OTROS") return !t.gruppo || t.gruppo > 5;
-    return String(t.gruppo) === String(filtroGrupo);
-  });
+      if (filtroGrupo === "TODOS") return true;
+      if (filtroGrupo === "OTROS") return !t.gruppo || t.gruppo > 5;
+      return String(t.gruppo) === String(filtroGrupo);
+    })
+    .sort((a, b) => compararCC(a.cc, b.cc));
 
   const exportarExcel = async () => {
     const titulo = `Control de Último Service - Flota de Tractores (${año})`;
@@ -1004,7 +1011,7 @@ function TractoresPreventivo() {
               <option value="2">Grupo 2</option>
               <option value="3">Grupo 3</option>
               <option value="4">Grupo 4</option>
-              <option value="5">Grupo 5 (Parados)</option>
+              <option value="5">Grupo 5</option>
               <option value="OTROS">Otros / Sin Grupo</option>
             </Form.Select>
           </div>

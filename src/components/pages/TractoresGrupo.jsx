@@ -150,7 +150,7 @@ function TractoresGrupo() {
               Tractores - Reparaciones {infoGrupo.label}
             </span>
             <span className="text-light opacity-75 small">
-              - {infoGrupo.supervisor} • {tractores.length} {tractores.length === 1 ? "Unidad" : "Unidades"}
+              • {tractores.length} {tractores.length === 1 ? "Unidad" : "Unidades"}
             </span>
           </div>
         </div>
@@ -238,14 +238,11 @@ function TractoresGrupo() {
           <span>Resumen General</span>
         </button>
 
-        {/* Grupo y Responsable centrados */}
+        {/* Nombre del grupo, centrado */}
         <div className="text-center me-auto ms-auto" style={{ transform: "translateX(-45px)" }}>
           <h3 className="fw-bold text-dark mb-0" style={{ fontSize: "1.45rem", letterSpacing: "-0.3px" }}>
             {infoGrupo.label}
           </h3>
-          <div className="text-secondary small" style={{ fontSize: "0.86rem" }}>
-            Responsable: <span className="fw-semibold text-dark">{infoGrupo.supervisor}</span>
-          </div>
         </div>
       </div>
 

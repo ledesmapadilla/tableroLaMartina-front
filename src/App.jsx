@@ -32,7 +32,6 @@ import Usuarios from "./components/compras/Usuarios";
 import Roles from "./components/compras/Roles";
 import Proveedores from "./components/compras/Proveedores";
 
-import Sidebar from "./components/shared/Sidebar";
 import Footer from "./components/shared/Footer";
 import PaginaPrincipal from "./components/pages/PaginaPrincipal";
 import Inicio from "./components/pages/Inicio";
@@ -69,6 +68,7 @@ import HistorialReparaciones from "./components/pages/HistorialReparaciones";
 import Tractores from "./components/pages/Tractores";
 import TractoresPreventivo from "./components/pages/TractoresPreventivo";
 import TractoresReparaciones from "./components/pages/TractoresReparaciones";
+import TractoresRepuestos from "./components/pages/TractoresRepuestos";
 import TractoresAltas from "./components/pages/TractoresAltas";
 import TractoresGrupo from "./components/pages/TractoresGrupo";
 import ReparacionesTractor from "./components/pages/ReparacionesTractor";
@@ -131,13 +131,16 @@ function App() {
 function LayoutDesktop() {
   const { pathname } = useLocation();
   const esPaginaPrincipal = pathname === "/";
-  // Producción es una sección independiente: sin sidebar, se navega con su propio navbar
+  // Producción es una sección independiente: se navega con su propio navbar
   const esProduccion = pathname === "/produccion" || pathname.startsWith("/produccion/");
   // Compras también es independiente: trae su propio Menu superior.
   const esCompras = pathname === "/compras" || pathname.startsWith("/compras/");
   // En las pantallas publicas (login, visitas) no va ninguna navegacion.
   const esPublica = esRutaPublica(pathname);
-  const sinSidebar = esPaginaPrincipal || esProduccion || esCompras || esPublica;
+  // Ya no hay sidebar (sacado el 15/09/2026): cada pantalla de Mantenimiento
+  // vuelve a la principal con el logo o "General", y Altas y Salir están en
+  // la principal y en Mantenimiento. Los botones flotantes siguen solo acá.
+  const esMantenimiento = !(esPaginaPrincipal || esProduccion || esCompras || esPublica);
 
   // El login cubre todo el proyecto. Se controla acá, en un solo punto, y no
   // ruta por ruta: así ninguna pantalla nueva puede quedar abierta por olvido.
@@ -158,9 +161,8 @@ function LayoutDesktop() {
 
   return (
       <div className="app-wrapper">
-        {!sinSidebar && <Sidebar />}
-        {!sinSidebar && <BotonTableroFlotante />}
-        {!sinSidebar && <BotonReunionFlotante />}
+        {esMantenimiento && <BotonTableroFlotante />}
+        {esMantenimiento && <BotonReunionFlotante />}
         <div className="layout-right">
           {esProduccion && <NavbarProduccion />}
           {esCompras && !esPublica && <MenuCompras />}
@@ -255,6 +257,7 @@ function LayoutDesktop() {
               <Route path="/tractores" element={<Tractores />} />
               <Route path="/tractores/preventivo" element={<TractoresPreventivo />} />
               <Route path="/tractores/reparaciones" element={<TractoresReparaciones />} />
+              <Route path="/tractores/repuestos" element={<TractoresRepuestos />} />
               <Route path="/tractores/services/reparaciones" element={<Navigate to="/tractores/reparaciones" replace />} />
               <Route path="/tractores/altas" element={<RutaProtegida><TractoresAltas /></RutaProtegida>} />
               <Route path="/tractores/grupo/:grupoId" element={<TractoresGrupo />} />

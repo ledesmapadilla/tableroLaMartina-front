@@ -30,6 +30,7 @@ export const CATALOGO = [
   { seccion: "Camionetas", clave: "camionetas.planilla", label: "Reparaciones › Planilla general", hoy: PERMISOS.mantenimiento },
 
   { seccion: "Tractores", clave: "tractores.preventivo", label: "Preventivo", hoy: PERMISOS.mantenimiento },
+  { seccion: "Tractores", clave: "tractores.repuestos", label: "Repuestos (filtros)", hoy: PERMISOS.mantenimiento },
   { seccion: "Tractores", clave: "tractores.reportar", label: "Reparaciones › Reportar falla", hoy: PERMISOS.mantenimiento },
   { seccion: "Tractores", clave: "tractores.tareas", label: "Reparaciones › Tareas", hoy: PERMISOS.mantenimiento },
   { seccion: "Tractores", clave: "tractores.historial", label: "Reparaciones › Historial", hoy: PERMISOS.mantenimiento },

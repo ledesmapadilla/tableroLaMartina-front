@@ -522,7 +522,6 @@ function ColectivosPreventivo() {
     const q = filtroBusqueda.toLowerCase();
     const matchBusqueda =
       (c.cc || "").toLowerCase().includes(q) ||
-      (c.patente || "").toLowerCase().includes(q) ||
       (c.descripcion || "").toLowerCase().includes(q) ||
       (c.supervisor || "").toLowerCase().includes(q);
 
@@ -558,7 +557,6 @@ function ColectivosPreventivo() {
     const columnas = [
       "#",
       "CC",
-      "Patente",
       "Descripción",
       "Supervisor",
       "Fecha",
@@ -622,7 +620,6 @@ function ColectivosPreventivo() {
       const fila = ws.addRow([
         idx + 1,
         c.cc,
-        c.patente || "—",
         c.descripcion || "—",
         c.supervisor || "—",
         fechaKmActual ? formatFecha(fechaKmActual) : "—",
@@ -648,15 +645,14 @@ function ColectivosPreventivo() {
         }
       });
       fila.getCell(2).font = { bold: true };
+      fila.getCell(3).alignment = { horizontal: "left", vertical: "middle" };
       fila.getCell(4).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(5).alignment = { horizontal: "left", vertical: "middle" };
-      fila.getCell(11).alignment = { horizontal: "left", vertical: "middle" };
+      fila.getCell(10).alignment = { horizontal: "left", vertical: "middle" };
     });
 
     ws.columns = [
       { width: 6 },
       { width: 12 },
-      { width: 14 },
       { width: 24 },
       { width: 22 },
       { width: 15 },
@@ -839,7 +835,7 @@ function ColectivosPreventivo() {
               ></i>
               <Form.Control
                 type="text"
-                placeholder="Buscar CC o patente..."
+                placeholder="Buscar CC (patente)..."
                 value={filtroBusqueda}
                 onChange={(e) => setFiltroBusqueda(e.target.value)}
                 size="sm"
@@ -935,7 +931,7 @@ function ColectivosPreventivo() {
                 <th style={{ width: "35px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>#</th>
                 <th style={{ width: "160px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Acción</th>
                 <th style={{ width: "80px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 6px", fontWeight: "normal" }}>CC</th>
-                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Patente / Descripción</th>
+                <th style={{ width: "180px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 8px", textAlign: "left", fontWeight: "normal" }}>Descripción</th>
                 <th style={{ width: "90px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha</th>
                 <th style={{ width: "110px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Kilometraje</th>
                 <th style={{ width: "95px", backgroundColor: "#1e293b", color: "#fff", padding: "6px 4px", fontWeight: "normal" }}>Fecha Service</th>
@@ -1031,17 +1027,15 @@ function ColectivosPreventivo() {
                       </span>
                     </td>
 
-                    {/* Patente / Descripción */}
+                    {/* Descripción (el CC ya es la patente) */}
                     <td className="text-start" style={{ padding: "5px 8px" }}>
                       <div className="d-flex flex-column">
                         <span className="fw-semibold text-dark" style={{ fontSize: "0.8rem" }}>
-                          {c.patente || c.descripcion || "—"}
+                          {c.descripcion || "—"}
                         </span>
-                        {(c.descripcion || c.supervisor) && (
+                        {c.supervisor && (
                           <span className="text-muted" style={{ fontSize: "0.72rem" }}>
-                            {[c.patente && c.descripcion ? c.descripcion : null, c.supervisor ? `Sup: ${c.supervisor}` : null]
-                              .filter(Boolean)
-                              .join(" — ")}
+                            Sup: {c.supervisor}
                           </span>
                         )}
                       </div>
@@ -1089,7 +1083,6 @@ function ColectivosPreventivo() {
                             serviceId: reg?._id,
                             colectivoId: c._id,
                             cc: c.cc,
-                            patente: c.patente,
                             texto: reg?.observaciones || "",
                           })
                         }
@@ -1184,7 +1177,7 @@ function ColectivosPreventivo() {
                   <option value="">— Seleccionar Colectivo —</option>
                   {colectivos.map((c) => (
                     <option key={c._id} value={c._id}>
-                      CC {c.cc} {c.patente ? `— ${c.patente}` : ""} {c.supervisor ? `(${c.supervisor})` : ""}
+                      CC {c.cc} {c.supervisor ? `(${c.supervisor})` : ""}
                     </option>
                   ))}
                 </Form.Select>
@@ -1337,7 +1330,7 @@ function ColectivosPreventivo() {
                   <option value="">— Seleccionar Colectivo —</option>
                   {colectivos.map((c) => (
                     <option key={c._id} value={c._id}>
-                      CC {c.cc} {c.patente ? `— ${c.patente}` : ""} {c.supervisor ? `(${c.supervisor})` : ""}
+                      CC {c.cc} {c.supervisor ? `(${c.supervisor})` : ""}
                     </option>
                   ))}
                 </Form.Select>
@@ -1453,7 +1446,7 @@ function ColectivosPreventivo() {
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 mb-0">
             <i className="bi bi-clock-history text-info"></i>
             <span>
-              Historial de Services — CC {historialModal?.cc} ({historialModal?.patente || "Colectivo"})
+              Historial de Services — CC {historialModal?.cc}
             </span>
           </Modal.Title>
         </Modal.Header>

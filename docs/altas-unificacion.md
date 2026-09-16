@@ -142,3 +142,57 @@ de hoy, (3) sí, un solo CC. Quedan para la etapa 2: (4) color de Altas y
 
 Pendiente: etapa 2 (sección `/altas/...` con su navbar y redirecciones) y
 etapa 3 (plantilla común para las demás altas y permisos en el back).
+
+## 6. Sin sidebar (15/09/2026)
+
+A pedido del usuario ("el slide bar ya no tiene sentido") se sacó
+`shared/Sidebar.jsx` y sus estilos. No se pierde nada: cada pantalla de
+Mantenimiento vuelve a la principal con el logo del centro o con "General", y
+el botón Altas y la sesión (`SesionUsuario`) están en la principal y ahora
+también en la cabecera de Mantenimiento (`pages/Inicio.jsx`). Los botones
+flotantes (Tablero y Reunión) siguen en las pantallas de Mantenimiento.
+
+## 7. El CC es la única alta (15/09/2026)
+
+Pedido del usuario: "la única forma de dar de alta cualquier centro de costo
+es desde centros de costo… en flota solo se puede administrar y agrupar
+centros de costos dados de alta en alta centros de costo". Hasta acá era al
+revés: Tractores y Camionetas creaban (y borraban) su CC, y el padrón no dejaba
+crear CC de esos equipos.
+
+- **Alta:** solo en Centros de costo. Un CC de equipo Tractor o Camión aparece
+  solo en Tractores (con km si es Camión), uno de Camioneta en Camionetas y uno
+  de Colectivo en Colectivos (`crearUnidad` en `centroscosto.controller.js`).
+  También al ponerle uno de esos equipos a un CC que ya estaba en el padrón.
+  Camionetas y colectivos: el código del CC es la patente (va en mayúsculas).
+- **Flota:** sin "Nuevo" ni papelera. Solo se edita (grupo, supervisor,
+  descripción…). El CC se ve pero no se cambia. En el back se sacaron los
+  POST y DELETE de `/tractores`, `/camionetas` y `/colectivos`, y el PUT
+  rechaza un cambio de CC o patente. Cada pantalla tiene un botón "Altas y
+  bajas en Centros de costo".
+- **Código y equipo fijos** en un CC con unidad: horómetros, services e
+  historial guardan una copia del código. La descripción se edita en Flota y
+  se refleja en el CC.
+- **Baja:** solo en Centros de costo. Sin historial se borran el CC y la
+  unidad. Con historial no se borra nada: el tractor pasa a "En desuso" (el CC
+  queda, porque los partes lo referencian); una camioneta, un colectivo o un
+  CC con partes de Producción no se pueden borrar.
+- **Colectivos:** el CC es la patente y el número interno (250–283) se borró.
+  `Colectivo.cc` pasa a tener la patente y sale el campo `patente`; sus
+  services y kilómetros se pasan al código nuevo. Migración:
+  `npm run colectivos-patente [--dry-run]` (en el back).
+- **Grupo del tractor:** al dar de alta un CC de equipo Tractor o Camión se
+  elige el grupo (1 a 5, Berdina o San Pablo), obligatorio; antes nacía en el
+  6 (Berdina) por el valor por defecto del modelo. Después se lo mueve desde
+  Tractores.
+- Los 3 colectivos cuya patente no coincidía con el padrón (FYF 939, FVT 300,
+  FWN 856) toman el código del padrón (FFY 939, FTV300, FWN): decisión del
+  usuario.
+
+Queda por analizar: los **grupos de tractores** (1 a 5, Berdina, San Pablo, En
+desuso) no son un alta. El número vive en `Tractor.gruppo` y el nombre y el
+supervisor de cada grupo están escritos a mano en unos diez archivos del front
+(`TractoresAltas`, `TractoresReparaciones`, `TractoresGrupo`,
+`ReparacionesTractor`, `HistorialTractor`, `TareasTractor`,
+`TareasTractorNueva`, `ReportarFallaTractor`, `ResumenReparacionesTractores`,
+`Visitas`, `ColectivosAltas`) y en scripts del back.

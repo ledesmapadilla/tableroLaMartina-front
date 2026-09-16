@@ -404,13 +404,6 @@ function TractoresReparaciones() {
                   {g.label}
                 </h5>
 
-                <small
-                  className="text-center mt-0.5 px-2 text-light opacity-75"
-                  style={{ fontSize: "0.78rem" }}
-                >
-                  {g.supervisor}
-                </small>
-
                 <div
                   className="text-center px-2 mt-2"
                   style={{

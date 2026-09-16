@@ -2,8 +2,8 @@ import { PERMISOS } from "./permisos";
 
 /**
  * Las altas (padrones) de todo el proyecto, en un solo lugar. De acá sale el
- * botón "Altas" de los navbars de Compras y Producción, del Sidebar de
- * Mantenimiento y de la página principal.
+ * botón "Altas" de los navbars de Compras y Producción, de la página
+ * principal y de la de Mantenimiento.
  *
  * Quién ve cada una sale de la tabla de Roles (`permiso`, una clave de
  * utils/permisosCatalogo.js). Usuarios no está en esa tabla: es solo del

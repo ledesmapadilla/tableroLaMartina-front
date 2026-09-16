@@ -15,9 +15,8 @@ export function IconoAlta({ icono, color }) {
 
 /**
  * El botón "Altas" de todo el proyecto: el mismo en los navbars de Compras y
- * Producción y en la página principal. El Sidebar de Mantenimiento arma su
- * propio submenú con la misma lista (utils/altas.js). Muestra solo las altas
- * que el rol puede abrir, agrupadas.
+ * Producción, en la página principal y en la de Mantenimiento. La lista sale
+ * de utils/altas.js. Muestra solo las altas que el rol puede abrir, agrupadas.
  *
  * Va sobre fondos oscuros; `colores` lo adapta a la barra donde va:
  *   activo      — fondo del botón abierto o cuando se está en un alta
