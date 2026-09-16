@@ -8,30 +8,16 @@ import { compararCC } from "../../utils/ordenCC";
 import { BORDO, BORDO_SUAVE, campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect } from "../compras/estilos";
 import { usePermisos } from "../../context/permisos";
+import { NOMBRES_EQUIPO, grupoDeEquipo, flotaDeEquipo } from "../../utils/equipos";
 
 // El verde de Producción y su clarito, para cuando la pantalla se abre ahí.
 const VERDE = "#1b4332";
 const VERDE_SUAVE = "#e8f5ee";
 
-// Equipos con los que se puede asociar un CC. Para sumar uno nuevo alcanza
-// con agregarlo acá: alimenta el selector del alta y el filtro del listado.
-const EQUIPOS = [
-  "Tractor",
-  "Turbo",
-  "Chancho",
-  "Nodriza",
-  "Martignani",
-  "Metalfor",
-  "Jacto",
-  "Tk. riego",
-  "Herbicida",
-  "Desmalezadora",
-  "Abonadora",
-  "Camioneta",
-  "Camión",
-  "Colectivo",
-  "Otros",
-];
+// Los equipos, su grupo de Compras y su pantalla de Flota están en
+// utils/equipos.js: alimentan el selector del alta y el filtro del listado.
+// El grupo no se escribe: sale del equipo (16/09/2026).
+const EQUIPOS = NOMBRES_EQUIPO;
 
 // Equipos de Flota. Acá es la única alta y la única baja de todo CC (15/09/2026):
 // al crear uno de estos, la unidad aparece sola en su pantalla, donde se la
@@ -39,13 +25,7 @@ const EQUIPOS = [
 // fijos (horómetros, services e historial guardan una copia del código) y la
 // descripción se edita en la ficha de Flota. Es la misma regla que aplica el
 // back (centroscosto.controller.js).
-const EQUIPOS_FLOTA = {
-  Tractor: "Tractores",
-  Camión: "Tractores",
-  Camioneta: "Camionetas",
-  Colectivo: "Colectivos",
-};
-const pantallaDeEquipo = (equipo) => EQUIPOS_FLOTA[(equipo || "").trim()] || null;
+const pantallaDeEquipo = flotaDeEquipo;
 
 // Los grupos en los que puede nacer un tractor (el número es Tractor.gruppo).
 // "En desuso" no es un alta. Pendiente: que los grupos sean un padrón propio y
@@ -78,9 +58,9 @@ const ordenarCentros = (lista) =>
     return dif !== 0 ? dif : compararCC(a.cc, b.cc);
   });
 
-// `gruppo` es el grupo del tractor (solo cuando el CC es un Tractor o Camión
-// nuevo); `grupo` es el de Compras.
-const FORM_INIT = { cc: "", equipo: "", descripcion: "", grupo: "", marca: "", observaciones: "", gruppo: "" };
+// `gruppo` es el grupo del tractor (solo cuando el CC va a Tractores). El de
+// Compras no está: sale del equipo.
+const FORM_INIT = { cc: "", equipo: "", descripcion: "", marca: "", observaciones: "", gruppo: "" };
 const FILTROS_INIT = { buscar: "", equipo: "", grupo: "" };
 const COLUMNAS = 7;
 
@@ -153,7 +133,6 @@ export default function AltaCentrosCosto() {
       cc: c.cc || "",
       equipo: c.equipo || "",
       descripcion: c.descripcion || "",
-      grupo: c.grupo || "",
       marca: c.marca || "",
       observaciones: c.observaciones || "",
       gruppo: "",
@@ -181,10 +160,9 @@ export default function AltaCentrosCosto() {
     const eraEdicion = Boolean(editando);
     const limpio = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, String(v ?? "").trim()]));
     // En un CC de Flota solo viajan los datos de Compras: el código y el
-    // equipo quedan fijos y la descripción se edita en Flota.
-    const datos = flotaEnEdicion
-      ? { grupo: limpio.grupo, marca: limpio.marca, observaciones: limpio.observaciones }
-      : limpio;
+    // equipo quedan fijos y la descripción se edita en Flota. El grupo nunca
+    // viaja: el back lo saca del equipo.
+    const datos = flotaEnEdicion ? { marca: limpio.marca, observaciones: limpio.observaciones } : limpio;
     try {
       if (eraEdicion) await api.put(`/centros-costo/${editando._id}`, datos);
       else await api.post("/centros-costo", datos);
@@ -388,7 +366,7 @@ export default function AltaCentrosCosto() {
                               sinEditar
                                 ? "Sin permiso para editar"
                                 : pantalla
-                                  ? "Completar grupo, marca y observaciones"
+                                  ? "Completar marca y observaciones"
                                   : "Editar"
                             }
                             variante="primary"
@@ -480,7 +458,9 @@ export default function AltaCentrosCosto() {
               </Col>
 
               <Col xs={7}>
-                <Form.Label className="fw-semibold text-dark small mb-1">Equipo</Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Equipo <span className="text-danger">*</span>
+                </Form.Label>
                 {flotaEnEdicion ? (
                   <Form.Control className="rounded-3" style={campo} value={form.equipo} disabled />
                 ) : (
@@ -489,8 +469,9 @@ export default function AltaCentrosCosto() {
                     style={campo}
                     value={form.equipo}
                     onChange={(e) => setForm({ ...form, equipo: e.target.value })}
+                    required
                   >
-                    <option value="">— Sin equipo —</option>
+                    <option value="">— Elegir equipo —</option>
                     {opcionesEquipo.map((eq) => (
                       <option key={eq} value={eq}>
                         {eq}
@@ -536,23 +517,17 @@ export default function AltaCentrosCosto() {
                 />
               </Col>
 
-              {/* El grupo ofrece los que ya existen, para no cargar el mismo
-                  con otro nombre: con él Compras filtra los CC de un pedido. */}
+              {/* El grupo de Compras sale del equipo (utils/equipos.js): con él
+                  Compras filtra los CC de un pedido, así que no se escribe. */}
               <Col xs={6}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Grupo</Form.Label>
                 <Form.Control
                   className="rounded-3"
                   style={campo}
-                  value={form.grupo}
-                  onChange={(e) => setForm({ ...form, grupo: e.target.value })}
-                  list="grupos-cc"
-                  autoComplete="off"
+                  value={grupoDeEquipo(form.equipo)}
+                  placeholder="Sale del equipo"
+                  disabled
                 />
-                <datalist id="grupos-cc">
-                  {grupos.map((g) => (
-                    <option key={g} value={g} />
-                  ))}
-                </datalist>
               </Col>
 
               <Col xs={6}>

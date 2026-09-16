@@ -4,6 +4,7 @@ import { Container, Card, Table, Button } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
+import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
@@ -19,7 +20,8 @@ import {
 import { useProveedorDeOP } from './proveedorOP'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
-const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
+// Los grupos salen del catálogo de equipos (utils/equipos.js).
+const GRUPOS = GRUPOS_PEDIDO
 
 // Todo lo que el taller pidió y todavía no terminó: en análisis, esperando a
 // Gerencia, para hacer la OP o para retirar.

@@ -5,6 +5,7 @@ import Swal from 'sweetalert2'
 import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
+import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import {
@@ -26,7 +27,8 @@ const ESTADOS   = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar'
 // Un ítem se edita solo mientras el paso siguiente no lo procesó: cuando el
 // analista lo toma, lo cargado queda como está.
 const sinProcesar = (item) => item.estado === 'Para analisis' || item.estado === 'Pedido'
-const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
+// Los grupos salen del catálogo de equipos (utils/equipos.js).
+const GRUPOS = GRUPOS_PEDIDO
 
 const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', urgencia: 'Media', grupo: 'Tractores', cc: '', estado: 'Pendiente' }
 

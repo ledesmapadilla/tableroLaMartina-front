@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Container, Card, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
+import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
@@ -10,7 +11,8 @@ import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido, 
 import { useProveedorDeOP } from './proveedorOP'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
-const GRUPOS    = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
+// Los grupos salen del catálogo de equipos (utils/equipos.js).
+const GRUPOS = GRUPOS_PEDIDO
 
 const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Para revision', 'Para retirar'])
 

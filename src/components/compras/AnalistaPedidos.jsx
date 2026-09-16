@@ -6,6 +6,7 @@ import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedi
 import UmbralAutorizacion from './UmbralAutorizacion'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
+import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import {
@@ -23,7 +24,8 @@ const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}`
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
 const ESTADOS        = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Rechazado']
-const GRUPOS         = ['Pulverizadora', 'Chancho', 'Nodriza', 'Desmalezadora', 'Herbicida', 'Abonadora', 'Riego', 'Arquito', 'Tractores', 'Camioneta', 'Manitou', 'Colectivos', 'Taller', 'Herreria', 'Gomeria', 'Stock', 'Otros']
+// Los grupos salen del catálogo de equipos (utils/equipos.js).
+const GRUPOS = GRUPOS_PEDIDO
 const ESTABLECIMIENTOS = ['Berdina', 'San Pablo']
 
 const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', urgencia: 'Media', grupo: 'Tractores', cc: '', estado: 'Pendiente' }
