@@ -153,7 +153,10 @@ export default function AltaCentrosCosto() {
 
   // Un equipo viejo que ya no está en la lista se sigue ofreciendo: si no, el
   // selector lo mostraría vacío y al guardar se borraría.
-  const opcionesEquipo = form.equipo && !EQUIPOS.includes(form.equipo) ? [...EQUIPOS, form.equipo] : EQUIPOS;
+  // En orden alfabético, con "Otros" al final.
+  const opcionesEquipo = (form.equipo && !EQUIPOS.includes(form.equipo) ? [...EQUIPOS, form.equipo] : EQUIPOS)
+    .slice()
+    .sort((a, b) => (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"));
 
   const guardar = async (e) => {
     e.preventDefault();

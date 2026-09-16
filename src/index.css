@@ -302,3 +302,9 @@ select.form-select.filtro-activo option:checked {
 .modal-cc {
   max-width: 420px;
 }
+
+/* Placeholders en gris claro en el modal de ingresos de San Pablo. */
+.form-ingresos .form-control::placeholder {
+  color: #a0aec0;
+  opacity: 1;
+}

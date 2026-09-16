@@ -70,6 +70,9 @@ const REGLAS = [
   [/^\/colectivo\/reparaciones/, "colectivos.reparaciones"],
   [/^\/colectivo/, GRUPO.colectivos],
 
+  // ── Reparaciones San Pablo ──
+  [/^\/reparaciones\/sanpablo\/\d+\/(manitous|tolvas|carros-porta-escaleras|escaleras)/, "sanpablo.ingresos"],
+
   // ── Inicio de Mantenimiento ──
   [/^\/inicio\/?$/, GRUPO.mantenimiento],
 ];

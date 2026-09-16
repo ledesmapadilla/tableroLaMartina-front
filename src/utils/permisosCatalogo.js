@@ -41,6 +41,8 @@ export const CATALOGO = [
 
   { seccion: "Visitas", clave: "mantenimiento.visitas", label: "Visitas", hoy: PERMISOS.mantenimiento },
 
+  { seccion: "San Pablo", clave: "sanpablo.ingresos", label: "Reparaciones › Ingresos (Manitous…)", hoy: PERMISOS.mantenimiento },
+
   // Producción
   { seccion: "Producción", clave: "produccion.variables", label: "Variables", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.certificacion", label: "Tarjeta del mes › Datos certificación", hoy: PERMISOS.produccion },
@@ -83,6 +85,7 @@ export const GRUPO = {
     ...clavesDe("camionetas."),
     ...clavesDe("tractores."),
     ...clavesDe("colectivos."),
+    ...clavesDe("sanpablo."),
     "mantenimiento.visitas",
   ],
   produccion: clavesDe("produccion."),

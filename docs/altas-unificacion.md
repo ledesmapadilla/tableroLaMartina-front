@@ -212,8 +212,8 @@ Flota está en `TableroBack/src/catalogos/equipos.js` (manda) y su copia
   editar y sincronizar desde Flota. Un CC viejo sin equipo no se guarda hasta
   elegirlo.
 - Base ordenada con `npm run equipo-grupo-cc` (69 CC) y a mano con el usuario:
-  550–552 → Chancho; 152, 101, 168, 190 → Tractor en San Pablo; 1100 →
-  Manitou en San Pablo; 301 y 307 → Turbo; FNM 075, EKB 410, EVG 847 y
-  HMZ 834 → creados en Colectivos; 199/155 y 200/156 borrados (duplicados de
-  155 y 156).
+  550–552 → Chancho; 152, 101, 168, 190 → Tractor en San Pablo; 301 y 307 →
+  Turbo; FNM 075, EKB 410, EVG 847 y HMZ 834 → creados en Colectivos;
+  199/155 y 200/156 borrados (duplicados de 155 y 156). El 1100 (Manitou
+  desconocido) se borró de todos lados: CC, tractor y su alta en el historial.
 - Pendiente: "Arquito" sigue en `GRUPOS_PEDIDO` sin ningún equipo.

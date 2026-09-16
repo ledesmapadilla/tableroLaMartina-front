@@ -49,6 +49,11 @@ import ProduccionVariables from "./components/pages/ProduccionVariables";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
+import IngresosSanPablo from "./components/pages/IngresosSanPablo";
+import IngresosEscaleras from "./components/pages/IngresosEscaleras";
+import CosechasSanPablo from "./components/pages/CosechasSanPablo";
+import RutaCosecha from "./components/shared/RutaCosecha";
+import TractorIcon from "./components/shared/TractorIcon";
 import Colectivo from "./components/pages/Colectivo";
 import ColectivosAltas from "./components/pages/ColectivosAltas";
 import ColectivosPreventivo from "./components/pages/ColectivosPreventivo";
@@ -269,7 +274,41 @@ function LayoutDesktop() {
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/tareas/nueva" element={<TareasTractorNueva />} />
               <Route path="/tractores/grupo/:grupoId/reparaciones/:tractorId/historial" element={<HistorialTractor />} />
               <Route path="/tractores/services/reparaciones/resumen" element={<ResumenReparacionesTractores />} />
-              <Route path="/reparaciones/sanpablo" element={<Error404 />} />
+              {/* Reparaciones San Pablo: primero la cosecha y adentro las tarjetas. */}
+              <Route path="/reparaciones/sanpablo" element={<CosechasSanPablo />} />
+              <Route
+                path="/reparaciones/sanpablo/:cosecha"
+                element={<RutaCosecha><ReparacionesSanPablo /></RutaCosecha>}
+              />
+              {/* La tabla de ingresos de cada tarjeta: qué equipos del padrón
+                  de CC ofrece y con qué ícono. */}
+              {[
+                ["manitous", "Manitous", "Manitou", <TractorIcon size="1.25rem" color="#fff" />],
+                ["tolvas", "Tolvas", "Tolva", <i className="bi bi-minecart-loaded"></i>],
+                ["carros-porta-escaleras", "Carros porta escaleras", "Carro porta escaleras", <i className="bi bi-ladder"></i>],
+              ].map(([tipo, titulo, equipo, icono]) => (
+                <Route
+                  key={tipo}
+                  path={`/reparaciones/sanpablo/:cosecha/${tipo}`}
+                  element={
+                    <RutaCosecha>
+                      <IngresosSanPablo key={tipo} tipo={tipo} titulo={titulo} equipos={[equipo]} icono={icono} />
+                    </RutaCosecha>
+                  }
+                />
+              ))}
+              {/* Escaleras no tiene alta: entran solas con cada carro porta escaleras. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/escaleras"
+                element={
+                  <RutaCosecha>
+                    <IngresosEscaleras icono={<i className="bi bi-bar-chart-steps"></i>} />
+                  </RutaCosecha>
+                }
+              />
+              {/* Colectivos, carros porta bines y pulverizadoras: todavía no
+                  están construidas. */}
+              <Route path="/reparaciones/sanpablo/:cosecha/:tipo" element={<Error404 />} />
               <Route path="/colectivo" element={<Colectivo />} />
               <Route path="/colectivo/preventivo" element={<ColectivosPreventivo />} />
               <Route path="/colectivo/reparaciones" element={<ColectivosReparaciones />} />
