@@ -239,6 +239,7 @@ export default function IngresosEscaleras({ icono }) {
   const totales = [
     ["Entraron", entraron, COLOR],
     ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
+    ["Retiradas", retiradas, NARANJA],
     ["Bajas", bajas, ROJO],
     ["En taller", enTaller, COLOR],
     ["Sanas", suma(deCarros, "escalerasSanas"), AZUL],
@@ -275,6 +276,12 @@ export default function IngresosEscaleras({ icono }) {
     const total = (campoSuma) => porSupervisor.reduce((t, f) => t + f[campoSuma], 0);
     return { porSupervisor, retiradasAnterior, ingresadas: total("ingresadas"), retiradas: total("retiradas") };
   })();
+
+  // En un retiro: los carros que todavía no se llevaron escaleras en la cosecha
+  // (el del retiro que se edita sigue estando).
+  const carrosLibres = carros.filter(
+    (c) => !ingresos.some((i) => i.retiro && i.cc?._id === c._id && i._id !== editando?._id)
+  );
 
   // En el modal de un carro: las que falta clasificar como sanas o rotas.
   const esCarro = modo === "carro" && Boolean(form);
@@ -726,16 +733,18 @@ export default function IngresosEscaleras({ icono }) {
                       required
                     >
                       <option value="">Elegir carro…</option>
-                      {carros.map((c) => (
+                      {carrosLibres.map((c) => (
                         <option key={c._id} value={c._id} style={{ color: TEXTO }}>
                           {c.cc}
                           {c.descripcion ? ` · ${c.descripcion}` : ""}
                         </option>
                       ))}
                     </Form.Select>
-                    {carros.length === 0 && (
+                    {carrosLibres.length === 0 && (
                       <div className="text-muted mt-1" style={{ fontSize: "0.72rem" }}>
-                        No hay CC con equipo {EQUIPO_CARRO} en Centros de costo.
+                        {carros.length === 0
+                          ? `No hay CC con equipo ${EQUIPO_CARRO} en Centros de costo.`
+                          : `Todos los carros ya tienen un retiro en la cosecha ${cosecha}.`}
                       </div>
                     )}
                   </Col>
