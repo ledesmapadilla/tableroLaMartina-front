@@ -24,6 +24,7 @@ ruta `/api/ingresos-sanpablo`). Cada documento tiene `cosecha` y `tipo`.
   (CC del padrón con ese equipo), fecha, quién lo ingresa (supervisores,
   `utils/supervisores.js`), revisada y plan de mantenimiento (círculo azul sí /
   rojo no), observaciones. Los carros cargan además la cantidad de escaleras y
+  la fecha de egreso (`fechaEgreso`, opcional, no anterior al ingreso), y
   entran una sola vez por cosecha.
 - **Escaleras** (`IngresosEscaleras.jsx`), cuatro clases de filas:
   - de un carro (`origen` = ingreso del carro): se crean, cambian y borran con

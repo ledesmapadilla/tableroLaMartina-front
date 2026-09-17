@@ -87,7 +87,8 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   const sinEditar = !puede("sanpablo.ingresos", "editar");
   // Los carros porta escaleras cargan además cuántas escaleras traen.
   const conEscaleras = tipo === "carros-porta-escaleras";
-  const columnas = conEscaleras ? 8 : 7;
+  // Los carros porta escaleras suman la cantidad de escaleras y la fecha de egreso.
+  const columnas = conEscaleras ? 9 : 7;
 
   const [ingresos, setIngresos] = useState([]);
   const [centros, setCentros] = useState([]);
@@ -124,6 +125,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     setForm({
       cc: "",
       fechaIngreso: hoy(),
+      fechaEgreso: "",
       ingresadoPor: "",
       revisada: false,
       planMantenimiento: false,
@@ -137,6 +139,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     setForm({
       cc: i.cc?._id || "",
       fechaIngreso: aInput(i.fechaIngreso),
+      fechaEgreso: aInput(i.fechaEgreso),
       ingresadoPor: i.ingresadoPor || "",
       revisada: Boolean(i.revisada),
       planMantenimiento: Boolean(i.planMantenimiento),
@@ -215,6 +218,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
         { titulo: "Equipo (CC)", ancho: 24 },
         ...(conEscaleras ? [{ titulo: "Cant. escaleras", ancho: 14 }] : []),
         { titulo: "Fecha ingreso", ancho: 14 },
+        ...(conEscaleras ? [{ titulo: "Fecha egreso", ancho: 14 }] : []),
         { titulo: "Quién lo ingresa", ancho: 24 },
         { titulo: "Revisada", ancho: 12 },
         { titulo: "Plan de mantenimiento", ancho: 20 },
@@ -226,6 +230,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
           i.salida ? `Salida · ${cc}` : cc,
           ...(conEscaleras ? [i.cantidadEscaleras == null ? "" : i.salida ? -i.cantidadEscaleras : i.cantidadEscaleras] : []),
           fechaCorta(i.fechaIngreso),
+          ...(conEscaleras ? [fechaCorta(i.fechaEgreso)] : []),
           i.ingresadoPor || "",
           i.salida ? "" : i.revisada ? "Sí" : "No",
           i.salida ? "" : i.planMantenimiento ? "Sí" : "No",
@@ -312,12 +317,13 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
             border: "1px solid #cbd5e1",
           }}
         >
-          <Table className="mb-0 tabla-informe" style={{ width: "100%", minWidth: "700px" }}>
+          <Table className="mb-0 tabla-informe" style={{ width: "100%", minWidth: conEscaleras ? "800px" : "700px" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
               <tr>
                 <th style={thCentro}>Equipo (CC)</th>
                 {conEscaleras && <th style={thCentro}>Cant. escaleras</th>}
                 <th style={thCentro}>Fecha ingreso</th>
+                {conEscaleras && <th style={thCentro}>Fecha egreso</th>}
                 <th style={th}>Quién lo ingresa</th>
                 <th style={thCentro}>Revisada</th>
                 <th style={thCentro}>Plan de mantenimiento</th>
@@ -357,6 +363,11 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                         </td>
                       )}
                       <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso) || <Raya />}</td>
+                      {conEscaleras && (
+                        <td style={tdCentro}>
+                          <Raya />
+                        </td>
+                      )}
                       <td style={td}>{i.ingresadoPor || <Raya />}</td>
                       <td style={tdCentro}>
                         <Raya />
@@ -386,6 +397,9 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                       </td>
                       {conEscaleras && <td style={tdCentro}>{i.cantidadEscaleras ?? <Raya />}</td>}
                       <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso) || <Raya />}</td>
+                      {conEscaleras && (
+                        <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaEgreso) || <Raya />}</td>
+                      )}
                       <td style={td}>{i.ingresadoPor || <Raya />}</td>
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
                         <Circulo
@@ -528,7 +542,21 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                   />
                 </Col>
 
-                <Col xs={6}>
+                {conEscaleras && (
+                  <Col xs={6}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">Fecha egreso</Form.Label>
+                    <Form.Control
+                      type="date"
+                      className="rounded-3"
+                      style={campo}
+                      value={form.fechaEgreso}
+                      min={form.fechaIngreso || undefined}
+                      onChange={(e) => setForm({ ...form, fechaEgreso: e.target.value })}
+                    />
+                  </Col>
+                )}
+
+                <Col xs={conEscaleras ? 12 : 6}>
                   <Form.Label className="fw-semibold text-dark small mb-1">Quién lo ingresa</Form.Label>
                   <Form.Select
                     className="rounded-3"
