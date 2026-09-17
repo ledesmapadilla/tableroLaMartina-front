@@ -45,7 +45,8 @@ const numeroOVacio = (v) => (v === null || v === undefined ? "" : v);
 const suma = (lista, campoNum) => lista.reduce((s, i) => s + (i[campoNum] || 0), 0);
 
 // Qué modal corresponde a una fila.
-const modoDe = (i) => (i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : "carro");
+const modoDe = (i) =>
+  i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : i.sinCarro ? "sinCarro" : "carro";
 // Los movimientos que sacan escaleras del taller.
 const sale = (i) => i.retiro || i.baja;
 
@@ -119,6 +120,12 @@ export default function IngresosEscaleras({ icono }) {
     setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", ingresadoPor: "", observaciones: "" });
   };
 
+  const abrirSinCarro = () => {
+    setModo("sinCarro");
+    setEditando(null);
+    setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", ingresadoPor: "", observaciones: "" });
+  };
+
   const abrirRetiro = () => {
     setModo("retiro");
     setEditando(null);
@@ -181,6 +188,7 @@ export default function IngresosEscaleras({ icono }) {
           cosecha,
           ...(modo === "retiro" ? { retiro: true } : {}),
           ...(modo === "baja" ? { baja: true } : {}),
+          ...(modo === "sinCarro" ? { sinCarro: true } : {}),
         });
       const titulo = eraEdicion
         ? "Escaleras actualizadas"
@@ -188,7 +196,9 @@ export default function IngresosEscaleras({ icono }) {
           ? "Retiro registrado"
           : modo === "baja"
             ? "Baja registrada"
-            : "Escaleras nuevas registradas";
+            : modo === "sinCarro"
+              ? "Ingreso registrado"
+              : "Escaleras nuevas registradas";
       cerrar();
       cargar();
       Swal.fire({ icon: "success", title: titulo, timer: 1400, showConfirmButton: false });
@@ -199,7 +209,13 @@ export default function IngresosEscaleras({ icono }) {
 
   const eliminar = async (i) => {
     const { isConfirmed } = await Swal.fire({
-      title: i.baja ? "¿Borrar la baja?" : i.retiro ? "¿Borrar el retiro?" : "¿Borrar las escaleras nuevas?",
+      title: i.baja
+        ? "¿Borrar la baja?"
+        : i.retiro
+          ? "¿Borrar el retiro?"
+          : i.sinCarro
+            ? "¿Borrar el ingreso sin carro?"
+            : "¿Borrar las escaleras nuevas?",
       text: `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
       icon: "warning",
       showCancelButton: true,
@@ -214,7 +230,7 @@ export default function IngresosEscaleras({ icono }) {
       cargar();
       Swal.fire({
         icon: "success",
-        title: i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : "Escaleras borradas",
+        title: i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
         timer: 1200,
         showConfirmButton: false,
       });
@@ -224,10 +240,12 @@ export default function IngresosEscaleras({ icono }) {
   };
 
   // Totales, arriba de la tabla.
-  const deCarros = ingresos.filter((i) => !i.nuevas && !sale(i));
+  const deCarros = ingresos.filter((i) => !i.nuevas && !i.sinCarro && !sale(i));
   const nuevas = ingresos.filter((i) => i.nuevas);
+  const sinCarro = ingresos.filter((i) => i.sinCarro);
   const retiros = ingresos.filter((i) => i.retiro);
-  const entraron = suma(deCarros, "cantidadEscaleras") + suma(nuevas, "cantidadEscaleras");
+  const entraron =
+    suma(deCarros, "cantidadEscaleras") + suma(nuevas, "cantidadEscaleras") + suma(sinCarro, "cantidadEscaleras");
   const retiradas = suma(retiros, "cantidadEscaleras");
   const bajas = suma(
     ingresos.filter((i) => i.baja),
@@ -239,8 +257,9 @@ export default function IngresosEscaleras({ icono }) {
   const totales = [
     ["Entraron", entraron, COLOR],
     ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
+    ["Sin carro", suma(sinCarro, "cantidadEscaleras"), AZUL],
     ["Retiradas", retiradas, NARANJA],
-    ["Bajas", bajas, ROJO],
+    ["Dadas de baja", bajas, ROJO],
     ["En taller", enTaller, COLOR],
     ["Sanas", suma(deCarros, "escalerasSanas"), AZUL],
     ["Rotas", rotas, ROJO],
@@ -380,7 +399,15 @@ export default function IngresosEscaleras({ icono }) {
         return [
           fechaCorta(i.fechaIngreso),
           i.ingresadoPor || "",
-          m === "nuevas" ? "Nuevas" : m === "baja" ? "Baja" : m === "retiro" ? `Retiro · ${carro}` : carro,
+          m === "nuevas"
+            ? "Nuevas"
+            : m === "sinCarro"
+              ? "Sin carro"
+              : m === "baja"
+                ? "Baja"
+                : m === "retiro"
+                  ? `Retiro · ${carro}`
+                  : carro,
           i.cantidadEscaleras == null ? "" : sale(i) ? -i.cantidadEscaleras : i.cantidadEscaleras,
           m === "carro" ? numero(i.escalerasSanas) : "",
           m === "carro" ? numero(i.escalerasRotas) : "",
@@ -403,6 +430,10 @@ export default function IngresosEscaleras({ icono }) {
       ? editando
         ? "Editar retiro de escaleras"
         : "Retiro de escaleras"
+      : modo === "sinCarro"
+      ? editando
+        ? "Editar ingreso sin carro"
+        : "Ingreso sin carro"
       : modo === "nuevas"
         ? editando
           ? "Editar escaleras nuevas"
@@ -478,6 +509,7 @@ export default function IngresosEscaleras({ icono }) {
             </Button>
             {botonEncabezado("Baja de escaleras", "bi-trash3", abrirBaja, ROJO)}
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
+            {botonEncabezado("Ingreso sin carro", "bi-box-arrow-in-down", abrirSinCarro, AZUL)}
             {botonEncabezado("Nuevas escaleras", "bi-plus-lg", abrirNuevas, COLOR)}
           </div>
         </div>
@@ -544,6 +576,14 @@ export default function IngresosEscaleras({ icono }) {
                             style={{ backgroundColor: "#dcfce7", color: VERDE, fontSize: "0.66rem" }}
                           >
                             Nuevas
+                          </span>
+                        )}
+                        {m === "sinCarro" && (
+                          <span
+                            className="px-2 rounded-pill"
+                            style={{ backgroundColor: "#dbeafe", color: AZUL, fontSize: "0.66rem" }}
+                          >
+                            Sin carro
                           </span>
                         )}
                         {m === "retiro" && (
@@ -659,7 +699,8 @@ export default function IngresosEscaleras({ icono }) {
           closeButton
           closeVariant="white"
           style={{
-            backgroundColor: modo === "baja" ? ROJO : modo === "retiro" ? NARANJA : COLOR,
+            backgroundColor:
+              modo === "baja" ? ROJO : modo === "retiro" ? NARANJA : modo === "sinCarro" ? AZUL : COLOR,
             color: "#fff",
             borderTopLeftRadius: "1rem",
             borderTopRightRadius: "1rem",
@@ -668,7 +709,15 @@ export default function IngresosEscaleras({ icono }) {
         >
           <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
             <i
-              className={`bi ${modo === "baja" ? "bi-trash3" : modo === "retiro" ? "bi-box-arrow-right" : "bi-bar-chart-steps"}`}
+              className={`bi ${
+                modo === "baja"
+                  ? "bi-trash3"
+                  : modo === "retiro"
+                    ? "bi-box-arrow-right"
+                    : modo === "sinCarro"
+                      ? "bi-box-arrow-in-down"
+                      : "bi-bar-chart-steps"
+              }`}
             ></i>
             <span>{tituloModal}</span>
           </Modal.Title>
@@ -695,6 +744,33 @@ export default function IngresosEscaleras({ icono }) {
                     />
                   </Col>
                   {campoObservaciones("Medida, material…")}
+                </Row>
+              )}
+
+              {modo === "sinCarro" && (
+                <Row className="g-3 form-ingresos">
+                  {campoFecha}
+                  {campoCantidad}
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">
+                      Quién las trae <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Select
+                      className="rounded-3"
+                      style={{ ...campo, color: form.ingresadoPor ? TEXTO : GRIS_CLARO }}
+                      value={form.ingresadoPor}
+                      onChange={(e) => setForm({ ...form, ingresadoPor: e.target.value })}
+                      required
+                    >
+                      <option value="">Elegir supervisor…</option>
+                      {opcionesSupervisor(supervisores, form.ingresadoPor).map((s) => (
+                        <option key={s} value={s} style={{ color: TEXTO }}>
+                          {s}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
+                  {campoObservaciones("De dónde vienen, cómo llegaron…")}
                 </Row>
               )}
 

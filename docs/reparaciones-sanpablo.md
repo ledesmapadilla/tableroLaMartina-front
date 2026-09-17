@@ -26,10 +26,12 @@ ruta `/api/ingresos-sanpablo`). Cada documento tiene `cosecha` y `tipo`.
   rojo no), observaciones. Los carros cargan además la cantidad de escaleras y
   la fecha de egreso (`fechaEgreso`, opcional, no anterior al ingreso), y
   entran una sola vez por cosecha.
-- **Escaleras** (`IngresosEscaleras.jsx`), cuatro clases de filas:
+- **Escaleras** (`IngresosEscaleras.jsx`), cinco clases de filas:
   - de un carro (`origen` = ingreso del carro): se crean, cambian y borran con
     el carro; acá se cargan sanas, rotas y reparadas.
   - nuevas (`nuevas`): fecha, cantidad, quién las construye.
+  - sin carro (`sinCarro`): escaleras que entran al taller sin carro; fecha,
+    cantidad, qué supervisor las trae.
   - retiros (`retiro`): fecha, supervisor, carro, cantidad. Cada retiro anota
     una **salida** en Carros porta escaleras (`salida`, `origen` = retiro), que
     solo se toca desde Escaleras.

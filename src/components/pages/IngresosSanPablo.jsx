@@ -597,12 +597,15 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                 )}
 
                 <Col xs={conEscaleras ? 12 : 6}>
-                  <Form.Label className="fw-semibold text-dark small mb-1">Quién lo ingresa</Form.Label>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Quién lo ingresa {conEscaleras && <span className="text-danger">*</span>}
+                  </Form.Label>
                   <Form.Select
                     className="rounded-3"
                     style={campoSelect(form.ingresadoPor)}
                     value={form.ingresadoPor}
                     onChange={(e) => setForm({ ...form, ingresadoPor: e.target.value })}
+                    required={conEscaleras}
                   >
                     <option value="">Elegir supervisor…</option>
                     {opcionesSupervisor(supervisores, form.ingresadoPor).map((s) => (
