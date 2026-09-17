@@ -3,7 +3,6 @@ import { useForm, Controller } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card, InputGroup } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
-import { unirClientes } from "../../utils/clientes";
 import SelectBuscador from "../shared/SelectBuscador";
 
 const API_VARIABLES = "/api/variables";
@@ -53,13 +52,11 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
 /**
  * Variables de la certificación: el precio con el que se paga cada tarea.
  *
- * La pantalla se lee **por cliente**: arriba se elige a quién se le certifica y
- * la tabla muestra el precio vigente de cada tarea para ese cliente. Los
- * clientes salen de la carga de datos (los partes) más los que ya tienen algún
- * precio, así el mismo nombre no se escribe de dos formas.
+ * La tabla muestra el precio vigente de cada tarea. El precio ya no distingue
+ * cliente: el mismo valor rige para todo lo que se certifica (17/09/2026).
  *
  * Cada carga de precio es una fila propia: la última vigencia es la que rige y
- * las anteriores quedan en el **historial** de esa tarea y ese cliente.
+ * las anteriores quedan en el **historial** de esa tarea.
  *
  * No depende del mes: por eso cuelga de `/produccion/certificados/variables` y
  * no de un año y mes.
@@ -68,12 +65,10 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
  * campo, así que cambia con cuál se piden y se guardan.
  */
 function ProduccionVariables({ establecimiento = "caspinchango" }) {
-  // Todas las llamadas de precios y de clientes van con el establecimiento.
+  // Todas las llamadas de precios van con el establecimiento.
   const query = `?establecimiento=${establecimiento}`;
   const [tareas, setTareas] = useState([]);
   const [precios, setPrecios] = useState([]);
-  const [clientes, setClientes] = useState([]);
-  const [cliente, setCliente] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todas");
 
@@ -100,25 +95,18 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
 
   const cargar = async () => {
     try {
-      const [resTareas, resPrecios, resClientesPartes, resClientesPrecios] = await Promise.all([
+      const [resTareas, resPrecios] = await Promise.all([
         // Las tareas son de La Martina y se comparten entre los dos campos.
         fetch(API_TAREAS),
         fetch(API_VARIABLES + query),
-        fetch("/api/partes/clientes" + query),
-        fetch(`${API_VARIABLES}/clientes${query}`),
       ]);
       const datosTareas = resTareas.ok ? await resTareas.json() : [];
       const datosPrecios = resPrecios.ok ? await resPrecios.json() : [];
-      const dePartes = resClientesPartes.ok ? await resClientesPartes.json() : [];
-      const dePrecios = resClientesPrecios.ok ? await resClientesPrecios.json() : [];
-
       setTareas(Array.isArray(datosTareas) ? datosTareas : []);
       setPrecios(Array.isArray(datosPrecios) ? datosPrecios : []);
-      setClientes(unirClientes(dePartes, dePrecios));
     } catch {
       setTareas([]);
       setPrecios([]);
-      setClientes(unirClientes());
     }
   };
 
@@ -126,21 +114,11 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     cargar();
   }, []);
 
-  // El primer cliente de la lista es el que se abre por defecto; si el elegido
-  // deja de existir se vuelve a ese.
-  useEffect(() => {
-    if (!clientes.length) return;
-    setCliente((actual) => (actual && clientes.includes(actual) ? actual : clientes[0]));
-  }, [clientes]);
-
-  // Todas las cargas del cliente elegido, agrupadas por tarea y ordenadas de la
-  // vigencia más nueva a la más vieja.
+  // Todas las cargas agrupadas por tarea, de la vigencia más nueva a la más
+  // vieja.
   const historialPorTarea = useMemo(() => {
     const mapa = new Map();
     for (const p of precios) {
-      // Sin distinguir mayúsculas ni espacios: el cliente es texto libre y
-      // "San Miguel" y "san miguel" son el mismo.
-      if ((p.cliente || "").trim().toLowerCase() !== cliente.trim().toLowerCase()) continue;
       const id = p.tarea?._id || p.tarea;
       if (!mapa.has(id)) mapa.set(id, []);
       mapa.get(id).push(p);
@@ -149,21 +127,20 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       lista.sort((a, b) => cuandoRige(b).localeCompare(cuandoRige(a)));
     }
     return mapa;
-  }, [precios, cliente]);
+  }, [precios]);
 
-  // Una fila por tarea, con el precio que rige hoy para el cliente elegido.
+  // Una fila por tarea, con el precio que rige hoy.
   const filas = useMemo(
     () =>
       tareas
         .map((t) => {
           const historial = historialPorTarea.get(t._id) || [];
-          const vigente = historial[0] || null;
           return {
             _id: t._id,
             tarea: t.tarea,
             unidad: t.unidad || "",
             empresa: t.empresa || "",
-            vigente,
+            vigente: historial[0] || null,
             historial,
           };
         })
@@ -215,7 +192,6 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     setTareaFija(tarea);
     reset({
       tarea: tarea?._id || "",
-      cliente,
       neto: "",
       fecha: hoyStr(),
       vigenciaDesde: vigenciaSugerida,
@@ -229,7 +205,6 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     setTareaFija(carga.tarea);
     reset({
       tarea: carga.tarea?._id || "",
-      cliente: carga.cliente || "",
       neto: carga.neto ?? "",
       fecha: soloFecha(carga.fecha),
       vigenciaDesde: soloFecha(carga.vigenciaDesde),
@@ -252,7 +227,6 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     setTareaFija({ _id: f._id, tarea: f.tarea, unidad: f.unidad });
     reset({
       tarea: f._id,
-      cliente,
       neto: f.vigente?.neto ?? "",
       fecha: hoyStr(),
       vigenciaDesde: vigenciaSugerida,
@@ -275,12 +249,8 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
         body: JSON.stringify({ ...data, establecimiento }),
       });
       if (res.ok) {
-        const guardado = await res.json().catch(() => null);
         cerrarModal();
         await cargar();
-        // Cargar un precio de otro cliente cambia la vista a ese cliente: si no,
-        // parece que no se guardó nada.
-        if (guardado?.cliente) setCliente(guardado.cliente);
         Swal.fire({
           icon: "success",
           title: editando ? "Precio actualizado" : "Precio cargado",
@@ -304,8 +274,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     const anteriores = precios.filter(
       (p) =>
         p._id !== carga._id &&
-        (p.tarea?._id || p.tarea) === idTarea &&
-        (p.cliente || "").trim().toLowerCase() === (carga.cliente || "").trim().toLowerCase()
+        (p.tarea?._id || p.tarea) === idTarea
     );
     const quedaVigente = anteriores.sort((a, b) =>
       soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde))
@@ -320,7 +289,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
           ? `Va a volver a regir <b>${formatPesos(quedaVigente.neto)}</b>, del ${formatFecha(
               quedaVigente.vigenciaDesde
             )}.`
-          : "La tarea queda <b>sin precio</b> para este cliente."
+          : "La tarea queda <b>sin precio</b>."
       }</div></div>`,
       icon: "warning",
       showCancelButton: true,
@@ -353,7 +322,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     const carga = precios.find((p) => p._id === editando);
     if (!carga) return;
     const texto = tareaFija?.tarea || "Este precio";
-    if (await borrarCarga(carga, `${texto} — ${carga.cliente || "sin cliente"}`)) {
+    if (await borrarCarga(carga, texto)) {
       cerrarModal();
     }
   };
@@ -373,7 +342,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
-    celdaTitulo.value = `VARIABLES DE LA CERTIFICACIÓN - ${(cliente || "").toUpperCase()}`;
+    celdaTitulo.value = "VARIABLES DE LA CERTIFICACIÓN";
     celdaTitulo.font = { bold: true, size: 14 };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 28;
@@ -442,7 +411,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `variables_${(cliente || "certificacion").replace(/\s+/g, "_")}_${hoyStr()}.xlsx`;
+    a.download = `variables_certificacion_${hoyStr()}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -559,37 +528,9 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
           </div>
         </div>
 
-        {/* Cliente + buscador + estado */}
+        {/* Buscador + estado */}
         <Card className="shadow-sm border-0 rounded-3 px-3 py-2 bg-white flex-shrink-0 mb-2">
           <div className="d-flex align-items-center gap-3 flex-wrap">
-            {/* El cliente manda: la tabla muestra los precios de ese cliente */}
-            <div className="d-flex align-items-center gap-2">
-              <span className="fw-bold text-dark flex-shrink-0" style={{ fontSize: "0.82rem" }}>
-                Cliente:
-              </span>
-              <Form.Select
-                size="sm"
-                value={cliente}
-                onChange={(e) => setCliente(e.target.value)}
-                className="rounded-3 fw-bold"
-                style={{
-                  fontSize: "0.85rem",
-                  height: "32px",
-                  width: "210px",
-                  padding: "3px 24px 3px 8px",
-                  color: "#1b4332",
-                  borderColor: "#1b4332",
-                }}
-                title="Los clientes salen de la carga de datos y de los precios ya cargados"
-              >
-                {clientes.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Form.Select>
-            </div>
-
             <div style={{ width: "220px" }}>
               <div className="input-group input-group-sm">
                 <span
@@ -673,7 +614,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
           </div>
         </Card>
 
-        {/* Tabla: el precio vigente de cada tarea para el cliente elegido */}
+        {/* Tabla: el precio vigente de cada tarea */}
         <div
           className="flex-grow-1 shadow-sm rounded-3 bg-white"
           style={{ overflowY: "auto", overflowX: "auto", border: "1px solid #cbd5e1" }}
@@ -800,32 +741,6 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Row className="g-3">
-              {/* Primero el cliente: el precio es de un cliente y una tarea, y
-                  se elige en ese orden. Los dos van angostos, no a todo el
-                  ancho del modal. */}
-              <Col md={12} className="text-center">
-                <Form.Label className="fw-semibold text-dark small mb-1">
-                  Cliente <span className="text-danger">*</span>
-                </Form.Label>
-                {/* Se ofrece la lista pero se puede escribir uno nuevo: en la
-                    planilla el cliente también es texto libre. */}
-                <Form.Control
-                  list="clientes-conocidos"
-                  className="rounded-3 mx-auto text-center"
-                  style={{ fontSize: "0.85rem", maxWidth: "180px" }}
-                  {...register("cliente", { required: "Hay que indicar el cliente" })}
-                  isInvalid={!!errors.cliente}
-                />
-                <datalist id="clientes-conocidos">
-                  {clientes.map((c) => (
-                    <option key={c} value={c} />
-                  ))}
-                </datalist>
-                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.cliente?.message}
-                </Form.Control.Feedback>
-              </Col>
-
               <Col md={12} className="text-center">
                 <Form.Label className="fw-semibold text-dark small mb-1">
                   Tarea <span className="text-danger">*</span>
@@ -1012,7 +927,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
         </Form>
       </Modal>
 
-      {/* Modal de historial de una tarea para el cliente elegido */}
+      {/* Modal de historial de una tarea */}
       <Modal
         show={Boolean(historialAbierto)}
         onHide={() => setHistorialDe(null)}
@@ -1033,7 +948,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <i className="bi bi-clock-history" style={{ color: "#cbd5e1" }}></i>
             <span>
-              {historialAbierto?.tarea} — {cliente}
+              {historialAbierto?.tarea}
             </span>
           </Modal.Title>
         </Modal.Header>

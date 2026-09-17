@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
-import { unirClientes } from "../../utils/clientes";
+import { CLIENTES, unirClientes } from "../../utils/clientes";
 import { guardarConReglaHorometro } from "../../utils/horometro";
 
 const MESES = [
@@ -16,9 +16,9 @@ const FORM_VACIO = {
   fecha: "",
   persona: "",
   cc: "",
-  // Sin cliente puesto: es obligatorio y define con qué precio se certifica,
-  // así que se elige a mano en cada parte en vez de arrastrar uno por defecto.
-  cliente: "",
+  // El cliente es solo informativo: el precio de Variables es el mismo para
+  // todos. Viene puesto en Citrusvil (17/09/2026).
+  cliente: CLIENTES[0],
   horaIngreso: "",
   horaEgreso: "",
   horomIngreso: "",
@@ -148,8 +148,6 @@ function ProduccionCertificadoMes() {
   const [personal, setPersonal] = useState([]);
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
-  // Clientes con precio cargado en Variables, para ofrecerlos en el parte.
-  const [clientesPrecios, setClientesPrecios] = useState([]);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
@@ -240,18 +238,14 @@ function ProduccionCertificadoMes() {
     };
     // Los tres padrones son independientes: pedirlos en fila era esperar tres
     // veces la misma ida y vuelta al servidor.
-    const [personas, centrosCosto, listaTareas, clientesConPrecio] = await Promise.all([
+    const [personas, centrosCosto, listaTareas] = await Promise.all([
       pedir("/api/personal"),
       pedir("/api/centros-costo"),
       pedir("/api/tareas"),
-      // Los clientes a los que se les cargó precio en Variables: son los que
-      // hacen que el parte se pueda valorizar en el informe.
-      pedir("/api/variables/clientes"),
     ]);
     setPersonal(personas);
     setCentros(centrosCosto);
     setTareas(listaTareas);
-    setClientesPrecios(clientesConPrecio);
   };
   useEffect(() => {
     (async () => {
@@ -526,8 +520,6 @@ function ProduccionCertificadoMes() {
     if (!form.persona) falta.push("la persona");
     if (!form.tarea) falta.push("la tarea");
     if (form.cantidad === "" || form.cantidad === null) falta.push("la cantidad");
-    // Sin cliente no se sabe con qué precio de Variables se certifica la tarea.
-    if (!(form.cliente || "").trim()) falta.push("el cliente");
     if (falta.length) {
       avisar({
         icon: "warning",
@@ -612,7 +604,7 @@ function ProduccionCertificadoMes() {
       fecha: soloFecha(p.fecha),
       persona: p.persona?._id || "",
       cc: p.cc?._id || "",
-      cliente: p.cliente || "",
+      cliente: p.cliente || CLIENTES[0],
       horaIngreso: p.horaIngreso || "",
       horaEgreso: p.horaEgreso || "",
       horomIngreso: p.horomIngreso ?? "",
@@ -667,19 +659,16 @@ function ProduccionCertificadoMes() {
     [partes]
   );
   /**
-   * Los clientes que se ofrecen al cargar un parte.
-   *
-   * Van los dos de siempre, después los que tienen precio cargado en Variables
-   * y al final los que ya se escribieron en el período. El orden importa: si el
-   * cliente del parte no coincide con uno de Variables, el informe no encuentra
-   * con qué precio valorizarlo y esa tarea queda sin importe.
+   * Los clientes que se ofrecen al cargar un parte: los dos de siempre más los
+   * que ya se escribieron en el período. Es un dato informativo, el precio no
+   * depende de él.
    */
   const clientesUsados = useMemo(() => {
     const enPartes = [...new Set(partes.map((p) => (p.cliente || "").trim()).filter(Boolean))].sort(
       (a, b) => a.localeCompare(b, "es", { sensitivity: "base" })
     );
-    return unirClientes(clientesPrecios, enPartes);
-  }, [partes, clientesPrecios]);
+    return unirClientes(enPartes);
+  }, [partes]);
   const turbos = useMemo(
     () => centros.filter((c) => (c.equipo || "").trim().toLowerCase() === "turbo"),
     [centros]
@@ -1257,7 +1246,7 @@ function ProduccionCertificadoMes() {
 
               <div style={{ width: "140px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
-                  Cliente <span className="text-danger">*</span>
+                  Cliente
                 </label>
                 {/* Desplegable con buscador en vez del datalist: el clic abre
                     la lista, que con el datalist solo aparecía al tipear. Va en
@@ -1270,12 +1259,8 @@ function ProduccionCertificadoMes() {
                   onChange={(v) => cambiar("cliente", v)}
                   vacio={null}
                   placeholder="Cliente"
-                  title="Define con qué precio de Variables se certifica la tarea"
-                  style={{
-                    ...estiloCelda,
-                    // En rojo mientras esté vacío: sin cliente el parte no entra.
-                    borderColor: (form.cliente || "").trim() ? undefined : "#dc2626",
-                  }}
+                  title="Solo informativo: el precio de la tarea no depende del cliente"
+                  style={estiloCelda}
                 />
               </div>
 
@@ -1553,16 +1538,8 @@ function ProduccionCertificadoMes() {
                     <td className={`text-secondary ${SEP}`}>{p.combustible ?? "—"}</td>
                     <td className="text-secondary">{p.turbo || "—"}</td>
                     <td className={`text-secondary ${SEP}`}>{p.combTurbo ?? "—"}</td>
-                    {/* El cliente pasó a ser obligatorio: los partes viejos
-                        que no lo tienen quedan marcados, porque sin él no se
-                        pueden valorizar ni volver a guardar. */}
-                    <td
-                      className={`text-start ps-2 ${p.cliente ? "text-secondary" : "fw-bold"}`}
-                      style={p.cliente ? undefined : { color: "#dc2626" }}
-                      title={p.cliente ? undefined : "Falta el cliente: edite el parte para cargarlo"}
-                    >
-                      {p.cliente || "Sin cliente"}
-                    </td>
+                    {/* Informativo: el precio de la tarea no depende de él. */}
+                    <td className="text-start ps-2 text-secondary">{p.cliente || "—"}</td>
                     <td className="text-secondary">{p.lote || "—"}</td>
                     <td className="text-start ps-2 text-secondary">{p.observacion || "—"}</td>
                     <td className="text-start ps-2">{p.tarea?.tarea || "—"}</td>

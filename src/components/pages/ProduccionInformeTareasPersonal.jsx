@@ -81,9 +81,9 @@ const claveDeFila = (idPersona, idTarea, cliente) =>
 const RETENCION = 0.205;
 
 /**
- * Precio que rige para una tarea y un cliente en una fecha dada, con su neto y
- * su bruto. Los dos salen de la misma carga de Variables: el que se escribe es
- * el neto y el backend guarda el bruto ya calculado con la retención.
+ * Precio que rige para una tarea en una fecha dada, con su neto y su bruto.
+ * Los dos salen de la misma carga de Variables: el que se escribe es el neto y
+ * el backend guarda el bruto ya calculado con la retención.
  *
  * Los precios se cargan en **Variables** (`/produccion/certificados/variables`)
  * y son una fila por cada vez que el valor cambió: el que corresponde a un
@@ -91,24 +91,15 @@ const RETENCION = 0.205;
  * parte cae antes de la primera vigencia cargada, no hay precio: eso es una
  * raya, no un cero.
  *
- * El parte trae el cliente como texto libre. Cuando viene vacío y la tarea
- * tiene precios de un solo cliente se usa ese, que es el único que puede ser;
- * con más de uno no se adivina.
+ * El precio no distingue cliente: es el mismo para todo lo que se certifica
+ * (17/09/2026).
  */
-const precioVigente = (variables, idTarea, cliente, fecha) => {
+const precioVigente = (variables, idTarea, fecha) => {
   const deLaTarea = variables.filter((v) => (v.tarea?._id || v.tarea) === idTarea);
   if (deLaTarea.length === 0) return null;
 
-  const clave = claveCliente(cliente);
-  const clientes = new Set(deLaTarea.map((v) => claveCliente(v.cliente)));
-  const delCliente = clave
-    ? deLaTarea.filter((v) => claveCliente(v.cliente) === clave)
-    : clientes.size === 1
-    ? deLaTarea
-    : [];
-
   const dia = soloFecha(fecha);
-  const vigentes = delCliente
+  const vigentes = deLaTarea
     .filter((v) => v.vigenciaDesde && soloFecha(v.vigenciaDesde) <= dia)
     .sort((a, b) => soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde)));
 
@@ -449,7 +440,7 @@ function ProduccionInformeTareasPersonal() {
 
       // El precio se busca parte por parte: depende del cliente al que se le
       // certifica y de la vigencia que regía ese día.
-      const precio = precioVigente(variables, idTarea, p.cliente, p.fecha);
+      const precio = precioVigente(variables, idTarea, p.fecha);
       if (precio !== null) {
         fila.cantidadConPrecio += cantidad;
         fila.importe += cantidad * precio.neto;
