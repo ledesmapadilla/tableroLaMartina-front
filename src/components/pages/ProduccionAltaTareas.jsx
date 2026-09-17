@@ -9,7 +9,7 @@ const API = "/api/tareas";
 
 // Unidades en las que se mide una tarea. Para sumar una nueva alcanza con
 // agregarla acá: alimenta el selector del alta y el filtro del listado.
-const UNIDADES = ["Horas", "Plantas", "Tancadas", "Un"];
+const UNIDADES = ["Horas", "Plantas", "Tancadas", "Un", "Hectárea"];
 
 function ProduccionAltaTareas() {
   // Ver sin editar (tabla de Roles): nuevo, editar y borrar quedan a la vista

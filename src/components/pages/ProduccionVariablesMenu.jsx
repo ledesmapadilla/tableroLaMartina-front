@@ -1,38 +1,22 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
-import { usePermisos } from "../../context/permisos";
-import { GRUPO } from "../../utils/permisosCatalogo";
 
-const MESES = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-];
-
-// Qué se puede hacer dentro de un mes. La planilla de carga es una de las
-// opciones, no la pantalla del mes: por eso el mes entra acá y no directo a
-// los partes. Variables no está acá: es una sola para todos los meses y vive
-// en la pantalla de certificados.
-// Cada una lleva su color: son cosas distintas y de un vistazo se tiene que
-// ver cuál es cuál.
+/**
+ * Las variables de la certificación de un campo (17/09/2026).
+ *
+ * Antes Variables era una sola pantalla (los precios). Ahora es un menú:
+ * arranca con Remuneración, que es esa misma pantalla, y Lotes, donde se dan
+ * de alta los lotes con sus cantidades. Las dos valen para todos los meses,
+ * por eso cuelgan de la pantalla de certificados y no de un año y mes.
+ */
 const OPCIONES = [
   {
-    id: "certificados",
-    titulo: "Datos certificación",
-    subtitulo: "Carga de los partes diarios del mes",
-    icono: "bi bi-file-earmark-text-fill",
-    permiso: "produccion.certificacion",
-    destino: "planilla",
+    id: "remuneracion",
+    titulo: "Remuneración",
+    subtitulo: "El precio con el que se paga cada tarea",
+    icono: "bi bi-sliders",
+    destino: "remuneracion",
     colores: {
       fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
       fondoHover: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
@@ -42,35 +26,26 @@ const OPCIONES = [
     },
   },
   {
-    id: "informes",
-    titulo: "Informes",
-    subtitulo: "Resúmenes y exportaciones del período",
-    icono: "bi bi-bar-chart-fill",
-    permiso: GRUPO.produccionInformes,
-    destino: "informes",
+    id: "lotes",
+    titulo: "Lotes",
+    subtitulo: "Los lotes del campo, con sus hectáreas y plantas",
+    icono: "bi bi-map-fill",
+    destino: "lotes",
     colores: {
-      fondo: "linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)",
-      fondoHover: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)",
-      borde: "#818cf8",
-      icono: "#c7d2fe",
-      brillo: "rgba(129,140,248,0.25)",
+      fondo: "linear-gradient(135deg, #7c2d12 0%, #b45309 100%)",
+      fondoHover: "linear-gradient(135deg, #431407 0%, #7c2d12 100%)",
+      borde: "#fbbf24",
+      icono: "#fde68a",
+      brillo: "rgba(251,191,36,0.25)",
     },
   },
 ];
 
-/**
- * El menú de un mes. Es el mismo para los dos campos: las mismas tarjetas y lo
- * único que cambia es la base de las rutas.
- */
-function ProduccionCertificadoMenu({ base = "/produccion/certificados" }) {
-  const { puede } = usePermisos();
-  const { anio, mes } = useParams();
+function ProduccionVariablesMenu({ base = "/produccion/certificados" }) {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
 
-  const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
-  const ir = (destino) => navigate(`${base}/${anio}/${mes}/${destino}`);
-  const opciones = OPCIONES.filter((o) => !o.permiso || puede(o.permiso));
+  const ir = (destino) => navigate(`${base}/variables/${destino}`);
 
   return (
     <div
@@ -91,23 +66,25 @@ function ProduccionCertificadoMenu({ base = "/produccion/certificados" }) {
         {/* Encabezado. El volver está en el navbar de Producción, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-4">
           <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
-            {titulo}
+            Variables
+          </span>
+          <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+            Rigen para todos los meses
           </span>
         </div>
 
-        {/* Tarjetas del mes */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(${opciones.length || 1}, 1fr)`,
+              gridTemplateColumns: `repeat(${OPCIONES.length}, 1fr)`,
               gap: "1.75rem",
               width: "100%",
               maxWidth: "640px",
               margin: "0 auto",
             }}
           >
-            {opciones.map((o) => {
+            {OPCIONES.map((o) => {
               const isHovered = hovered === o.id;
               return (
                 <div
@@ -167,4 +144,4 @@ function ProduccionCertificadoMenu({ base = "/produccion/certificados" }) {
   );
 }
 
-export default ProduccionCertificadoMenu;
+export default ProduccionVariablesMenu;

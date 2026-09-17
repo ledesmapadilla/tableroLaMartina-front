@@ -90,7 +90,8 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
   );
 };
 
-function ProduccionInformeMes() {
+/** El mismo informe para los dos campos: cambia el establecimiento. */
+function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
   const { anio, mes } = useParams();
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
@@ -111,12 +112,14 @@ function ProduccionInformeMes() {
     filtroTarea !== "Todas";
 
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
+  // Los partes y el período son del establecimiento en el que se está parado.
+  const qEstab = `establecimiento=${establecimiento}`;
 
   useEffect(() => {
     (async () => {
       setCargando(true);
       try {
-        const res = await fetch(`/api/periodos/${anio}/${mes}`);
+        const res = await fetch(`/api/periodos/${anio}/${mes}?${qEstab}`);
         const data = await res.json();
         const estaCerrado = Boolean(data.cerrado);
         // El período llega hasta su fecha de cierre (por defecto el 25), igual
@@ -128,7 +131,7 @@ function ProduccionInformeMes() {
 
         const clave = `${anio}-${String(mes).padStart(2, "0")}`;
         const resPartes = await fetch(
-          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}`
+          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}&${qEstab}`
         );
         const lista = resPartes.ok ? await resPartes.json() : [];
         setPartes(Array.isArray(lista) ? lista : []);
@@ -138,7 +141,7 @@ function ProduccionInformeMes() {
         setCargando(false);
       }
     })();
-  }, [anio, mes]);
+  }, [anio, mes, qEstab]);
 
   /**
    * Los filtros recortan los partes antes de sumar: todas las tablas y el

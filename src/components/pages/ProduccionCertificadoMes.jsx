@@ -21,9 +21,14 @@ const FORM_VACIO = {
   cliente: CLIENTES[0],
   horaIngreso: "",
   horaEgreso: "",
+  // El segundo tramo del día, solo en San Pablo.
+  horaIngreso2: "",
+  horaEgreso2: "",
   horomIngreso: "",
   horomSalida: "",
   lote: "",
+  // Si el trabajo quedó terminado; arranca en proceso.
+  terminado: false,
   observacion: "",
   tarea: "",
   cantidad: "",
@@ -139,8 +144,66 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
   );
 };
 
-function ProduccionCertificadoMes() {
+/**
+ * La planilla de carga de partes de un mes.
+ *
+ * Es la misma para los dos campos: cambia el establecimiento con el que se
+ * piden y se guardan los partes y el período. En San Pablo el día se corta al
+ * mediodía, así que el turno tiene dos tramos (`dosTurnos`) y el trabajo se
+ * marca como en proceso o terminado (`conEstado`). Caspinchango no lleva
+ * ninguna de las dos cosas (17/09/2026).
+ */
+/**
+ * El círculo de estado del trabajo: verde con la tilde si está terminado, rojo
+ * con la cruz si sigue en proceso. Es el mismo de Reparaciones San Pablo.
+ */
+function CirculoEstado({ terminado, onClick, deshabilitado = false, tamano = 20, inactivo = false }) {
+  const color = inactivo ? "#cbd5e1" : terminado ? "#15803d" : "#dc2626";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={deshabilitado}
+      title={inactivo ? "Esta tarea no lleva estado" : terminado ? "Terminado" : "En proceso"}
+      className="d-inline-flex align-items-center justify-content-center p-0"
+      style={{
+        width: `${tamano}px`,
+        height: `${tamano}px`,
+        borderRadius: "50%",
+        border: `2px solid ${color}`,
+        backgroundColor: color,
+        color: "#fff",
+        cursor: deshabilitado || inactivo ? "default" : "pointer",
+        opacity: deshabilitado && !inactivo ? 0.6 : 1,
+        flexShrink: 0,
+      }}
+    >
+      <i
+        className={`bi ${terminado ? "bi-check-lg" : "bi-x-lg"}`}
+        style={{ fontSize: `${tamano * (terminado ? 0.65 : 0.5)}px`, lineHeight: 1 }}
+      ></i>
+    </button>
+  );
+}
+
+function ProduccionCertificadoMes({
+  establecimiento = "caspinchango",
+  dosTurnos = false,
+  conEstado = false,
+  // El lote sale del padrón de Variables › Lotes en vez de escribirse a mano.
+  conPadronDeLotes = false,
+  // Tareas que llevan estado (en proceso / terminado). Vacío, lo llevan todas
+  // las de la pantalla que tenga `conEstado`.
+  tareasConEstado = [],
+  tareasDestacadas = [],
+  // Tareas que se cargan sin cantidad: alcanza con que el nombre las contenga
+  // ("desmalezado" toma todos los desmalezados). Vacío, la cantidad es
+  // obligatoria siempre.
+  tareasSinCantidad = [],
+}) {
   const { anio, mes } = useParams();
+  // Todas las llamadas de partes y de períodos van con el establecimiento.
+  const qEstab = `establecimiento=${establecimiento}`;
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
   const [fechaCierre, setFechaCierre] = useState(null);
@@ -148,6 +211,7 @@ function ProduccionCertificadoMes() {
   const [personal, setPersonal] = useState([]);
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
+  const [lotes, setLotes] = useState([]);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
@@ -176,7 +240,7 @@ function ProduccionCertificadoMes() {
   // ── carga de datos ────────────────────────────────────────────────
   const cargarPeriodo = async () => {
     try {
-      const res = await fetch(`/api/periodos/${anio}/${mes}`);
+      const res = await fetch(`/api/periodos/${anio}/${mes}?${qEstab}`);
       const data = await res.json();
       const estaCerrado = Boolean(data.cerrado);
       setCerrado(estaCerrado);
@@ -196,7 +260,7 @@ function ProduccionCertificadoMes() {
     if (!rango?.desde || !rango?.hasta) return;
     try {
       const res = await fetch(
-        `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clavePeriodo}`
+        `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clavePeriodo}&${qEstab}`
       );
       const data = res.ok ? await res.json() : [];
       setPartes(Array.isArray(data) ? data : []);
@@ -238,14 +302,17 @@ function ProduccionCertificadoMes() {
     };
     // Los tres padrones son independientes: pedirlos en fila era esperar tres
     // veces la misma ida y vuelta al servidor.
-    const [personas, centrosCosto, listaTareas] = await Promise.all([
+    const [personas, centrosCosto, listaTareas, padronLotes] = await Promise.all([
       pedir("/api/personal"),
       pedir("/api/centros-costo"),
       pedir("/api/tareas"),
+      // Los lotes son del campo y solo los usa la planilla que los tiene.
+      conPadronDeLotes ? pedir(`/api/lotes?${qEstab}`) : Promise.resolve([]),
     ]);
     setPersonal(personas);
     setCentros(centrosCosto);
     setTareas(listaTareas);
+    setLotes(padronLotes);
   };
   useEffect(() => {
     (async () => {
@@ -263,7 +330,7 @@ function ProduccionCertificadoMes() {
     if (cerrado) return;
     if (!periodo.desde || !periodo.hasta) return;
     try {
-      const res = await fetch(`/api/periodos/${anio}/${mes}`, {
+      const res = await fetch(`/api/periodos/${anio}/${mes}?${qEstab}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(periodo),
@@ -282,7 +349,7 @@ function ProduccionCertificadoMes() {
 
   // Guarda el período junto con el estado de cierre y refresca la pantalla.
   const guardarCierre = async (rango, cerrar, fecha) => {
-    const res = await fetch(`/api/periodos/${anio}/${mes}`, {
+    const res = await fetch(`/api/periodos/${anio}/${mes}?${qEstab}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...rango, cerrado: cerrar, fechaCierre: fecha }),
@@ -492,6 +559,27 @@ function ProduccionCertificadoMes() {
     };
   };
 
+  // Marcar o desmarcar "terminado" desde la tabla. Se pinta enseguida y se
+  // revierte si el guardado falla.
+  const alternarTerminado = async (parte) => {
+    if (cerrado) return;
+    const valor = !parte.terminado;
+    const poner = (v) =>
+      setPartes((lista) => lista.map((x) => (x._id === parte._id ? { ...x, terminado: v } : x)));
+    poner(valor);
+    try {
+      const res = await fetch(`/api/partes/${parte._id}/terminado`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ terminado: valor }),
+      });
+      if (!res.ok) throw new Error("No se pudo guardar");
+    } catch {
+      poner(!valor);
+      avisar({ icon: "error", title: "Error", text: "No se pudo guardar el estado" });
+    }
+  };
+
   // ── alta / edición de partes ──────────────────────────────────────
   const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
@@ -509,7 +597,7 @@ function ProduccionCertificadoMes() {
     fetch(editando ? `/api/partes/${editando}` : "/api/partes", {
       method: editando ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(datos),
+      body: JSON.stringify({ ...datos, establecimiento }),
     });
 
   const guardarParte = async () => {
@@ -519,7 +607,7 @@ function ProduccionCertificadoMes() {
     if (!form.fecha) falta.push("la fecha");
     if (!form.persona) falta.push("la persona");
     if (!form.tarea) falta.push("la tarea");
-    if (form.cantidad === "" || form.cantidad === null) falta.push("la cantidad");
+    if (pideCantidad && (form.cantidad === "" || form.cantidad === null)) falta.push("la cantidad");
     if (falta.length) {
       avisar({
         icon: "warning",
@@ -607,9 +695,12 @@ function ProduccionCertificadoMes() {
       cliente: p.cliente || CLIENTES[0],
       horaIngreso: p.horaIngreso || "",
       horaEgreso: p.horaEgreso || "",
+      horaIngreso2: p.horaIngreso2 || "",
+      horaEgreso2: p.horaEgreso2 || "",
       horomIngreso: p.horomIngreso ?? "",
       horomSalida: p.horomSalida ?? "",
       lote: p.lote || "",
+      terminado: Boolean(p.terminado),
       observacion: p.observacion || "",
       tarea: p.tarea?._id || "",
       cantidad: p.cantidad ?? "",
@@ -696,6 +787,7 @@ function ProduccionCertificadoMes() {
 
     ccPedido.current = ccId;
     try {
+      // El horómetro es de la máquina, no del campo: se mira en todos.
       const res = await fetch(`/api/partes/ultimo-horometro/${ccId}`);
       const data = res.ok ? await res.json() : null;
       // Si mientras respondía se eligió otro CC, este dato ya no sirve.
@@ -724,9 +816,29 @@ function ProduccionCertificadoMes() {
     [personal]
   );
 
-  const opcionesTarea = useMemo(
-    () => tareasOrdenadas.map((t) => ({ valor: t._id, texto: t.tarea })),
-    [tareasOrdenadas]
+  // Las tareas de todos los días van primero y en negrita; el resto sigue
+  // alfabético abajo. Se comparan sin acentos ni mayúsculas.
+  const opcionesTarea = useMemo(() => {
+    const limpio = (t) =>
+      (t || "")
+        .toString()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .trim()
+        .toLowerCase();
+    const orden = new Map(tareasDestacadas.map((t, i) => [limpio(t), i]));
+    const SIN_DESTACAR = Number.MAX_SAFE_INTEGER;
+    const puesto = (t) => (orden.has(limpio(t.tarea)) ? orden.get(limpio(t.tarea)) : SIN_DESTACAR);
+    return [...tareasOrdenadas]
+      .sort((a, b) => puesto(a) - puesto(b))
+      .map((t) => ({ valor: t._id, texto: t.tarea, destacada: puesto(t) !== SIN_DESTACAR }));
+  }, [tareasOrdenadas, tareasDestacadas]);
+
+  // El lote se elige del padrón; igual se puede escribir uno que todavía no
+  // esté dado de alta, para no trabar la carga.
+  const opcionesLote = useMemo(
+    () => lotes.map((l) => ({ valor: l.nombre, texto: l.nombre })),
+    [lotes]
   );
 
   const opcionesTurbo = useMemo(() => {
@@ -819,7 +931,32 @@ function ProduccionCertificadoMes() {
     [partes]
   );
 
-  const totalHorasForm = calcularHoras(form.horaIngreso, form.horaEgreso);
+  // Qué tareas llevan el círculo de estado: las que tengan alguno de esos
+  // nombres (herbicida, desmalezado, pulverizado en San Pablo).
+  const llevaEstado = (nombreTarea) => {
+    if (!conEstado) return false;
+    if (tareasConEstado.length === 0) return true;
+    const limpio = (t) =>
+      (t || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+    return tareasConEstado.some((s) => limpio(nombreTarea).includes(limpio(s)));
+  };
+  const estadoEnForm = llevaEstado(tareas.find((t) => t._id === form.tarea)?.tarea);
+
+  // La cantidad es obligatoria salvo en las tareas exentas (desmalezado y
+  // herbicida en San Pablo).
+  const pideCantidad = (() => {
+    if (tareasSinCantidad.length === 0) return true;
+    const limpio = (t) =>
+      (t || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+    const elegida = tareas.find((t) => t._id === form.tarea);
+    if (!elegida) return true;
+    return !tareasSinCantidad.some((s) => limpio(elegida.tarea).includes(limpio(s)));
+  })();
+
+  // El total suma los dos tramos: el segundo vacío no suma nada.
+  const totalHorasForm =
+    calcularHoras(form.horaIngreso, form.horaEgreso) +
+    (dosTurnos ? calcularHoras(form.horaIngreso2, form.horaEgreso2) : 0);
   const horasCCForm = calcularHorasCC(form.horomIngreso, form.horomSalida);
 
   // ── exportar a Excel ──────────────────────────────────────────────
@@ -831,8 +968,7 @@ function ProduccionCertificadoMes() {
     const columnas = [
       "Fecha",
       "Personal",
-      "Ingreso",
-      "Egreso",
+      ...(dosTurnos ? ["Entrada 1", "Salida 1", "Entrada 2", "Salida 2"] : ["Ingreso", "Egreso"]),
       "Total hs",
       "CC",
       "Horóm. entra",
@@ -843,6 +979,7 @@ function ProduccionCertificadoMes() {
       "Comb. turbo",
       "Cliente",
       "Lote",
+      ...(conEstado ? ["Estado"] : []),
       "Observaciones",
       "Tarea",
       "Cantidad",
@@ -901,6 +1038,7 @@ function ProduccionCertificadoMes() {
         p.persona?.apellidoNombre || "-",
         p.horaIngreso || "-",
         p.horaEgreso || "-",
+        ...(dosTurnos ? [p.horaIngreso2 || "-", p.horaEgreso2 || "-"] : []),
         p.totalHoras || 0,
         p.cc?.cc || "-",
         p.horomIngreso ?? "-",
@@ -911,6 +1049,7 @@ function ProduccionCertificadoMes() {
         p.combTurbo ?? "-",
         p.cliente || "-",
         p.lote || "-",
+        ...(conEstado ? [llevaEstado(p.tarea?.tarea) ? (p.terminado ? "Terminado" : "En proceso") : "-"] : []),
         p.observacion || "-",
         p.tarea?.tarea || "-",
         p.cantidad ?? "-",
@@ -931,7 +1070,18 @@ function ProduccionCertificadoMes() {
         };
         // Personal, cliente, lote, observaciones y tarea se leen mejor a la
         // izquierda.
-        const aIzquierda = [2, 13, 14, 15, 16];
+        // Personal y, más a la derecha, cliente, lote, observaciones y tarea:
+        // con los dos tramos esas cuatro se corren dos columnas.
+        const corrimiento = dosTurnos ? 2 : 0;
+        // Observaciones y tarea se corren una más con la columna de estado.
+        const conEstadoCol = conEstado ? 1 : 0;
+        const aIzquierda = [
+          2,
+          13 + corrimiento,
+          14 + corrimiento,
+          15 + corrimiento + conEstadoCol,
+          16 + corrimiento + conEstadoCol,
+        ];
         cell.alignment = aIzquierda.includes(colNumber)
           ? { horizontal: "left", vertical: "middle", wrapText: true }
           : { horizontal: "center", vertical: "middle" };
@@ -941,8 +1091,9 @@ function ProduccionCertificadoMes() {
     ws.columns = [
       { width: 12 }, // Fecha
       { width: 26 }, // Personal
-      { width: 10 }, // Ingreso
-      { width: 10 }, // Egreso
+      { width: 10 }, // Ingreso / Entrada 1
+      { width: 10 }, // Egreso / Salida 1
+      ...(dosTurnos ? [{ width: 10 }, { width: 10 }] : []), // Entrada 2 / Salida 2
       { width: 10 }, // Total hs
       { width: 10 }, // CC
       { width: 14 }, // Horóm. entra
@@ -953,6 +1104,7 @@ function ProduccionCertificadoMes() {
       { width: 12 }, // Comb. turbo
       { width: 22 }, // Cliente
       { width: 14 }, // Lote
+      ...(conEstado ? [{ width: 12 }] : []), // Estado
       { width: 28 }, // Observaciones
       { width: 30 }, // Tarea
       { width: 11 }, // Cantidad
@@ -978,7 +1130,7 @@ function ProduccionCertificadoMes() {
       size="sm"
       onClick={exportarExcel}
       disabled={partesFiltrados.length === 0}
-      className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
+      className="rounded-3 px-3 d-flex align-items-center gap-2"
       style={{
         backgroundColor: "#15803d",
         borderColor: "#15803d",
@@ -1083,7 +1235,7 @@ function ProduccionCertificadoMes() {
               Certificación cerrada{fechaCierre ? ` el ${formatFecha(fechaCierre)}` : ""}. No se pueden agregar ni
               modificar partes. Use <span className="fw-semibold">Permitir editar</span> para reabrirla.
             </span>
-            {botonExcel}
+            <div className="ms-auto">{botonExcel}</div>
           </Card>
         )}
 
@@ -1120,14 +1272,33 @@ function ProduccionCertificadoMes() {
               </div>
 
               <div style={{ width: "78px" }}>
-                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Ingreso</label>
+                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
+                  {dosTurnos ? "Entrada 1" : "Ingreso"}
+                </label>
                 <Form.Control type="time" value={form.horaIngreso} onChange={(e) => cambiar("horaIngreso", e.target.value)} style={estiloCelda} />
               </div>
 
               <div style={{ width: "78px" }}>
-                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Egreso</label>
+                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
+                  {dosTurnos ? "Salida 1" : "Egreso"}
+                </label>
                 <Form.Control type="time" value={form.horaEgreso} onChange={(e) => cambiar("horaEgreso", e.target.value)} style={estiloCelda} />
               </div>
+
+              {/* El día se corta al mediodía y se retoma a la tarde. */}
+              {dosTurnos && (
+                <>
+                  <div style={{ width: "78px" }}>
+                    <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Entrada 2</label>
+                    <Form.Control type="time" value={form.horaIngreso2} onChange={(e) => cambiar("horaIngreso2", e.target.value)} style={estiloCelda} />
+                  </div>
+
+                  <div style={{ width: "78px" }}>
+                    <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Salida 2</label>
+                    <Form.Control type="time" value={form.horaEgreso2} onChange={(e) => cambiar("horaEgreso2", e.target.value)} style={estiloCelda} />
+                  </div>
+                </>
+              )}
 
               <div style={{ width: "56px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Total</label>
@@ -1203,18 +1374,56 @@ function ProduccionCertificadoMes() {
                 <Form.Control type="number" value={form.combTurbo} onChange={(e) => cambiar("combTurbo", e.target.value)} style={estiloCelda} />
               </div>
 
-              {botonExcel}
             </div>
 
             {/* Fila 2: el resto de los datos del parte */}
             <div className="d-flex align-items-end gap-2 flex-wrap mt-2" onKeyDown={alPresionarEnter}>
               <div style={{ width: "120px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Lote</label>
-                <Form.Control list="lotes-usados" value={form.lote} onChange={(e) => cambiar("lote", e.target.value)} style={estiloCelda} />
-                <datalist id="lotes-usados">
-                  {lotesUsados.map((l) => <option key={l} value={l} />)}
-                </datalist>
+                {conPadronDeLotes ? (
+                  <SelectBuscador
+                    libre
+                    opciones={opcionesLote}
+                    valor={form.lote}
+                    onChange={(v) => cambiar("lote", v)}
+                    vacio={null}
+                    placeholder="Lote"
+                    title="Los lotes se dan de alta en Variables › Lotes"
+                    style={estiloCelda}
+                  />
+                ) : (
+                  <>
+                    <Form.Control list="lotes-usados" value={form.lote} onChange={(e) => cambiar("lote", e.target.value)} style={estiloCelda} />
+                    <datalist id="lotes-usados">
+                      {lotesUsados.map((l) => <option key={l} value={l} />)}
+                    </datalist>
+                  </>
+                )}
               </div>
+
+              {/* El rótulo es el estado: arriba del círculo dice en qué está. */}
+              {conEstado && (
+                <div style={{ width: "72px" }}>
+                  <label
+                    className="d-block fw-semibold text-center"
+                    style={{
+                      fontSize: "0.7rem",
+                      color: !estadoEnForm ? "#94a3b8" : form.terminado ? "#15803d" : "#dc2626",
+                    }}
+                  >
+                    {!estadoEnForm ? "—" : form.terminado ? "Terminado" : "En proceso"}
+                  </label>
+                  <div className="d-flex align-items-center justify-content-center" style={{ height: "30px" }}>
+                    <CirculoEstado
+                      terminado={form.terminado}
+                      inactivo={!estadoEnForm}
+                      onClick={() => estadoEnForm && cambiar("terminado", !form.terminado)}
+                      deshabilitado={!estadoEnForm}
+                      tamano={20}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div style={{ width: "150px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Observaciones</label>
@@ -1239,7 +1448,7 @@ function ProduccionCertificadoMes() {
 
               <div style={{ width: "80px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
-                  Cantidad <span className="text-danger">*</span>
+                  Cantidad {pideCantidad && <span className="text-danger">*</span>}
                 </label>
                 <Form.Control type="number" value={form.cantidad} onChange={(e) => cambiar("cantidad", e.target.value)} style={estiloCelda} />
               </div>
@@ -1286,6 +1495,9 @@ function ProduccionCertificadoMes() {
                   Cancelar
                 </Button>
               )}
+
+              {/* Pegado a la derecha, a la altura de Agregar. */}
+              <div className="ms-auto">{botonExcel}</div>
             </div>
           </Card>
         )}
@@ -1473,9 +1685,13 @@ function ProduccionCertificadoMes() {
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1b4332", color: "#fff" }}>
               <tr className="fw-normal align-middle">
                 {[
-                  "Fecha", "Personal", "Ingreso", "Egreso", { h: "Total hs", sep: true },
+                  "Fecha", "Personal",
+                  ...(dosTurnos
+                    ? ["Entrada 1", "Salida 1", "Entrada 2", "Salida 2"]
+                    : ["Ingreso", "Egreso"]),
+                  { h: "Total hs", sep: true },
                   "CC", "Horóm. entra", "Horóm. sal.", "Horas CC", { h: "Combust.", sep: true },
-                  "Turbo", { h: "Comb. turbo", sep: true }, "Cliente", "Lote", "Observaciones", "Tarea", "Cantidad", "Un.", "",
+                  "Turbo", { h: "Comb. turbo", sep: true }, "Cliente", "Lote", ...(conEstado ? [""] : []), "Observaciones", "Tarea", "Cantidad", "Un.", "",
                 ].map((col, i) => {
                   const { h, sep } = typeof col === "string" ? { h: col, sep: false } : col;
                   return (
@@ -1530,6 +1746,12 @@ function ProduccionCertificadoMes() {
                     <td className="text-start ps-2">{p.persona?.apellidoNombre || "—"}</td>
                     <td className="text-secondary">{p.horaIngreso || "—"}</td>
                     <td className="text-secondary">{p.horaEgreso || "—"}</td>
+                    {dosTurnos && (
+                      <>
+                        <td className="text-secondary">{p.horaIngreso2 || "—"}</td>
+                        <td className="text-secondary">{p.horaEgreso2 || "—"}</td>
+                      </>
+                    )}
                     <td className={`fw-bold ${SEP}`} style={{ color: "#1b4332" }}>{p.totalHoras || "—"}</td>
                     <td>{p.cc?.cc || "—"}</td>
                     <td className="text-secondary">{p.horomIngreso ?? "—"}</td>
@@ -1540,7 +1762,38 @@ function ProduccionCertificadoMes() {
                     <td className={`text-secondary ${SEP}`}>{p.combTurbo ?? "—"}</td>
                     {/* Informativo: el precio de la tarea no depende de él. */}
                     <td className="text-start ps-2 text-secondary">{p.cliente || "—"}</td>
-                    <td className="text-secondary">{p.lote || "—"}</td>
+                    {/* El lote terminado se marca: número blanco sobre verde.
+                        En proceso va como cualquier otro dato. */}
+                    <td className="text-secondary">
+                      {p.lote ? (
+                        llevaEstado(p.tarea?.tarea) && p.terminado ? (
+                          <span
+                            className="px-2 rounded-pill fw-semibold"
+                            style={{ backgroundColor: "#15803d", color: "#fff" }}
+                          >
+                            {p.lote}
+                          </span>
+                        ) : (
+                          p.lote
+                        )
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    {conEstado && (
+                      <td style={{ padding: "3px 5px" }}>
+                        {llevaEstado(p.tarea?.tarea) ? (
+                          <CirculoEstado
+                            terminado={p.terminado}
+                            onClick={() => alternarTerminado(p)}
+                            deshabilitado={cerrado}
+                            tamano={18}
+                          />
+                        ) : (
+                          <span className="text-secondary">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="text-start ps-2 text-secondary">{p.observacion || "—"}</td>
                     <td className="text-start ps-2">{p.tarea?.tarea || "—"}</td>
                     <td className="fw-semibold">{p.cantidad ?? "—"}</td>

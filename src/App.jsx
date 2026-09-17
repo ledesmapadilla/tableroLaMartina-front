@@ -46,6 +46,8 @@ import ProduccionInformeMes from "./components/pages/ProduccionInformeMes";
 import ProduccionInformeTareasPersonal from "./components/pages/ProduccionInformeTareasPersonal";
 import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMes";
 import ProduccionVariables from "./components/pages/ProduccionVariables";
+import ProduccionVariablesMenu from "./components/pages/ProduccionVariablesMenu";
+import ProduccionLotes from "./components/pages/ProduccionLotes";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
@@ -92,6 +94,25 @@ import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
 import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 import BotonReunionFlotante from "./components/shared/BotonReunionFlotante";
 import NavbarProduccion from "./components/shared/NavbarProduccion";
+
+// Las tareas de San Pablo que se marcan como en proceso o terminadas.
+const TAREAS_CON_ESTADO = ["herbicida", "desmalezado", "pulverizado"];
+
+// El desmalezado y el herbicida de San Pablo se cargan sin cantidad; el resto
+// de las tareas la lleva.
+const TAREAS_SIN_CANTIDAD = ["desmalezado", "herbicida"];
+
+// Las tareas que más se cargan en San Pablo: van primero y en negrita en el
+// desplegable de la planilla (17/09/2026).
+const TAREAS_SAN_PABLO = [
+  "Herbicida",
+  "Desmalezado mecánico",
+  "Desmalezado x Ha",
+  "Horas tractor",
+  "Horas la martina",
+  "Horas máquina",
+  "Pulverizado FMC",
+];
 
 function App() {
   // En celular el Tablero muestra solo Visitas: el resto de sus pantallas son
@@ -221,9 +242,9 @@ function LayoutDesktop() {
                   cuelga de uno de ellos. */}
               <Route path="/produccion" element={<ProduccionEstablecimientos />} />
 
-              {/* San Pablo tiene su propia certificación: la grilla de meses y
-                  Variables ya son las suyas, con sus propios períodos. Lo que
-                  hay adentro de cada mes todavía no está construido. */}
+              {/* San Pablo tiene su propia certificación: grilla de meses,
+                  Variables y la carga de datos, con sus propios períodos. Los
+                  informes todavía no están construidos (17/09/2026). */}
               <Route
                 path="/produccion/san-pablo"
                 element={
@@ -232,9 +253,47 @@ function LayoutDesktop() {
               />
               <Route
                 path="/produccion/san-pablo/variables"
+                element={<ProduccionVariablesMenu base="/produccion/san-pablo" />}
+              />
+              <Route
+                path="/produccion/san-pablo/variables/remuneracion"
                 element={<ProduccionVariables establecimiento="san-pablo" />}
               />
-              <Route path="/produccion/san-pablo/:anio/:mes" element={<Error404 />} />
+              <Route
+                path="/produccion/san-pablo/variables/lotes"
+                element={<ProduccionLotes establecimiento="san-pablo" />}
+              />
+              <Route
+                path="/produccion/san-pablo/:anio/:mes"
+                element={<ProduccionCertificadoMenu base="/produccion/san-pablo" />}
+              />
+              {/* En San Pablo se corta al mediodía: el turno va en dos tramos. */}
+              <Route
+                path="/produccion/san-pablo/:anio/:mes/planilla"
+                element={
+                  <ProduccionCertificadoMes
+                    establecimiento="san-pablo"
+                    dosTurnos
+                    conEstado
+                    conPadronDeLotes
+                    tareasConEstado={TAREAS_CON_ESTADO}
+                    tareasDestacadas={TAREAS_SAN_PABLO}
+                    tareasSinCantidad={TAREAS_SIN_CANTIDAD}
+                  />
+                }
+              />
+              <Route
+                path="/produccion/san-pablo/:anio/:mes/informes"
+                element={<ProduccionInformesMenu base="/produccion/san-pablo" />}
+              />
+              <Route
+                path="/produccion/san-pablo/:anio/:mes/informes/mes"
+                element={<ProduccionInformeMes establecimiento="san-pablo" />}
+              />
+              <Route
+                path="/produccion/san-pablo/:anio/:mes/informes/tareas-personal"
+                element={<ProduccionInformeTareasPersonal establecimiento="san-pablo" />}
+              />
               <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
               <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />

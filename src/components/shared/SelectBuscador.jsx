@@ -19,7 +19,7 @@ const COLORES = { marcada: "#e8f5ee", elegida: "#1b4332" };
 const ALTO_LISTA = 220;
 
 function SelectBuscador({
-  opciones = [], // [{ valor, texto }]
+  opciones = [], // [{ valor, texto, destacada? }]
   colores = COLORES,
   valor = "",
   onChange,
@@ -265,7 +265,12 @@ function SelectBuscador({
                 cursor: "pointer",
                 backgroundColor: i === marcada ? colores.marcada : "transparent",
                 color: o.valor === valor ? colores.elegida : "#1e293b",
-                fontWeight: o.valor === valor ? 600 : 400,
+                // Las destacadas (`destacada`) van primero y en negrita, con una
+                // rayita que las separa del resto de la lista.
+                fontWeight: o.valor === valor || o.destacada ? 700 : 400,
+                ...(!o.destacada && filtradas[i - 1]?.destacada
+                  ? { borderTop: "1px solid #e2e8f0", marginTop: "2px", paddingTop: "4px" }
+                  : null),
               }}
               onMouseEnter={() => setMarcada(i)}
               onMouseDown={(e) => {

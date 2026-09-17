@@ -165,7 +165,8 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
   );
 };
 
-function ProduccionInformeTareasPersonal() {
+/** El mismo informe para los dos campos: cambia el establecimiento. */
+function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const { anio, mes } = useParams();
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
@@ -209,7 +210,7 @@ function ProduccionInformeTareasPersonal() {
     const excluido = !excluidos.has(idPersona);
     conExcluido(idPersona, excluido);
     try {
-      const res = await fetch(`/api/descuentos/${anio}/${mes}/${idPersona}`, {
+      const res = await fetch(`/api/descuentos/${anio}/${mes}/${idPersona}?${qEstab}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ excluido }),
@@ -258,6 +259,8 @@ function ProduccionInformeTareasPersonal() {
     filtroTarea !== "Todas";
 
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
+  // Partes, precios, descuentos y correcciones son de este establecimiento.
+  const qEstab = `establecimiento=${establecimiento}`;
 
   useEffect(() => {
     (async () => {
@@ -267,12 +270,12 @@ function ProduccionInformeTareasPersonal() {
         // las correcciones se piden en paralelo con él en vez de esperarlo, que
         // era una ida y vuelta de más contra un cluster que está lejos.
         const [resPeriodo, resVariables, resDescuentos, resCambios] = await Promise.all([
-          fetch(`/api/periodos/${anio}/${mes}`),
+          fetch(`/api/periodos/${anio}/${mes}?${qEstab}`),
           // Los precios se traen enteros, no por período: la vigencia que rige
           // un parte puede ser de meses anteriores.
-          fetch("/api/variables"),
-          fetch(`/api/descuentos/${anio}/${mes}`),
-          fetch(`/api/cambios/${anio}/${mes}`),
+          fetch(`/api/variables?${qEstab}`),
+          fetch(`/api/descuentos/${anio}/${mes}?${qEstab}`),
+          fetch(`/api/cambios/${anio}/${mes}?${qEstab}`),
         ]);
 
         const data = await resPeriodo.json();
@@ -288,7 +291,7 @@ function ProduccionInformeTareasPersonal() {
         // horarios, horómetros ni combustible. Es la mitad del cuerpo.
         const clave = `${anio}-${String(mes).padStart(2, "0")}`;
         const resPartes = await fetch(
-          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}&resumen=1`
+          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}&resumen=1&${qEstab}`
         );
         const lista = resPartes.ok ? await resPartes.json() : [];
         const precios = resVariables.ok ? await resVariables.json() : [];
@@ -317,7 +320,7 @@ function ProduccionInformeTareasPersonal() {
         setCargando(false);
       }
     })();
-  }, [anio, mes]);
+  }, [anio, mes, qEstab]);
 
   // Los filtros recortan los partes antes de sumar: la tabla y el Excel
   // muestran siempre lo mismo que se está mirando.
@@ -611,7 +614,7 @@ function ProduccionInformeTareasPersonal() {
     // parpadea en cada tecleo.
     setDescuentos((d) => ({ ...d, [idPersona]: nuevo }));
     try {
-      const res = await fetch(`/api/descuentos/${anio}/${mes}/${idPersona}`, {
+      const res = await fetch(`/api/descuentos/${anio}/${mes}/${idPersona}?${qEstab}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nuevo),
@@ -926,6 +929,7 @@ function ProduccionInformeTareasPersonal() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            establecimiento,
             persona: fila.idPersona,
             cliente: fila.cliente,
             tarea: fila.idTarea,

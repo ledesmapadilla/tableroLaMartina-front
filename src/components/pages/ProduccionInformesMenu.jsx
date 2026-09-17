@@ -54,15 +54,15 @@ const INFORMES = [
   },
 ];
 
-function ProduccionInformesMenu() {
+/** El mismo menú para los dos campos: cambia la base de las rutas. */
+function ProduccionInformesMenu({ base = "/produccion/certificados" }) {
   const { puede } = usePermisos();
   const { anio, mes } = useParams();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
 
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
-  const ir = (destino) =>
-    navigate(`/produccion/certificados/${anio}/${mes}/informes/${destino}`);
+  const ir = (destino) => navigate(`${base}/${anio}/${mes}/informes/${destino}`);
 
   return (
     <div
