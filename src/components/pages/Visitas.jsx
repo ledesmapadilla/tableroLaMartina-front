@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Button, Modal, Form, Badge } from "react-bootstrap";
 import Swal from "sweetalert2";
@@ -9,6 +9,9 @@ import LogoNavbar from "../shared/LogoNavbar";
 import { guardarConReglaHorometro } from "../../utils/horometro";
 
 const API = "/api/visitas";
+
+// Visitas que se ven como pastilla en el casillero del día; el resto va en "+N más".
+const PASTILLAS_POR_DIA = 3;
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 const MESES_NOMBRE = [
@@ -142,6 +145,9 @@ function Visitas() {
   const [ccActivoEditando, setCcActivoEditando] = useState(null);
   const [horometroInputTemp, setHorometroInputTemp] = useState("");
   const [errorHorometroTemp, setErrorHorometroTemp] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [visitaFoco, setVisitaFoco] = useState(null);
+  const guardandoRef = useRef(false);
 
   const esMinimoMes = año === 2026 && mes === 4;
 
@@ -189,8 +195,11 @@ function Visitas() {
       .catch(() => setTractores([]));
   }, []);
 
-  const abrirDia = (dia) => {
+  // Tocar el casillero abre el día entero (para ver todo y cargar otra
+  // visita); tocar la pastilla de un grupo (o el "+N más") abre solo esas visitas.
+  const abrirDia = (dia, ids = null) => {
     setDiaModal(dia);
+    setVisitaFoco(ids);
     setForm(formVacio);
     setError(false);
     setErrorHorometro(false);
@@ -357,6 +366,9 @@ function Visitas() {
   };
 
   const agregarVisita = async () => {
+    // Doble clic o Enter + clic mientras el backend valida: sin esto se
+    // guardaba dos veces.
+    if (guardandoRef.current) return;
     const grupoFinal = form.grupo === "Otro" ? form.otroGrupo.trim() : form.grupo;
     if (!grupoFinal) {
       setError(true);
@@ -380,6 +392,8 @@ function Visitas() {
       horometro: (form.horometro || "").trim(),
       observaciones: form.observaciones.trim(),
     };
+    guardandoRef.current = true;
+    setGuardando(true);
     try {
       // El backend valida el horómetro de cada CC anotado en la visita.
       const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
@@ -410,6 +424,9 @@ function Visitas() {
       }
     } catch {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo guardar la visita" });
+    } finally {
+      guardandoRef.current = false;
+      setGuardando(false);
     }
   };
 
@@ -454,8 +471,43 @@ function Visitas() {
     });
   };
 
-  const eliminarVisita = async (key, idx) => {
-    const visita = visitas[key]?.[idx];
+  const quitarTractorDeVisita = async (visita, cc) => {
+    const result = await Swal.fire({
+      title: "¿Sacar tractor?",
+      text: `Se saca el CC ${cc} de la visita de ${visita.grupo}. La visita y los demás tractores quedan.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Sí, sacar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      const res = await fetch(`${API}/${visita._id}/quitar-cc`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cc }),
+      });
+      const cuerpo = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        Swal.fire({ icon: "error", title: "Error", text: cuerpo.error || "No se pudo sacar el tractor" });
+        return;
+      }
+      cargar();
+      Swal.fire({
+        icon: "success",
+        title: "Tractor quitado",
+        text: `El CC ${cc} ya no figura en la visita`,
+        timer: 1400,
+        showConfirmButton: false,
+      });
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo sacar el tractor" });
+    }
+  };
+
+  const eliminarVisita = async (visita) => {
     if (!visita?._id) return;
     const result = await Swal.fire({
       title: "¿Eliminar visita?",
@@ -487,7 +539,10 @@ function Visitas() {
   const dias = celdasMes(año, mes);
   const hoyKey = toKey(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   const keyModal = diaModal ? toKey(año, mes, diaModal) : null;
-  const visitasModal = keyModal ? visitas[keyModal] ?? [] : [];
+  const visitasDelDia = keyModal ? visitas[keyModal] ?? [] : [];
+  const visitasModal = visitaFoco
+    ? visitasDelDia.filter((v) => visitaFoco.includes(v._id))
+    : visitasDelDia;
 
   // Conteo de visitas por grupo y CC
   const counts = {};
@@ -1213,9 +1268,13 @@ function Visitas() {
 
                   {/* Pastillas de Visitas */}
                   <div className="d-flex flex-column gap-1 overflow-hidden flex-grow-1 justify-content-center">
-                    {vDia.slice(0, 2).map((v, i) => (
+                    {vDia.slice(0, PASTILLAS_POR_DIA).map((v, i) => (
                       <div
-                        key={i}
+                        key={v._id || i}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abrirDia(dia, [v._id]);
+                        }}
                         className="px-1 py-0.5 rounded text-center fw-semibold text-wrap"
                         style={{
                           backgroundColor: bgGrupo(v.grupo),
@@ -1231,12 +1290,17 @@ function Visitas() {
                         {textoCasillero(v.grupo)}
                       </div>
                     ))}
-                    {vDia.length > 2 && (
+                    {vDia.length > PASTILLAS_POR_DIA && (
                       <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          abrirDia(dia, vDia.slice(PASTILLAS_POR_DIA).map((v) => v._id));
+                        }}
+                        title="Ver las visitas que no entran en el casillero"
                         className="text-muted text-center fw-semibold mt-auto"
                         style={{ fontSize: isMobile ? "0.6rem" : "0.68rem" }}
                       >
-                        +{vDia.length - 2} más
+                        +{vDia.length - PASTILLAS_POR_DIA} más
                       </div>
                     )}
                   </div>
@@ -1314,11 +1378,13 @@ function Visitas() {
           {/* Visitas registradas en el día */}
           {visitasModal.length > 0 && (
             <div className="mb-3">
-              <h6 className="fw-bold text-dark small mb-2">Visitas asignadas:</h6>
+              <h6 className="fw-bold text-dark small mb-2">
+                {visitaFoco ? (visitasModal.length > 1 ? "Visitas:" : "Visita:") : "Visitas asignadas:"}
+              </h6>
               <div className="d-flex flex-column gap-2">
                 {visitasModal.map((v, i) => (
                   <div
-                    key={i}
+                    key={v._id || i}
                     className="p-2.5 rounded-3 d-flex justify-content-between align-items-center border"
                     style={{
                       backgroundColor: bgGrupo(v.grupo),
@@ -1331,11 +1397,37 @@ function Visitas() {
                         <span className="fw-bold" style={{ color: colorGrupo(v.grupo), fontSize: "0.92rem" }}>
                           {v.grupo}
                         </span>
-                        {v.cc && (
-                          <Badge bg="dark" className="fw-normal" style={{ fontSize: "0.72rem" }}>
-                            CC: {v.cc}
-                          </Badge>
-                        )}
+                        {(() => {
+                          const ccs = (v.cc || "").split(",").map((s) => s.trim()).filter(Boolean);
+                          // Con varios tractores cada uno se puede sacar por separado; con uno solo
+                          // se borra la visita con el tacho.
+                          if (ccs.length <= 1) {
+                            return v.cc ? (
+                              <Badge bg="dark" className="fw-normal" style={{ fontSize: "0.72rem" }}>
+                                CC: {v.cc}
+                              </Badge>
+                            ) : null;
+                          }
+                          return ccs.map((c) => (
+                            <Badge
+                              key={c}
+                              bg="dark"
+                              className="fw-normal d-inline-flex align-items-center gap-1"
+                              style={{ fontSize: "0.72rem" }}
+                            >
+                              CC: {c}
+                              <button
+                                type="button"
+                                onClick={() => quitarTractorDeVisita(v, c)}
+                                title={`Sacar el CC ${c} de esta visita`}
+                                className="btn p-0 border-0 text-white lh-1"
+                                style={{ fontSize: "0.8rem", opacity: 0.8 }}
+                              >
+                                <i className="bi bi-x-circle-fill"></i>
+                              </button>
+                            </Badge>
+                          ));
+                        })()}
                       </div>
                       {v.observaciones && (
                         <span className="text-secondary small mt-0.5" style={{ fontSize: "0.8rem" }}>
@@ -1354,7 +1446,7 @@ function Visitas() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => eliminarVisita(keyModal, i)}
+                        onClick={() => eliminarVisita(v)}
                         className="btn btn-sm btn-outline-danger border-0 p-1 text-danger"
                         title="Eliminar visita"
                       >
@@ -1368,6 +1460,19 @@ function Visitas() {
             </div>
           )}
 
+          {/* Abierta desde la pastilla de un grupo: solo esa visita. */}
+          {visitaFoco ? (
+            <button
+              type="button"
+              onClick={() => setVisitaFoco(null)}
+              className="btn btn-sm btn-outline-secondary rounded-3 w-100"
+              style={{ fontSize: "0.84rem" }}
+            >
+              <i className="bi bi-calendar-day me-1"></i>
+              Ver todo el día / agregar otra visita
+            </button>
+          ) : (
+          <>
           {/* Formulario de Nueva Visita */}
           <h6 className="fw-bold text-dark small mb-2">
             {visitasModal.length > 0 ? "Agregar otra visita:" : "Registrar visita:"}
@@ -1486,6 +1591,8 @@ function Visitas() {
               style={{ fontSize: "0.85rem" }}
             />
           </Form.Group>
+          </>
+          )}
         </Modal.Body>
         <Modal.Footer className="bg-light border-0 py-2.5 px-4" style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}>
           <Button
@@ -1497,16 +1604,19 @@ function Visitas() {
           >
             Cerrar
           </Button>
+          {!visitaFoco && (
           <Button
             variant="success"
             size="sm"
             onClick={agregarVisita}
+            disabled={guardando}
             className="rounded-3 px-3.5 py-1.5 shadow-sm d-flex align-items-center gap-1.5"
             style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
           >
             <i className="bi bi-check-lg"></i>
-            <span>Guardar</span>
+            <span>{guardando ? "Guardando..." : "Guardar"}</span>
           </Button>
+          )}
         </Modal.Footer>
       </Modal>
 
