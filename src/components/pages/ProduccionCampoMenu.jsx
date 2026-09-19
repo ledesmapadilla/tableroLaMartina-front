@@ -3,22 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
 
 /**
- * Las variables de Producción (17/09/2026, movidas a la entrada el
- * 18/09/2026).
+ * Elegir el campo dentro de una variable (18/09/2026).
  *
- * Antes Variables era una sola pantalla (los precios) y colgaba de adentro de
- * cada campo. Ahora es la tarjeta chica del medio en la entrada de Producción,
- * porque lo que hay acá vale para todos los campos y para todos los meses:
- * Remuneración (el precio de cada tarea), Lotes (el padrón de cada campo) y
- * Valores admisibles.
+ * Variables dejó de colgar de cada campo y pasó a la entrada de Producción,
+ * así que lo que sí es de un campo —hoy los lotes— pide este paso en el medio.
+ * Los colores son los mismos con los que cada campo se ve en la entrada, para
+ * que se reconozcan de un vistazo.
  */
-const OPCIONES = [
+const CAMPOS = [
   {
-    id: "remuneracion",
-    titulo: "Remuneración",
-    subtitulo: "El precio con el que se paga cada tarea",
-    icono: "bi bi-sliders",
-    destino: "remuneracion",
+    id: "caspinchango",
+    titulo: "Caspinchango",
+    icono: "bi bi-file-earmark-text-fill",
     colores: {
       fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
       fondoHover: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
@@ -28,40 +24,22 @@ const OPCIONES = [
     },
   },
   {
-    id: "lotes",
-    titulo: "Lotes",
-    subtitulo: "Los lotes de cada campo, con sus hectáreas y plantas",
-    icono: "bi bi-map-fill",
-    destino: "lotes",
+    id: "san-pablo",
+    titulo: "San Pablo",
+    icono: "bi bi-tree-fill",
     colores: {
-      fondo: "linear-gradient(135deg, #7c2d12 0%, #b45309 100%)",
-      fondoHover: "linear-gradient(135deg, #431407 0%, #7c2d12 100%)",
-      borde: "#fbbf24",
-      icono: "#fde68a",
-      brillo: "rgba(251,191,36,0.25)",
-    },
-  },
-  {
-    id: "admisibles",
-    titulo: "Valores admisibles",
-    subtitulo: "El consumo admisible con el que se mide el desvío",
-    icono: "bi bi-speedometer2",
-    destino: "admisibles",
-    colores: {
-      fondo: "linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)",
-      fondoHover: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)",
-      borde: "#818cf8",
-      icono: "#c7d2fe",
-      brillo: "rgba(129,140,248,0.25)",
+      fondo: "linear-gradient(135deg, #7f1d1d 0%, #a13d3d 100%)",
+      fondoHover: "linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)",
+      borde: "#ef4444",
+      icono: "#fca5a5",
+      brillo: "rgba(239,68,68,0.25)",
     },
   },
 ];
 
-function ProduccionVariablesMenu({ base = "/produccion" }) {
+function ProduccionCampoMenu({ titulo, subtitulo = "", base }) {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
-
-  const ir = (destino) => navigate(`${base}/variables/${destino}`);
 
   return (
     <div
@@ -82,49 +60,52 @@ function ProduccionVariablesMenu({ base = "/produccion" }) {
         {/* Encabezado. El volver está en el navbar de Producción, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-4">
           <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
-            Variables
+            {titulo}
           </span>
-          <span className="text-muted" style={{ fontSize: "0.78rem" }}>
-            Rigen para todos los meses
-          </span>
+          {subtitulo && (
+            <span className="text-muted" style={{ fontSize: "0.78rem" }}>
+              {subtitulo}
+            </span>
+          )}
         </div>
 
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(${OPCIONES.length}, 1fr)`,
+              gridTemplateColumns: `repeat(${CAMPOS.length}, 1fr)`,
               gap: "1.75rem",
               width: "100%",
-              maxWidth: OPCIONES.length > 2 ? "900px" : "640px",
+              maxWidth: "640px",
               margin: "0 auto",
             }}
           >
-            {OPCIONES.map((o) => {
-              const isHovered = hovered === o.id;
+            {CAMPOS.map((c) => {
+              const isHovered = hovered === c.id;
+              const ir = () => navigate(`${base}/${c.id}`);
               return (
                 <div
-                  key={o.id}
+                  key={c.id}
                   className="d-flex flex-column align-items-center justify-content-center text-center p-4"
                   style={{
-                    background: isHovered ? o.colores.fondoHover : o.colores.fondo,
+                    background: isHovered ? c.colores.fondoHover : c.colores.fondo,
                     borderRadius: "20px",
                     height: "230px",
                     color: "#fff",
                     cursor: "pointer",
-                    border: `1px solid ${isHovered ? o.colores.borde : "rgba(255,255,255,0.12)"}`,
+                    border: `1px solid ${isHovered ? c.colores.borde : "rgba(255,255,255,0.12)"}`,
                     boxShadow: isHovered
-                      ? `0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px ${o.colores.brillo}`
+                      ? `0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px ${c.colores.brillo}`
                       : "0 8px 18px -6px rgba(0,0,0,0.25)",
                     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
                     transform: isHovered ? "translateY(-4px)" : "translateY(0)",
                     userSelect: "none",
                   }}
-                  onClick={() => ir(o.destino)}
+                  onClick={ir}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && ir(o.destino)}
-                  onMouseEnter={() => setHovered(o.id)}
+                  onKeyDown={(e) => e.key === "Enter" && ir()}
+                  onMouseEnter={() => setHovered(c.id)}
                   onMouseLeave={() => setHovered(null)}
                 >
                   <div
@@ -137,18 +118,11 @@ function ProduccionVariablesMenu({ base = "/produccion" }) {
                       border: "1px solid rgba(255,255,255,0.16)",
                     }}
                   >
-                    <i className={o.icono} style={{ fontSize: "2.1rem", color: o.colores.icono }}></i>
+                    <i className={c.icono} style={{ fontSize: "2.1rem", color: c.colores.icono }}></i>
                   </div>
 
                   <span className="fw-bold" style={{ fontSize: "1.25rem", letterSpacing: "0.2px" }}>
-                    {o.titulo}
-                  </span>
-
-                  <span
-                    className="mt-2 px-2"
-                    style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.72)" }}
-                  >
-                    {o.subtitulo}
+                    {c.titulo}
                   </span>
                 </div>
               );
@@ -160,4 +134,4 @@ function ProduccionVariablesMenu({ base = "/produccion" }) {
   );
 }
 
-export default ProduccionVariablesMenu;
+export default ProduccionCampoMenu;

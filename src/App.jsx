@@ -48,6 +48,7 @@ import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMe
 import ProduccionVariables from "./components/pages/ProduccionVariables";
 import ProduccionVariablesMenu from "./components/pages/ProduccionVariablesMenu";
 import ProduccionLotes from "./components/pages/ProduccionLotes";
+import ProduccionCampoMenu from "./components/pages/ProduccionCampoMenu";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
 import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
@@ -242,6 +243,35 @@ function LayoutDesktop() {
                   cuelga de uno de ellos. */}
               <Route path="/produccion" element={<ProduccionEstablecimientos />} />
 
+              {/* Variables es de todo Producción, no de un campo (18/09/2026):
+                  es la tarjeta chica del medio en la entrada. Remuneración
+                  entra directo; Lotes pide antes de qué campo son. */}
+              <Route path="/produccion/variables" element={<ProduccionVariablesMenu />} />
+              <Route
+                path="/produccion/variables/remuneracion"
+                element={<ProduccionVariables />}
+              />
+              <Route
+                path="/produccion/variables/lotes"
+                element={
+                  <ProduccionCampoMenu
+                    titulo="Lotes"
+                    subtitulo="De qué campo son los lotes"
+                    base="/produccion/variables/lotes"
+                  />
+                }
+              />
+              <Route
+                path="/produccion/variables/lotes/caspinchango"
+                element={<ProduccionLotes establecimiento="caspinchango" />}
+              />
+              <Route
+                path="/produccion/variables/lotes/san-pablo"
+                element={<ProduccionLotes establecimiento="san-pablo" />}
+              />
+              {/* Todavía no está hecha. */}
+              <Route path="/produccion/variables/admisibles" element={<Error404 />} />
+
               {/* San Pablo tiene su propia certificación: grilla de meses,
                   Variables y la carga de datos, con sus propios períodos. Los
                   informes todavía no están construidos (17/09/2026). */}
@@ -250,18 +280,6 @@ function LayoutDesktop() {
                 element={
                   <ProduccionCertificados establecimiento="san-pablo" base="/produccion/san-pablo" />
                 }
-              />
-              <Route
-                path="/produccion/san-pablo/variables"
-                element={<ProduccionVariablesMenu base="/produccion/san-pablo" />}
-              />
-              <Route
-                path="/produccion/san-pablo/variables/remuneracion"
-                element={<ProduccionVariables establecimiento="san-pablo" />}
-              />
-              <Route
-                path="/produccion/san-pablo/variables/lotes"
-                element={<ProduccionLotes establecimiento="san-pablo" />}
               />
               <Route
                 path="/produccion/san-pablo/:anio/:mes"
@@ -304,7 +322,6 @@ function LayoutDesktop() {
                 element={<ProduccionInformeTareasPersonal />}
               />
               {/* Variables es una sola para todos los meses: no lleva año ni mes */}
-              <Route path="/produccion/certificados/variables" element={<ProduccionVariables />} />
               <Route path="/produccion/altas" element={<Error404 />} />
               {/* Quién ve cada alta sale de la tabla de Roles: lo controla
                   reglaDeRuta, arriba, y el botón Altas usa lo mismo. */}

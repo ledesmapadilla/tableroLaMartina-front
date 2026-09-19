@@ -85,7 +85,7 @@ const RETENCION = 0.205;
  * Los dos salen de la misma carga de Variables: el que se escribe es el neto y
  * el backend guarda el bruto ya calculado con la retención.
  *
- * Los precios se cargan en **Variables** (`/produccion/certificados/variables`)
+ * Los precios se cargan en **Variables** (`/produccion/variables/remuneracion`)
  * y son una fila por cada vez que el valor cambió: el que corresponde a un
  * parte es el de la vigencia más nueva que no sea posterior a su fecha. Si el
  * parte cae antes de la primera vigencia cargada, no hay precio: eso es una
@@ -273,7 +273,9 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
           fetch(`/api/periodos/${anio}/${mes}?${qEstab}`),
           // Los precios se traen enteros, no por período: la vigencia que rige
           // un parte puede ser de meses anteriores.
-          fetch(`/api/variables?${qEstab}`),
+          // El precio de una tarea es uno solo para todo Producción: no se
+          // pide por campo (18/09/2026).
+          fetch("/api/variables"),
           fetch(`/api/descuentos/${anio}/${mes}?${qEstab}`),
           fetch(`/api/cambios/${anio}/${mes}?${qEstab}`),
         ]);

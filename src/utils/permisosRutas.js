@@ -28,7 +28,8 @@ const REGLAS = [
   [/^\/produccion\/altas\/cc/, "altas.centrosCosto"],
   [/^\/produccion\/altas\/personal/, "altas.personal"],
   [/^\/produccion\/altas\/tareas/, "altas.tareas"],
-  [/^\/produccion\/(certificados|san-pablo)\/variables/, "produccion.variables"],
+  // Variables dejó de colgar de cada campo y pasó a la entrada (18/09/2026).
+  [/^\/produccion\/variables/, "produccion.variables"],
   [/^\/produccion\/certificados\/\d+\/\d+\/planilla/, "produccion.certificacion"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/mes/, "produccion.informeMes"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/tareas-personal/, "produccion.contable"],

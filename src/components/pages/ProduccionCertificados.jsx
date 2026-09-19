@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
-import SoloSiPuede from "../shared/SoloSiPuede";
 
 // El primer año con certificados. No se puede retroceder más allá.
 const ANIO_INICIAL = 2026;
@@ -42,7 +41,6 @@ function ProduccionCertificados({
   const hoy = new Date();
   const [anio, setAnio] = useState(ANIO_INICIAL);
   const [hovered, setHovered] = useState(null);
-  const [hoverVariables, setHoverVariables] = useState(false);
   const [periodos, setPeriodos] = useState([]);
 
   const esAnioEnCurso = anio === hoy.getFullYear();
@@ -148,61 +146,6 @@ function ProduccionCertificados({
             </button>
           </div>
         </div>
-
-        {/* Variables: no depende del mes ni del año, son las mismas para todos
-            los períodos. Por eso va arriba de la grilla y con otro color.
-            Solo si el rol ve Variables (tabla de Roles). */}
-        <SoloSiPuede permiso="produccion.variables">
-        <div
-          className="d-flex align-items-center justify-content-center gap-3 px-4 py-2 mb-3"
-          style={{
-            width: "50%",
-            marginLeft: "auto",
-            marginRight: "auto",
-            background: hoverVariables
-              ? "linear-gradient(135deg, #0f172a 0%, #334155 100%)"
-              : "linear-gradient(135deg, #334155 0%, #475569 100%)",
-            borderRadius: "16px",
-            color: "#fff",
-            cursor: "pointer",
-            border: `1px solid ${hoverVariables ? "#94a3b8" : "rgba(255,255,255,0.12)"}`,
-            boxShadow: hoverVariables
-              ? "0 14px 24px -8px rgba(0,0,0,0.4)"
-              : "0 6px 14px -6px rgba(0,0,0,0.25)",
-            transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-            transform: hoverVariables ? "translateY(-3px)" : "translateY(0)",
-            userSelect: "none",
-          }}
-          onClick={() => navigate(`${base}/variables`)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === "Enter" && navigate(`${base}/variables`)}
-          onMouseEnter={() => setHoverVariables(true)}
-          onMouseLeave={() => setHoverVariables(false)}
-        >
-          <div
-            className="d-flex align-items-center justify-content-center flex-shrink-0"
-            style={{
-              width: "46px",
-              height: "46px",
-              borderRadius: "14px",
-              backgroundColor: "rgba(255,255,255,0.1)",
-              border: "1px solid rgba(255,255,255,0.16)",
-            }}
-          >
-            <i className="bi bi-sliders" style={{ fontSize: "1.4rem", color: "#cbd5e1" }}></i>
-          </div>
-
-          <div className="d-flex flex-column text-center">
-            <span className="fw-bold" style={{ fontSize: "1.05rem", letterSpacing: "0.2px" }}>
-              Variables
-            </span>
-            <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.72)" }}>
-              Valores de la certificación, comunes a todos los meses
-            </span>
-          </div>
-        </div>
-        </SoloSiPuede>
 
         {/* Tarjetas de los meses. Arrancan arriba: el sobrante de alto queda
             abajo y separa la última fila del footer. */}

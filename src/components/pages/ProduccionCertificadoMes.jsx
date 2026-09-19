@@ -67,19 +67,82 @@ const formatFecha = (iso) => {
 };
 
 // Mismo cálculo que hace el backend, para mostrar el total mientras se carga.
-const calcularHoras = (ingreso, egreso) => {
-  const aMin = (h) => {
-    const m = /^(\d{1,2}):(\d{2})$/.exec((h || "").trim());
-    if (!m) return null;
-    const hs = Number(m[1]);
-    const min = Number(m[2]);
-    return hs > 23 || min > 59 ? null : hs * 60 + min;
-  };
-  const i = aMin(ingreso);
-  const e = aMin(egreso);
+// "HH:mm" -> minutos desde la medianoche. Devuelve null si no es una hora.
+const aMinutos = (h) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec((h || "").trim());
+  if (!m) return null;
+  const hs = Number(m[1]);
+  const min = Number(m[2]);
+  return hs > 23 || min > 59 ? null : hs * 60 + min;
+};
+
+// Los minutos de un tramo. Si el egreso es anterior al ingreso el turno cruzó
+// la medianoche (22:00 → 06:00 son 8 horas, no -16).
+const minutosDelTramo = (ingreso, egreso) => {
+  const i = aMinutos(ingreso);
+  const e = aMinutos(egreso);
   if (i === null || e === null) return 0;
-  const minutos = e >= i ? e - i : 1440 - i + e;
-  return Math.round((minutos / 60) * 100) / 100;
+  return e >= i ? e - i : 1440 - i + e;
+};
+
+const calcularHoras = (ingreso, egreso) =>
+  Math.round((minutosDelTramo(ingreso, egreso) / 60) * 100) / 100;
+
+/**
+ * Los dos tramos del día no se pueden pisar: el segundo arranca cuando terminó
+ * el primero. Es la misma cuenta que hace el backend (`tramosSeSolapan` en
+ * partes.controller.js): todo se mide desde la Entrada 1, así también vale
+ * para un turno que cruzó la medianoche.
+ *
+ * Con la Salida 1 sin cargar no hay nada que controlar: ese tramo todavía no
+ * dura nada.
+ */
+const AVISO_SOLAPE = "El segundo tramo se pisa con el primero: la Entrada 2 tiene que ser posterior a la Salida 1";
+
+// Dos nombres de lote son el mismo si coinciden sus letras y números: "L 12",
+// "l12" y "L-12" son el mismo lote. Es la misma regla del padrón y del backend.
+const comparable = (valor) =>
+  (valor || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+/**
+ * El cierre de un lote que ya se dio por terminado con esa misma tarea, si lo
+ * que se está cargando es posterior. Terminado un lote no se vuelve a trabajar
+ * en él: al día siguiente es casi siempre un error de carga. Se avisa en vez
+ * de no dejar guardar porque una segunda pasada más adelante en el año sí es
+ * válida, y es un grupo nuevo a la hora de pagar.
+ */
+const cierreDelLote = ({ lote, tarea, fecha }, cierres) => {
+  const buscado = comparable(lote);
+  if (!buscado || !tarea || !fecha) return null;
+  const cierre = cierres.find(
+    (c) => comparable(c.lote) === buscado && String(c.tarea) === String(tarea)
+  );
+  return cierre && fecha.slice(0, 10) > cierre.fecha ? cierre : null;
+};
+
+const tramosSeSolapan = ({ horaIngreso, horaEgreso, horaIngreso2, horaEgreso2 }) => {
+  const inicio1 = aMinutos(horaIngreso);
+  const inicio2 = aMinutos(horaIngreso2);
+  if (inicio1 === null || inicio2 === null) return false;
+
+  // Tampoco puede arrancar antes que el primero: eso es la jornada cargada al
+  // revés. La única vez que vale es cuando el primero cruzó la medianoche,
+  // porque ahí las 03:00 del segundo son más tarde que las 22:00 del primero.
+  const fin1 = aMinutos(horaEgreso);
+  const cruzaMedianoche = fin1 !== null && fin1 < inicio1;
+  if (!cruzaMedianoche && inicio2 < inicio1) return true;
+
+  // Cuánto después de la Entrada 1 arranca el segundo tramo.
+  const despues = (inicio2 - inicio1 + 1440) % 1440;
+  if (despues < minutosDelTramo(horaIngreso, horaEgreso)) return true;
+
+  // Y no puede dar la vuelta al reloj y pisar al primero por el otro lado.
+  return despues + minutosDelTramo(horaIngreso2, horaEgreso2) > 1440;
 };
 
 const calcularHorasCC = (ingreso, salida) => {
@@ -157,31 +220,63 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
  * El círculo de estado del trabajo: verde con la tilde si está terminado, rojo
  * con la cruz si sigue en proceso. Es el mismo de Reparaciones San Pablo.
  */
-function CirculoEstado({ terminado, onClick, deshabilitado = false, tamano = 20, inactivo = false }) {
+function CirculoEstado({
+  terminado,
+  onClick,
+  deshabilitado = false,
+  tamano = 20,
+  inactivo = false,
+  // En la tabla el círculo solo muestra cómo está: el estado se cambia
+  // editando el parte (18/09/2026). Va como span y no como botón apagado para
+  // que se lea igual de bien que el resto de la fila.
+  soloLectura = false,
+}) {
   const color = inactivo ? "#cbd5e1" : terminado ? "#15803d" : "#dc2626";
+  const estado = inactivo
+    ? "Esta tarea no lleva estado"
+    : terminado
+      ? "Terminado"
+      : "En proceso";
+  const estilo = {
+    width: `${tamano}px`,
+    height: `${tamano}px`,
+    borderRadius: "50%",
+    border: `2px solid ${color}`,
+    backgroundColor: color,
+    color: "#fff",
+    cursor: deshabilitado || inactivo || soloLectura ? "default" : "pointer",
+    opacity: deshabilitado && !inactivo ? 0.6 : 1,
+    flexShrink: 0,
+  };
+  const tilde = (
+    <i
+      className={`bi ${terminado ? "bi-check-lg" : "bi-x-lg"}`}
+      style={{ fontSize: `${tamano * (terminado ? 0.65 : 0.5)}px`, lineHeight: 1 }}
+    ></i>
+  );
+
+  if (soloLectura) {
+    return (
+      <span
+        title={inactivo ? estado : `${estado} — se cambia editando el parte`}
+        className="d-inline-flex align-items-center justify-content-center p-0"
+        style={estilo}
+      >
+        {tilde}
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={deshabilitado}
-      title={inactivo ? "Esta tarea no lleva estado" : terminado ? "Terminado" : "En proceso"}
+      title={estado}
       className="d-inline-flex align-items-center justify-content-center p-0"
-      style={{
-        width: `${tamano}px`,
-        height: `${tamano}px`,
-        borderRadius: "50%",
-        border: `2px solid ${color}`,
-        backgroundColor: color,
-        color: "#fff",
-        cursor: deshabilitado || inactivo ? "default" : "pointer",
-        opacity: deshabilitado && !inactivo ? 0.6 : 1,
-        flexShrink: 0,
-      }}
+      style={estilo}
     >
-      <i
-        className={`bi ${terminado ? "bi-check-lg" : "bi-x-lg"}`}
-        style={{ fontSize: `${tamano * (terminado ? 0.65 : 0.5)}px`, lineHeight: 1 }}
-      ></i>
+      {tilde}
     </button>
   );
 }
@@ -212,6 +307,9 @@ function ProduccionCertificadoMes({
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
   const [lotes, setLotes] = useState([]);
+  // Los lotes que ya se dieron por terminados, con la tarea y la fecha del
+  // cierre: `[{ lote, tarea, fecha }]`.
+  const [cierresDeLotes, setCierresDeLotes] = useState([]);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroFecha, setFiltroFecha] = useState("");
@@ -300,19 +398,36 @@ function ProduccionCertificadoMes({
         return [];
       }
     };
-    // Los tres padrones son independientes: pedirlos en fila era esperar tres
+    // Los padrones son independientes: pedirlos en fila era esperar varias
     // veces la misma ida y vuelta al servidor.
-    const [personas, centrosCosto, listaTareas, padronLotes] = await Promise.all([
+    const [personas, centrosCosto, listaTareas, padronLotes, cierres] = await Promise.all([
       pedir("/api/personal"),
       pedir("/api/centros-costo"),
       pedir("/api/tareas"),
       // Los lotes son del campo y solo los usa la planilla que los tiene.
       conPadronDeLotes ? pedir(`/api/lotes?${qEstab}`) : Promise.resolve([]),
+      // Los lotes que ya se terminaron, para avisar si se carga trabajo
+      // después del cierre. Vienen todos de una vez: son pocos y así no hay
+      // que preguntar en cada parte que se guarda.
+      conEstado ? pedir(`/api/partes/cierres-de-lotes?${qEstab}`) : Promise.resolve([]),
     ]);
     setPersonal(personas);
     setCentros(centrosCosto);
     setTareas(listaTareas);
     setLotes(padronLotes);
+    setCierresDeLotes(cierres);
+  };
+
+  // Solo el listado de cierres, para después de marcar o desmarcar un lote.
+  const cargarCierres = async () => {
+    if (!conEstado) return;
+    try {
+      const res = await fetch(`/api/partes/cierres-de-lotes?${qEstab}`);
+      const data = res.ok ? await res.json() : [];
+      setCierresDeLotes(Array.isArray(data) ? data : []);
+    } catch {
+      // Sin el listado no se avisa nada, pero la planilla sigue andando.
+    }
   };
   useEffect(() => {
     (async () => {
@@ -559,25 +674,36 @@ function ProduccionCertificadoMes({
     };
   };
 
-  // Marcar o desmarcar "terminado" desde la tabla. Se pinta enseguida y se
-  // revierte si el guardado falla.
-  const alternarTerminado = async (parte) => {
-    if (cerrado) return;
-    const valor = !parte.terminado;
-    const poner = (v) =>
-      setPartes((lista) => lista.map((x) => (x._id === parte._id ? { ...x, terminado: v } : x)));
-    poner(valor);
-    try {
-      const res = await fetch(`/api/partes/${parte._id}/terminado`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ terminado: valor }),
-      });
-      if (!res.ok) throw new Error("No se pudo guardar");
-    } catch {
-      poner(!valor);
-      avisar({ icon: "error", title: "Error", text: "No se pudo guardar el estado" });
+  // El cartel que explica qué hizo el reparto al guardar el parte. Solo
+  // aparece cuando hubo algo que repartir o que deshacer: en las tareas que se
+  // cargan a mano no molesta.
+  const contarElReparto = (reparto) => {
+    if (!reparto) return;
+    if (reparto.aviso) {
+      return avisar({ icon: "warning", title: "Sin repartir", text: reparto.aviso });
     }
+    if (reparto.estado === "limpiado") {
+      return avisar({
+        icon: "info",
+        title: "El lote volvió a estar en proceso",
+        text: "Se borraron las cantidades que había repartido el cierre.",
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    }
+    if (reparto.estado !== "repartido") return;
+    const [anio, mes] = String(reparto.mes || "").split("-");
+    const enMes = anio ? ` Se paga en ${MESES[Number(mes) - 1]} de ${anio}.` : "";
+    avisar({
+      icon: "success",
+      title: `Lote ${reparto.lote} terminado`,
+      text:
+        `Se repartieron ${reparto.medida} ${(reparto.unidad || "").toLowerCase()} entre ` +
+        `${reparto.jornadas} ${reparto.jornadas === 1 ? "jornada" : "jornadas"}, ` +
+        `según las horas de cada una.${enMes}`,
+      timer: 4000,
+      timerProgressBar: true,
+    });
   };
 
   // ── alta / edición de partes ──────────────────────────────────────
@@ -615,6 +741,57 @@ function ProduccionCertificadoMes({
         text: `Falta ${falta.join(", ")}`,
       });
       return;
+    }
+
+    // Los dos tramos del día no se pueden pisar.
+    if (dosTurnos && tramosSeSolapan(form)) {
+      avisar({
+        icon: "error",
+        title: "Horarios que se pisan",
+        html: `
+          <div style="text-align:left;font-size:0.84rem;line-height:1.5">
+            El segundo tramo no puede arrancar antes de que termine el primero.
+            <div style="color:#64748b;margin-top:.4rem">
+              La <b>Entrada 2</b> tiene que ser posterior a la <b>Salida 1</b>.
+            </div>
+          </div>`,
+      });
+      return;
+    }
+
+    // Un lote terminado no se vuelve a trabajar. Se controla al cargarlo y al
+    // cambiarle la fecha a uno que ya estaba; una segunda pasada más adelante
+    // es válida, así que se avisa y se puede guardar igual.
+    const fechaAnterior = editando
+      ? soloFecha(partes.find((p) => p._id === editando)?.fecha)
+      : null;
+    if (!editando || fechaAnterior !== soloFecha(form.fecha)) {
+      const cierre = cierreDelLote(form, cierresDeLotes);
+      if (cierre) {
+        const nombreTarea = tareas.find((t) => t._id === form.tarea)?.tarea || "esa tarea";
+        const res = await avisar({
+          icon: "warning",
+          title: "El lote ya estaba terminado",
+          width: "400px",
+          html: `
+            <div style="text-align:left;font-size:0.84rem;line-height:1.5">
+              <div>El lote <b>${cierre.lote}</b> se dio por terminado el
+                <b>${formatFecha(cierre.fecha)}</b> con <b>${nombreTarea}</b>.</div>
+              <div style="margin-top:.4rem">Este parte es del
+                <b>${formatFecha(soloFecha(form.fecha))}</b>, después del cierre.</div>
+              <hr style="margin:.55rem 0">
+              <div style="color:#64748b">Si es una <b>segunda pasada</b> está bien y se paga
+                aparte. Si no, revise el lote, la tarea o la fecha.</div>
+            </div>`,
+          showCancelButton: true,
+          confirmButtonText: "Guardar igual",
+          cancelButtonText: "Corregir",
+          confirmButtonColor: "#b45309",
+          cancelButtonColor: "#15803d",
+          reverseButtons: true,
+        });
+        if (!res.isConfirmed) return;
+      }
     }
 
     // El CC se escribe a mano: si no coincide con ninguno del padrón, no entra.
@@ -655,16 +832,36 @@ function ProduccionCertificadoMes({
       if (ok) {
         const eraEdicion = Boolean(editando);
         const guardado = await res.json().catch(() => null);
-        // Si por lo que sea no vino el parte, se recarga el período completo.
-        if (guardado?._id) ubicarParte(guardado, periodo);
-        else await cargarPartes(periodo);
+        // Lo normal es acomodar la fila que se guardó y no volver a pedir todo
+        // el período: esa recarga es casi un segundo de espera. Solo se
+        // recarga cuando el backend avisa que rehizo o deshizo el reparto de un
+        // lote, porque ahí cambiaron también otras filas. Si por lo que sea no
+        // vino el parte, también.
+        const tocoElReparto = ["repartido", "limpiado"].includes(guardado?.reparto?.estado);
+        if (guardado?._id && !tocoElReparto) {
+          ubicarParte(guardado, periodo);
+        } else {
+          await cargarPartes(periodo);
+        }
+        // Un parte que se guarda terminado (o que deja de estarlo) cambia el
+        // listado de cierres. No se espera: no tiene que frenar la carga.
+        const cambioElEstado = guardado?.terminado || form.terminado;
+        if (cambioElEstado) cargarCierres();
         limpiarForm();
-        avisar({
-          icon: "success",
-          title: eraEdicion ? "Parte actualizado" : "Parte guardado",
-          timer: 1500,
-          showConfirmButton: false,
-        });
+
+        // Si el estado del lote movió el pago, eso es lo que hay que contar;
+        // el "guardado" de siempre sobra.
+        const reparto = guardado?.reparto;
+        if (reparto?.aviso || reparto?.estado === "repartido" || reparto?.estado === "limpiado") {
+          contarElReparto(reparto);
+        } else {
+          avisar({
+            icon: "success",
+            title: eraEdicion ? "Parte actualizado" : "Parte guardado",
+            timer: 1500,
+            showConfirmButton: false,
+          });
+        }
       } else {
         // El cuerpo del error ya lo leyó guardarConReglaHorometro.
         avisar({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar" });
@@ -733,6 +930,12 @@ function ProduccionCertificadoMes({
         return;
       }
       setPartes((actuales) => actuales.filter((x) => x._id !== p._id));
+      // Sacar una jornada de un lote terminado cambia el reparto de las demás:
+      // solo en ese caso hay que volver a pedir el mes.
+      const { reparto } = await res.json().catch(() => ({}));
+      if (reparto?.estado === "repartido") await cargarPartes(periodo);
+      // Si el que se borró era el que cerraba el lote, el listado cambió.
+      if (p.terminado) cargarCierres();
       avisar({
         icon: "success",
         title: "Parte eliminado",
@@ -1124,6 +1327,10 @@ function ProduccionCertificadoMes({
   };
 
   const estiloCelda = { fontSize: "0.78rem", height: "30px", padding: "2px 6px" };
+  // Los dos tramos del día pisándose: los campos del segundo van en rojo hasta
+  // que se arregle, y guardar avisa lo mismo.
+  const estiloCeldaPisada = { ...estiloCelda, borderColor: "#dc2626", color: "#dc2626" };
+  const seSolapan = dosTurnos && tramosSeSolapan(form);
 
   const botonExcel = (
     <Button
@@ -1285,17 +1492,36 @@ function ProduccionCertificadoMes({
                 <Form.Control type="time" value={form.horaEgreso} onChange={(e) => cambiar("horaEgreso", e.target.value)} style={estiloCelda} />
               </div>
 
-              {/* El día se corta al mediodía y se retoma a la tarde. */}
+              {/* El día se corta al mediodía y se retoma a la tarde. Los dos
+                  tramos no se pueden pisar: mientras se pisen, los campos van
+                  en rojo y el parte no se guarda. */}
               {dosTurnos && (
                 <>
                   <div style={{ width: "78px" }}>
-                    <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Entrada 2</label>
-                    <Form.Control type="time" value={form.horaIngreso2} onChange={(e) => cambiar("horaIngreso2", e.target.value)} style={estiloCelda} />
+                    <label
+                      className={seSolapan ? "text-danger d-block fw-semibold" : "text-muted d-block"}
+                      style={{ fontSize: "0.7rem" }}
+                    >
+                      Entrada 2
+                    </label>
+                    <Form.Control
+                      type="time"
+                      value={form.horaIngreso2}
+                      onChange={(e) => cambiar("horaIngreso2", e.target.value)}
+                      style={seSolapan ? estiloCeldaPisada : estiloCelda}
+                      title={seSolapan ? AVISO_SOLAPE : undefined}
+                    />
                   </div>
 
                   <div style={{ width: "78px" }}>
                     <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Salida 2</label>
-                    <Form.Control type="time" value={form.horaEgreso2} onChange={(e) => cambiar("horaEgreso2", e.target.value)} style={estiloCelda} />
+                    <Form.Control
+                      type="time"
+                      value={form.horaEgreso2}
+                      onChange={(e) => cambiar("horaEgreso2", e.target.value)}
+                      style={seSolapan ? estiloCeldaPisada : estiloCelda}
+                      title={seSolapan ? AVISO_SOLAPE : undefined}
+                    />
                   </div>
                 </>
               )}
@@ -1780,15 +2006,12 @@ function ProduccionCertificadoMes({
                         "—"
                       )}
                     </td>
+                    {/* Solo muestra cómo está: para cambiarlo hay que editar
+                        el parte. */}
                     {conEstado && (
                       <td style={{ padding: "3px 5px" }}>
                         {llevaEstado(p.tarea?.tarea) ? (
-                          <CirculoEstado
-                            terminado={p.terminado}
-                            onClick={() => alternarTerminado(p)}
-                            deshabilitado={cerrado}
-                            tamano={18}
-                          />
+                          <CirculoEstado terminado={p.terminado} tamano={18} soloLectura />
                         ) : (
                           <span className="text-secondary">—</span>
                         )}
@@ -1796,7 +2019,12 @@ function ProduccionCertificadoMes({
                     )}
                     <td className="text-start ps-2 text-secondary">{p.observacion || "—"}</td>
                     <td className="text-start ps-2">{p.tarea?.tarea || "—"}</td>
-                    <td className="fw-semibold">{p.cantidad ?? "—"}</td>
+                    {/* La cantidad de un lote terminado la escribió el reparto, no
+                        una persona: se marca para que se entienda de dónde salió. */}
+                    <td className="fw-semibold" style={p.repartido ? { color: "#15803d" } : undefined}
+                        title={p.repartido ? "Repartida al terminar el lote, según las horas de la jornada" : undefined}>
+                      {p.cantidad ?? "—"}
+                    </td>
                     <td className="text-secondary">{p.tarea?.unidad || "—"}</td>
                     <td>
                       <div className="d-flex justify-content-center gap-1">

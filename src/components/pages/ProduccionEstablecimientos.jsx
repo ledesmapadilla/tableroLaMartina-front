@@ -7,6 +7,10 @@ import { Container } from "react-bootstrap";
 // y su ruta en App.jsx.
 //
 // Cada uno lleva su color, para distinguirlos de un vistazo.
+//
+// En el medio va la tarjeta chica de Variables (18/09/2026), con el estilo de
+// la de Repuestos en Tractores: no es un campo, es lo que vale para todos
+// (precios, lotes, valores admisibles).
 const ESTABLECIMIENTOS = [
   {
     id: "caspinchango",
@@ -20,6 +24,20 @@ const ESTABLECIMIENTOS = [
       borde: "#10b981",
       icono: "#6ee7b7",
       brillo: "rgba(16,185,129,0.25)",
+    },
+  },
+  {
+    id: "variables",
+    titulo: "Variables",
+    icono: "bi bi-sliders",
+    destino: "/produccion/variables",
+    chica: true,
+    colores: {
+      fondo: "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
+      fondoHover: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
+      borde: "#67e8f9",
+      icono: "#67e8f9",
+      brillo: "rgba(6,182,212,0.4)",
     },
   },
   {
@@ -68,17 +86,63 @@ function ProduccionEstablecimientos() {
         {/* Tarjetas de los campos */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div
+            className="d-flex justify-content-center align-items-center"
             style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${ESTABLECIMIENTOS.length}, 1fr)`,
               gap: "1.75rem",
               width: "100%",
-              maxWidth: "640px",
+              maxWidth: "740px",
               margin: "0 auto",
             }}
           >
             {ESTABLECIMIENTOS.map((e) => {
               const isHovered = hovered === e.id;
+
+              // La chica del medio: solo el ícono y el título.
+              if (e.chica) {
+                return (
+                  <div
+                    key={e.id}
+                    className="d-flex flex-column align-items-center justify-content-center text-center p-2 flex-shrink-0"
+                    style={{
+                      background: isHovered ? e.colores.fondoHover : e.colores.fondo,
+                      borderRadius: "18px",
+                      width: "104px",
+                      height: "70px",
+                      color: "#fff",
+                      cursor: "pointer",
+                      border: "2px solid rgba(255,255,255,0.3)",
+                      boxShadow: isHovered
+                        ? `0 16px 32px rgba(0,0,0,0.5), 0 0 20px ${e.colores.brillo}`
+                        : "0 8px 24px rgba(0,0,0,0.35)",
+                      transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
+                      transform: isHovered ? "scale(1.08)" : "scale(1)",
+                      userSelect: "none",
+                    }}
+                    onClick={() => navigate(e.destino)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(t) => t.key === "Enter" && navigate(e.destino)}
+                    onMouseEnter={() => setHovered(e.id)}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    <div
+                      className="d-flex align-items-center justify-content-center mb-1"
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "8px",
+                        backgroundColor: "rgba(255,255,255,0.15)",
+                      }}
+                    >
+                      <i className={e.icono} style={{ fontSize: "1.1rem", color: e.colores.icono }}></i>
+                    </div>
+                    <span className="fw-bold text-center mb-0" style={{ fontSize: "0.9rem" }}>
+                      {e.titulo}
+                    </span>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={e.id}
@@ -86,6 +150,8 @@ function ProduccionEstablecimientos() {
                   style={{
                     background: isHovered ? e.colores.fondoHover : e.colores.fondo,
                     borderRadius: "20px",
+                    flex: 1,
+                    maxWidth: "300px",
                     height: "230px",
                     color: "#fff",
                     cursor: "pointer",

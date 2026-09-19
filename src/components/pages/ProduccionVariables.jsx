@@ -58,15 +58,16 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
  * Cada carga de precio es una fila propia: la última vigencia es la que rige y
  * las anteriores quedan en el **historial** de esa tarea.
  *
- * No depende del mes: por eso cuelga de `/produccion/certificados/variables` y
- * no de un año y mes.
+ * No depende del mes ni del campo: por eso cuelga de
+ * `/produccion/variables/remuneracion`, en la tarjeta Variables de la entrada
+ * de Producción.
  *
- * Es la misma pantalla para los dos establecimientos: los precios son por
- * campo, así que cambia con cuál se piden y se guardan.
+ * El precio de una tarea es **uno solo para todo Producción** (18/09/2026):
+ * antes había un listado por campo, pero eran el mismo salvo una tarea, así
+ * que se unificaron. El historial de los dos quedó en una sola línea de
+ * tiempo y rige, como siempre, la vigencia más nueva.
  */
-function ProduccionVariables({ establecimiento = "caspinchango" }) {
-  // Todas las llamadas de precios van con el establecimiento.
-  const query = `?establecimiento=${establecimiento}`;
+function ProduccionVariables() {
   const [tareas, setTareas] = useState([]);
   const [precios, setPrecios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -98,7 +99,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       const [resTareas, resPrecios] = await Promise.all([
         // Las tareas son de La Martina y se comparten entre los dos campos.
         fetch(API_TAREAS),
-        fetch(API_VARIABLES + query),
+        fetch(API_VARIABLES),
       ]);
       const datosTareas = resTareas.ok ? await resTareas.json() : [];
       const datosPrecios = resPrecios.ok ? await resPrecios.json() : [];
@@ -246,7 +247,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       const res = await fetch(editando ? `${API_VARIABLES}/${editando}` : API_VARIABLES, {
         method: editando ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, establecimiento }),
+        body: JSON.stringify(data),
       });
       if (res.ok) {
         cerrarModal();
