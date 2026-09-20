@@ -440,6 +440,7 @@ export default function OrdenPago() {
                     <th style={thCentro}>Proveedor</th>
                     <th style={th}>Resto</th>
                     <th style={th}>Observaciones</th>
+                    <th style={thCentro}>Adjunto</th>
                     <th style={{ ...thCentro, width: 70 }}>Rechazar</th>
                   </tr>
                 </thead>
@@ -548,6 +549,25 @@ export default function OrdenPago() {
                           placeholder="Observaciones…"
                         />
                       </td>
+                      {/* El presupuesto que subió el analista o el taller: el comprador
+                          lo mira para decidir la compra, no lo cambia. */}
+                      <td style={tdCentro}>
+                        {item.archivo?.url ? (
+                          <a
+                            href={item.archivo.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={item.archivo.nombre || 'Ver el adjunto'}
+                            className="d-inline-flex align-items-center gap-1 text-decoration-none"
+                            style={{ color: BORDO, fontWeight: 600 }}
+                          >
+                            <i className="bi bi-paperclip"></i>
+                            <span>Ver</span>
+                          </a>
+                        ) : (
+                          <Raya />
+                        )}
+                      </td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center">
                           <BotonAccion
@@ -602,6 +622,7 @@ export default function OrdenPago() {
                     <th style={thCentro}>Precio total</th>
                     <th style={th}>Proveedor</th>
                     <th style={th}>Observaciones</th>
+                    <th style={thCentro}>Adjunto</th>
                     <th style={{ ...thCentro, width: 70 }}>Quitar</th>
                   </tr>
                 </thead>
@@ -638,6 +659,25 @@ export default function OrdenPago() {
                       </td>
                       <td style={td}>{provNombre(item.proveedor_id)}</td>
                       <td style={td}>{item.observaciones || <Raya />}</td>
+                      {/* El presupuesto que subió el analista o el taller: el comprador
+                          lo mira para decidir la compra, no lo cambia. */}
+                      <td style={tdCentro}>
+                        {item.archivo?.url ? (
+                          <a
+                            href={item.archivo.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={item.archivo.nombre || 'Ver el adjunto'}
+                            className="d-inline-flex align-items-center gap-1 text-decoration-none"
+                            style={{ color: BORDO, fontWeight: 600 }}
+                          >
+                            <i className="bi bi-paperclip"></i>
+                            <span>Ver</span>
+                          </a>
+                        ) : (
+                          <Raya />
+                        )}
+                      </td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center">
                           <BotonAccion

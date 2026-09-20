@@ -526,13 +526,14 @@ export default function AnalistaPedidos() {
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
                 <th style={thCentro}>O.P. · Proveedor</th>
+                <th style={thCentro}>Adjunto</th>
                 <th style={{ ...thCentro, width: 110 }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {listaAMostrar.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={15} className="text-center text-muted py-4" style={td}>
                     {hayFiltros ? 'Ningún pedido coincide con los filtros' : 'No hay pedidos para esta etapa'}
                   </td>
                 </tr>
@@ -635,6 +636,25 @@ export default function AnalistaPedidos() {
                         {badgeEstado(item.estado)}
                       </td>
                       <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
+                      {/* El presupuesto que subió el analista o el taller. Acá
+                          solo se mira: adjuntar es de ellos (tabla de Roles). */}
+                      <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
+                        {unItem?.archivo?.url ? (
+                          <a
+                            href={unItem.archivo.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={unItem.archivo.nombre || 'Ver el adjunto'}
+                            className="d-inline-flex align-items-center gap-1 text-decoration-none"
+                            style={{ color: BORDO, fontWeight: 600, fontSize: '0.7rem' }}
+                          >
+                            <i className="bi bi-paperclip"></i>
+                            <span>Ver</span>
+                          </a>
+                        ) : (
+                          <Raya />
+                        )}
+                      </td>
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion
