@@ -10,6 +10,8 @@ import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro, COLOR_NRO_MULTIPLE, COLOR_NRO_SIMPLE } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import { usePermisos } from '../../context/permisos'
+import { useAuth } from '../../context/AuthContext'
+import { sePuedeApurar, sePuedeApurarFila, apuroDeLaFila, itemsDeLaFila, cuando } from './apuro'
 import {
   Raya,
   BotonAccion,
@@ -39,6 +41,7 @@ export default function AnalistaPedidos() {
   // mira pero no se toca: antes, con solo "Ver" en Comprador, el analista
   // entraba acá y podía mover el circuito (19/09/2026).
   const { puede } = usePermisos()
+  const { user } = useAuth()
   const sinEditar = !puede(esComprador ? 'compras.comprador' : 'compras.analista', 'editar')
   const [pedidos, setPedidos] = useState([])
   const [form, setForm] = useState(ITEM_INIT)
@@ -264,6 +267,70 @@ export default function AnalistaPedidos() {
       hoja: "Pedidos",
       archivo: `Pedidos_Analista_${new Date().toISOString().slice(0, 10)}.xlsx`,
     });
+  }
+
+
+  // --- Apurar ---
+  // La campana le reclama al que tiene la tarea pendiente. Se guarda en el
+  // item y el back la borra sola cuando el pedido cambia de estado
+  // (compras/apuro.js).
+  const apurar = async (fila) => {
+    // Solo los items que esperan a otro: en un pedido con estados mezclados
+    // no tiene sentido apurar los que ya se resolvieron.
+    const items = itemsDeLaFila(fila).filter((i) => sePuedeApurar(i.estado, puede, user?.rol))
+    if (items.length === 0) return
+    try {
+      await Promise.all(
+        items.map((item) => {
+          const base = item._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+          return api.put(base + '/' + item.pedidoId + '/items/' + item._id, {
+            apuro: { fecha: new Date().toISOString(), por: user?.nombre || 'Alguien' },
+          })
+        })
+      )
+      cargar()
+      // Sin confirmación previa: se toca la campana y queda apurado. El aviso
+      // va centrado, como el resto de los de Compras.
+      Swal.fire({ icon: 'success', title: 'Pedido apurado', timer: 1500, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
+  }
+
+  const celdaApuro = (fila) => {
+    const apuro = apuroDeLaFila(fila)
+    if (apuro) {
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            Swal.fire({
+              icon: 'info',
+              title: 'Pedido apurado',
+              text: (apuro.por || 'Alguien') + ' lo apuró el ' + cuando(apuro.fecha) + '.',
+            })
+          }}
+          className="btn btn-link p-0 d-inline-flex align-items-center"
+          style={{ color: '#ff0000' }}
+          title={'Apurado por ' + (apuro.por || 'alguien') + ' el ' + cuando(apuro.fecha)}
+        >
+          <i className="bi bi-bell-fill" style={{ fontSize: '0.9rem' }}></i>
+        </button>
+      )
+    }
+    if (!sePuedeApurarFila(fila, puede, user?.rol)) return <Raya />
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); apurar(fila) }}
+        className="btn btn-link p-0 d-inline-flex align-items-center"
+        style={{ color: '#94a3b8' }}
+        title="Apurar: avisarle al que lo tiene pendiente"
+      >
+        <i className="bi bi-bell" style={{ fontSize: '0.9rem' }}></i>
+      </button>
+    )
   }
 
   const verDetalle = (item) =>
@@ -527,13 +594,14 @@ export default function AnalistaPedidos() {
                 <th style={thCentro}>Estado</th>
                 <th style={thCentro}>O.P. · Proveedor</th>
                 <th style={thCentro}>Adjunto</th>
+                <th style={thCentro}>Apuro</th>
                 <th style={{ ...thCentro, width: 110 }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {listaAMostrar.length === 0 ? (
                 <tr>
-                  <td colSpan={15} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={16} className="text-center text-muted py-4" style={td}>
                     {hayFiltros ? 'Ningún pedido coincide con los filtros' : 'No hay pedidos para esta etapa'}
                   </td>
                 </tr>
@@ -683,6 +751,7 @@ export default function AnalistaPedidos() {
                           <Raya />
                         )}
                       </td>
+                      <td style={tdCentro} onClick={(e) => e.stopPropagation()}>{celdaApuro(item)}</td>
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { usePermisos } from '../../context/permisos'
@@ -6,6 +6,15 @@ import { useAuth } from '../../context/AuthContext'
 import { GRUPO } from '../../utils/permisosCatalogo'
 import { seccionPropia, COLORES_NEUTROS } from '../../utils/seccionPropia'
 import { ultimaCentrada } from '../../utils/grillaTarjetas'
+import { api } from '../../services/api'
+import { PERMISO_RESPONSABLE } from './apuro'
+
+// De qué tarjeta es cada permiso, para saber sobre cuál va el aviso de apuro.
+const SECCION_DEL_PERMISO = {
+  'compras.analista': 'analista',
+  'compras.comprador': 'comprador',
+  'compras.gerencia': 'gerencia',
+}
 
 // Las secciones de Compras. Es la entrada: todo lo demás cuelga de una de
 // estas. Para sumar otra alcanza con agregar una entrada acá y su ruta en
@@ -110,6 +119,37 @@ export default function Inicio() {
   const propia = seccionPropia(user)
   const coloresDe = (s) => (!propia || s.id === propia ? s.colores : COLORES_NEUTROS)
 
+  // Los pedidos apurados que esperan a cada sección: es el llamado de atención
+  // para el que tiene la tarea pendiente (compras/apuro.js). Se cuentan por
+  // pedido y no por ítem, que es como se apura.
+  const [apurados, setApurados] = useState({})
+
+  useEffect(() => {
+    let vigente = true
+    ;(async () => {
+      const [berdina, sanpablo] = await Promise.all([
+        api.get('/berdina/pedidos').catch(() => []),
+        api.get('/sanpablo/pedidos').catch(() => []),
+      ])
+      if (!vigente) return
+      const cuenta = {}
+      const contados = new Set()
+      for (const pedido of [...berdina, ...sanpablo]) {
+        for (const item of pedido.items || []) {
+          if (!item.apuro?.fecha) continue
+          const seccion = SECCION_DEL_PERMISO[PERMISO_RESPONSABLE[item.estado]]
+          if (!seccion) continue
+          const clave = `${seccion}-${pedido._id}`
+          if (contados.has(clave)) continue
+          contados.add(clave)
+          cuenta[seccion] = (cuenta[seccion] || 0) + 1
+        }
+      }
+      setApurados(cuenta)
+    })()
+    return () => { vigente = false }
+  }, [])
+
   // Tres tarjetas por fila como máximo: más chicas no se leen. Con una o dos
   // el ancho se achica para que no queden estiradas a lo ancho de la pantalla.
   const columnas = Math.min(visibles.length, 3) || 1
@@ -189,6 +229,8 @@ export default function Inicio() {
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
                       userSelect: 'none',
+                      // Para colgarle el aviso de apuro en la esquina.
+                      position: 'relative',
                     }}
                     onClick={() => navigate(s.destino)}
                     role="button"
@@ -197,6 +239,31 @@ export default function Inicio() {
                     onMouseEnter={() => setHovered(s.id)}
                     onMouseLeave={() => setHovered(null)}
                   >
+                    {/* Los pedidos que esperan a esta sección y ya fueron
+                        apurados: es lo primero que se ve al entrar. */}
+                    {apurados[s.id] > 0 && (
+                      <span
+                        className="d-inline-flex align-items-center gap-1 fw-bold"
+                        style={{
+                          position: 'absolute',
+                          top: 12,
+                          right: 12,
+                          backgroundColor: '#ff0000',
+                          color: '#fff',
+                          borderRadius: 999,
+                          padding: '3px 10px',
+                          fontSize: '0.74rem',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        }}
+                        title={`${apurados[s.id]} ${
+                          apurados[s.id] === 1 ? 'pedido apurado' : 'pedidos apurados'
+                        }`}
+                      >
+                        <i className="bi bi-bell-fill"></i>
+                        {apurados[s.id]}
+                      </span>
+                    )}
+
                     <div
                       className="mb-3 d-flex align-items-center justify-content-center"
                       style={{

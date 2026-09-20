@@ -9,6 +9,8 @@ import UmbralAutorizacion from './UmbralAutorizacion'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { usePermisos } from '../../context/permisos'
+import { useAuth } from '../../context/AuthContext'
+import { sePuedeApurarFila, sePuedeApurar, apuroDeLaFila, itemsDeLaFila, cuando } from './apuro'
 
 const fmtPrecio = (n) =>
   n != null && n !== '' && !isNaN(n)
@@ -37,6 +39,7 @@ export default function Gerencia() {
   // Sin "Editar" en Gerencia se ve la autorización pero no se aprueba,
   // rechaza ni manda a revisar (tabla de Roles).
   const { puede } = usePermisos()
+  const { user } = useAuth()
   const sinEditar = !puede('compras.gerencia', 'editar')
   const [grupos, setGrupos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -151,6 +154,65 @@ export default function Gerencia() {
       confirmButtonText: 'Cerrar',
       confirmButtonColor: BORDO,
     })
+  }
+
+  /**
+   * La campanita: acá Gerencia casi siempre la ve en rojo, porque los pedidos
+   * que están en esta pantalla esperan su autorización y el apuro se lo
+   * reclaman a ella. Si llegara a poder apurar (el superadmin), la toca.
+   */
+  const apurar = async (grupo) => {
+    const items = itemsDeLaFila(grupo).filter((i) => sePuedeApurar(i.estado, puede, user?.rol))
+    if (items.length === 0) return
+    try {
+      const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+      await Promise.all(
+        items.map((item) =>
+          api.put(`${base}/${item.pedidoId}/items/${item._id}`, {
+            apuro: { fecha: new Date().toISOString(), por: user?.nombre || 'Alguien' },
+          })
+        )
+      )
+      cargar()
+      Swal.fire({ icon: 'success', title: 'Pedido apurado', timer: 1500, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
+  }
+
+  const campana = (grupo) => {
+    const apuro = apuroDeLaFila(grupo)
+    if (apuro) {
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            Swal.fire({
+              icon: 'info',
+              title: 'Pedido apurado',
+              text: `${apuro.por || 'Alguien'} lo apuró el ${cuando(apuro.fecha)}.`,
+            })
+          }
+          className="btn btn-link p-0 d-inline-flex align-items-center"
+          style={{ color: '#ff0000' }}
+          title={`Apurado por ${apuro.por || 'alguien'} el ${cuando(apuro.fecha)}`}
+        >
+          <i className="bi bi-bell-fill" style={{ fontSize: '0.95rem' }}></i>
+        </button>
+      )
+    }
+    if (!sePuedeApurarFila(grupo, puede, user?.rol)) return null
+    return (
+      <button
+        type="button"
+        onClick={() => apurar(grupo)}
+        className="btn btn-link p-0 d-inline-flex align-items-center"
+        style={{ color: '#94a3b8' }}
+        title="Apurar: avisarle al que lo tiene pendiente"
+      >
+        <i className="bi bi-bell" style={{ fontSize: '0.95rem' }}></i>
+      </button>
+    )
   }
 
   const verAdjuntos = (grupo) => {
@@ -297,20 +359,6 @@ export default function Gerencia() {
       </span>
     )
   }
-  const badgeTaller = (src) => (
-    <span
-      className="badge"
-      style={{
-        backgroundColor: src === 'berdina' ? BORDO : '#166534',
-        fontSize: '0.7rem',
-        letterSpacing: 0.5,
-        minWidth: 32,
-      }}
-    >
-      {src === 'berdina' ? 'B' : 'SP'}
-    </span>
-  )
-
   return (
     <div
       style={{
@@ -397,33 +445,34 @@ export default function Gerencia() {
                       className={grupo.urgencia === 'Crítica' ? 'fila-critica' : ''}
                     >
                       <td style={{ ...tdCentro, padding: '6px 5px' }}>
-                        {badgeTaller(grupo._src)}
-                        {/* El número abre el detalle del pedido: qué se pidió,
-                            para qué equipo y con qué descripción. */}
-                        <button
-                          type="button"
-                          onClick={() => verDetalle(grupo)}
-                          className="btn btn-link p-0"
-                          style={{
-                            fontSize: '0.64rem',
-                            // Mismo criterio que en las tablas de pedidos: el
-                            // pedido de varios ítems se distingue por el color.
-                            color: grupo.items.length > 1 ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
-                            fontWeight: 700,
-                            marginTop: 4,
-                            lineHeight: 1.3,
-                            textDecoration: 'underline',
-                          }}
-                          title="Ver el detalle del pedido"
-                        >
-                          {fmtNro(grupo.nro_pedido, grupo._src)}
-                          {/* En span y no en div: un button solo puede llevar
-                              contenido de texto, y algunos navegadores de
-                              celular se portan raro con un div adentro. */}
-                          {grupo.items.length > 1 && (
-                            <span style={{ display: 'block' }}>{grupo.items.length} ítems</span>
-                          )}
-                        </button>
+                        {/* Sin el cartel del taller: el número ya dice de cuál
+                            es (B- o SP-) y en el celular ese espacio hace
+                            falta. El ojo abre el detalle del pedido. */}
+                        <div className="d-flex align-items-center justify-content-center gap-1">
+                          <span
+                            style={{
+                              fontSize: '0.7rem',
+                              // Mismo criterio que en las tablas de pedidos: el
+                              // pedido de varios ítems se distingue por el color.
+                              color: grupo.items.length > 1 ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
+                              fontWeight: 700,
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {fmtNro(grupo.nro_pedido, grupo._src)}
+                          </span>
+                          <BotonAccion
+                            icono="bi-eye"
+                            titulo="Ver el detalle del pedido"
+                            onClick={() => verDetalle(grupo)}
+                          />
+                          {campana(grupo)}
+                        </div>
+                        {grupo.items.length > 1 && (
+                          <div style={{ fontSize: '0.64rem', color: '#64748b', lineHeight: 1.3 }}>
+                            {grupo.items.length} ítems
+                          </div>
+                        )}
                         <div style={{ marginTop: 4 }}>{badgeUrgencia(grupo.urgencia)}</div>
 
                         {adjuntosDe(grupo).length > 0 && (
