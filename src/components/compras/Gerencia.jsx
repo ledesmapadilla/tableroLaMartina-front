@@ -90,6 +90,94 @@ export default function Gerencia() {
 
   const verAnalisis = (grupo) => navigate('/compras/op/ver', { state: { items: grupo.items } })
 
+  // Los adjuntos del pedido: el presupuesto que subió el analista o lo que sumó
+  // el taller. Esta pantalla se mira en el celular, así que no lleva una
+  // columna más: el acceso va debajo del número de pedido, que suma alto y no
+  // ancho. Con uno solo se abre derecho; con varios se elige cuál.
+  const adjuntosDe = (grupo) => (grupo.items || []).filter((i) => i.archivo?.url)
+
+  const escaparHtml = (s) =>
+    String(s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    )
+
+  /**
+   * El detalle del pedido, al tocar su número. Va apilado y no en tabla: el
+   * detalle común de Compras tiene nueve columnas y acá se mira en el
+   * teléfono, donde no entran. Cada ítem es una ficha con sus datos uno debajo
+   * del otro, y el adjunto si lo tiene.
+   */
+  const verDetalle = (grupo) => {
+    const dato = (rotulo, valor) =>
+      valor === null || valor === undefined || valor === ''
+        ? ''
+        : `<div style="display:flex;gap:6px;margin-top:2px">
+             <span style="color:#64748b;flex-shrink:0">${rotulo}:</span>
+             <span style="color:#1e293b">${escaparHtml(valor)}</span>
+           </div>`
+
+    const fichas = (grupo.items || [])
+      .map(
+        (i) => `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;
+                            margin-bottom:8px;text-align:left;font-size:0.8rem">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+            <span style="font-weight:700;color:#1e293b">${escaparHtml(i.nombre_repuesto || '—')}</span>
+            <span style="font-weight:600;color:${BORDO};white-space:nowrap">
+              ${i.cant ?? '—'} ${escaparHtml(i.unidad || '')}
+            </span>
+          </div>
+          ${dato('C.C.', i.cc)}
+          ${dato('Grupo', i.grupo)}
+          ${dato('Urgencia', i.urgencia)}
+          ${dato('Solicita', i.solicita)}
+          ${dato('Descripción', i.descripcion)}
+          ${
+            i.archivo?.url
+              ? `<a href="${i.archivo.url}" target="_blank" rel="noreferrer"
+                    style="display:inline-block;margin-top:6px;color:${BORDO};font-weight:600;text-decoration:none">
+                   <i class="bi bi-paperclip"></i> ${escaparHtml(i.archivo.nombre || 'Ver el adjunto')}
+                 </a>`
+              : ''
+          }
+        </div>`
+      )
+      .join('')
+
+    Swal.fire({
+      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src)}`,
+      html: `<div style="max-height:65vh;overflow:auto">${fichas}</div>`,
+      width: 360,
+      padding: '0.9rem',
+      confirmButtonText: 'Cerrar',
+      confirmButtonColor: BORDO,
+    })
+  }
+
+  const verAdjuntos = (grupo) => {
+    const lista = adjuntosDe(grupo)
+    if (lista.length === 0) return
+    if (lista.length === 1) {
+      window.open(lista[0].archivo.url, '_blank', 'noopener')
+      return
+    }
+    Swal.fire({
+      title: 'Adjuntos del pedido',
+      html: lista
+        .map(
+          (i) => `<a href="${i.archivo.url}" target="_blank" rel="noreferrer"
+            style="display:block;padding:10px 12px;margin-bottom:8px;border:1px solid #e2e8f0;
+                   border-radius:10px;text-align:left;text-decoration:none;color:${BORDO};font-weight:600">
+            <i class="bi bi-paperclip"></i> ${escaparHtml(i.archivo.nombre || 'Ver el adjunto')}
+            <div style="font-size:12px;color:#64748b;font-weight:400">${escaparHtml(i.nombre_repuesto || '')}</div>
+          </a>`
+        )
+        .join(''),
+      showConfirmButton: false,
+      showCloseButton: true,
+      width: 340,
+    })
+  }
+
   const verHistorial = async (grupo) => {
     try {
       const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
@@ -310,11 +398,52 @@ export default function Gerencia() {
                     >
                       <td style={{ ...tdCentro, padding: '6px 5px' }}>
                         {badgeTaller(grupo._src)}
-                        <div style={{ fontSize: '0.64rem', color: '#64748b', marginTop: 4, lineHeight: 1.3 }}>
+                        {/* El número abre el detalle del pedido: qué se pidió,
+                            para qué equipo y con qué descripción. */}
+                        <button
+                          type="button"
+                          onClick={() => verDetalle(grupo)}
+                          className="btn btn-link p-0"
+                          style={{
+                            fontSize: '0.64rem',
+                            color: BORDO,
+                            fontWeight: 700,
+                            marginTop: 4,
+                            lineHeight: 1.3,
+                            textDecoration: 'underline',
+                          }}
+                          title="Ver el detalle del pedido"
+                        >
                           {fmtNro(grupo.nro_pedido, grupo._src)}
-                          {grupo.items.length > 1 && <div>{grupo.items.length} ítems</div>}
-                        </div>
+                          {/* En span y no en div: un button solo puede llevar
+                              contenido de texto, y algunos navegadores de
+                              celular se portan raro con un div adentro. */}
+                          {grupo.items.length > 1 && (
+                            <span style={{ display: 'block' }}>{grupo.items.length} ítems</span>
+                          )}
+                        </button>
                         <div style={{ marginTop: 4 }}>{badgeUrgencia(grupo.urgencia)}</div>
+
+                        {adjuntosDe(grupo).length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => verAdjuntos(grupo)}
+                            className="btn btn-link p-0 mt-1 d-inline-flex align-items-center gap-1"
+                            style={{
+                              fontSize: '0.64rem',
+                              color: BORDO,
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                              lineHeight: 1.2,
+                            }}
+                            title="Ver el presupuesto adjunto"
+                          >
+                            <i className="bi bi-paperclip"></i>
+                            {adjuntosDe(grupo).length === 1
+                              ? 'Adjunto'
+                              : `${adjuntosDe(grupo).length} adjuntos`}
+                          </button>
+                        )}
                       </td>
 
                       <td style={{ ...tdCentro, padding: '6px 5px' }}>
