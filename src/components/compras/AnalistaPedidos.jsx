@@ -9,6 +9,7 @@ import { api } from '../../services/api'
 import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
+import { usePermisos } from '../../context/permisos'
 import {
   Raya,
   BotonAccion,
@@ -33,6 +34,12 @@ const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', 
 export default function AnalistaPedidos() {
   const navigate = useNavigate()
   const esComprador = useLocation().pathname === '/compras/comprador'
+  // La misma pantalla es la del analista y la del comprador, así que el
+  // permiso que pide es el de la etapa en la que está parada. Sin "Editar" se
+  // mira pero no se toca: antes, con solo "Ver" en Comprador, el analista
+  // entraba acá y podía mover el circuito (19/09/2026).
+  const { puede } = usePermisos()
+  const sinEditar = !puede(esComprador ? 'compras.comprador' : 'compras.analista', 'editar')
   const [pedidos, setPedidos] = useState([])
   const [form, setForm] = useState(ITEM_INIT)
   const [editPedidoId, setEditPedidoId] = useState(null)
@@ -434,6 +441,8 @@ export default function AnalistaPedidos() {
             <Button
               size="sm"
               onClick={() => navigate('/compras/comprador/op')}
+              disabled={sinEditar}
+              title={sinEditar ? 'Sin permiso para editar' : 'Armar la orden de pago'}
               className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
               style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
             >
@@ -635,10 +644,22 @@ export default function AnalistaPedidos() {
                             deshabilitado={item._agrupado && item._count > 1}
                           />
                           {porItem && (
-                            <BotonAccion icono="bi-pencil" titulo="Editar" variante="primary" onClick={() => abrirEditar(unItem)} />
+                            <BotonAccion
+                              icono="bi-pencil"
+                              titulo={sinEditar ? 'Sin permiso para editar' : 'Editar'}
+                              variante="primary"
+                              deshabilitado={sinEditar}
+                              onClick={() => abrirEditar(unItem)}
+                            />
                           )}
                           {porItem && (
-                            <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(unItem)} />
+                            <BotonAccion
+                              icono="bi-x-lg"
+                              titulo={sinEditar ? 'Sin permiso para editar' : 'Rechazar'}
+                              variante="danger"
+                              deshabilitado={sinEditar}
+                              onClick={() => rechazar(unItem)}
+                            />
                           )}
                           {item._count > 1 && (
                             <BotonAccion icono="bi-list-ul" titulo="Ver el detalle" onClick={() => verDetalle(item)} />
@@ -796,6 +817,8 @@ export default function AnalistaPedidos() {
             <Button
               size="sm"
               type="submit"
+              disabled={sinEditar}
+              title={sinEditar ? 'Sin permiso para editar' : 'Guardar'}
               className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
               style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
             >

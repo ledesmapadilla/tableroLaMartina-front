@@ -104,6 +104,18 @@ main {
 .tabla-informe.tabla-compras tbody tr.inicio-pedido:not(:first-child) > td {
   border-top: 2px solid #64748b !important;
 }
+/* Análisis del ítem: dónde arranca cada proveedor. Cada uno son dos columnas
+   (el proveedor y su precio) y los tres bloques seguidos se leían corridos.
+   Va con !important porque el borde fino de .tabla-informe también lo lleva y
+   le gana incluso a un style inline. En el encabezado va blanca: el fondo es
+   el bordó de Compras. */
+.tabla-informe.tabla-compras th.col-proveedor,
+.tabla-informe.tabla-compras td.col-proveedor {
+  border-left: 2px solid #334155 !important;
+}
+.tabla-informe.tabla-compras thead th.col-proveedor {
+  border-left: 2px solid #ffffff !important;
+}
 
 /* ── Radio buttons ── */
 input[type="radio"] {

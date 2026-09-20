@@ -31,6 +31,22 @@ edita el superadmin en **Altas › Usuarios › Roles** (`/compras/altas/usuario
   muestra las contraseñas.
 - **Visitas** es pública (se usa sin usuario en la entrada): su permiso solo
   decide si la tarjeta aparece para quien está logueado.
+- **Variables** se partió en sus tres tarjetas (19/09/2026):
+  `produccion.variables` es Remuneración (sigue con la clave de antes, así lo
+  guardado no se pierde), `produccion.lotes` y `produccion.admisibles`. El menú
+  de Variables se ve si el rol ve alguna (`GRUPO.produccionVariables`) y
+  muestra solo esas tarjetas. En el back, `/api/variables` pide
+  `produccion.variables` y `/api/lotes` pasó a pedir `produccion.lotes`.
+  Valores admisibles todavía no está construida (la ruta da 404).
+- **Tablero** (19/09/2026) son los dos botones flotantes de Mantenimiento:
+  `tablero.camionetas` (Tablero de control, `/camionetas/resumen`) y
+  `tablero.reunion` (Reunión, y `/pendientes`, que solo se abre desde ahí). Sin
+  el permiso el botón no se muestra, y dentro del modal de Reunión cada
+  planilla aparece solo si el rol ve su propia pantalla. **Editar** en
+  `tablero.reunion` es cargar, editar y borrar pendientes (`Pendientes.jsx` y
+  `escribirSi(["tablero.reunion"])` en `/api/pendientes`); el tablero de
+  control es solo lectura, y lo que se abre desde él (check list, kilómetros,
+  reparaciones…) sigue pidiendo el permiso de su propia pantalla.
 
 ## Cómo se aplica
 
@@ -51,6 +67,30 @@ edita el superadmin en **Altas › Usuarios › Roles** (`/compras/altas/usuario
 - En el check list el botón de cada mes abre el formulario, que es de carga:
   sin permiso de edición queda deshabilitado y la ruta del formulario pide
   editar.
+
+## El circuito de Compras (19/09/2026)
+
+Compras había quedado afuera del "ver sin editar": sus pantallas no miraban el
+permiso y el back pedía "Editar en alguna de las cuatro pantallas del
+circuito". Con eso, un analista con solo **Ver** en Comprador entraba a
+`/compras/comprador` —que es el mismo componente `AnalistaPedidos`, con el modo
+sacado de la URL— y podía mover el circuito; y desde la consola se podía
+escribir el número de OP o los precios con editar en cualquiera de las cuatro.
+
+- **Front** — cada pantalla calcula su `sinEditar`: `AnalistaPedidos` con la
+  clave de su etapa (`esComprador ? "compras.comprador" : "compras.analista"`),
+  `AnalizarItem` con `compras.analista` (cae en su modo "solo ver"), `Gerencia`
+  con `compras.gerencia`, `OrdenPago` y `VerOP` con `compras.comprador`, y las
+  dos de pedidos del taller con `compras.pedidos`.
+- **Back** — `permisos/pedidos.js` dice, campo por campo y estado por estado,
+  qué habilita cada permiso, y los dos controllers de pedidos lo consultan
+  antes de escribir (`revisarCambioDeItem`). Un campo que no figura no se puede
+  escribir por esa ruta. Repetir el estado que el ítem ya tiene no pide
+  permiso: las pantallas lo mandan aunque no lo cambien.
+- **Los estados** salen del circuito real: el analista cierra el análisis y el
+  monto decide —si llega al umbral va a Gerencia ("Autorizar") y si no pasa
+  derecho al comprador ("Para hacer OP"), sin autorización—. Hacer la OP es
+  otra cosa y otra ruta (`POST /op`, solo `compras.comprador`).
 - **Back** (desde el 13/09/2026) — toda escritura (POST/PUT/PATCH/DELETE)
   pide "Editar" en la tabla de Roles, en alguna de las pantallas que escriben
   en ese recurso: `escribirSi(...)` en `TableroBack/src/middleware/permisos.js`,

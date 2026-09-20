@@ -6,6 +6,7 @@ import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion } from './estilos'
 import { opcionElegida } from './precioElegido'
+import { usePermisos } from '../../context/permisos'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
@@ -46,6 +47,10 @@ const problemaDeCompra = (i) => {
 export default function OrdenPago() {
   const navigate = useNavigate()
   const dropdownRef = useRef(null)
+  // Armar la orden es del comprador: sin "Editar" se puede mirar, pero no
+  // emitirla ni rechazar un ítem (tabla de Roles).
+  const { puede } = usePermisos()
+  const sinEditar = !puede('compras.comprador', 'editar')
 
   const [pedidos, setPedidos] = useState([])
   const [proveedores, setProveedores] = useState([])
@@ -547,8 +552,13 @@ export default function OrdenPago() {
                         <div className="d-flex justify-content-center">
                           <BotonAccion
                             icono="bi-x-lg"
-                            titulo="Rechazar el ítem entero, sin comprarlo"
+                            titulo={
+                              sinEditar
+                                ? 'Sin permiso para editar'
+                                : 'Rechazar el ítem entero, sin comprarlo'
+                            }
                             variante="danger"
+                            deshabilitado={sinEditar}
                             onClick={() => rechazarItem(item)}
                           />
                         </div>
@@ -662,6 +672,8 @@ export default function OrdenPago() {
               <Button
                 size="sm"
                 onClick={generarOP}
+                disabled={sinEditar}
+                title={sinEditar ? 'Sin permiso para editar' : 'Emitir la orden de pago'}
                 className="rounded-3 px-4 py-1 shadow-sm d-flex align-items-center gap-2"
                 style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.86rem', fontWeight: 600 }}
               >

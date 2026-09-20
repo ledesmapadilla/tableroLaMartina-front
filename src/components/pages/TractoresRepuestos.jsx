@@ -9,6 +9,7 @@ import { exportarPlanilla } from "../../helpers/excel";
 import { compararCC } from "../../utils/ordenCC";
 import { Raya, BotonAccion, FiltroTexto } from "../compras/estilos";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
 
 // Los filtros que se llevan de cada unidad y cuántas marcas posibles tiene
 // cada uno.
@@ -241,6 +242,11 @@ export default function TractoresRepuestos() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 

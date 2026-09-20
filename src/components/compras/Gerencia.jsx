@@ -8,6 +8,7 @@ import { opcionElegida } from './precioElegido'
 import UmbralAutorizacion from './UmbralAutorizacion'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
+import { usePermisos } from '../../context/permisos'
 
 const fmtPrecio = (n) =>
   n != null && n !== '' && !isNaN(n)
@@ -33,6 +34,10 @@ const urgenciaMasAlta = (items) =>
 
 export default function Gerencia() {
   const navigate = useNavigate()
+  // Sin "Editar" en Gerencia se ve la autorización pero no se aprueba,
+  // rechaza ni manda a revisar (tabla de Roles).
+  const { puede } = usePermisos()
+  const sinEditar = !puede('compras.gerencia', 'editar')
   const [grupos, setGrupos] = useState([])
   const [cargando, setCargando] = useState(true)
 
@@ -342,9 +347,30 @@ export default function Gerencia() {
 
                       <td style={{ ...tdCentro, padding: '6px 5px' }}>
                         <div className="d-flex gap-2 justify-content-center">
-                          <BotonAccion icono="bi-x-lg" titulo="Rechazar" variante="danger" onClick={() => rechazar(grupo)} grande />
-                          <BotonAccion icono="bi-question-lg" titulo="Mandar a revisar" variante="warning" onClick={() => revisar(grupo)} grande />
-                          <BotonAccion icono="bi-check-lg" titulo="Aprobar" variante="success" onClick={() => aprobar(grupo)} grande />
+                          <BotonAccion
+                            icono="bi-x-lg"
+                            titulo={sinEditar ? 'Sin permiso para editar' : 'Rechazar'}
+                            variante="danger"
+                            deshabilitado={sinEditar}
+                            onClick={() => rechazar(grupo)}
+                            grande
+                          />
+                          <BotonAccion
+                            icono="bi-question-lg"
+                            titulo={sinEditar ? 'Sin permiso para editar' : 'Mandar a revisar'}
+                            variante="warning"
+                            deshabilitado={sinEditar}
+                            onClick={() => revisar(grupo)}
+                            grande
+                          />
+                          <BotonAccion
+                            icono="bi-check-lg"
+                            titulo={sinEditar ? 'Sin permiso para editar' : 'Aprobar'}
+                            variante="success"
+                            deshabilitado={sinEditar}
+                            onClick={() => aprobar(grupo)}
+                            grande
+                          />
                         </div>
                       </td>
                     </tr>

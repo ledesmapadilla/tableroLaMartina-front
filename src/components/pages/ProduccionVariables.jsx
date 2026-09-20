@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card, InputGroup } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
+import { usePermisos } from "../../context/permisos";
 
 const API_VARIABLES = "/api/variables";
 const API_TAREAS = "/api/tareas";
@@ -68,6 +69,10 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
  * tiempo y rige, como siempre, la vigencia más nueva.
  */
 function ProduccionVariables() {
+  // Ver sin editar (tabla de Roles): los botones quedan a la vista pero
+  // deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("produccion.variables", "editar");
   const [tareas, setTareas] = useState([]);
   const [precios, setPrecios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -514,7 +519,8 @@ function ProduccionVariables() {
             <Button
               size="sm"
               onClick={() => abrirAlta()}
-              disabled={tareas.length === 0}
+              disabled={sinEditar || tareas.length === 0}
+              title={sinEditar ? "Sin permiso para editar" : "Cargar un precio"}
               className="d-inline-flex align-items-center gap-1 rounded-3 px-3 shadow-sm"
               style={{
                 backgroundColor: "#1b4332",
@@ -678,10 +684,13 @@ function ProduccionVariables() {
                               mal tipeada se hace desde el historial. */}
                           <button
                             onClick={() => nuevoPrecioDesdeFila(f)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-primary rounded-2 py-0 px-2"
                             style={{ height: "24px", fontSize: "0.72rem", fontWeight: 600 }}
                             title={
-                              v
+                              sinEditar
+                                ? "Sin permiso para editar"
+                                : v
                                 ? "Cargar un precio nuevo: el actual pasa al historial"
                                 : "Cargar el precio de esta tarea"
                             }
@@ -891,9 +900,14 @@ function ProduccionVariables() {
                 size="sm"
                 type="button"
                 onClick={borrarDesdeModal}
+                disabled={sinEditar}
                 className="rounded-3 px-3 d-flex align-items-center gap-1 me-auto"
                 style={{ fontSize: "0.84rem" }}
-                title="Borrar el precio y dejar la tarea sin valor cargado"
+                title={
+                  sinEditar
+                    ? "Sin permiso para editar"
+                    : "Borrar el precio y dejar la tarea sin valor cargado"
+                }
               >
                 <i className="bi bi-trash"></i>
                 <span>Borrar precio</span>
@@ -913,6 +927,8 @@ function ProduccionVariables() {
               variant="success"
               size="sm"
               type="submit"
+              disabled={sinEditar}
+              title={sinEditar ? "Sin permiso para editar" : "Guardar"}
               className="rounded-3 px-3 shadow-sm d-flex align-items-center gap-1"
               style={{
                 backgroundColor: "#15803d",
@@ -1002,9 +1018,10 @@ function ProduccionVariables() {
                           setHistorialDe(null);
                           abrirEditar(h);
                         }}
+                        disabled={sinEditar}
                         className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
                         style={{ width: "24px", height: "24px" }}
-                        title="Editar esta carga"
+                        title={sinEditar ? "Sin permiso para editar" : "Editar esta carga"}
                       >
                         <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
                       </button>
@@ -1014,9 +1031,10 @@ function ProduccionVariables() {
                         onClick={async () => {
                           if (await borrarCarga(h, historialAbierto.tarea)) setHistorialDe(null);
                         }}
+                        disabled={sinEditar}
                         className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                         style={{ width: "24px", height: "24px" }}
-                        title="Borrar esta carga"
+                        title={sinEditar ? "Sin permiso para editar" : "Borrar esta carga"}
                       >
                         <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
                       </button>

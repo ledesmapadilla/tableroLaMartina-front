@@ -5,6 +5,8 @@ import Swal from 'sweetalert2'
 import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
+import { usePermisos } from '../../context/permisos'
+import { subirArchivo, borrarArchivo } from '../../services/archivos'
 import { GRUPOS_PEDIDO } from '../../utils/equipos'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
@@ -34,6 +36,10 @@ const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', 
 
 export default function SanPabloPedidos() {
   const navigate = useNavigate()
+  // El taller carga y corrige sus pedidos: sin "Editar" en Pedidos
+  // (tabla de Roles) los botones quedan a la vista pero apagados.
+  const { puede } = usePermisos()
+  const sinEditar = !puede('compras.pedidos', 'editar')
   const [pedidos, setPedidos] = useState([])
   const [form, setForm] = useState(ITEM_INIT)
   const [editPedidoId, setEditPedidoId] = useState(null)
@@ -153,6 +159,84 @@ export default function SanPabloPedidos() {
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
     }
+  }
+
+  // --- Adjuntos ---
+  // El archivo se sube a Cloudinary y en el ítem queda su URL, así se ve desde
+  // cualquier computadora (services/archivos.js). El taller adjunta lo que
+  // acompaña al pedido: un remito, la foto de la pieza, un presupuesto suyo.
+  const [subiendo, setSubiendo] = useState(null)
+
+  const adjuntar = async (item, file) => {
+    setSubiendo(item._id)
+    try {
+      const archivo = await subirArchivo(file)
+      await api.put(`/sanpablo/pedidos/${item.pedidoId}/items/${item._id}`, { archivo })
+      cargar()
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo adjuntar', text: err.message })
+    } finally {
+      setSubiendo(null)
+    }
+  }
+
+  const quitarArchivo = async (item) => {
+    try {
+      // Primero se lo saca del ítem: si después falla el borrado en Cloudinary,
+      // queda un archivo suelto y no un link roto en pantalla.
+      await api.put(`/sanpablo/pedidos/${item.pedidoId}/items/${item._id}`, { archivo: null })
+      cargar()
+      await borrarArchivo(item.archivo || {})
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar el archivo', text: err.message })
+    }
+  }
+
+  const celdaAdjunto = (item) => {
+    if (!item) return <Raya />
+    if (item.archivo?.url) {
+      return (
+        <div className="d-flex align-items-center justify-content-center gap-1">
+          <a
+            href={item.archivo.url}
+            target="_blank"
+            rel="noreferrer"
+            title={item.archivo.nombre || 'Ver el adjunto'}
+            className="text-truncate"
+            style={{ maxWidth: 70, fontSize: '0.7rem' }}
+          >
+            <i className="bi bi-paperclip" /> {item.archivo.nombre || 'Ver'}
+          </a>
+          {!sinEditar && (
+            <button
+              className="btn btn-sm btn-link text-danger p-0"
+              style={{ lineHeight: 1 }}
+              title="Quitar el archivo"
+              onClick={() => quitarArchivo(item)}
+            >
+              <i className="bi bi-x-lg" style={{ fontSize: '0.7rem' }} />
+            </button>
+          )}
+        </div>
+      )
+    }
+    const estaSubiendo = subiendo === item._id
+    return (
+      <label
+        className={`btn btn-sm btn-outline-dark mb-0 py-0 px-2${sinEditar || estaSubiendo ? ' disabled' : ''}`}
+        style={{ fontSize: '0.7rem' }}
+        title={sinEditar ? 'Sin permiso para editar' : 'Adjuntar un PDF o una foto'}
+      >
+        {estaSubiendo ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
+        <input
+          type="file"
+          accept=".pdf,image/*"
+          hidden
+          disabled={sinEditar || estaSubiendo}
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) adjuntar(item, file); e.target.value = '' }}
+        />
+      </label>
+    )
   }
 
   const borrar = async (item) => {
@@ -376,6 +460,8 @@ export default function SanPabloPedidos() {
 
           <Button
             size="sm"
+            disabled={sinEditar}
+            title={sinEditar ? 'Sin permiso para editar' : 'Cargar un pedido nuevo'}
             onClick={() => navigate('/compras/sanpablo/pedidos/nuevo')}
             className="rounded-3 px-3 d-flex align-items-center gap-2"
             style={{ backgroundColor: BORDO, borderColor: BORDO, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
@@ -428,13 +514,14 @@ export default function SanPabloPedidos() {
                 <th style={th}>Solicita</th>
                 <th style={thCentro}>Estado</th>
                 <th style={thCentro}>O.P. · Proveedor</th>
+                <th style={thCentro}>Adjunto</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {listaAMostrar.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={14} className="text-center text-muted py-4" style={td}>
                     {hayFiltros ? 'Ningún pedido coincide con los filtros' : 'No hay pedidos cargados'}
                   </td>
                 </tr>
@@ -526,6 +613,7 @@ export default function SanPabloPedidos() {
                         {badgeEstado(item.estado)}
                       </td>
                       <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
+                      <td style={tdCentro}>{celdaAdjunto(unItem)}</td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion
@@ -539,14 +627,20 @@ export default function SanPabloPedidos() {
                           {unItem && (
                             <BotonAccion
                               icono="bi-pencil"
-                              titulo="Editar"
+                              titulo={sinEditar ? 'Sin permiso para editar' : 'Editar'}
                               variante="primary"
                               onClick={() => abrirEditar(unItem)}
-                              deshabilitado={!sinProcesar(unItem)}
+                              deshabilitado={sinEditar || !sinProcesar(unItem)}
                             />
                           )}
                           {unItem && (
-                            <BotonAccion icono="bi-trash" titulo="Borrar" variante="danger" onClick={() => borrar(unItem)} />
+                            <BotonAccion
+                              icono="bi-trash"
+                              titulo={sinEditar ? 'Sin permiso para editar' : 'Borrar'}
+                              variante="danger"
+                              deshabilitado={sinEditar}
+                              onClick={() => borrar(unItem)}
+                            />
                           )}
                           {item._count > 1 && (
                             <BotonAccion icono="bi-list-ul" titulo="Ver el detalle" onClick={() => verDetalle(item)} />
@@ -704,6 +798,8 @@ export default function SanPabloPedidos() {
             <Button
               size="sm"
               type="submit"
+              disabled={sinEditar}
+              title={sinEditar ? 'Sin permiso para editar' : 'Guardar'}
               className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
               style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
             >

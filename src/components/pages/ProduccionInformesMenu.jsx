@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container } from "react-bootstrap";
 import { usePermisos } from "../../context/permisos";
+import { grillaCentrada } from "../../utils/grillaTarjetas";
 
 const MESES = [
   "Enero",
@@ -57,6 +58,9 @@ const INFORMES = [
 /** El mismo menú para los dos campos: cambia la base de las rutas. */
 function ProduccionInformesMenu({ base = "/produccion/certificados" }) {
   const { puede } = usePermisos();
+  // La grilla se arma con los informes que se ven, no con los que hay: así
+  // quedan centrados sean uno, dos o tres (utils/grillaTarjetas.js).
+  const visibles = INFORMES.filter((i) => !i.permiso || puede(i.permiso));
   const { anio, mes } = useParams();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
@@ -89,19 +93,8 @@ function ProduccionInformesMenu({ base = "/produccion/certificados" }) {
 
         {/* Tarjetas de informes */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
-          <div
-            style={{
-              display: "grid",
-              // Con pocos informes las tarjetas quedan centradas en vez de
-              // pegadas a la izquierda.
-              gridTemplateColumns: `repeat(${Math.min(INFORMES.length, 3)}, minmax(0, 1fr))`,
-              gap: "1.75rem",
-              width: "100%",
-              maxWidth: INFORMES.length < 3 ? `${INFORMES.length * 320}px` : "100%",
-              margin: "0 auto",
-            }}
-          >
-            {INFORMES.filter((i) => !i.permiso || puede(i.permiso)).map((i) => {
+          <div style={{ ...grillaCentrada(visibles.length), gap: "1.75rem" }}>
+            {visibles.map((i) => {
               const isHovered = hovered === i.id;
               return (
                 <div

@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { Container, Card, Table, Button, Form } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
-import { getArchivo, setArchivo, removeArchivo, fileADataURL } from '../../services/archivoPrototipo'
+import { subirArchivo, borrarArchivo } from '../../services/archivos'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya } from './estilos'
 import { opcionesDePrecio, opcionMinima, opcionElegida } from './precioElegido'
 import { useMontoAutorizacion } from './montoAutorizacion'
+import { usePermisos } from '../../context/permisos'
 
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 const esParaAnalisis = (e) => e === 'Para analisis' || e === 'En analisis' || e === 'Pedido' || e === 'Para revision'
@@ -32,11 +33,21 @@ const fmtPrecio = (v) =>
 // `elegido` vacío es "el más barato"; 1, 2 o 3, el presupuesto elegido a mano.
 const FORM_ITEM_INIT = { stock: '', proveedor1: '', precio1: '', proveedor2: '', precio2: '', proveedor3: '', precio3: '', elegido: '' }
 
+// Cada proveedor son dos columnas (el proveedor y su precio), y los tres
+// bloques seguidos se leían corridos: una línea marcada donde arranca cada
+// proveedor deja ver de una cuál precio es de quién. La línea va en index.css
+// (`.col-proveedor`) y no acá: el borde de `.tabla-informe` lleva !important y
+// le gana a cualquier borde inline.
+
 // `soloVer` lo pone la ruta de los talleres (/compras/pedidos/analisis): el
 // solicitante mira el análisis pero nunca lo procesa, aunque llegue sin ítem.
-export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
+export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   const navigate = useNavigate()
   const { state } = useLocation()
+  // Sin "Editar" en Analista (tabla de Roles) el análisis se mira y no se
+  // procesa, igual que cuando se entra desde los talleres.
+  const { puede } = usePermisos()
+  const soloVerForzado = soloVerProp || !puede('compras.analista', 'editar')
   const esComprador = !!state?.esComprador
   const estadoVisto = estadoVistoDe(state)
   const enVista = itemEnVista(estadoVisto)
@@ -57,7 +68,9 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
   const [focusMap, setFocusMap] = useState({})
   const [busqueda, setBusqueda] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
-  const [archivosMap, setArchivosMap] = useState({}) // itemId -> { name, url }  (prototipo front: aún sin backend)
+  // itemId -> { url, nombre, publicId, tipo }, lo que quedó guardado en el ítem.
+  const [archivosMap, setArchivosMap] = useState({})
+  const [subiendo, setSubiendo] = useState(null)
 
   useEffect(() => {
     const enVista = itemEnVista(estadoVistoDe(state))
@@ -99,8 +112,7 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
           initForms(pedido)
           const archivos = {}
           ;(pedido.items || []).filter(i => enVista(i)).forEach(i => {
-            const a = getArchivo(i._id)
-            if (a) archivos[i._id] = a
+            if (i.archivo?.url) archivos[i._id] = i.archivo
           })
           setArchivosMap(archivos)
         }
@@ -141,8 +153,7 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
     setShowDropdown(false)
     const archivos = {}
     ;(p.items || []).filter(i => enVista(i)).forEach(i => {
-      const a = getArchivo(i._id)
-      if (a) archivos[i._id] = a
+      if (i.archivo?.url) archivos[i._id] = i.archivo
     })
     setArchivosMap(archivos)
     const mapa = {}
@@ -167,21 +178,43 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
     if (pedidoSeleccionado) elegirPedido(pedidoSeleccionado)
   }
 
-  // --- Archivo (prototipo front): se guarda en sessionStorage vía archivoPrototipo ---
-  // Cuando conectemos el backend, acá se hará el POST a Cloudinary y se guardará item.archivo = url.
-  const subirArchivo = async (itemId, file) => {
-    const archivo = await fileADataURL(file)   // { name, dataURL }
-    setArchivo(itemId, archivo)
-    setArchivosMap(m => ({ ...m, [itemId]: archivo }))
+  // --- Adjuntos ---
+  // El archivo se sube a Cloudinary (services/archivos.js) y en el ítem queda
+  // guardada su URL, así se ve desde cualquier computadora. Se guarda en el
+  // momento, sin esperar a procesar el análisis.
+  const rutaDelPedido = () =>
+    pedidoSeleccionado?._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+
+  const adjuntar = async (itemId, file) => {
+    if (!pedidoSeleccionado) return
+    setSubiendo(itemId)
+    try {
+      const archivo = await subirArchivo(file)
+      await api.put(`${rutaDelPedido()}/${pedidoSeleccionado._id}/items/${itemId}`, { archivo })
+      setArchivosMap(m => ({ ...m, [itemId]: archivo }))
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo adjuntar', text: err.message })
+    } finally {
+      setSubiendo(null)
+    }
   }
 
-  const quitarArchivo = (itemId) => {
-    removeArchivo(itemId)
-    setArchivosMap(m => {
-      const resto = { ...m }
-      delete resto[itemId]
-      return resto
-    })
+  const quitarArchivo = async (itemId) => {
+    if (!pedidoSeleccionado) return
+    const archivo = archivosMap[itemId]
+    try {
+      // Primero se lo saca del ítem: si después falla el borrado en Cloudinary,
+      // lo que queda es un archivo suelto y no un link roto en pantalla.
+      await api.put(`${rutaDelPedido()}/${pedidoSeleccionado._id}/items/${itemId}`, { archivo: null })
+      setArchivosMap(m => {
+        const resto = { ...m }
+        delete resto[itemId]
+        return resto
+      })
+      await borrarArchivo(archivo || {})
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar el archivo', text: err.message })
+    }
   }
 
   const archivoCell = (item) => {
@@ -190,14 +223,14 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
       return (
         <div className="d-flex align-items-center justify-content-center gap-1">
           <a
-            href={archivo.dataURL}
+            href={archivo.url}
             target="_blank"
             rel="noreferrer"
-            title={archivo.name}
+            title={archivo.nombre || 'Ver el adjunto'}
             className="text-truncate"
             style={{ maxWidth: 80, fontSize: 12 }}
           >
-            <i className="bi bi-paperclip" /> {archivo.name}
+            <i className="bi bi-paperclip" /> {archivo.nombre || 'Ver'}
           </a>
           {!soloVer && (
             <button
@@ -212,15 +245,28 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
         </div>
       )
     }
+    const estaSubiendo = subiendo === item._id
     return (
-      <label className={`btn btn-sm btn-outline-dark mb-0${soloVer ? ' disabled' : ''}`} style={{ fontSize: 12 }}>
-        <i className="bi bi-upload" /> Subir
+      <label
+        className={`btn btn-sm btn-outline-dark mb-0${soloVer || estaSubiendo ? ' disabled' : ''}`}
+        style={{ fontSize: 12 }}
+        title={soloVer ? 'Sin permiso para editar' : 'Adjuntar un PDF o una foto'}
+      >
+        {estaSubiendo ? (
+          <>
+            <span className="spinner-border spinner-border-sm me-1" role="status" /> Subiendo…
+          </>
+        ) : (
+          <>
+            <i className="bi bi-upload" /> Subir
+          </>
+        )}
         <input
           type="file"
           accept=".pdf,image/*"
           hidden
-          disabled={soloVer}
-          onChange={e => { const f = e.target.files?.[0]; if (f) subirArchivo(item._id, f); e.target.value = '' }}
+          disabled={soloVer || estaSubiendo}
+          onChange={e => { const f = e.target.files?.[0]; if (f) adjuntar(item._id, f); e.target.value = '' }}
         />
       </label>
     )
@@ -538,9 +584,9 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
                 <th style={thCentro}>Stock</th>
                 <th style={thCentro}>Proveedor 1</th>
                 <th style={thCentro}>Precio 1</th>
-                <th style={thCentro}>Proveedor 2</th>
+                <th className="col-proveedor" style={thCentro}>Proveedor 2</th>
                 <th style={thCentro}>Precio 2</th>
-                <th style={thCentro}>Proveedor 3</th>
+                <th className="col-proveedor" style={thCentro}>Proveedor 3</th>
                 <th style={thCentro}>Precio 3</th>
                 <th style={thCentro}>Presupuesto</th>
               </tr>
@@ -572,9 +618,9 @@ export default function AnalizarItem({ soloVer: soloVerForzado = false }) {
                     </td>
                     <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor1')}</td>
                     <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio1')}</td>
-                    <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor2')}</td>
+                    <td className="col-proveedor" style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor2')}</td>
                     <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio2')}</td>
-                    <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor3')}</td>
+                    <td className="col-proveedor" style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor3')}</td>
                     <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio3')}</td>
                     <td style={{ ...tdCentro, padding: '4px 5px' }}>{archivoCell(item)}</td>
                   </tr>

@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import LogoNavbar from "./LogoNavbar";
 import SesionUsuario from "./SesionUsuario";
 import MenuAltas from "./MenuAltas";
+import { nombreEstablecimiento } from "../../utils/establecimientos";
 
 /**
  * En qué establecimiento se está parado, sacado de la URL.
@@ -14,7 +15,8 @@ const establecimientoDe = (pathname) => {
     return { nombre: "San Pablo", fondo: "#a13d3d", borde: "#ef4444" };
   }
   if (pathname.startsWith("/produccion/certificados")) {
-    return { nombre: "Caspinchango", fondo: "#2d6a4f", borde: "#6ee7b7" };
+    // La clave de la URL sigue siendo caspinchango; el nombre sale del catálogo.
+    return { nombre: nombreEstablecimiento("caspinchango"), fondo: "#2d6a4f", borde: "#6ee7b7" };
   }
   return null;
 };

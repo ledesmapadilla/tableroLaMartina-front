@@ -31,7 +31,8 @@ const ddmm = (iso) => {
  *
  * Es la misma pantalla para los dos campos: cambia el establecimiento con el
  * que se piden los períodos y la base de las rutas a las que lleva. Sin `base`
- * queda Caspinchango, que es como estaba antes de separar los campos.
+ * queda Berdina (clave `caspinchango`), que es como estaba antes de separar
+ * los campos.
  */
 function ProduccionCertificados({
   establecimiento = "caspinchango",

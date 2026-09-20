@@ -4,6 +4,7 @@ import { Container, Card, Form, Button, Row, Col, Badge, Table, Modal } from "re
 import Swal from "sweetalert2";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
 
 // Formateo seguro de fechas sin desfase horario UTC
 const formatF = (iso) => {
@@ -557,6 +558,11 @@ function ReparacionesCamioneta() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 
@@ -1001,12 +1007,13 @@ function ReparacionesCamioneta() {
             <Form.Group className="mb-0">
               <Form.Label className="fw-semibold text-dark small mb-1">Observaciones / Notas Adicionales</Form.Label>
               <Form.Control
-                type="text"
+                as="textarea"
+                rows={3}
                 value={tareaSeleccionada.observaciones || ""}
                 onChange={(e) => handleUpdateTarea(tareaSeleccionada._id, "observaciones", e.target.value)}
-                placeholder="Comentarios sobre tiempos, entrega o pruebas finales..."
+                placeholder="Escribir todos los comentarios o detalles adicionales..."
                 className="rounded-3"
-                style={{ fontSize: "0.85rem" }}
+                style={{ fontSize: "0.86rem" }}
               />
             </Form.Group>
           </fieldset>

@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { usePermisos } from '../../context/permisos'
+import { useAuth } from '../../context/AuthContext'
 import { GRUPO } from '../../utils/permisosCatalogo'
+import { seccionPropia, COLORES_NEUTROS } from '../../utils/seccionPropia'
+import { ultimaCentrada } from '../../utils/grillaTarjetas'
 
 // Las secciones de Compras. Es la entrada: todo lo demás cuelga de una de
 // estas. Para sumar otra alcanza con agregar una entrada acá y su ruta en
@@ -96,9 +99,16 @@ const SECCIONES = [
 export default function Inicio() {
   const navigate = useNavigate()
   const { puede } = usePermisos()
+  const { user } = useAuth()
   const [hovered, setHovered] = useState(null)
 
   const visibles = SECCIONES.filter((s) => puede(s.permiso))
+
+  // La sección de quien está logueado va con su color y el resto en gris, para
+  // que cada uno reconozca la suya de entrada (utils/seccionPropia.js). Si no
+  // hay ninguna propia —el superadmin, por ejemplo— quedan todas con su color.
+  const propia = seccionPropia(user)
+  const coloresDe = (s) => (!propia || s.id === propia ? s.colores : COLORES_NEUTROS)
 
   // Tres tarjetas por fila como máximo: más chicas no se leen. Con una o dos
   // el ancho se achica para que no queden estiradas a lo ancho de la pantalla.
@@ -149,20 +159,32 @@ export default function Inicio() {
             >
               {visibles.map((s, i) => {
                 const isHovered = hovered === s.id
+                const colores = coloresDe(s)
+                const esPropia = s.id === propia
                 return (
                   <div
                     key={s.id}
                     className="d-flex flex-column align-items-center justify-content-center text-center p-4"
                     style={{
                       gridColumn: enCinco ? COLUMNA[i] : undefined,
-                      background: isHovered ? s.colores.fondoHover : s.colores.fondo,
+                      // Con cuatro tarjetas van tres arriba y una abajo: esa
+                      // última se centra en vez de quedar a la izquierda.
+                      ...(enCinco ? {} : ultimaCentrada(i, visibles.length, columnas)),
+                      background: isHovered ? colores.fondoHover : colores.fondo,
                       borderRadius: '20px',
                       height: '230px',
                       color: '#fff',
                       cursor: 'pointer',
-                      border: `1px solid ${isHovered ? s.colores.borde : 'rgba(255,255,255,0.12)'}`,
+                      // La propia lleva su borde siempre, no solo al pasar el
+                      // mouse: con el color ya se distingue, y el borde lo
+                      // remarca.
+                      border: `1px solid ${
+                        isHovered || esPropia ? colores.borde : 'rgba(255,255,255,0.12)'
+                      }`,
                       boxShadow: isHovered
-                        ? `0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px ${s.colores.brillo}`
+                        ? `0 18px 30px -10px rgba(0,0,0,0.4), 0 0 16px ${colores.brillo}`
+                        : esPropia
+                        ? `0 8px 18px -6px rgba(0,0,0,0.25), 0 0 12px ${colores.brillo}`
                         : '0 8px 18px -6px rgba(0,0,0,0.25)',
                       transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
@@ -185,7 +207,7 @@ export default function Inicio() {
                         border: '1px solid rgba(255,255,255,0.16)',
                       }}
                     >
-                      <i className={s.icono} style={{ fontSize: '2.1rem', color: s.colores.icono }}></i>
+                      <i className={s.icono} style={{ fontSize: '2.1rem', color: colores.icono }}></i>
                     </div>
 
                     <span className="fw-bold" style={{ fontSize: '1.25rem', letterSpacing: '0.2px' }}>

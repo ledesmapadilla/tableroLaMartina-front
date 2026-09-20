@@ -213,8 +213,8 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
  * Es la misma para los dos campos: cambia el establecimiento con el que se
  * piden y se guardan los partes y el período. En San Pablo el día se corta al
  * mediodía, así que el turno tiene dos tramos (`dosTurnos`) y el trabajo se
- * marca como en proceso o terminado (`conEstado`). Caspinchango no lleva
- * ninguna de las dos cosas (17/09/2026).
+ * marca como en proceso o terminado (`conEstado`). Berdina (la clave
+ * `caspinchango`) no lleva ninguna de las dos cosas (17/09/2026).
  */
 /**
  * El círculo de estado del trabajo: verde con la tilde si está terminado, rojo

@@ -188,8 +188,11 @@ function LayoutDesktop() {
 
   return (
       <div className="app-wrapper">
-        {esMantenimiento && <BotonTableroFlotante />}
-        {esMantenimiento && <BotonReunionFlotante />}
+        {/* Los dos botones flotantes tienen su permiso en la tabla de Roles. */}
+        {esMantenimiento && puede("tablero.camionetas") && <BotonTableroFlotante />}
+        {esMantenimiento && puede("tablero.reunion") && (
+          <BotonReunionFlotante top={puede("tablero.camionetas") ? "calc(25% + 50px)" : "25%"} />
+        )}
         <div className="layout-right">
           {esProduccion && <NavbarProduccion />}
           {esCompras && !esPublica && <MenuCompras />}

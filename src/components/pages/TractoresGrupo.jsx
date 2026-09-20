@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
 
 // Triángulo rojo chillón con signo de exclamación blanco y opacidad oscura de contraste
 function IconoAlertaTractor({ size = 20 }) {
@@ -189,6 +190,11 @@ function TractoresGrupo() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import { nombreEstablecimiento } from "../../utils/establecimientos";
 
 /**
  * Elegir el campo dentro de una variable (18/09/2026).
@@ -13,7 +14,7 @@ import { Container } from "react-bootstrap";
 const CAMPOS = [
   {
     id: "caspinchango",
-    titulo: "Caspinchango",
+    titulo: nombreEstablecimiento("caspinchango"),
     icono: "bi bi-file-earmark-text-fill",
     colores: {
       fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",

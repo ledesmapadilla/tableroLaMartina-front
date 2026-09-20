@@ -6,6 +6,7 @@ import MenuAltas from "../shared/MenuAltas";
 import SesionUsuario from "../shared/SesionUsuario";
 import { usePermisos } from "../../context/permisos";
 import { GRUPO } from "../../utils/permisosCatalogo";
+import { ultimaCentrada } from "../../utils/grillaTarjetas";
 
 const secciones = [
   {
@@ -135,7 +136,7 @@ function Inicio() {
               justifyContent: "center",
             }}
           >
-            {mainCards.map((s) => {
+            {mainCards.map((s, i) => {
               const isHovered = hoveredCard === s.id;
               return (
                 <div
@@ -155,6 +156,10 @@ function Inicio() {
                     transform: isHovered ? "translateY(-4px) scale(1.015)" : "translateY(0) scale(1)",
                     color: "#ffffff",
                     userSelect: "none",
+                    // Si el rol ve un número impar de tarjetas, la última
+                    // ocupa la fila entera y queda centrada en vez de pegada a
+                    // la izquierda (utils/grillaTarjetas.js).
+                    ...ultimaCentrada(i, mainCards.length, 2),
                   }}
                   onClick={() => navigate(s.ruta)}
                   role="button"

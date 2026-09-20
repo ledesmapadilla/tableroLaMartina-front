@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Container } from "react-bootstrap";
 import { usePermisos } from "../../context/permisos";
 import { GRUPO } from "../../utils/permisosCatalogo";
+import { grillaCentrada } from "../../utils/grillaTarjetas";
 
 const MESES = [
   "Enero",
@@ -97,16 +98,7 @@ function ProduccionCertificadoMenu({ base = "/produccion/certificados" }) {
 
         {/* Tarjetas del mes */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${opciones.length || 1}, 1fr)`,
-              gap: "1.75rem",
-              width: "100%",
-              maxWidth: "640px",
-              margin: "0 auto",
-            }}
-          >
+          <div style={{ ...grillaCentrada(opciones.length, { maxColumnas: 2 }), gap: "1.75rem" }}>
             {opciones.map((o) => {
               const isHovered = hovered === o.id;
               return (

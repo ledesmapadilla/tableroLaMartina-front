@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import { nombreEstablecimiento } from "../../utils/establecimientos";
 
 // Los campos donde se produce. Es la entrada de Producción: todo lo demás
 // cuelga de uno de estos. Para sumar otro alcanza con agregar una entrada acá
@@ -14,7 +15,9 @@ import { Container } from "react-bootstrap";
 const ESTABLECIMIENTOS = [
   {
     id: "caspinchango",
-    titulo: "Caspinchango",
+    // El nombre sale de utils/establecimientos.js: la clave sigue siendo
+    // caspinchango, pero el campo se llama Berdina en todo el proyecto.
+    titulo: nombreEstablecimiento("caspinchango"),
     subtitulo: "Certificaciones mensuales del personal",
     icono: "bi bi-file-earmark-text-fill",
     destino: "/produccion/certificados",

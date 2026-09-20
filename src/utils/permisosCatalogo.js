@@ -41,10 +41,19 @@ export const CATALOGO = [
 
   { seccion: "Visitas", clave: "mantenimiento.visitas", label: "Visitas", hoy: PERMISOS.mantenimiento },
 
+  // Los dos botones flotantes de Mantenimiento (arriba a la derecha).
+  { seccion: "Tablero", clave: "tablero.camionetas", label: "Tablero de control (camionetas)", hoy: PERMISOS.mantenimiento },
+  { seccion: "Tablero", clave: "tablero.reunion", label: "Reunión (planillas de la flota)", hoy: PERMISOS.mantenimiento },
+
   { seccion: "San Pablo", clave: "sanpablo.ingresos", label: "Reparaciones › Ingresos (Manitous…)", hoy: PERMISOS.mantenimiento },
 
   // Producción
-  { seccion: "Producción", clave: "produccion.variables", label: "Variables", hoy: PERMISOS.produccion },
+  // Variables son las tres tarjetas de /produccion/variables. `produccion.variables`
+  // es la de Remuneración, que era la pantalla Variables de antes: así lo que
+  // ya estaba guardado sigue valiendo para ella.
+  { seccion: "Producción", clave: "produccion.variables", label: "Variables › Remuneración", hoy: PERMISOS.produccion },
+  { seccion: "Producción", clave: "produccion.lotes", label: "Variables › Lotes", hoy: PERMISOS.produccion },
+  { seccion: "Producción", clave: "produccion.admisibles", label: "Variables › Valores admisibles", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.certificacion", label: "Tarjeta del mes › Datos certificación", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.informeMes", label: "Tarjeta del mes › Informe del mes", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.contable", label: "Tarjeta del mes › Contable - Pagos", hoy: PERMISOS.produccionContable },
@@ -89,6 +98,7 @@ export const GRUPO = {
     "mantenimiento.visitas",
   ],
   produccion: clavesDe("produccion."),
+  produccionVariables: ["produccion.variables", "produccion.lotes", "produccion.admisibles"],
   produccionMes: ["produccion.certificacion", "produccion.informeMes", "produccion.contable"],
   produccionInformes: ["produccion.informeMes", "produccion.contable"],
 };

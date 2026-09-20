@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
+import { grillaCentrada } from '../../utils/grillaTarjetas'
 
 // Qué se puede hacer desde el analista. Cada una lleva su color: son cosas
 // distintas y de un vistazo se tiene que ver cuál es cuál. Pedidos se queda
@@ -36,8 +37,10 @@ const OPCIONES = [
   },
   {
     id: 'stock',
-    titulo: 'Stock',
-    subtitulo: 'Repuestos disponibles',
+    // El stock de la empresa: es la suma de los dos talleres, no un tercer
+    // depósito. Por eso los otros dos llevan el nombre del taller.
+    titulo: 'Stock general',
+    subtitulo: 'Todo el stock de la empresa: Berdina y San Pablo',
     icono: 'bi bi-box-seam-fill',
     destino: '/compras/analista/stock',
     colores: {
@@ -75,14 +78,7 @@ export default function Analista() {
         {/* Tarjetas del analista */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${OPCIONES.length}, 1fr)`,
-              gap: '1.75rem',
-              width: '100%',
-              maxWidth: '960px',
-              margin: '0 auto',
-            }}
+            style={{ ...grillaCentrada(OPCIONES.length), gap: '1.75rem' }}
           >
             {OPCIONES.map((o) => {
               const isHovered = hovered === o.id

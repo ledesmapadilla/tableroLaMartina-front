@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Container, Card, Table, Button } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
-import { getArchivo } from '../../services/archivoPrototipo'
 import {
   BORDO,
   BORDO_SUAVE,
@@ -14,6 +13,7 @@ import {
 } from './formato'
 import { Raya } from './estilos'
 import { opcionElegida } from './precioElegido'
+import { usePermisos } from '../../context/permisos'
 
 /** Un dato suelto de la ficha de la OP: rótulo chico arriba, valor abajo. */
 const Dato = ({ etiqueta, valor, destacado = false }) => (
@@ -73,15 +73,17 @@ const filaElegidaDeItem = (item) => {
     proveedor:       item[`proveedor${n}`],
     observaciones:   '',
     esMinima:        elegida ? elegida.esMinima : true,
-    // PROTOTIPO: el adjunto se trae de sessionStorage por _id del ítem.
-    // Con backend será item.archivo (URL de Cloudinary).
-    archivo:         item.archivo ?? getArchivo(item._id),
+    // El adjunto guardado en el ítem: { url, nombre, publicId, tipo }.
+    archivo:         item.archivo,
   }
 }
 
 export default function VerOP() {
   const { nro } = useParams()
   const navigate = useNavigate()
+  // Marcar el retiro es del comprador (tabla de Roles): el resto solo mira.
+  const { puede } = usePermisos()
+  const sinEditar = !puede('compras.comprador', 'editar')
   const { state } = useLocation()
   const modoAnalisis = !!state?.item || !!state?.items
   // Desde una tabla de pedidos la OP se abre para retirar un ítem, o los de
@@ -382,7 +384,7 @@ export default function VerOP() {
                   </div>
                   {op._modoAnalisis && item.archivo && (
                     <a
-                      href={typeof item.archivo === 'string' ? item.archivo : item.archivo.dataURL}
+                      href={item.archivo.url}
                       target="_blank"
                       rel="noreferrer"
                       className="d-inline-flex align-items-center gap-1 text-decoration-none mt-1"
@@ -483,12 +485,12 @@ export default function VerOP() {
                         <td style={tdCentro}>
                           {item.archivo ? (
                             <a
-                              href={typeof item.archivo === 'string' ? item.archivo : item.archivo.dataURL}
+                              href={item.archivo.url}
                               target="_blank"
                               rel="noreferrer"
                               className="d-inline-flex align-items-center gap-1 text-decoration-none"
                               style={{ color: BORDO, fontWeight: 600 }}
-                              title={typeof item.archivo === 'string' ? 'Ver el archivo' : item.archivo.name}
+                              title={item.archivo.nombre || 'Ver el archivo'}
                             >
                               <i className="bi bi-paperclip"></i>
                               <span>Ver</span>
@@ -545,7 +547,8 @@ export default function VerOP() {
             <Button
               size="sm"
               onClick={marcarRetirado}
-              disabled={aRetirar.length === 0}
+              disabled={sinEditar || aRetirar.length === 0}
+              title={sinEditar ? 'Sin permiso para editar' : 'Marcar como retirado'}
               className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
               style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
             >

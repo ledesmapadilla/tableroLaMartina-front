@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import { usePermisos } from "../../context/permisos";
+import { grillaCentrada } from "../../utils/grillaTarjetas";
 
 /**
  * Las variables de Producción (17/09/2026, movidas a la entrada el
@@ -19,6 +21,7 @@ const OPCIONES = [
     subtitulo: "El precio con el que se paga cada tarea",
     icono: "bi bi-sliders",
     destino: "remuneracion",
+    permiso: "produccion.variables",
     colores: {
       fondo: "linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%)",
       fondoHover: "linear-gradient(135deg, #081c15 0%, #1b4332 100%)",
@@ -33,6 +36,7 @@ const OPCIONES = [
     subtitulo: "Los lotes de cada campo, con sus hectáreas y plantas",
     icono: "bi bi-map-fill",
     destino: "lotes",
+    permiso: "produccion.lotes",
     colores: {
       fondo: "linear-gradient(135deg, #7c2d12 0%, #b45309 100%)",
       fondoHover: "linear-gradient(135deg, #431407 0%, #7c2d12 100%)",
@@ -47,6 +51,7 @@ const OPCIONES = [
     subtitulo: "El consumo admisible con el que se mide el desvío",
     icono: "bi bi-speedometer2",
     destino: "admisibles",
+    permiso: "produccion.admisibles",
     colores: {
       fondo: "linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)",
       fondoHover: "linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)",
@@ -59,7 +64,12 @@ const OPCIONES = [
 
 function ProduccionVariablesMenu({ base = "/produccion" }) {
   const navigate = useNavigate();
+  const { puede } = usePermisos();
   const [hovered, setHovered] = useState(null);
+
+  // Cada tarjeta tiene su fila en la tabla de Roles: se muestran las que el
+  // rol puede ver.
+  const opciones = OPCIONES.filter((o) => puede(o.permiso));
 
   const ir = (destino) => navigate(`${base}/variables/${destino}`);
 
@@ -91,16 +101,9 @@ function ProduccionVariablesMenu({ base = "/produccion" }) {
 
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${OPCIONES.length}, 1fr)`,
-              gap: "1.75rem",
-              width: "100%",
-              maxWidth: OPCIONES.length > 2 ? "900px" : "640px",
-              margin: "0 auto",
-            }}
+            style={{ ...grillaCentrada(opciones.length, { ancho: 300 }), gap: "1.75rem" }}
           >
-            {OPCIONES.map((o) => {
+            {opciones.map((o) => {
               const isHovered = hovered === o.id;
               return (
                 <div

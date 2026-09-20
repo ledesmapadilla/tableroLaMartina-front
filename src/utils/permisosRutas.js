@@ -29,7 +29,11 @@ const REGLAS = [
   [/^\/produccion\/altas\/personal/, "altas.personal"],
   [/^\/produccion\/altas\/tareas/, "altas.tareas"],
   // Variables dejó de colgar de cada campo y pasó a la entrada (18/09/2026).
-  [/^\/produccion\/variables/, "produccion.variables"],
+  // Sus tres tarjetas tienen permiso propio; el menú se ve si ve alguna.
+  [/^\/produccion\/variables\/remuneracion/, "produccion.variables"],
+  [/^\/produccion\/variables\/lotes/, "produccion.lotes"],
+  [/^\/produccion\/variables\/admisibles/, "produccion.admisibles"],
+  [/^\/produccion\/variables/, GRUPO.produccionVariables],
   [/^\/produccion\/certificados\/\d+\/\d+\/planilla/, "produccion.certificacion"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/mes/, "produccion.informeMes"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/tareas-personal/, "produccion.contable"],
@@ -38,6 +42,9 @@ const REGLAS = [
   [/^\/produccion/, GRUPO.produccion],
 
   // ── Camionetas ──
+  // El tablero de control, el del botón flotante: va antes que el resto de
+  // /camionetas para que mande su propio permiso.
+  [/^\/camionetas\/resumen/, "tablero.camionetas"],
   [/^\/camionetas\/altas/, "altas.camionetas"],
   [/^\/camionetas\/checklist\/form/, "camionetas.checklist", "editar"],
   [/^\/camionetas\/checklist/, "camionetas.checklist"],
@@ -73,6 +80,10 @@ const REGLAS = [
 
   // ── Reparaciones San Pablo ──
   [/^\/reparaciones\/sanpablo\/\d+\/(manitous|tolvas|carros-porta-escaleras|escaleras)/, "sanpablo.ingresos"],
+
+  // ── Reunión ──
+  // Pendientes solo se llega desde el botón de Reunión, así que pide su permiso.
+  [/^\/pendientes/, "tablero.reunion"],
 
   // ── Inicio de Mantenimiento ──
   [/^\/inicio\/?$/, GRUPO.mantenimiento],

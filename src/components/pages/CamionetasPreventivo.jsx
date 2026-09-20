@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
+import { grillaCentrada } from "../../utils/grillaTarjetas";
 
 const tarjetas = [
   {
@@ -43,6 +45,9 @@ function CamionetasPreventivo() {
   const { puede } = usePermisos();
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
+  // La grilla se arma con las tarjetas que se ven, no con las que hay: así
+  // quedan centradas sean una, dos o tres (utils/grillaTarjetas.js).
+  const visibles = tarjetas.filter((t) => !t.permiso || puede(t.permiso));
 
   return (
     <div
@@ -107,6 +112,11 @@ function CamionetasPreventivo() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 
@@ -116,15 +126,8 @@ function CamionetasPreventivo() {
         style={{ overflow: "hidden" }}
       >
         <div style={{ maxWidth: "1050px", width: "100%" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(260px, 1fr))",
-              gap: "1.5rem",
-              justifyContent: "center",
-            }}
-          >
-            {tarjetas.filter((t) => !t.permiso || puede(t.permiso)).map((t) => {
+          <div style={{ ...grillaCentrada(visibles.length, { ancho: 350 }), gap: "1.5rem" }}>
+            {visibles.map((t) => {
               const isHovered = hoveredCard === t.id;
               return (
                 <div

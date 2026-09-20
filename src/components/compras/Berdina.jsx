@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { usePermisos } from '../../context/permisos'
+import { grillaCentrada } from '../../utils/grillaTarjetas'
 
 // Qué se puede hacer dentro del taller. Cada una lleva su color: son cosas
 // distintas y de un vistazo se tiene que ver cuál es cuál. Pedidos se queda
@@ -39,8 +40,8 @@ const OPCIONES = [
   },
   {
     id: 'stock',
-    titulo: 'Stock',
-    subtitulo: 'Repuestos disponibles en el taller',
+    titulo: 'Stock Berdina',
+    subtitulo: 'Repuestos disponibles en el taller de Berdina',
     icono: 'bi bi-box-seam-fill',
     destino: '/compras/berdina/stock',
     colores: {
@@ -55,6 +56,9 @@ const OPCIONES = [
 
 export default function Berdina() {
   const { puede } = usePermisos()
+  // Solo las tarjetas que ve el rol: la grilla se arma con esas, así quedan
+  // centradas sean dos o tres (utils/grillaTarjetas.js).
+  const visibles = OPCIONES.filter((o) => !o.permiso || puede(o.permiso))
   const navigate = useNavigate()
   const [hovered, setHovered] = useState(null)
 
@@ -79,16 +83,9 @@ export default function Berdina() {
         {/* Tarjetas del taller */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: `repeat(${OPCIONES.length}, 1fr)`,
-              gap: '1.75rem',
-              width: '100%',
-              maxWidth: '960px',
-              margin: '0 auto',
-            }}
+            style={{ ...grillaCentrada(visibles.length), gap: '1.75rem' }}
           >
-            {OPCIONES.filter((o) => !o.permiso || puede(o.permiso)).map((o) => {
+            {visibles.map((o) => {
               const isHovered = hovered === o.id
               return (
                 <div

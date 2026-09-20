@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Modal } from "react-bootstrap";
+import { usePermisos } from "../../context/permisos";
+import { reglaDeRuta } from "../../utils/permisosRutas";
 
 /**
  * Atajo para la reunión: las planillas que se miran todas juntas cuando se
@@ -44,11 +46,23 @@ const DESTINOS = [
   },
 ];
 
-function BotonReunionFlotante() {
+/**
+ * `top` lo manda App.jsx: va abajo del botón de tablero, salvo que el rol no
+ * vea el tablero, y entonces ocupa su lugar en vez de dejar el hueco.
+ */
+function BotonReunionFlotante({ top = "calc(25% + 50px)" }) {
   const navigate = useNavigate();
+  const { puede } = usePermisos();
   const [hovered, setHovered] = useState(false);
   const [abierto, setAbierto] = useState(false);
   const [tocado, setTocado] = useState(null);
+
+  // Solo las planillas que el rol puede ver: si no, el destino rebotaba a la
+  // principal al tocarlo. El permiso de cada una es el de su propia ruta.
+  const destinos = DESTINOS.filter((d) => {
+    const regla = reglaDeRuta(d.to);
+    return !regla || puede(regla.permiso, regla.accion);
+  });
 
   const ir = (to) => {
     setAbierto(false);
@@ -65,7 +79,7 @@ function BotonReunionFlotante() {
         style={{
           position: "fixed",
           // Pegado abajo del botón de tablero, que mide 44px y arranca en 25%.
-          top: "calc(25% + 50px)",
+          top,
           right: 0,
           zIndex: 1040,
           width: "44px",
@@ -115,7 +129,7 @@ function BotonReunionFlotante() {
         </Modal.Header>
 
         <Modal.Body style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16 }}>
-          {DESTINOS.map((d) => (
+          {destinos.map((d) => (
             <button
               key={d.to}
               onClick={() => ir(d.to)}

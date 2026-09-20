@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
 
 // Triángulo rojo chillón con signo de exclamación blanco y opacidad oscura de contraste
 function IconoAlertaTractor({ size = 24 }) {
@@ -282,6 +283,11 @@ function TractoresReparaciones() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 
@@ -317,7 +323,9 @@ function TractoresReparaciones() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 235px)",
+            // auto-fit y no 4 fijas: las columnas sin tarjeta se colapsan, así
+            // un grupo de dos o tres equipos queda centrado y no a la izquierda.
+            gridTemplateColumns: "repeat(auto-fit, 235px)",
             gap: "1.5rem",
             maxWidth: "1020px",
             width: "100%",

@@ -5,6 +5,8 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import LogoNavbar from "../shared/LogoNavbar";
+import SesionUsuario from "../shared/SesionUsuario";
+import { usePermisos } from "../../context/permisos";
 
 const API = "/api/pendientes";
 
@@ -76,6 +78,10 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
 
 function Pendientes() {
   const navigate = useNavigate();
+  // Ver sin editar (tabla de Roles): los botones quedan a la vista pero
+  // deshabilitados. El permiso es el de Reunión, que es de donde se llega.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("tablero.reunion", "editar");
   const [pendientes, setPendientes] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -431,6 +437,11 @@ function Pendientes() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 
@@ -458,6 +469,8 @@ function Pendientes() {
               variant="primary"
               size="sm"
               onClick={abrirNuevo}
+              disabled={sinEditar}
+              title={sinEditar ? "Sin permiso para editar" : "Cargar un pendiente"}
               className="d-inline-flex align-items-center rounded-3 px-3.5 py-1.5 shadow-sm"
               style={{
                 backgroundColor: "#1e293b",
@@ -640,17 +653,19 @@ function Pendientes() {
                       <div className="d-flex justify-content-center align-items-center" style={{ gap: "8px" }}>
                         <button
                           onClick={() => abrirEditar(p)}
+                          disabled={sinEditar}
                           className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
                           style={{ width: "22px", height: "22px" }}
-                          title="Editar"
+                          title={sinEditar ? "Sin permiso para editar" : "Editar"}
                         >
                           <i className="bi bi-pencil" style={{ fontSize: "0.72rem" }}></i>
                         </button>
                         <button
                           onClick={() => eliminar(p)}
+                          disabled={sinEditar}
                           className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                           style={{ width: "22px", height: "22px" }}
-                          title="Eliminar"
+                          title={sinEditar ? "Sin permiso para editar" : "Eliminar"}
                         >
                           <i className="bi bi-trash" style={{ fontSize: "0.72rem" }}></i>
                         </button>
@@ -830,6 +845,8 @@ function Pendientes() {
               variant="success"
               size="sm"
               type="submit"
+              disabled={sinEditar}
+              title={sinEditar ? "Sin permiso para editar" : "Guardar"}
               className="rounded-3 px-3.5 py-1.5 shadow-sm d-flex align-items-center gap-1.5"
               style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
             >

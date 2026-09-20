@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
 import { GRUPO } from "../../utils/permisosCatalogo";
+import SesionUsuario from "../shared/SesionUsuario";
 
 const tarjetas = [
   {
@@ -90,6 +91,11 @@ function Camionetas() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 

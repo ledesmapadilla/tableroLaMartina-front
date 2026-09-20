@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { useForm } from "react-hook-form";
+import { usePermisos } from "../../context/permisos";
 
 const API = "/api/lotes";
 
@@ -23,6 +24,10 @@ const numero = (v, decimales = 2) =>
  * Los lotes son de un campo: el mismo nombre puede existir en los dos.
  */
 function ProduccionLotes({ establecimiento = "caspinchango" }) {
+  // Ver sin editar (tabla de Roles): los botones quedan a la vista pero
+  // deshabilitados.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("produccion.lotes", "editar");
   const query = `?establecimiento=${establecimiento}`;
   const [lotes, setLotes] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -191,6 +196,8 @@ function ProduccionLotes({ establecimiento = "caspinchango" }) {
           <Button
             size="sm"
             onClick={abrirAlta}
+            disabled={sinEditar}
+            title={sinEditar ? "Sin permiso para editar" : "Cargar un lote"}
             className="d-inline-flex align-items-center gap-1 rounded-3 px-3 shadow-sm"
             style={{ backgroundColor: "#1b4332", borderColor: "#1b4332", fontSize: "0.82rem", fontWeight: 600 }}
           >
@@ -297,17 +304,19 @@ function ProduccionLotes({ establecimiento = "caspinchango" }) {
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "8px" }}>
                           <button
                             onClick={() => abrirEditar(l)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
                             style={{ width: "24px", height: "24px" }}
-                            title="Editar"
+                            title={sinEditar ? "Sin permiso para editar" : "Editar"}
                           >
                             <i className="bi bi-pencil" style={{ fontSize: "0.75rem" }}></i>
                           </button>
                           <button
                             onClick={() => borrar(l)}
+                            disabled={sinEditar}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                             style={{ width: "24px", height: "24px" }}
-                            title="Borrar"
+                            title={sinEditar ? "Sin permiso para editar" : "Borrar"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.75rem" }}></i>
                           </button>
@@ -422,6 +431,8 @@ function ProduccionLotes({ establecimiento = "caspinchango" }) {
             <Button
               size="sm"
               type="submit"
+              disabled={sinEditar}
+              title={sinEditar ? "Sin permiso para editar" : "Guardar"}
               className="rounded-3 px-3 shadow-sm d-flex align-items-center gap-1"
               style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
             >

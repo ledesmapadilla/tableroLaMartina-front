@@ -4,6 +4,7 @@ import SesionUsuario from "../shared/SesionUsuario";
 import MenuAltas from "../shared/MenuAltas";
 import { usePermisos } from "../../context/permisos";
 import { GRUPO } from "../../utils/permisosCatalogo";
+import { grillaCentrada } from "../../utils/grillaTarjetas";
 
 const secciones = [
   {
@@ -47,6 +48,9 @@ function PaginaPrincipal() {
   const navigate = useNavigate();
   const { puede } = usePermisos();
   const [hoveredCard, setHoveredCard] = useState(null);
+  // La grilla se arma con las tarjetas que se ven, no con las que hay: así
+  // quedan centradas sean una, dos o tres (utils/grillaTarjetas.js).
+  const visibles = secciones.filter((s) => !s.permiso || puede(s.permiso));
 
   return (
     <div
@@ -91,16 +95,8 @@ function PaginaPrincipal() {
 
       {/* Tarjetas */}
       <div className="flex-grow-1 d-flex align-items-center justify-content-center p-4">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(240px, 1fr))",
-            gap: "1.75rem",
-            maxWidth: "1040px",
-            width: "100%",
-          }}
-        >
-          {secciones.filter((s) => !s.permiso || puede(s.permiso)).map((s) => {
+        <div style={{ ...grillaCentrada(visibles.length, { ancho: 346 }), gap: "1.75rem" }}>
+          {visibles.map((s) => {
             const isHovered = hoveredCard === s.id;
             return (
               <div

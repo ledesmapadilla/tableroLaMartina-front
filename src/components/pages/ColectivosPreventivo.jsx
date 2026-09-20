@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { nuevoWorkbook } from "../../helpers/excel";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
 
 const AÑOS = Array.from({ length: 6 }, (_, i) => 2026 + i);
 
@@ -750,6 +751,11 @@ function ColectivosPreventivo() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 

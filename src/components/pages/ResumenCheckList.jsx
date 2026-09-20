@@ -4,6 +4,7 @@ import { Container, Table, Button, Form } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
+import SesionUsuario from "../shared/SesionUsuario";
 
 const MESES = ["enero", "marzo", "mayo", "julio", "septiembre", "noviembre"];
 const AÑO_DESDE = 2026;
@@ -289,6 +290,11 @@ function ResumenCheckList() {
             <i className="bi bi-house-door-fill"></i>
             <span>General</span>
           </button>
+
+          {/* Quién está logueado: a la vista en toda la sección, igual que en
+              Compras y Producción. La sesión es del proyecto entero. */}
+          <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+          <SesionUsuario mostrarRol />
         </div>
       </div>
 
