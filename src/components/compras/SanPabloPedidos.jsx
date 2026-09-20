@@ -230,7 +230,7 @@ export default function SanPabloPedidos() {
         {estaSubiendo ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
         <input
           type="file"
-          accept=".pdf,image/*"
+          accept=".pdf,image/*,.xlsx,.xls,.csv,.doc,.docx"
           hidden
           disabled={sinEditar || estaSubiendo}
           onChange={(e) => { const file = e.target.files?.[0]; if (file) adjuntar(item, file); e.target.value = '' }}

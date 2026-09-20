@@ -263,7 +263,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
         )}
         <input
           type="file"
-          accept=".pdf,image/*"
+          accept=".pdf,image/*,.xlsx,.xls,.csv,.doc,.docx"
           hidden
           disabled={soloVer || estaSubiendo}
           onChange={e => { const f = e.target.files?.[0]; if (f) adjuntar(item._id, f); e.target.value = '' }}

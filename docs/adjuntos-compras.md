@@ -19,6 +19,12 @@ de un pedido no puede pasar de unos 4,5 MB, y la foto de un presupuesto sacada
 con el celular ya lo supera. El límite que sí ponemos es de 10 MB por archivo,
 en `services/archivos.js`.
 
+**Qué se puede adjuntar:** PDF, imágenes, Excel (`.xlsx`, `.xls`, `.csv`) y Word
+(`.doc`, `.docx`). Cloudinary guarda las imágenes y los PDF como `image` y el
+resto como `raw`; un Excel no se previsualiza en el navegador, se descarga, que
+es lo esperable. Para sumar un formato se toca el `accept` del input en las tres
+pantallas que adjuntan.
+
 En el ítem queda guardado:
 
 ```js
