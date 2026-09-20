@@ -91,7 +91,10 @@ export default function Gerencia() {
     return () => { vigente = false }
   }, [recarga])
 
-  const verAnalisis = (grupo) => navigate('/compras/op/ver', { state: { items: grupo.items } })
+  // El ojo de la columna Costo muestra el mismo detalle que el número, con el
+  // costo de cada ítem adentro. Antes llevaba a la pantalla del análisis de
+  // precios, que es una tabla ancha y se veía distinta (20/09/2026).
+  const verAnalisis = (grupo) => verDetalle(grupo)
 
   // Los adjuntos del pedido: el presupuesto que subió el analista o lo que sumó
   // el taller. Esta pantalla se mira en el celular, así que no lleva una
@@ -134,6 +137,7 @@ export default function Gerencia() {
           ${dato('Urgencia', i.urgencia)}
           ${dato('Solicita', i.solicita)}
           ${dato('Descripción', i.descripcion)}
+          ${dato('Costo', calcCostoItem(i) == null ? '' : fmtPrecio(calcCostoItem(i)))}
           ${
             i.archivo?.url
               ? `<a href="${i.archivo.url}" target="_blank" rel="noreferrer"
@@ -449,7 +453,13 @@ export default function Gerencia() {
                             es (B- o SP-) y en el celular ese espacio hace
                             falta. El ojo abre el detalle del pedido. */}
                         <div className="d-flex align-items-center justify-content-center gap-1">
-                          <span
+                          {/* El número abre el detalle, igual que en el
+                              historial: sin un botón aparte, la fila es más
+                              baja y hay menos cosas que apuntar con el dedo. */}
+                          <button
+                            type="button"
+                            onClick={() => verDetalle(grupo)}
+                            className="btn btn-link p-0 align-baseline"
                             style={{
                               fontSize: '0.7rem',
                               // Mismo criterio que en las tablas de pedidos: el
@@ -457,15 +467,13 @@ export default function Gerencia() {
                               color: grupo.items.length > 1 ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
                               fontWeight: 700,
                               lineHeight: 1.3,
+                              textDecoration: 'underline',
+                              whiteSpace: 'nowrap',
                             }}
+                            title="Ver el detalle del pedido"
                           >
                             {fmtNro(grupo.nro_pedido, grupo._src)}
-                          </span>
-                          <BotonAccion
-                            icono="bi-eye"
-                            titulo="Ver el detalle del pedido"
-                            onClick={() => verDetalle(grupo)}
-                          />
+                          </button>
                           {campana(grupo)}
                         </div>
                         {grupo.items.length > 1 && (
