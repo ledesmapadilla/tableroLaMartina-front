@@ -39,6 +39,7 @@ const OPCIONES = [
     id: 'stock',
     // El stock de la empresa: es la suma de los dos talleres, no un tercer
     // depósito. Por eso los otros dos llevan el nombre del taller.
+    permiso: 'compras.stock',
     titulo: 'Stock general',
     subtitulo: 'Todo el stock de la empresa: Berdina y San Pablo',
     icono: 'bi bi-box-seam-fill',
