@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container, Table, Button } from 'react-bootstrap'
-import { BORDO, BORDO_SUAVE, thCentro, td, tdCentro } from './formato'
+import { BORDO, BORDO_SUAVE, thCentro, td, tdCentro, COLOR_NRO_MULTIPLE, COLOR_NRO_SIMPLE } from './formato'
 import { BotonAccion } from './estilos'
 import { verHistorialPedido, conCreacion } from './detallePedido'
 import { opcionElegida } from './precioElegido'
@@ -406,7 +406,9 @@ export default function Gerencia() {
                           className="btn btn-link p-0"
                           style={{
                             fontSize: '0.64rem',
-                            color: BORDO,
+                            // Mismo criterio que en las tablas de pedidos: el
+                            // pedido de varios ítems se distingue por el color.
+                            color: grupo.items.length > 1 ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
                             fontWeight: 700,
                             marginTop: 4,
                             lineHeight: 1.3,

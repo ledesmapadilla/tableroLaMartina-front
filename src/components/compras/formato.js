@@ -13,6 +13,15 @@ export const BORDO = '#7a1828'
 // El bordó clarito, para los chips del encabezado.
 export const BORDO_SUAVE = '#fdeaee'
 
+/**
+ * El número de pedido en las tablas, que se toca para ver el detalle
+ * (20/09/2026). El de un pedido con varios ítems va en el bordó de Compras,
+ * el mismo del borde y del ojo que ya lo marcan; el de un pedido de un solo
+ * ítem va en índigo, para diferenciarlos de un vistazo.
+ */
+export const COLOR_NRO_MULTIPLE = BORDO
+export const COLOR_NRO_SIMPLE = '#3730a3'
+
 export const th = {
   backgroundColor: BORDO,
   color: '#fff',

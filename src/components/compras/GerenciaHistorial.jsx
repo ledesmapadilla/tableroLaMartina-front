@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Container, Card, Table } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
-import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
+import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro, COLOR_NRO_MULTIPLE, COLOR_NRO_SIMPLE } from './formato'
+import { usePermisos } from '../../context/permisos'
 import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido } from './estilos'
 import { verHistorialPedido, conCreacion } from './detallePedido'
 import { opcionElegida } from './precioElegido'
@@ -65,8 +66,14 @@ const badgeTaller = (src) => (
  * lateral, y los filtros se acomodan en varias líneas.
  */
 export default function GerenciaHistorial() {
+  // Deshacer un rechazo es una decisión de Gerencia: sin "Editar" en su
+  // pantalla, el historial se mira y nada más (tabla de Roles).
+  const { puede } = usePermisos()
+  const sinEditar = !puede('compras.gerencia', 'editar')
   const [grupos, setGrupos] = useState([])
   const [cargando, setCargando] = useState(true)
+  // Para volver a pedir la lista después de deshacer un rechazo.
+  const [recarga, setRecarga] = useState(0)
   const [filtros, setFiltros] = useState(FILTROS_INIT)
   // Pedidos múltiples abiertos con el ojo: sus ítems van debajo, en la misma tabla.
   const [abiertos, setAbiertos] = useState(() => new Set())
@@ -113,7 +120,7 @@ export default function GerenciaHistorial() {
       setCargando(false)
     })()
     return () => { vigente = false }
-  }, [])
+  }, [recarga])
 
   const lista = grupos.filter((g) => {
     // Un solo buscador para el número y el repuesto: en el celular no entran dos.
@@ -143,6 +150,125 @@ export default function GerenciaHistorial() {
       ? [g, ...g.items.map((i) => ({ ...i, _anidada: true, _key: `${g._key}-${i._id}` }))]
       : [g]
   )
+
+  const escaparHtml = (s) =>
+    String(s).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    )
+
+  /**
+   * Deshacer un rechazo (20/09/2026). El pedido vuelve a "Para revision", que
+   * es la bandeja del analista: retoma el circuito desde el análisis y, cuando
+   * se procese de nuevo, el monto decide si vuelve a Gerencia o pasa derecho
+   * al comprador. Queda en el historial con su motivo, como toda decisión.
+   */
+  const deshacerRechazo = async (grupo) => {
+    const { value: motivo, isConfirmed } = await Swal.fire({
+      title: '¿Deshacer el rechazo?',
+      html: `<div style="font-weight:600;margin-bottom:8px">${escaparHtml(
+        fmtNro(grupo.nro_pedido, grupo._src)
+      )}</div>
+      <div style="font-size:0.82rem;color:#64748b">Vuelve al analista para que lo retome.</div>`,
+      input: 'textarea',
+      inputLabel: 'Motivo',
+      inputPlaceholder: 'Por qué se deshace el rechazo…',
+      showCancelButton: true,
+      confirmButtonText: 'Deshacer el rechazo',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: false,
+      customClass: { confirmButton: 'btn btn-outline-warning me-2', cancelButton: 'btn btn-outline-secondary' },
+      preConfirm: (val) => {
+        if (!val?.trim()) { Swal.showValidationMessage('El motivo es obligatorio'); return false }
+        return val.trim()
+      },
+    })
+    if (!isConfirmed) return
+    try {
+      const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+      await Promise.all(
+        grupo.items.map((item) =>
+          api.put(`${base}/${item.pedidoId}/items/${item._id}`, {
+            estado: 'Para revision',
+            usuario: 'Gerencia',
+            nota: `Rechazo deshecho: ${motivo}`,
+          })
+        )
+      )
+      setRecarga((n) => n + 1)
+      Swal.fire({ icon: 'success', title: 'Volvió al analista', timer: 1500, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
+  }
+
+  /**
+   * El detalle del pedido, al tocar su número. Apilado y no en tabla: esta
+   * pantalla se mira en el teléfono. Si el pedido está rechazado, el botón
+   * para deshacerlo vive acá adentro y no en la fila, para no robarle ancho a
+   * la tabla.
+   */
+  const verDetalle = async (grupo) => {
+    const rechazado = grupo.decision === 'Rechazado'
+    const sePuedeDeshacer = rechazado && !sinEditar
+
+    const dato = (rotulo, valor) =>
+      valor === null || valor === undefined || valor === ''
+        ? ''
+        : `<div style="display:flex;gap:6px;margin-top:2px">
+             <span style="color:#64748b;flex-shrink:0">${rotulo}:</span>
+             <span style="color:#1e293b">${escaparHtml(valor)}</span>
+           </div>`
+
+    const fichas = (grupo.items || [])
+      .map(
+        (i) => `<div style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;
+                            margin-bottom:8px;text-align:left;font-size:0.8rem">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+            <span style="font-weight:700;color:#1e293b">${escaparHtml(i.nombre_repuesto || '—')}</span>
+            <span style="font-weight:600;color:${BORDO};white-space:nowrap">
+              ${i.cant ?? '—'} ${escaparHtml(i.unidad || '')}
+            </span>
+          </div>
+          ${dato('C.C.', i.cc)}
+          ${dato('Grupo', i.grupo)}
+          ${dato('Urgencia', i.urgencia)}
+          ${dato('Solicita', i.solicita)}
+          ${dato('Descripción', i.descripcion)}
+          ${
+            i.archivo?.url
+              ? `<a href="${i.archivo.url}" target="_blank" rel="noreferrer"
+                    style="display:inline-block;margin-top:6px;color:${BORDO};font-weight:600;text-decoration:none">
+                   <i class="bi bi-paperclip"></i> ${escaparHtml(i.archivo.nombre || 'Ver el adjunto')}
+                 </a>`
+              : ''
+          }
+        </div>`
+      )
+      .join('')
+
+    const motivo = grupo.accion?.nota
+      ? `<div style="text-align:left;font-size:0.78rem;background:#fef2f2;border:1px solid #fecaca;
+                     border-radius:10px;padding:8px 10px;margin-bottom:8px">
+           <span style="font-weight:700;color:#b91c1c">${escaparHtml(grupo.decision || '')}</span>
+           <div style="color:#7f1d1d;margin-top:2px">${escaparHtml(grupo.accion.nota)}</div>
+         </div>`
+      : ''
+
+    const { isConfirmed } = await Swal.fire({
+      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src)}`,
+      html: `<div style="max-height:60vh;overflow:auto">${motivo}${fichas}</div>`,
+      width: 360,
+      padding: '0.9rem',
+      showConfirmButton: sePuedeDeshacer,
+      confirmButtonText: 'Deshacer el rechazo',
+      confirmButtonColor: '#b45309',
+      showCancelButton: true,
+      cancelButtonText: 'Cerrar',
+      cancelButtonColor: BORDO,
+    })
+
+    if (isConfirmed && sePuedeDeshacer) deshacerRechazo(grupo)
+  }
 
   const verHistorial = async (grupo) => {
     try {
@@ -264,8 +390,25 @@ export default function GerenciaHistorial() {
                         }}
                       >
                         {badgeTaller(f._src)}
-                        <div style={{ fontWeight: multiple ? 700 : 400, whiteSpace: 'nowrap', marginTop: 3 }}>
-                          {fmtNro(f.nro_pedido, f._src)}
+                        <div style={{ whiteSpace: 'nowrap', marginTop: 3 }}>
+                          {/* El número abre el detalle del pedido, y ahí
+                              adentro está el botón para deshacer un rechazo:
+                              en el teléfono la fila no tiene lugar para otro
+                              botón. */}
+                          <button
+                            type="button"
+                            onClick={() => verDetalle(f)}
+                            className="btn btn-link p-0 align-baseline"
+                            style={{
+                              fontSize: 'inherit',
+                              fontWeight: 700,
+                              color: multiple ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
+                              textDecoration: 'underline',
+                            }}
+                            title="Ver el detalle del pedido"
+                          >
+                            {fmtNro(f.nro_pedido, f._src)}
+                          </button>
                           {multiple && (
                             <OjoPedido abierto={abiertos.has(f._key)} onClick={() => alternarAbierto(f._key)} />
                           )}

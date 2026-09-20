@@ -7,7 +7,7 @@ import UmbralAutorizacion from './UmbralAutorizacion'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
 import { GRUPOS_PEDIDO } from '../../utils/equipos'
-import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
+import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro, COLOR_NRO_MULTIPLE, COLOR_NRO_SIMPLE } from './formato'
 import { avisarSinOC, idsARetirar } from './avisos'
 import { usePermisos } from '../../context/permisos'
 import {
@@ -267,7 +267,7 @@ export default function AnalistaPedidos() {
   }
 
   const verDetalle = (item) =>
-    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src)}`, items: item._items })
+    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src)}`, items: item._items || [item] })
 
   const verMotivoRevision = async (item) => {
     try {
@@ -576,10 +576,38 @@ export default function AnalistaPedidos() {
                             (item._agrupado && item._count > 1) || item._anidada ? `3px solid ${BORDO}` : undefined,
                         }}
                       >
+                        {/* El número abre el detalle del pedido: qué se pidió,
+                            para qué equipo y con qué descripción. */}
                         {item._anidada ? (
-                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src)}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); verDetalle(item) }}
+                            className="btn btn-link p-0 align-baseline"
+                            style={{
+                              fontSize: 'inherit',
+                              fontWeight: 700,
+                              color: '#94a3b8',
+                              textDecoration: 'underline',
+                            }}
+                            title="Ver el detalle del pedido"
+                          >
+                            ↳ {fmtNro(item.nro_pedido, item._src)}
+                          </button>
                         ) : (
-                          fmtNro(item.nro_pedido, item._src)
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); verDetalle(item) }}
+                            className="btn btn-link p-0 align-baseline"
+                            style={{
+                              fontSize: 'inherit',
+                              fontWeight: 700,
+                              color: item._count > 1 ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
+                              textDecoration: 'underline',
+                            }}
+                            title="Ver el detalle del pedido"
+                          >
+                            {fmtNro(item.nro_pedido, item._src)}
+                          </button>
                         )}
                         {item._agrupado && item._count > 1 && (
                           <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />
