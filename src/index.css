@@ -117,6 +117,29 @@ main {
   border-left: 2px solid #ffffff !important;
 }
 
+/* Los filtros del historial de Gerencia, que se mira en el teléfono: dos por
+   fila y cada uno ocupando su columna, para que los cuatro entren en dos
+   líneas parejas. Con `flex-wrap` y anchos fijos el reparto dependía del ancho
+   del equipo y salían 3+1 o tres líneas (20/09/2026). En pantalla grande
+   quedan en una sola línea, como el resto de Compras.
+   El `!important` es para ganarle al ancho fijo que cada filtro lleva puesto. */
+@media (max-width: 575.98px) {
+  .filtros-2col {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .filtros-2col > * {
+    width: 100% !important;
+  }
+  /* La cruz de limpiar va sola abajo, cruzando las dos columnas. */
+  .filtros-2col > .filtro-limpiar {
+    grid-column: span 2;
+    display: flex;
+    justify-content: center;
+  }
+}
+
 /* ── Radio buttons ── */
 input[type="radio"] {
   width: 1.2rem;

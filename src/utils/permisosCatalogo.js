@@ -110,6 +110,7 @@ export const NOMBRES_ROL = {
   analista: "Analista",
   comprador: "Comprador",
   gerente: "Gerente",
+  celular: "Celular",
 };
 
 export const nombreRol = (rol) => NOMBRES_ROL[rol] || rol || "";

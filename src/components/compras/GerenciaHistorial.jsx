@@ -325,15 +325,20 @@ export default function GerenciaHistorial() {
           )}
         </div>
 
-        {/* Filtros: en el celular se acomodan en varias líneas. */}
+        {/* Filtros: en el celular van dos por fila (.filtros-2col, index.css);
+            en pantalla grande, los cuatro en una línea. */}
         <Card className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0">
-          <div className="d-flex align-items-end justify-content-center gap-2 flex-wrap">
+          <div className="d-flex align-items-end justify-content-center gap-2 flex-wrap filtros-2col">
             <FiltroTexto etiqueta="Buscar" ancho="150px" valor={filtros.buscar} onChange={(v) => setF('buscar', v)} placeholder="N° o repuesto" />
             <FiltroSelect etiqueta="Taller" ancho="116px" valor={filtros.taller} vacio="Todos" onChange={(v) => setF('taller', v)} opciones={Object.values(TALLERES)} />
             <FiltroSelect etiqueta="Decisión" ancho="116px" valor={filtros.decision} vacio="Todas" onChange={(v) => setF('decision', v)} opciones={DECISIONES} />
             <FiltroTexto etiqueta="Fecha" ancho="136px" tipo="date" valor={filtros.fecha} onChange={(v) => setF('fecha', v)} />
 
-            {hayFiltros && <BotonLimpiar onClick={() => setFiltros(FILTROS_INIT)} />}
+            {hayFiltros && (
+              <div className="filtro-limpiar d-flex align-items-end">
+                <BotonLimpiar onClick={() => setFiltros(FILTROS_INIT)} />
+              </div>
+            )}
           </div>
         </Card>
 
