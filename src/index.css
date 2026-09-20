@@ -134,12 +134,6 @@ main {
 .filtros-2col > * {
   width: 100% !important;
 }
-/* La cruz de limpiar va sola abajo, cruzando las dos columnas. */
-.filtros-2col > .filtro-limpiar {
-  grid-column: span 2;
-  display: flex;
-  justify-content: center;
-}
 
 /* ── Radio buttons ── */
 input[type="radio"] {

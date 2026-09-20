@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro, COLOR_NRO_MULTIPLE, COLOR_NRO_SIMPLE } from './formato'
 import { usePermisos } from '../../context/permisos'
-import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido } from './estilos'
+import { Raya, BotonAccion, FiltroTexto, FiltroSelect, OjoPedido } from './estilos'
 import { verHistorialPedido, conCreacion } from './detallePedido'
 import { opcionElegida } from './precioElegido'
 
@@ -331,13 +331,9 @@ export default function GerenciaHistorial() {
             <FiltroTexto etiqueta="Buscar" ancho="150px" valor={filtros.buscar} onChange={(v) => setF('buscar', v)} placeholder="N° o repuesto" />
             <FiltroSelect etiqueta="Taller" ancho="116px" valor={filtros.taller} vacio="Todos" onChange={(v) => setF('taller', v)} opciones={Object.values(TALLERES)} />
             <FiltroSelect etiqueta="Decisión" ancho="116px" valor={filtros.decision} vacio="Todas" onChange={(v) => setF('decision', v)} opciones={DECISIONES} />
+            {/* Sin la cruz general de limpiar: cada filtro ya trae la suya
+                cuando tiene algo puesto, y acá agregaba una fila de más. */}
             <FiltroTexto etiqueta="Fecha" ancho="136px" tipo="date" valor={filtros.fecha} onChange={(v) => setF('fecha', v)} />
-
-            {hayFiltros && (
-              <div className="filtro-limpiar d-flex align-items-end">
-                <BotonLimpiar onClick={() => setFiltros(FILTROS_INIT)} />
-              </div>
-            )}
           </div>
         </Card>
 
