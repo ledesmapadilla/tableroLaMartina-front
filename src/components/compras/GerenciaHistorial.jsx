@@ -4,7 +4,7 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro, COLOR_NRO_MULTIPLE, COLOR_NRO_SIMPLE } from './formato'
 import { usePermisos } from '../../context/permisos'
-import { Raya, BotonAccion, FiltroTexto, FiltroSelect, OjoPedido } from './estilos'
+import { Raya, FiltroTexto, FiltroSelect } from './estilos'
 import { verHistorialPedido, conCreacion } from './detallePedido'
 import { opcionElegida } from './precioElegido'
 
@@ -51,15 +51,6 @@ const conCant = (i) => `${i.nombre_repuesto}${i.cant ? ` (${i.cant})` : ''}`
 const FILTROS_INIT = { buscar: '', taller: '', decision: '', fecha: '' }
 const COLUMNAS = 4
 
-const badgeTaller = (src) => (
-  <span
-    className="badge"
-    style={{ backgroundColor: src === 'berdina' ? BORDO : '#166534', fontSize: '0.62rem', letterSpacing: 0.3 }}
-  >
-    {TALLERES[src]}
-  </span>
-)
-
 /**
  * Lo que resolvió Gerencia. Se usa en el celular, como toda la sección: cuatro
  * columnas con los datos apilados en cada celda para que entre sin scroll
@@ -75,8 +66,6 @@ export default function GerenciaHistorial() {
   // Para volver a pedir la lista después de deshacer un rechazo.
   const [recarga, setRecarga] = useState(0)
   const [filtros, setFiltros] = useState(FILTROS_INIT)
-  // Pedidos múltiples abiertos con el ojo: sus ítems van debajo, en la misma tabla.
-  const [abiertos, setAbiertos] = useState(() => new Set())
   const setF = (k, v) => setFiltros((f) => ({ ...f, [k]: v }))
   const hayFiltros = Object.values(filtros).some((v) => v !== '')
 
@@ -136,20 +125,9 @@ export default function GerenciaHistorial() {
     return true
   })
 
-  const alternarAbierto = (clave) =>
-    setAbiertos((prev) => {
-      const siguiente = new Set(prev)
-      if (siguiente.has(clave)) siguiente.delete(clave)
-      else siguiente.add(clave)
-      return siguiente
-    })
-
-  // Cada pedido y, debajo de los abiertos, sus ítems marcados como anidados.
-  const filas = lista.flatMap((g) =>
-    g.items.length > 1 && abiertos.has(g._key)
-      ? [g, ...g.items.map((i) => ({ ...i, _anidada: true, _key: `${g._key}-${i._id}` }))]
-      : [g]
-  )
+  // Una fila por pedido: el detalle, que abre el número, ya muestra todos sus
+  // ítems, así que no hace falta desplegarlos en la tabla.
+  const filas = lista
 
   const escaparHtml = (s) =>
     String(s).replace(/[&<>"']/g, (c) =>
@@ -363,25 +341,13 @@ export default function GerenciaHistorial() {
                 </tr>
               ) : (
                 filas.map((f) => {
-                  // Un ítem de un pedido múltiple abierto: solo lo propio del ítem.
-                  if (f._anidada) {
-                    const costo = calcCostoItem(f)
-                    return (
-                      <tr key={f._key} className="fila-anidada">
-                        <td style={{ ...tdCentro, borderLeft: `3px solid ${BORDO}`, color: '#94a3b8' }}>↳</td>
-                        <td style={td}>{conCant(f)}</td>
-                        <td style={{ ...tdCentro, whiteSpace: 'nowrap' }}>{costo == null ? <Raya /> : fmtPrecio(costo)}</td>
-                        <td style={td} />
-                      </tr>
-                    )
-                  }
-
                   const multiple = f.items.length > 1
                   return (
                     <tr key={f._key} className="inicio-pedido">
-                      {/* Taller, número y día de la decisión, apilados. El
-                          pedido múltiple y sus ítems abiertos comparten la
-                          línea bordó de la izquierda. */}
+                      {/* El número y el día de la decisión. Sin el cartel del
+                          taller (el número ya dice si es B- o SP-) y sin el
+                          ojo de desplegar: el detalle, que abre el número, ya
+                          muestra todos los ítems del pedido. */}
                       <td
                         style={{
                           ...tdCentro,
@@ -389,30 +355,21 @@ export default function GerenciaHistorial() {
                           borderLeft: multiple ? `3px solid ${BORDO}` : undefined,
                         }}
                       >
-                        {badgeTaller(f._src)}
-                        <div style={{ whiteSpace: 'nowrap', marginTop: 3 }}>
-                          {/* El número abre el detalle del pedido, y ahí
-                              adentro está el botón para deshacer un rechazo:
-                              en el teléfono la fila no tiene lugar para otro
-                              botón. */}
-                          <button
-                            type="button"
-                            onClick={() => verDetalle(f)}
-                            className="btn btn-link p-0 align-baseline"
-                            style={{
-                              fontSize: 'inherit',
-                              fontWeight: 700,
-                              color: multiple ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
-                              textDecoration: 'underline',
-                            }}
-                            title="Ver el detalle del pedido"
-                          >
-                            {fmtNro(f.nro_pedido, f._src)}
-                          </button>
-                          {multiple && (
-                            <OjoPedido abierto={abiertos.has(f._key)} onClick={() => alternarAbierto(f._key)} />
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => verDetalle(f)}
+                          className="btn btn-link p-0 align-baseline"
+                          style={{
+                            fontSize: 'inherit',
+                            fontWeight: 700,
+                            color: multiple ? COLOR_NRO_MULTIPLE : COLOR_NRO_SIMPLE,
+                            textDecoration: 'underline',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title="Ver el detalle del pedido"
+                        >
+                          {fmtNro(f.nro_pedido, f._src)}
+                        </button>
                         <div style={{ fontSize: '0.62rem', color: '#64748b' }}>
                           {f.accion?.fecha ? fmtFecha(f.accion.fecha) : <Raya />}
                         </div>
@@ -437,15 +394,23 @@ export default function GerenciaHistorial() {
                         {f.monto == null ? <Raya /> : fmtPrecio(f.monto)}
                       </td>
 
+                      {/* El cartel de la decisión es el botón del historial:
+                          un botón aparte abajo hacía la fila el doble de alta,
+                          y esta pantalla se mira en el teléfono. */}
                       <td style={{ ...tdCentro, padding: '6px 5px' }}>
-                        <div className="d-flex flex-column align-items-center gap-1">
-                          {f.decision ? (
-                            <span className={`badge bg-${COLOR_DECISION[f.decision] || 'secondary'}`}>{f.decision}</span>
-                          ) : (
-                            <Raya />
-                          )}
-                          <BotonAccion icono="bi-clock-history" titulo="Historial" onClick={() => verHistorial(f)} grande />
-                        </div>
+                        {f.decision ? (
+                          <button
+                            type="button"
+                            onClick={() => verHistorial(f)}
+                            className={`badge border-0 bg-${COLOR_DECISION[f.decision] || 'secondary'}`}
+                            style={{ cursor: 'pointer' }}
+                            title="Ver el historial del pedido"
+                          >
+                            {f.decision}
+                          </button>
+                        ) : (
+                          <Raya />
+                        )}
                       </td>
                     </tr>
                   )
