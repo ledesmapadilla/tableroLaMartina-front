@@ -17,8 +17,8 @@ const REGLAS = [
   [/^\/compras\/(berdina|sanpablo)\/pendientes/, "compras.pendientes"],
   [/^\/compras\/(berdina|sanpablo)\/?$/, GRUPO.comprasTaller],
   [/^\/compras\/pedidos\/analisis/, "compras.pedidos"],
-  // El almacén tiene su propio permiso, así que va antes que el del analista.
-  [/^\/compras\/analista\/stock/, "compras.stock"],
+  // El almacén está apagado (la ruta va al 404): sin regla propia, para que
+  // el 404 se vea igual aunque el rol no tenga marcado compras.stock.
   [/^\/compras\/analista/, "compras.analista"],
   [/^\/compras\/comprador/, "compras.comprador"],
   [/^\/compras\/gerencia/, "compras.gerencia"],
