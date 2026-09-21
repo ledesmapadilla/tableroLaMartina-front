@@ -23,6 +23,8 @@ import SanPabloNuevoPedido from "./components/compras/SanPabloNuevoPedido";
 import Analista from "./components/compras/Analista";
 import AnalistaPedidos from "./components/compras/AnalistaPedidos";
 import AnalistaPendientes from "./components/compras/AnalistaPendientes";
+// El stock del almacén: los artículos y los movimientos viven en la base.
+import Stock from "./components/compras/Stock";
 import AnalizarItem from "./components/compras/AnalizarItem";
 import OrdenPago from "./components/compras/OrdenPago";
 import Gerencia from "./components/compras/Gerencia";
@@ -224,9 +226,7 @@ function LayoutDesktop() {
               <Route path="/compras/analista" element={<RutaProtegida><Analista /></RutaProtegida>} />
               <Route path="/compras/analista/pedidos" element={<RutaProtegida><AnalistaPedidos key="analista" /></RutaProtegida>} />
               <Route path="/compras/analista/pendientes" element={<RutaProtegida><AnalistaPendientes /></RutaProtegida>} />
-              {/* El stock del almacén queda apagado: la pantalla sigue en el
-                  repo (components/compras/Stock.jsx), pero todavía no se muestra. */}
-              <Route path="/compras/analista/stock" element={<Error404 />} />
+              <Route path="/compras/analista/stock" element={<RutaProtegida><Stock /></RutaProtegida>} />
               <Route path="/compras/analista/analizar" element={<RutaProtegida><AnalizarItem /></RutaProtegida>} />
 
               <Route path="/compras/comprador" element={<RutaProtegida><AnalistaPedidos key="comprador" /></RutaProtegida>} />

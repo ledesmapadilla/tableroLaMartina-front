@@ -17,8 +17,9 @@ const REGLAS = [
   [/^\/compras\/(berdina|sanpablo)\/pendientes/, "compras.pendientes"],
   [/^\/compras\/(berdina|sanpablo)\/?$/, GRUPO.comprasTaller],
   [/^\/compras\/pedidos\/analisis/, "compras.pedidos"],
-  // El almacén está apagado (la ruta va al 404): sin regla propia, para que
-  // el 404 se vea igual aunque el rol no tenga marcado compras.stock.
+  // El almacén no lleva regla propia: lo ve el que ve el analista. Marcarlo
+  // en Roles (compras.stock) es lo que habilita editarlo, y eso lo controla
+  // la pantalla.
   [/^\/compras\/analista/, "compras.analista"],
   [/^\/compras\/comprador/, "compras.comprador"],
   [/^\/compras\/gerencia/, "compras.gerencia"],
