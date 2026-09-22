@@ -40,7 +40,7 @@ const OPCIONES = [
     // El stock de la empresa: es la suma de los dos talleres, no un tercer
     // depósito. Por eso los otros dos llevan el nombre del taller.
     permiso: 'compras.stock',
-    titulo: 'Stock general',
+    titulo: 'Almacén de repuestos',
     subtitulo: 'Todo el stock de la empresa: Berdina y San Pablo',
     icono: 'bi bi-box-seam-fill',
     destino: '/compras/analista/stock',
@@ -121,7 +121,7 @@ export default function Analista() {
                     <i className={o.icono} style={{ fontSize: '2.1rem', color: o.colores.icono }}></i>
                   </div>
 
-                  <span className="fw-bold" style={{ fontSize: '1.25rem', letterSpacing: '0.2px' }}>
+                  <span style={{ fontSize: '1.25rem', letterSpacing: '0.2px' }}>
                     {o.titulo}
                   </span>
 

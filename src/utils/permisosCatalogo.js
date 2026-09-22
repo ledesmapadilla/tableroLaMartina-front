@@ -21,7 +21,7 @@ export const CATALOGO = [
   { seccion: "Compras", clave: "compras.gerencia", label: "Gerencia", hoy: PERMISOS.comprasGerencia },
   // El almacén (20/09/2026). Hoy lo lleva el analista; cuando cada taller
   // tenga el suyo, cada uno va a sumar su propia fila.
-  { seccion: "Compras", clave: "compras.stock", label: "Stock general (almacén)", hoy: PERMISOS.comprasAnalista },
+  { seccion: "Compras", clave: "compras.stock", label: "Almacén de repuestos", hoy: PERMISOS.comprasAnalista },
 
   // Mantenimiento
   { seccion: "Camionetas", clave: "camionetas.kilometros", label: "Preventivo › Kilómetros", hoy: PERMISOS.mantenimiento },

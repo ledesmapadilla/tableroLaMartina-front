@@ -25,6 +25,8 @@ import AnalistaPedidos from "./components/compras/AnalistaPedidos";
 import AnalistaPendientes from "./components/compras/AnalistaPendientes";
 // El stock del almacén: los artículos y los movimientos viven en la base.
 import Stock from "./components/compras/Stock";
+import StockRubro from "./components/compras/StockRubro";
+import StockCatalogo from "./components/compras/StockCatalogo";
 import AnalizarItem from "./components/compras/AnalizarItem";
 import OrdenPago from "./components/compras/OrdenPago";
 import Gerencia from "./components/compras/Gerencia";
@@ -227,6 +229,13 @@ function LayoutDesktop() {
               <Route path="/compras/analista/pedidos" element={<RutaProtegida><AnalistaPedidos key="analista" /></RutaProtegida>} />
               <Route path="/compras/analista/pendientes" element={<RutaProtegida><AnalistaPendientes /></RutaProtegida>} />
               <Route path="/compras/analista/stock" element={<RutaProtegida><Stock /></RutaProtegida>} />
+              {/* El catálogo general no es un rubro: es todo el almacén junto
+                  y de solo lectura. Va antes del comodín. */}
+              <Route path="/compras/analista/stock/catalogo" element={<RutaProtegida><StockCatalogo /></RutaProtegida>} />
+              {/* Todos los rubros se miran con la misma pantalla y cuál es lo
+                  dice la tarjeta (rubrosStock.js). Una tarjeta que no sea un
+                  rubro cae en el 404 desde adentro. */}
+              <Route path="/compras/analista/stock/:seccion" element={<RutaProtegida><StockRubro /></RutaProtegida>} />
               <Route path="/compras/analista/analizar" element={<RutaProtegida><AnalizarItem /></RutaProtegida>} />
 
               <Route path="/compras/comprador" element={<RutaProtegida><AnalistaPedidos key="comprador" /></RutaProtegida>} />
