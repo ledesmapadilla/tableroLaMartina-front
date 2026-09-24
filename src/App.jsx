@@ -52,6 +52,7 @@ import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMe
 import ProduccionVariables from "./components/pages/ProduccionVariables";
 import ProduccionVariablesMenu from "./components/pages/ProduccionVariablesMenu";
 import ProduccionLotes from "./components/pages/ProduccionLotes";
+import ProduccionAdmisibles from "./components/pages/ProduccionAdmisibles";
 import ProduccionCampoMenu from "./components/pages/ProduccionCampoMenu";
 import Error404 from "./components/pages/Error404";
 import Camionetas from "./components/pages/Camionetas";
@@ -284,8 +285,8 @@ function LayoutDesktop() {
                 path="/produccion/variables/lotes/san-pablo"
                 element={<ProduccionLotes establecimiento="san-pablo" />}
               />
-              {/* Todavía no está hecha. */}
-              <Route path="/produccion/variables/admisibles" element={<Error404 />} />
+              {/* Una sola para todos los campos, como Remuneración (24/09/2026). */}
+              <Route path="/produccion/variables/admisibles" element={<ProduccionAdmisibles />} />
 
               {/* San Pablo tiene su propia certificación: grilla de meses,
                   Variables y la carga de datos, con sus propios períodos. Los
@@ -323,6 +324,11 @@ function LayoutDesktop() {
                 path="/produccion/san-pablo/:anio/:mes/informes/mes"
                 element={<ProduccionInformeMes establecimiento="san-pablo" />}
               />
+              {/* El botón Resumen de la planilla: solo el resumen por personal. */}
+              <Route
+                path="/produccion/san-pablo/:anio/:mes/informes/resumen"
+                element={<ProduccionInformeMes establecimiento="san-pablo" soloPersonal />}
+              />
               <Route
                 path="/produccion/san-pablo/:anio/:mes/informes/tareas-personal"
                 element={<ProduccionInformeTareasPersonal establecimiento="san-pablo" />}
@@ -332,6 +338,7 @@ function LayoutDesktop() {
               <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />
               <Route path="/produccion/certificados/:anio/:mes/informes" element={<ProduccionInformesMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/informes/mes" element={<ProduccionInformeMes />} />
+              <Route path="/produccion/certificados/:anio/:mes/informes/resumen" element={<ProduccionInformeMes soloPersonal />} />
               <Route
                 path="/produccion/certificados/:anio/:mes/informes/tareas-personal"
                 element={<ProduccionInformeTareasPersonal />}

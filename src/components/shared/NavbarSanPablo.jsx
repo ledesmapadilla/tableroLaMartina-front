@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import LogoNavbar from "./LogoNavbar";
+import SesionUsuario from "./SesionUsuario";
 
 /**
  * La barra de Reparaciones San Pablo: el slate de Mantenimiento, el ícono de
@@ -52,6 +53,11 @@ export default function NavbarSanPablo({ titulo, icono, volverA = "/reparaciones
           <i className="bi bi-house-door-fill"></i>
           <span>General</span>
         </button>
+
+        {/* Quién está logueado, como en el resto de Mantenimiento: faltaba en
+            todas las pantallas de San Pablo (24/09/2026). */}
+        <span style={{ width: "1px", height: "24px", backgroundColor: "rgba(255,255,255,0.22)" }} />
+        <SesionUsuario mostrarRol />
       </div>
     </div>
   );

@@ -137,10 +137,17 @@ function SelectBuscador({
     }
   }, [marcada, abierto]);
 
+  // Mientras se elige una opción, el blur que sigue no confirma lo tipeado. El
+  // onBlur todavía ve la lista abierta y el texto a medias ("ret"), y en modo
+  // libre pisaba la opción recién elegida ("Retro") con eso (24/09/2026).
+  const eligiendo = useRef(false);
+
   const elegir = (opcion) => {
+    eligiendo.current = true;
     onChange?.(opcion ? opcion.valor : "");
     cerrar();
     campo.current?.blur();
+    eligiendo.current = false;
   };
 
   // Modo libre: lo tipeado se toma como valor. Si coincide con una opción se
@@ -219,7 +226,7 @@ function SelectBuscador({
         // En modo libre, salir del campo confirma lo tipeado: si no, el texto
         // que no coincide con ninguna opción se perdería al hacer clic afuera.
         onBlur={() => {
-          if (!abierto) return;
+          if (!abierto || eligiendo.current) return;
           if (libre && busqueda.trim()) elegirTexto(busqueda);
           else cerrar();
         }}

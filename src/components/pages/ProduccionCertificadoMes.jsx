@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
@@ -346,6 +346,8 @@ function ProduccionCertificadoMes({
   tareasSinCantidad = [],
 }) {
   const { anio, mes } = useParams();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   // Todas las llamadas de partes y de períodos van con el establecimiento.
   const qEstab = `establecimiento=${establecimiento}`;
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
@@ -850,6 +852,16 @@ function ProduccionCertificadoMes({
         icon: "warning",
         title: "Faltan datos",
         text: `Falta ${falta.join(", ")}`,
+      });
+      return;
+    }
+
+    // Marcado terminado y después se borró el lote: no se guarda así.
+    if (conEstado && form.terminado && !String(form.lote || "").trim()) {
+      avisar({
+        icon: "warning",
+        title: "Falta el lote",
+        text: "Un parte terminado tiene que llevar el lote. Elíjalo o desmarque Terminado.",
       });
       return;
     }
@@ -1541,6 +1553,32 @@ function ProduccionCertificadoMes({
     </Button>
   );
 
+  // Abre el resumen por personal del mismo mes, el del Informe del mes
+  // (24/09/2026). Cuadrado y del doble de alto que Excel, que va debajo. La
+  // ruta sale de la de la planilla, así sirve para los dos campos.
+  const botonResumen = (
+    <Button
+      size="sm"
+      onClick={() => navigate(pathname.replace(/\/planilla\/?$/, "/informes/resumen"))}
+      // Enter en el botón no tiene que guardar el parte de la fila.
+      onKeyDown={(e) => e.stopPropagation()}
+      className="rounded-3 p-0 d-flex flex-column align-items-center justify-content-center"
+      style={{
+        backgroundColor: "#1b4332",
+        borderColor: "#1b4332",
+        fontSize: "0.72rem",
+        width: "60px",
+        height: "60px",
+        fontWeight: 600,
+        lineHeight: 1.1,
+      }}
+      title="Ver el resumen por personal del mes"
+    >
+      <i className="bi bi-people-fill" style={{ fontSize: "1.1rem" }}></i>
+      <span>Resumen</span>
+    </Button>
+  );
+
   return (
     <div
       style={{
@@ -1631,7 +1669,10 @@ function ProduccionCertificadoMes({
               Certificación cerrada{fechaCierre ? ` el ${formatFecha(fechaCierre)}` : ""}. No se pueden agregar ni
               modificar partes. Use <span className="fw-semibold">Permitir editar</span> para reabrirla.
             </span>
-            <div className="ms-auto">{botonExcel}</div>
+            <div className="ms-auto d-flex flex-column align-items-end gap-1">
+              {botonResumen}
+              {botonExcel}
+            </div>
           </Card>
         )}
 
@@ -1813,6 +1854,8 @@ function ProduccionCertificadoMes({
                 <Form.Control type="number" value={form.combTurbo} onChange={(e) => cambiar("combTurbo", e.target.value)} style={estiloCelda} />
               </div>
 
+              {/* Pegado a la derecha, justo arriba de Excel. */}
+              <div className="ms-auto">{botonResumen}</div>
             </div>
 
             {/* Fila 2: el resto de los datos del parte */}
@@ -1856,7 +1899,20 @@ function ProduccionCertificadoMes({
                     <CirculoEstado
                       terminado={form.terminado}
                       inactivo={!estadoEnForm}
-                      onClick={() => estadoEnForm && cambiar("terminado", !form.terminado)}
+                      onClick={() => {
+                        if (!estadoEnForm) return;
+                        // Terminado es el lote terminado: sin lote no hay qué
+                        // dar por terminado (24/09/2026). Desmarcar sí se puede.
+                        if (!form.terminado && !String(form.lote || "").trim()) {
+                          avisar({
+                            icon: "warning",
+                            title: "Falta el lote",
+                            text: "Elija el lote antes de marcarlo como terminado",
+                          });
+                          return;
+                        }
+                        cambiar("terminado", !form.terminado);
+                      }}
                       deshabilitado={!estadoEnForm}
                       tamano={20}
                     />

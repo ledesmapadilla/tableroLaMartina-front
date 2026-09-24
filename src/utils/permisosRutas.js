@@ -38,6 +38,9 @@ const REGLAS = [
   [/^\/produccion\/variables\/admisibles/, "produccion.admisibles"],
   [/^\/produccion\/variables/, GRUPO.produccionVariables],
   [/^\/produccion\/certificados\/\d+\/\d+\/planilla/, "produccion.certificacion"],
+  // El resumen por personal se abre desde la planilla (botón Resumen): lo ve
+  // el que carga, aunque no tenga el informe del mes (24/09/2026).
+  [/^\/produccion\/certificados\/\d+\/\d+\/informes\/resumen/, "produccion.certificacion"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/mes/, "produccion.informeMes"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/tareas-personal/, "produccion.contable"],
   [/^\/produccion\/certificados\/\d+\/\d+\/informes/, GRUPO.produccionInformes],

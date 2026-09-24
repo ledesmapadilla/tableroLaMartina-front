@@ -44,6 +44,34 @@ const consumo = (combustible, horas) => (horas > 0 ? redondear(combustible / hor
 // Igual, pero sin redondear: se usa para litros por unidad.
 const razon = (a, b) => (b > 0 ? a / b : null);
 
+/**
+ * Desvío contra el valor admisible (Variables › Valores admisibles,
+ * 24/09/2026), en porcentaje: cuánto se apartó lo real del admisible.
+ * Sin admisible cargado, o sin dato real, no hay desvío.
+ */
+const desvio = (real, admisible) =>
+  real === null || real === undefined || !(admisible > 0) ? null : ((real - admisible) / admisible) * 100;
+
+// El semáforo mira el desvío en contra: en el consumo es gastar de más, en el
+// rendimiento es producir de menos. A favor siempre es verde. Rojo: más del 8 %
+// en contra (regla del usuario); amarillo: entre el 4 % y el 8 %.
+const DESVIO_AMARILLO = 4;
+const DESVIO_ROJO = 8;
+const SEMAFORO = {
+  verde: { backgroundColor: "#dcfce7", color: "#15803d" },
+  amarillo: { backgroundColor: "#fef9c3", color: "#a16207" },
+  rojo: { backgroundColor: "#fee2e2", color: "#b91c1c" },
+};
+const semaforo = (d, malSiSube) => {
+  if (d === null) return null;
+  const enContra = malSiSube ? d : -d;
+  if (enContra > DESVIO_ROJO) return "rojo";
+  if (enContra > DESVIO_AMARILLO) return "amarillo";
+  return "verde";
+};
+const textoDesvio = (d) =>
+  `${d > 0 ? "+" : ""}${d.toLocaleString("es-AR", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`;
+
 // Desplegable de filtro con el formato del resto del proyecto: se pinta en
 // rojo cuando está activo y suma una cruz para limpiarlo.
 const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => {
@@ -90,8 +118,13 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
   );
 };
 
-/** El mismo informe para los dos campos: cambia el establecimiento. */
-function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
+/**
+ * El mismo informe para los dos campos: cambia el establecimiento.
+ *
+ * Con `soloPersonal` muestra nada más el resumen por personal: es la página
+ * que abre el botón Resumen de la planilla de carga (24/09/2026).
+ */
+function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal = false }) {
   const { anio, mes } = useParams();
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
@@ -110,6 +143,34 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
     filtroPersona !== "Todos" ||
     filtroCC !== "Todos" ||
     filtroTarea !== "Todas";
+
+  // Los valores admisibles de cada tarea, por id de tarea. Son los mismos para
+  // todos los campos y todos los meses.
+  const [admisibles, setAdmisibles] = useState(new Map());
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admisibles");
+        const lista = res.ok ? await res.json() : [];
+        setAdmisibles(new Map((Array.isArray(lista) ? lista : []).map((a) => [String(a.tarea?._id || a.tarea), a])));
+      } catch {
+        setAdmisibles(new Map());
+      }
+    })();
+  }, []);
+  // Admisible y desvío de una fila por CC y tarea: el consumo contra los
+  // lts/hs de turno, y el rendimiento contra las unidades por hora de turno.
+  const contraAdmisible = (f) => {
+    const a = admisibles.get(String(f.idTarea));
+    const consumoAdm = a?.consumo ?? null;
+    const rendimientoAdm = a?.rendimiento ?? null;
+    return {
+      consumoAdm,
+      desvioConsumo: desvio(f.consumo, consumoAdm),
+      rendimientoAdm,
+      desvioRendimiento: desvio(f.rendimiento, rendimientoAdm),
+    };
+  };
 
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
   // Los partes y el período son del establecimiento en el que se está parado.
@@ -211,8 +272,10 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
       const fila = porPersona.get(id);
       fila.dias.add(soloFecha(p.fecha));
       fila.horas += Number(p.totalHoras) || 0;
-      // El de la máquina; el del turbo va aparte en el parte y no se mezcla.
+      // El de la máquina. En Berdina suma también el del turbo, como los
+      // totales de su planilla mensual (24/09/2026); San Pablo no lo mezcla.
       fila.combustible += Number(p.combustible) || 0;
+      if (establecimiento !== "san-pablo") fila.combustible += Number(p.combTurbo) || 0;
 
       if (p.tarea?._id) {
         usadas.set(p.tarea._id, { id: p.tarea._id, nombre: p.tarea.tarea, unidad: p.tarea.unidad });
@@ -254,7 +317,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
         tareas: sumaTareas,
       },
     };
-  }, [partesFiltrados]);
+  }, [partesFiltrados, establecimiento]);
 
   // Los partes de la persona abierta, del más viejo al más nuevo. Es de dónde
   // sale cada número de su fila, sin tener que volver a la planilla.
@@ -311,7 +374,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
         sumar(
           tarea,
           `${p.cc._id}|${idTarea}`,
-          { cc: p.cc.cc, tarea: nombreTarea, unidad },
+          { cc: p.cc.cc, tarea: nombreTarea, idTarea, unidad },
           combustible,
           horasTurno,
           horasCC,
@@ -328,7 +391,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
         sumar(
           tarea,
           `turbo:${turbo}|${idTarea}`,
-          { cc: turbo, tarea: nombreTarea, unidad },
+          { cc: turbo, tarea: nombreTarea, idTarea, unidad },
           combTurbo,
           horasTurno,
           horasCC,
@@ -432,6 +495,20 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
           : { horizontal: "center", vertical: "middle" };
       });
 
+    // El desvío va con el mismo semáforo que en pantalla.
+    const COLOR_EXCEL = {
+      verde: { fondo: "FFDCFCE7", letra: "FF15803D" },
+      amarillo: { fondo: "FFFEF9C3", letra: "FFA16207" },
+      rojo: { fondo: "FFFEE2E2", letra: "FFB91C1C" },
+    };
+    const pintarDesvio = (cell, d, malSiSube) => {
+      const color = semaforo(d, malSiSube);
+      if (!color) return;
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_EXCEL[color].fondo } };
+      cell.font = { bold: true, color: { argb: COLOR_EXCEL[color].letra } };
+      cell.numFmt = '+0.0" %";-0.0" %";0.0" %"';
+    };
+
     const resaltarTotal = (fila) =>
       fila.eachCell({ includeEmpty: true }, (cell) => {
         cell.font = { bold: true };
@@ -530,26 +607,26 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
       "Hs CC",
       "Lts/hs turno",
       "Lts/hs CC",
-      "Admisible",
+      "Admisible (lts/hs)",
       "Desvío (%)",
     ];
     encabezar(ws2, cols2, "COMBUSTIBLE POR CC Y TAREA");
-    porTarea.forEach((f) =>
-      bordear(
-        ws2.addRow([
-          f.cc,
-          f.tarea,
-          f.combustible,
-          f.horasTurno,
-          f.horasCC,
-          f.consumo,
-          f.consumoCC,
-          null,
-          null,
-        ]),
-        [1, 2]
-      )
-    );
+    porTarea.forEach((f) => {
+      const a = contraAdmisible(f);
+      const fila = ws2.addRow([
+        f.cc,
+        f.tarea,
+        f.combustible,
+        f.horasTurno,
+        f.horasCC,
+        f.consumo,
+        f.consumoCC,
+        a.consumoAdm,
+        a.desvioConsumo === null ? null : Math.round(a.desvioConsumo * 10) / 10,
+      ]);
+      bordear(fila, [1, 2]);
+      pintarDesvio(fila.getCell(9), a.desvioConsumo, true);
+    });
     ws2.columns = [
       { width: 12 },
       { width: 28 },
@@ -573,27 +650,27 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
       "Consumo (lts/unidad)",
       "Consumo (unidad/lts)",
       "Rendimiento (un/hs turno)",
-      "Admisible",
+      "Admisible (un/hs)",
       "Desvío (%)",
     ];
     encabezar(ws3, cols3, "PRODUCCIÓN Y RENDIMIENTO POR CC Y TAREA");
-    porTarea.forEach((f) =>
-      bordear(
-        ws3.addRow([
-          f.cc,
-          f.tarea,
-          f.combustible,
-          f.cantidad,
-          f.unidad || "—",
-          f.ltsPorUnidad === null ? null : Math.round(f.ltsPorUnidad * 10000) / 10000,
-          f.unidadPorLts === null ? null : redondear(f.unidadPorLts),
-          f.rendimiento === null ? null : redondear(f.rendimiento),
-          null,
-          null,
-        ]),
-        [1, 2, 5]
-      )
-    );
+    porTarea.forEach((f) => {
+      const a = contraAdmisible(f);
+      const fila = ws3.addRow([
+        f.cc,
+        f.tarea,
+        f.combustible,
+        f.cantidad,
+        f.unidad || "—",
+        f.ltsPorUnidad === null ? null : Math.round(f.ltsPorUnidad * 10000) / 10000,
+        f.unidadPorLts === null ? null : redondear(f.unidadPorLts),
+        f.rendimiento === null ? null : redondear(f.rendimiento),
+        a.rendimientoAdm,
+        a.desvioRendimiento === null ? null : Math.round(a.desvioRendimiento * 10) / 10,
+      ]);
+      bordear(fila, [1, 2, 5]);
+      pintarDesvio(fila.getCell(10), a.desvioRendimiento, false);
+    });
     ws3.columns = [
       { width: 12 },
       { width: 28 },
@@ -607,6 +684,9 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
       { width: 12 },
     ];
 
+    // El resumen solo baja lo que muestra: la hoja por personal.
+    if (soloPersonal) [ws1, ws2, ws3].forEach((ws) => wb.removeWorksheet(ws.id));
+
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -614,7 +694,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Informe_${titulo.replace(/\s+/g, "_")}.xlsx`;
+    a.download = `${soloPersonal ? "Resumen_personal" : "Informe"}_${titulo.replace(/\s+/g, "_")}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -629,7 +709,6 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
     whiteSpace: "nowrap",
   };
   const td = { fontSize: "0.7rem", padding: "1px 5px", verticalAlign: "middle" };
-  const vacio = { ...td, backgroundColor: "#fafafa" };
 
   const rotulo = (texto) => (
     <div className="fw-bold mb-1" style={{ color: "#1b4332", fontSize: "0.82rem" }}>
@@ -637,9 +716,10 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
     </div>
   );
 
-  // Contenedor de cada tabla: se lleva el scroll horizontal propio y el aire
-  // que separa un bloque del siguiente.
-  const marco = { overflow: "auto", border: "1px solid #e2e8f0", display: "inline-block", maxWidth: "100%" };
+  // Contenedor de cada tabla. "clip" y no "auto": un marco con scroll propio no
+  // deja que la fila de títulos quede fija al bajar por la página (24/09/2026).
+  // La más ancha pide 820px, que entra en cualquier monitor.
+  const marco = { overflow: "clip", border: "1px solid #e2e8f0", display: "inline-block", maxWidth: "100%" };
 
   // Celda de número: sin dato va una raya gris, no un cero que miente.
   const celdaNumero = (valor, negrita = false) => (
@@ -647,6 +727,31 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
       {valor === null || valor === 0 ? <span style={{ color: "#cbd5e1" }}>—</span> : numero(valor)}
     </td>
   );
+
+  // El desvío: el porcentaje con su signo, en una píldora con el color del
+  // semáforo. Sin admisible cargado va la raya.
+  const celdaDesvio = (d, malSiSube) => {
+    const color = semaforo(d, malSiSube);
+    return (
+      <td style={{ ...td, textAlign: "center" }}>
+        {color === null ? (
+          <span style={{ color: "#cbd5e1" }}>—</span>
+        ) : (
+          <span
+            className="px-2 rounded-pill fw-semibold d-inline-block"
+            style={{ ...SEMAFORO[color], minWidth: "58px" }}
+            title={
+              malSiSube
+                ? "Consumo contra el admisible: arriba es gastar de más"
+                : "Rendimiento contra el admisible: abajo es producir de menos"
+            }
+          >
+            {textoDesvio(d)}
+          </span>
+        )}
+      </td>
+    );
+  };
 
   const sinDatos = (columnas, texto) => (
     <tr>
@@ -671,7 +776,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
         {/* Encabezado. El volver está en el navbar de Producción, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
           <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
-            Informe del mes - {titulo}
+            {soloPersonal ? "Resumen por personal" : "Informe del mes"} - {titulo}
           </span>
           {periodo.desde && (
             <span
@@ -695,7 +800,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
               height: "30px",
               fontWeight: 600,
             }}
-            title="Exportar las cuatro tablas a Excel"
+            title={soloPersonal ? "Exportar el resumen a Excel" : "Exportar las cuatro tablas a Excel"}
           >
             <i className="bi bi-file-earmark-excel-fill"></i>
             <span>Excel</span>
@@ -769,10 +874,13 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
         </Card>
 
         {/* Cortes gruesos adentro de cada tabla: separan las horas de los
-            consumos, y los consumos de lo que carga otro sector (admisible y
-            desvío). Van por posición de columna y no celda por celda, y con
+            consumos, y los consumos del admisible y su desvío. En el resumen por personal separa las horas y el
+            combustible de las tareas (24/09/2026). Van por posición de
+            columna y no celda por celda, y con
             !important porque index.css pisa los bordes de th/td. */}
         <style>{`
+          .tabla-personal th:nth-child(5),
+          .tabla-personal td:nth-child(5),
           .tabla-cc th:nth-child(5),
           .tabla-cc td:nth-child(5),
           .tabla-cc-tarea th:nth-child(5),
@@ -783,20 +891,39 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
           .tabla-produccion td:nth-child(8) {
             border-right: 3px solid #1b4332 !important;
           }
+          /* Los títulos de cada tabla quedan fijos arriba al bajar por ella
+             (24/09/2026). */
+          .tabla-personal thead th,
+          .tabla-cc thead th,
+          .tabla-cc-tarea thead th,
+          .tabla-produccion thead th,
+          .tabla-detalle thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+          }
         `}</style>
 
         <div className="flex-grow-1" style={{ overflow: "auto" }}>
           {/* ── Resumen por personal ── */}
           <div className="mb-5">
             {rotulo("Resumen por personal")}
-            <div className="bg-white rounded-3 shadow-sm" style={marco}>
+            {/* Sin scroll lateral (24/09/2026): la tabla va al ancho de la
+                pantalla y son las columnas las que se angostan. Con las ~17
+                tareas de Berdina, cada título baja en varios renglones.
+                "clip" y no "hidden": hidden lo vuelve un contenedor de scroll
+                y los títulos fijos dejan de quedarse arriba. */}
+            <div
+              className="bg-white rounded-3 shadow-sm"
+              style={{ ...marco, display: "block", overflow: "clip" }}
+            >
               <Table
-                className="mb-0 tabla-informe"
-                style={{ width: "auto", minWidth: `${500 + tareas.length * 86}px` }}
+                className="mb-0 tabla-informe tabla-personal"
+                style={{ width: "100%" }}
               >
                 <thead>
                   <tr>
-                    <th style={{ ...th, textAlign: "left", minWidth: "150px" }}>Personal</th>
+                    <th style={{ ...th, textAlign: "left", minWidth: "110px", whiteSpace: "normal" }}>Personal</th>
                     <th style={{ ...th, textAlign: "center" }}>Días<br />trabajados</th>
                     <th style={{ ...th, textAlign: "center" }}>Prom.<br />hs/día</th>
                     <th style={{ ...th, textAlign: "center" }}>Total<br />horas</th>
@@ -804,7 +931,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
                     {tareas.map((t) => (
                       <th
                         key={t.id}
-                        style={{ ...th, textAlign: "center", whiteSpace: "normal", minWidth: "80px" }}
+                        style={{ ...th, textAlign: "center", whiteSpace: "normal", overflowWrap: "anywhere", padding: "3px 3px" }}
                       >
                         {t.nombre}
                         <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>
@@ -873,6 +1000,8 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
           </div>
 
           {/* ── Por centro de costo ── */}
+          {!soloPersonal && (
+          <>
           <div className="mb-5">
             {rotulo("Por centro de costo")}
             <div className="bg-white rounded-3 shadow-sm" style={marco}>
@@ -963,27 +1092,36 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
                       Lts/hs
                       <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>hs CC</div>
                     </th>
-                    <th style={{ ...th, textAlign: "center" }}>Admisible</th>
-                    <th style={{ ...th, textAlign: "center" }}>Desvío (%)</th>
+                    <th style={{ ...th, textAlign: "center" }}>
+                      Admisible
+                      <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>lts / hs</div>
+                    </th>
+                    <th style={{ ...th, textAlign: "center" }}>
+                      Desvío (%)
+                      <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>lts/hs turno</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargando || porTarea.length === 0
                     ? sinDatos(9, "No hay partes con centro de costo en este período")
-                    : porTarea.map((f) => (
-                        <tr key={f.id}>
-                          <td style={{ ...td, fontWeight: 600 }}>{f.cc}</td>
-                          <td style={td}>{f.tarea}</td>
-                          {celdaNumero(f.combustible)}
-                          {celdaNumero(f.horasTurno)}
-                          {celdaNumero(f.horasCC)}
-                          {celdaNumero(f.consumo, true)}
-                          {celdaNumero(f.consumoCC, true)}
-                          {/* Admisible y desvío los va a cargar otro sector */}
-                          <td style={vacio}></td>
-                          <td style={vacio}></td>
-                        </tr>
-                      ))}
+                    : porTarea.map((f) => {
+                        const a = contraAdmisible(f);
+                        return (
+                          <tr key={f.id}>
+                            <td style={{ ...td, fontWeight: 600 }}>{f.cc}</td>
+                            <td style={td}>{f.tarea}</td>
+                            {celdaNumero(f.combustible)}
+                            {celdaNumero(f.horasTurno)}
+                            {celdaNumero(f.horasCC)}
+                            {celdaNumero(f.consumo, true)}
+                            {celdaNumero(f.consumoCC, true)}
+                            {/* Contra el consumo admisible de la tarea */}
+                            {celdaNumero(a.consumoAdm)}
+                            {celdaDesvio(a.desvioConsumo, true)}
+                          </tr>
+                        );
+                      })}
                 </tbody>
               </Table>
             </div>
@@ -1019,14 +1157,22 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
                       Rendimiento
                       <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>un / hs turno</div>
                     </th>
-                    <th style={{ ...th, textAlign: "center" }}>Admisible</th>
-                    <th style={{ ...th, textAlign: "center" }}>Desvío (%)</th>
+                    <th style={{ ...th, textAlign: "center" }}>
+                      Admisible
+                      <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>un / hs</div>
+                    </th>
+                    <th style={{ ...th, textAlign: "center" }}>
+                      Desvío (%)
+                      <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>rendimiento</div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargando || porTarea.length === 0
                     ? sinDatos(10, "No hay partes con centro de costo en este período")
-                    : porTarea.map((f) => (
+                    : porTarea.map((f) => {
+                        const a = contraAdmisible(f);
+                        return (
                         <tr key={f.id}>
                           <td style={{ ...td, fontWeight: 600 }}>{f.cc}</td>
                           <td style={td}>{f.tarea}</td>
@@ -1042,15 +1188,18 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
                           </td>
                           {celdaNumero(f.unidadPorLts === null ? null : redondear(f.unidadPorLts), true)}
                           {celdaNumero(f.rendimiento === null ? null : redondear(f.rendimiento), true)}
-                          {/* Admisible y desvío los va a cargar otro sector */}
-                          <td style={vacio}></td>
-                          <td style={vacio}></td>
+                          {/* Contra el rendimiento admisible de la tarea */}
+                          {celdaNumero(a.rendimientoAdm)}
+                          {celdaDesvio(a.desvioRendimiento, false)}
                         </tr>
-                      ))}
+                        );
+                      })}
                 </tbody>
               </Table>
             </div>
           </div>
+          </>
+          )}
         </div>
       </Container>
 
@@ -1081,8 +1230,10 @@ function ProduccionInformeMes({ establecimiento = "caspinchango" }) {
             ))}
           </div>
 
-          <div className="bg-white rounded-3" style={{ border: "1px solid #e2e8f0", overflow: "auto" }}>
-            <Table className="mb-0 tabla-informe">
+          {/* "clip": el que scrollea es el cuerpo de la ventana, y así los
+              títulos quedan fijos arriba. */}
+          <div className="bg-white rounded-3" style={{ border: "1px solid #e2e8f0", overflow: "clip" }}>
+            <Table className="mb-0 tabla-informe tabla-detalle">
               <thead>
                 <tr>
                   {[
