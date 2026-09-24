@@ -54,6 +54,11 @@ const soloFecha = (iso) => (iso || "").slice(0, 10);
 // pisa los bordes de th/td con !important.
 const SEP = "sep-bloque";
 
+// Las columnas de texto largo (personal, cliente, lote, observaciones y
+// tarea) parten en renglones en vez de ensanchar la tabla: así entra en el
+// ancho de la pantalla sin scroll lateral (24/09/2026).
+const AJUSTA = { whiteSpace: "normal", wordBreak: "break-word", minWidth: "70px" };
+
 const hoyStr = () => {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -2109,7 +2114,7 @@ function ProduccionCertificadoMes({
         {/* Tabla de partes */}
         <div
           className="flex-grow-1 shadow-sm rounded-3 bg-white"
-          style={{ overflowY: "auto", overflowX: "auto", border: "1px solid #cbd5e1" }}
+          style={{ overflowY: "auto", overflowX: "hidden", border: "1px solid #cbd5e1" }}
         >
           <Table size="sm" className="tabla-certificado tabla-informe text-center align-middle mb-0" style={{ whiteSpace: "nowrap", fontSize: "0.7rem", width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#1b4332", color: "#fff" }}>
@@ -2134,6 +2139,9 @@ function ProduccionCertificadoMes({
                         padding: "3px 5px",
                         fontSize: "0.66rem",
                         fontWeight: 600,
+                        // El encabezado también parte ("Horóm. entra" en dos
+                        // renglones) para no ser él el que ensancha la tabla.
+                        whiteSpace: "normal",
                       }}
                     >
                       {h}
@@ -2173,7 +2181,7 @@ function ProduccionCertificadoMes({
                         ></i>
                       )}
                     </td>
-                    <td className="text-start ps-2">{p.persona?.apellidoNombre || "—"}</td>
+                    <td className="text-start ps-2" style={AJUSTA}>{p.persona?.apellidoNombre || "—"}</td>
                     <td className="text-secondary">{p.horaIngreso || "—"}</td>
                     <td className="text-secondary">{p.horaEgreso || "—"}</td>
                     {dosTurnos && (
@@ -2191,10 +2199,10 @@ function ProduccionCertificadoMes({
                     <td className="text-secondary">{p.turbo || "—"}</td>
                     <td className={`text-secondary ${SEP}`}>{p.combTurbo ?? "—"}</td>
                     {/* Informativo: el precio de la tarea no depende de él. */}
-                    <td className="text-start ps-2 text-secondary">{p.cliente || "—"}</td>
+                    <td className="text-start ps-2 text-secondary" style={AJUSTA}>{p.cliente || "—"}</td>
                     {/* El lote terminado se marca: número blanco sobre verde.
                         En proceso va como cualquier otro dato. */}
-                    <td className="text-secondary">
+                    <td className="text-secondary" style={AJUSTA}>
                       {p.lote ? (
                         llevaEstado(p.tarea?.tarea) && p.terminado ? (
                           <span
@@ -2221,8 +2229,8 @@ function ProduccionCertificadoMes({
                         )}
                       </td>
                     )}
-                    <td className="text-start ps-2 text-secondary">{p.observacion || "—"}</td>
-                    <td className="text-start ps-2">{p.tarea?.tarea || "—"}</td>
+                    <td className="text-start ps-2 text-secondary" style={AJUSTA}>{p.observacion || "—"}</td>
+                    <td className="text-start ps-2" style={AJUSTA}>{p.tarea?.tarea || "—"}</td>
                     {/* La cantidad de un lote terminado la escribió el reparto, no
                         una persona: se marca para que se entienda de dónde salió. */}
                     <td className="fw-semibold" style={p.repartido ? { color: "#15803d" } : undefined}
