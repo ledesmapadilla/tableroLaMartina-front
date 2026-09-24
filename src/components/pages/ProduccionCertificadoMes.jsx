@@ -6,6 +6,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { CLIENTES, unirClientes } from "../../utils/clientes";
 import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
+import { useSinGuardar } from "../../utils/sinGuardar";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -372,6 +373,16 @@ function ProduccionCertificadoMes({
   const [editando, setEditando] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const refPersona = useRef(null);
+
+  // Un parte a medio cargar o en edición frena la recarga sola por versión
+  // nueva. La fecha y el cliente no cuentan: quedan puestos entre parte y parte.
+  useSinGuardar(
+    Boolean(editando) ||
+      Object.entries(form).some(
+        ([campo, valor]) =>
+          !["fecha", "cliente", "terminado"].includes(campo) && String(valor ?? "").trim() !== ""
+      )
+  );
 
   // Último pedido del horómetro de entrada ("cc|fecha"): una respuesta vieja
   // no pisa lo que ya cambió en pantalla.
