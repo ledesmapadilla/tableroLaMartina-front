@@ -19,7 +19,10 @@ const COLORES = { marcada: "#e8f5ee", elegida: "#1b4332" };
 const ALTO_LISTA = 220;
 
 function SelectBuscador({
-  opciones = [], // [{ valor, texto, destacada? }]
+  // `detalle` es un texto de ayuda que va en gris al lado de la opción y
+  // también se busca, pero no se muestra en el campo al elegirla (el CC del
+  // parte muestra solo el número y lista el equipo al costado).
+  opciones = [], // [{ valor, texto, destacada?, detalle? }]
   colores = COLORES,
   valor = "",
   onChange,
@@ -53,7 +56,9 @@ function SelectBuscador({
   const filtradas = useMemo(() => {
     const q = normalizar(busqueda);
     if (!q) return opciones;
-    return opciones.filter((o) => normalizar(o.texto).includes(q));
+    return opciones.filter(
+      (o) => normalizar(o.texto).includes(q) || normalizar(o.detalle).includes(q)
+    );
   }, [opciones, busqueda]);
 
   const abrir = () => {
@@ -99,6 +104,10 @@ function SelectBuscador({
       setPosicion({
         left: r.left,
         width: r.width,
+        // La lista se ensancha hasta el texto más largo (los lotes de San
+        // Pablo tienen nombres como "Perímetro de ruta Solano Vera
+        // (Country)"), pero sin pasarse del borde derecho de la pantalla.
+        maxWidth: Math.max(r.width, window.innerWidth - r.left - MARGEN),
         ...(haciaArriba
           ? { bottom: window.innerHeight - r.top + 2, maxHeight: Math.min(ALTO_LISTA, arriba) }
           : { top: r.bottom + 2, maxHeight: Math.min(ALTO_LISTA, abajo) }),
@@ -158,7 +167,15 @@ function SelectBuscador({
       if (abierto) {
         e.preventDefault();
         e.stopPropagation();
-        if (filtradas[marcada]) elegir(filtradas[marcada]);
+        // En modo libre, lo tipeado igual a una opción gana sobre la marcada:
+        // "90" + Enter es el CC 90 aunque arriba haya quedado otro que lo
+        // contiene en el detalle.
+        const exacta =
+          libre && busqueda.trim()
+            ? filtradas.find((o) => normalizar(o.texto) === normalizar(busqueda.trim()))
+            : null;
+        if (exacta) elegir(exacta);
+        else if (filtradas[marcada]) elegir(filtradas[marcada]);
         else if (libre && busqueda.trim()) elegirTexto(busqueda);
         else cerrar();
       }
@@ -229,8 +246,9 @@ function SelectBuscador({
             top: posicion.top,
             bottom: posicion.bottom,
             left: posicion.left,
-            width: posicion.width,
-            minWidth: "180px",
+            width: "max-content",
+            minWidth: Math.max(posicion.width, 180),
+            maxWidth: posicion.maxWidth,
             maxHeight: posicion.maxHeight,
             overflowY: "auto",
             zIndex: 1080,
@@ -279,6 +297,11 @@ function SelectBuscador({
               }}
             >
               {o.texto}
+              {o.detalle && (
+                <span className="ms-2" style={{ color: "#64748b", fontWeight: 400 }}>
+                  {o.detalle}
+                </span>
+              )}
             </li>
           ))}
         </ul>

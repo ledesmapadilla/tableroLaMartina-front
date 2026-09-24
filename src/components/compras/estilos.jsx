@@ -93,9 +93,20 @@ export const FiltroTexto = ({ etiqueta, ancho, valor, onChange, placeholder, tip
   </div>
 )
 
-export const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => (
+/**
+ * `destacado` es para el filtro que manda en la pantalla —el estado en
+ * Analista—: el rótulo más grande que el de los demás y centrado sobre la
+ * caja, y la caja con el borde bordó y más grueso, para que se vea de entrada
+ * por dónde se está mirando el tablero (22/09/2026). El borde va en la clase
+ * `filtro-destacado` de index.css: el de `.form-select` lleva !important y le
+ * gana a cualquier borde inline.
+ */
+export const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones, destacado = false }) => (
   <div className="d-flex flex-column" style={{ width: ancho }}>
-    <span className="fw-bold text-dark mb-1" style={{ fontSize: '0.72rem' }}>
+    <span
+      className={`fw-bold text-dark mb-1${destacado ? ' text-center' : ''}`}
+      style={{ fontSize: destacado ? '0.95rem' : '0.72rem' }}
+    >
       {etiqueta}
     </span>
     <div className="input-group input-group-sm">
@@ -103,7 +114,7 @@ export const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones
         size="sm"
         value={valor}
         onChange={(e) => onChange(e.target.value)}
-        className={`rounded-3 ${valor ? 'rounded-end-0 border-end-0 fw-bold filtro-activo' : ''}`}
+        className={`rounded-3 ${destacado ? 'filtro-destacado ' : ''}${valor ? 'rounded-end-0 border-end-0 fw-bold filtro-activo' : ''}`}
         style={{
           fontSize: '0.82rem',
           height: '32px',
@@ -119,7 +130,7 @@ export const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones
       </Form.Select>
       {valor && (
         <button
-          className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center sin-zoom"
+          className={`btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center sin-zoom${destacado ? ' filtro-destacado' : ''}`}
           type="button"
           onClick={() => onChange('')}
           title={`Limpiar filtro ${etiqueta.toLowerCase()}`}

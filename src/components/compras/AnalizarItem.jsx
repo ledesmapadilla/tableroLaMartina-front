@@ -31,7 +31,20 @@ const fmtPrecio = (v) =>
     : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(v)
 
 // `elegido` vacío es "el más barato"; 1, 2 o 3, el presupuesto elegido a mano.
-const FORM_ITEM_INIT = { stock: '', proveedor1: '', precio1: '', proveedor2: '', precio2: '', proveedor3: '', precio3: '', elegido: '' }
+const FORM_ITEM_INIT = { stock: '', proveedor1: '', precio1: '', proveedor2: '', precio2: '', proveedor3: '', precio3: '', elegido: '', observaciones: '' }
+
+// Lo que el analista carga de cada ítem, tal como queda guardado.
+const formDelItem = (i) => ({
+  stock:         i.stock      != null ? String(i.stock)   : '',
+  proveedor1:    i.proveedor1 ?? '',
+  precio1:       i.precio1    != null ? String(i.precio1) : '',
+  proveedor2:    i.proveedor2 ?? '',
+  precio2:       i.precio2    != null ? String(i.precio2) : '',
+  proveedor3:    i.proveedor3 ?? '',
+  precio3:       i.precio3    != null ? String(i.precio3) : '',
+  elegido:       i.elegido    != null ? String(i.elegido) : '',
+  observaciones: i.observaciones ?? '',
+})
 
 // Cada proveedor son dos columnas (el proveedor y su precio), y los tres
 // bloques seguidos se leían corridos: una línea marcada donde arranca cada
@@ -89,16 +102,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
       const initForms = (pedido) => {
         const mapa = {}
         ;(pedido.items || []).filter(i => enVista(i)).forEach(i => {
-          mapa[i._id] = {
-            stock:      i.stock      != null ? String(i.stock)      : '',
-            proveedor1: i.proveedor1 ?? '',
-            precio1:    i.precio1    != null ? String(i.precio1)    : '',
-            proveedor2: i.proveedor2 ?? '',
-            precio2:    i.precio2    != null ? String(i.precio2)    : '',
-            proveedor3: i.proveedor3 ?? '',
-            precio3:    i.precio3    != null ? String(i.precio3)    : '',
-            elegido:    i.elegido    != null ? String(i.elegido)    : '',
-          }
+          mapa[i._id] = formDelItem(i)
         })
         setFormsMap(mapa)
       }
@@ -139,6 +143,16 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
     ? (pedidoSeleccionado.items || []).filter(i => enVista(i))
     : []
 
+  // Un ítem no se procesa en blanco (22/09/2026): o tiene un precio cargado o
+  // una observación que explique por qué no lo tiene (no se consigue, lo
+  // cubre el stock, el proveedor todavía no contestó). Mientras falte alguno,
+  // el botón de procesar queda deshabilitado.
+  const itemSinCargar = (item) => {
+    const form = formsMap[item._id] || FORM_ITEM_INIT
+    return opcionesDePrecio(form).length === 0 && !form.observaciones.trim()
+  }
+  const itemsIncompletos = itemsAMostrar.filter(itemSinCargar)
+
   const calcularMontoTotal = () =>
     itemsAMostrar.reduce((acc, item) => {
       // El monto que decide si va a autorizar sale del presupuesto elegido.
@@ -158,16 +172,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
     setArchivosMap(archivos)
     const mapa = {}
     ;(p.items || []).filter(i => enVista(i)).forEach(i => {
-      mapa[i._id] = {
-        stock:      i.stock      != null ? String(i.stock)      : '',
-        proveedor1: i.proveedor1 ?? '',
-        precio1:    i.precio1    != null ? String(i.precio1)    : '',
-        proveedor2: i.proveedor2 ?? '',
-        precio2:    i.precio2    != null ? String(i.precio2)    : '',
-        proveedor3: i.proveedor3 ?? '',
-        precio3:    i.precio3    != null ? String(i.precio3)    : '',
-        elegido:    i.elegido    != null ? String(i.elegido)    : '',
-      }
+      mapa[i._id] = formDelItem(i)
     })
     setFormsMap(mapa)
   }
@@ -282,6 +287,17 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
 
   const procesar = async () => {
     if (!pedidoSeleccionado || itemsAMostrar.length === 0) return
+    if (itemsIncompletos.length) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Falta cargar el análisis',
+        html:
+          'Cada ítem necesita un precio o una observación que explique por qué no lo tiene:<br/><b>' +
+          itemsIncompletos.map(i => i.nombre_repuesto).join('</b>, <b>') + '</b>',
+        confirmButtonColor: '#4a0812',
+      })
+      return
+    }
     const monto = calcularMontoTotal()
     const nuevoEstado = monto >= montoAutorizacion ? 'Autorizar' : 'Para hacer OP'
     // Al corregir un análisis el estado se recalcula con la misma regla: si
@@ -320,6 +336,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           proveedor3: form.proveedor3 || null,
           precio3:    toNum(form.precio3),
           elegido:    toNum(form.elegido),
+          observaciones: form.observaciones?.trim() || null,
         })
       }))
       await Swal.fire({ icon: 'success', title: 'Procesado', timer: 1500, showConfirmButton: false })
@@ -337,13 +354,34 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
         type={enFoco ? 'number' : 'text'}
         min="0"
         className="form-control form-control-sm"
-        style={{ minWidth: 90 }}
+        style={{ fontSize: '0.8rem', height: '30px' }}
         value={enFoco ? form[campo] : fmtPrecio(form[campo])}
         onChange={e => setF(item._id, campo, e.target.value)}
         onFocus={() => setFoco(item._id, campo, true)}
         onBlur={() => setFoco(item._id, campo, false)}
         onKeyDown={e => { if (e.key === 'Enter') e.target.blur() }}
         placeholder="$"
+        disabled={soloVer}
+      />
+    )
+  }
+
+  // La nota del analista sobre el ítem (22/09/2026): por qué eligió ese
+  // presupuesto, qué le dijo el proveedor, lo que haga falta aclarar.
+  // Arranca en una línea, como el resto de la fila, y se estira para abajo
+  // —no para los costados, que se montaba sobre las columnas de al lado— así
+  // la fila crece con él y la nota larga se lee entera sin desarmar la tabla.
+  // El texto entero también se ve al pasar el mouse.
+  const observacionesInput = (item) => {
+    const form = formsMap[item._id] || FORM_ITEM_INIT
+    return (
+      <textarea
+        rows={1}
+        className="form-control form-control-sm"
+        style={{ fontSize: '0.8rem', height: '30px', minHeight: '30px', width: '100%', resize: 'vertical' }}
+        value={form.observaciones}
+        onChange={e => setF(item._id, 'observaciones', e.target.value)}
+        title={form.observaciones}
         disabled={soloVer}
       />
     )
@@ -403,6 +441,14 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
 
   const fecha = pedidoSeleccionado?.fecha?.slice(0, 10).split('-').reverse().join('/') || '—'
 
+  // Las celdas de la tabla de carga van alineadas arriba: al estirar una
+  // observación la fila se hace alta y, centrados, los campos de al lado
+  // quedaban flotando en el medio. El texto suelto lleva un poco más de aire
+  // arriba para quedar a la misma altura que el texto de los campos.
+  const tdCarga = { ...td, padding: '4px 5px', verticalAlign: 'top' }
+  const tdCargaCentro = { ...tdCarga, textAlign: 'center' }
+  const tdCargaTexto = { ...tdCarga, padding: '9px 5px 4px' }
+
   return (
     <div
       style={{
@@ -461,12 +507,27 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
               Cancelar
             </Button>
           )}
+          {/* Por qué el botón está en gris: qué ítems quedaron sin cargar. El
+              aviso va a la vista y no solo en el title, que un botón
+              deshabilitado no llega a mostrar. */}
+          {!soloVer && itemsIncompletos.length > 0 && (
+            <span
+              className={`px-2 py-1 rounded-3${editando ? '' : ' ms-auto'}`}
+              style={{ fontSize: '0.72rem', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 600 }}
+              title={itemsIncompletos.map(i => i.nombre_repuesto).join(', ')}
+            >
+              <i className="bi bi-exclamation-triangle me-1" />
+              {itemsIncompletos.length === 1
+                ? 'Falta un precio o una observación en 1 ítem'
+                : `Falta un precio o una observación en ${itemsIncompletos.length} ítems`}
+            </span>
+          )}
           {!soloVer && (
             <Button
               size="sm"
-              disabled={itemsAMostrar.length === 0}
+              disabled={itemsAMostrar.length === 0 || itemsIncompletos.length > 0}
               onClick={procesar}
-              className={`rounded-3 px-3 d-flex align-items-center gap-2${editando ? '' : ' ms-auto'}`}
+              className={`rounded-3 px-3 d-flex align-items-center gap-2${editando || itemsIncompletos.length > 0 ? '' : ' ms-auto'}`}
               style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
             >
               <i className="bi bi-check-lg"></i>
@@ -564,18 +625,19 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           className="shadow-sm rounded-3 bg-white mb-3 flex-shrink-0"
           style={{ maxWidth: '100%', overflowX: 'auto', border: '1px solid #cbd5e1' }}
         >
-          <Table className="mb-0 tabla-informe tabla-compras" style={{ tableLayout: 'fixed', width: '100%', minWidth: '1180px' }}>
+          <Table className="mb-0 tabla-informe tabla-compras" style={{ tableLayout: 'fixed', width: '100%' }}>
             <colgroup>
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '6%' }} />
+              <col style={{ width: '5%' }} />
               <col style={{ width: '11%' }} />
+              <col style={{ width: '4%' }} />
               <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '18%' }} />
               <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '11%' }} />
-              <col style={{ width: '9%' }} />
-              <col style={{ width: '14%' }} />
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
@@ -588,22 +650,23 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                 <th style={thCentro}>Precio 2</th>
                 <th className="col-proveedor" style={thCentro}>Proveedor 3</th>
                 <th style={thCentro}>Precio 3</th>
+                <th style={thCentro}>Observaciones</th>
                 <th style={thCentro}>Presupuesto</th>
               </tr>
             </thead>
             <tbody>
               {itemsAMostrar.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={11} className="text-center text-muted py-4" style={td}>
                     {selectedKey ? 'Este pedido no tiene ítems para analizar' : 'Elegí un pedido para empezar'}
                   </td>
                 </tr>
               ) : (
                 itemsAMostrar.map((item) => (
                   <tr key={item._id}>
-                    <td style={{ ...tdCentro, padding: '4px 5px' }}>{fecha}</td>
-                    <td style={{ ...td, padding: '4px 5px', fontWeight: 500 }}>{item.nombre_repuesto}</td>
-                    <td style={{ ...td, padding: '4px 5px' }}>
+                    <td style={{ ...tdCargaTexto, textAlign: 'center' }}>{fecha}</td>
+                    <td style={{ ...tdCargaTexto, fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                    <td style={tdCarga}>
                       <Form.Control
                         type="number"
                         min="0"
@@ -616,13 +679,14 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                         disabled={soloVer}
                       />
                     </td>
-                    <td style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor1')}</td>
-                    <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio1')}</td>
-                    <td className="col-proveedor" style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor2')}</td>
-                    <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio2')}</td>
-                    <td className="col-proveedor" style={{ ...td, padding: '4px 5px' }}>{provSelect(item, 'proveedor3')}</td>
-                    <td style={{ ...td, padding: '4px 5px' }}>{precioInput(item, 'precio3')}</td>
-                    <td style={{ ...tdCentro, padding: '4px 5px' }}>{archivoCell(item)}</td>
+                    <td style={tdCarga}>{provSelect(item, 'proveedor1')}</td>
+                    <td style={tdCarga}>{precioInput(item, 'precio1')}</td>
+                    <td className="col-proveedor" style={tdCarga}>{provSelect(item, 'proveedor2')}</td>
+                    <td style={tdCarga}>{precioInput(item, 'precio2')}</td>
+                    <td className="col-proveedor" style={tdCarga}>{provSelect(item, 'proveedor3')}</td>
+                    <td style={tdCarga}>{precioInput(item, 'precio3')}</td>
+                    <td style={tdCarga}>{observacionesInput(item)}</td>
+                    <td style={tdCargaCentro}>{archivoCell(item)}</td>
                   </tr>
                 ))
               )}

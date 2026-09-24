@@ -312,6 +312,28 @@ select.form-select.filtro-activo option:checked {
   color: #dc2626 !important;
 }
 
+/* ── El filtro que manda en la pantalla: el estado en Analista ──
+   Va acá y no en un style inline porque el borde de `.form-select` lleva
+   !important (más arriba) y le gana a cualquier borde puesto en el
+   componente (22/09/2026). */
+select.form-select.filtro-destacado,
+button.filtro-destacado {
+  border-width: 4px !important;
+  border-color: #7a1828 !important;
+}
+/* El select y su cruz son una sola caja: el lado por donde se tocan no lleva
+   borde, como en los filtros comunes. */
+select.form-select.filtro-destacado.border-end-0 {
+  border-right-width: 0 !important;
+}
+button.filtro-destacado.border-start-0 {
+  border-left-width: 0 !important;
+}
+select.form-select.filtro-destacado:focus {
+  border-color: #7a1828 !important;
+  box-shadow: 0 0 0 0.2rem rgba(122, 24, 40, 0.2) !important;
+}
+
 /* ── Cruz de cierre en modales con fondo oscuro ── */
 .modal-header .btn-close {
   filter: invert(1) grayscale(100%) brightness(200%) !important;

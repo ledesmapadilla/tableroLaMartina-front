@@ -26,7 +26,7 @@ import { useProveedorDeOP } from './proveedorOP'
 const fmtNro = (n) => `B-${String(n).padStart(3, '0')}`
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
-const ESTADOS   = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Rechazado']
+const ESTADOS   = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Retirado', 'Rechazado']
 
 // Un ítem se edita solo mientras el paso siguiente no lo procesó: cuando el
 // analista lo toma, lo cargado queda como está.
@@ -547,7 +547,7 @@ export default function BerdinaPedidos() {
             <FiltroSelect etiqueta="Urgencia" ancho="104px" valor={filtros.urgencia} vacio="Todas" onChange={(v) => setF('urgencia', v)} opciones={URGENCIAS} />
             <FiltroSelect etiqueta="Grupo" ancho="128px" valor={filtros.grupo} vacio="Todos" onChange={(v) => setF('grupo', v)} opciones={GRUPOS} />
             <FiltroTexto etiqueta="Solicita" ancho="120px" valor={filtros.solicita} onChange={(v) => setF('solicita', v)} placeholder="Solicitante…" />
-            <FiltroSelect etiqueta="Estado" ancho="128px" valor={filtros.estado} vacio="Todos" onChange={(v) => setF('estado', v)} opciones={ESTADOS} />
+            <FiltroSelect etiqueta="Estado" ancho="150px" valor={filtros.estado} vacio="Todos" onChange={(v) => setF('estado', v)} opciones={ESTADOS} destacado />
 
             {hayFiltros && <BotonLimpiar onClick={limpiar} />}
           </div>

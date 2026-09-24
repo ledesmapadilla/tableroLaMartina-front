@@ -5,7 +5,7 @@ import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { CLIENTES, unirClientes } from "../../utils/clientes";
-import { guardarConReglaHorometro } from "../../utils/horometro";
+import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -110,11 +110,52 @@ const comparable = (valor) =>
     .replace(/[^a-z0-9]/g, "");
 
 /**
+ * El desmalezado va con la unidad en la que está medido el lote (23/09/2026):
+ * un lote en hectáreas se desmaleza "x Ha" y no "Mecánico", y uno en plantas
+ * al revés. Un lote sin medida o fuera del padrón no se controla. Devuelve
+ * `{ lote, tarea, medida, correcta }` o null si está bien. Es la misma regla
+ * de `desmalezadoFueraDeUnidad` en el backend.
+ */
+const desmalezadoFueraDeUnidad = ({ lote, tarea }, lotes, tareas) => {
+  const delPadron = tareas.find((t) => t._id === tarea);
+  if (!delPadron || !comparable(delPadron.tarea).includes("desmalezado")) return null;
+  const buscado = comparable(lote);
+  const delLote = buscado && lotes.find((l) => comparable(l.nombre) === buscado);
+  if (!delLote) return null;
+
+  const enHectareas = delLote.hectareas != null && delLote.plantas == null;
+  const enPlantas = delLote.plantas != null && delLote.hectareas == null;
+  const unidad = comparable(delPadron.unidad);
+  const tareaEnHectareas = unidad.startsWith("hectarea") || unidad === "ha";
+  const tareaEnPlantas = unidad.startsWith("planta");
+
+  if (enHectareas && tareaEnPlantas) {
+    return { lote: delLote.nombre, tarea: delPadron.tarea, medida: "hectáreas", correcta: "desmalezado x Ha" };
+  }
+  if (enPlantas && tareaEnHectareas) {
+    return { lote: delLote.nombre, tarea: delPadron.tarea, medida: "plantas", correcta: "desmalezado mecánico" };
+  }
+  return null;
+};
+
+// Días entre dos días ("AAAA-MM-DD"). Se comparan como mediodía UTC para que
+// no los mueva ningún horario de verano.
+const diasEntre = (desde, hasta) =>
+  Math.round((Date.parse(`${hasta}T12:00:00Z`) - Date.parse(`${desde}T12:00:00Z`)) / 86400000);
+
+// Hasta cuántos días después del cierre se avisa. Más adelante es una segunda
+// pasada y no hay nada que revisar (22/09/2026).
+const DIAS_DE_AVISO = 3;
+
+/**
  * El cierre de un lote que ya se dio por terminado con esa misma tarea, si lo
- * que se está cargando es posterior. Terminado un lote no se vuelve a trabajar
- * en él: al día siguiente es casi siempre un error de carga. Se avisa en vez
- * de no dejar guardar porque una segunda pasada más adelante en el año sí es
- * válida, y es un grupo nuevo a la hora de pagar.
+ * que se está cargando cae **dentro de los tres días siguientes**. Terminado un
+ * lote no se vuelve a trabajar en él: al otro día es casi siempre un error de
+ * carga, y eso es lo que se avisa. Un mes después es una segunda pasada normal,
+ * que además se paga aparte, así que no se dice nada (22/09/2026).
+ *
+ * Se avisa en vez de no dejar guardar porque incluso al día siguiente puede ser
+ * un remate legítimo del lote.
  */
 const cierreDelLote = ({ lote, tarea, fecha }, cierres) => {
   const buscado = comparable(lote);
@@ -122,7 +163,9 @@ const cierreDelLote = ({ lote, tarea, fecha }, cierres) => {
   const cierre = cierres.find(
     (c) => comparable(c.lote) === buscado && String(c.tarea) === String(tarea)
   );
-  return cierre && fecha.slice(0, 10) > cierre.fecha ? cierre : null;
+  if (!cierre) return null;
+  const dias = diasEntre(cierre.fecha, fecha.slice(0, 10));
+  return dias > 0 && dias <= DIAS_DE_AVISO ? { ...cierre, dias } : null;
 };
 
 const tramosSeSolapan = ({ horaIngreso, horaEgreso, horaIngreso2, horaEgreso2 }) => {
@@ -325,7 +368,15 @@ function ProduccionCertificadoMes({
   const [guardando, setGuardando] = useState(false);
   const refPersona = useRef(null);
 
+  // Último pedido del horómetro de entrada ("cc|fecha"): una respuesta vieja
+  // no pisa lo que ya cambió en pantalla.
   const ccPedido = useRef(null);
+  // El valor que puso el sistema en Horóm. entra. Si el que está en el campo
+  // es otro, lo escribió una persona y no se toca.
+  const horomAuto = useRef("");
+  // De dónde salió ese valor ({ horometro, fecha, fuente, campo }): puede ser
+  // de otro parte, pero también de un service, una reparación o una visita.
+  const [origenHorom, setOrigenHorom] = useState(null);
   const [ccTexto, setCcTexto] = useState("");
 
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
@@ -441,6 +492,30 @@ function ProduccionCertificadoMes({
   }, [anio, mes]);
 
   // ── período ───────────────────────────────────────────────────────
+  // Qué se corrió en los meses de al lado al guardar un corte, para contarlo
+  // en pantalla. Null si no se tocó ninguno.
+  const cortesCorridos = (guardado) => {
+    if (!guardado?.cierreAnterior && !guardado?.inicioSiguiente) return null;
+    const lineas = [];
+    if (guardado.cierreAnterior) {
+      const mesAnterior = MESES[(Number(mes) + 10) % 12] || "";
+      lineas.push(
+        `El cierre de <b>${mesAnterior}</b> pasó al <b>${formatFecha(guardado.cierreAnterior)}</b>` +
+          (guardado.anteriorCerrado ? ` (${mesAnterior} está cerrado).` : ".")
+      );
+    }
+    if (guardado.inicioSiguiente) {
+      const mesSiguiente = MESES[Number(mes) % 12] || "";
+      lineas.push(
+        `El inicio de <b>${mesSiguiente}</b> pasó al <b>${formatFecha(guardado.inicioSiguiente)}</b>` +
+          (guardado.siguienteCerrado ? ` (${mesSiguiente} está cerrado).` : ".")
+      );
+    }
+    const n = guardado.partesMovidos || 0;
+    if (n) lineas.push(`<b>${n}</b> parte${n === 1 ? "" : "s"} cambi${n === 1 ? "ó" : "aron"} de mes.`);
+    return lineas.map((l) => `<div>${l}</div>`).join("");
+  };
+
   const guardarPeriodo = async () => {
     if (cerrado) return;
     if (!periodo.desde || !periodo.hasta) return;
@@ -451,8 +526,16 @@ function ProduccionCertificadoMes({
         body: JSON.stringify(periodo),
       });
       if (res.ok) {
+        const guardado = await res.json().catch(() => ({}));
         await cargarPartes(periodo);
-        avisar({ icon: "success", title: "Período actualizado", timer: 1200, showConfirmButton: false });
+        // Entre dos meses hay un solo corte: si el backend corrió el mes de al
+        // lado, se avisa.
+        const corrido = cortesCorridos(guardado);
+        if (corrido) {
+          avisar({ icon: "info", title: "Período actualizado", html: corrido });
+        } else {
+          avisar({ icon: "success", title: "Período actualizado", timer: 1200, showConfirmButton: false });
+        }
       } else {
         const err = await res.json();
         avisar({ icon: "error", title: "Error", text: err.error || "No se pudo guardar el período" });
@@ -474,8 +557,17 @@ function ProduccionCertificadoMes({
       avisar({ icon: "error", title: "Error", text: err.error || "No se pudo guardar el cierre" });
       return false;
     }
+    // La fecha elegida en el modal pasa a ser el "al" de arriba enseguida,
+    // sin esperar la recarga.
+    const guardado = await res.json().catch(() => null);
+    if (guardado?.hasta) {
+      setPeriodo({ desde: soloFecha(guardado.desde), hasta: soloFecha(guardado.hasta) });
+    }
     const nuevo = await cargarPeriodo();
     await cargarPartes(nuevo);
+    // Cerrar en otra fecha corre el inicio del mes siguiente.
+    const corrido = cortesCorridos(guardado);
+    if (corrido) await avisar({ icon: "info", title: "Corte actualizado", html: corrido });
     return true;
   };
 
@@ -713,6 +805,9 @@ function ProduccionCertificadoMes({
     // La fecha arranca vacía también después de guardar: se completa en cada parte.
     setForm(FORM_VACIO);
     setCcTexto("");
+    horomAuto.current = "";
+    ccPedido.current = null;
+    setOrigenHorom(null);
     setEditando(null);
     refPersona.current?.focus();
   };
@@ -759,9 +854,25 @@ function ProduccionCertificadoMes({
       return;
     }
 
-    // Un lote terminado no se vuelve a trabajar. Se controla al cargarlo y al
-    // cambiarle la fecha a uno que ya estaba; una segunda pasada más adelante
-    // es válida, así que se avisa y se puede guardar igual.
+    // El desmalezado tiene que coincidir con la medida del lote: no se guarda.
+    const unidadMal = desmalezadoFueraDeUnidad(form, lotes, tareas);
+    if (unidadMal) {
+      avisar({
+        icon: "error",
+        title: "Desmalezado que no corresponde",
+        html: `
+          <div style="text-align:left;font-size:0.84rem;line-height:1.5">
+            <div>El lote <b>${unidadMal.lote}</b> está medido en <b>${unidadMal.medida}</b>.</div>
+            <div style="margin-top:.4rem">No va <b>${unidadMal.tarea}</b>: va el
+              <b>${unidadMal.correcta}</b>.</div>
+          </div>`,
+      });
+      return;
+    }
+
+    // Un lote terminado no se vuelve a trabajar en los días siguientes. Se
+    // controla al cargarlo y al cambiarle la fecha a uno que ya estaba; el
+    // aviso deja guardar igual, porque puede ser un remate del lote.
     const fechaAnterior = editando
       ? soloFecha(partes.find((p) => p._id === editando)?.fecha)
       : null;
@@ -778,10 +889,11 @@ function ProduccionCertificadoMes({
               <div>El lote <b>${cierre.lote}</b> se dio por terminado el
                 <b>${formatFecha(cierre.fecha)}</b> con <b>${nombreTarea}</b>.</div>
               <div style="margin-top:.4rem">Este parte es del
-                <b>${formatFecha(soloFecha(form.fecha))}</b>, después del cierre.</div>
+                <b>${formatFecha(soloFecha(form.fecha))}</b>,
+                ${cierre.dias === 1 ? "el día siguiente" : `${cierre.dias} días después`}.</div>
               <hr style="margin:.55rem 0">
-              <div style="color:#64748b">Si es una <b>segunda pasada</b> está bien y se paga
-                aparte. Si no, revise el lote, la tarea o la fecha.</div>
+              <div style="color:#64748b">Si es lo que quedó por terminar está bien y se puede
+                guardar. Si no, revise el lote, la tarea o la fecha.</div>
             </div>`,
           showCancelButton: true,
           confirmButtonText: "Guardar igual",
@@ -885,6 +997,11 @@ function ProduccionCertificadoMes({
     if (cerrado) return;
     setEditando(p._id);
     setCcTexto(p.cc?.cc || "");
+    // El parte que se edita trae su propio horómetro: nada de esto lo puso el
+    // sistema, así que tampoco se pisa si después se cambia la fecha.
+    horomAuto.current = "";
+    ccPedido.current = null;
+    setOrigenHorom(null);
     setForm({
       fecha: soloFecha(p.fecha),
       persona: p.persona?._id || "",
@@ -968,9 +1085,21 @@ function ProduccionCertificadoMes({
     [centros]
   );
 
-  // Elegir el CC arrastra el horómetro con el que quedó la última vez. El
-  // backend lo busca sobre todos los partes, no solo los del período en
-  // pantalla: el último horómetro de un mes es el primero del siguiente.
+  // El CC se elige de una lista que se va filtrando al escribir: el número, y
+  // al costado el equipo y la descripción para reconocer la máquina.
+  const opcionesCC = useMemo(
+    () =>
+      centros
+        .map((c) => ({
+          valor: String(c.cc).trim(),
+          texto: String(c.cc).trim(),
+          detalle: [c.equipo, c.descripcion].filter(Boolean).join(" · "),
+        }))
+        .sort((a, b) => a.texto.localeCompare(b.texto, "es", { numeric: true })),
+    [centros]
+  );
+
+  // Elegir el CC arrastra el horómetro con el que quedó la máquina.
   const tipearCC = (texto) => {
     setCcTexto(texto);
     const buscado = texto.trim().toLowerCase();
@@ -978,28 +1107,64 @@ function ProduccionCertificadoMes({
     elegirCC(centro?._id || "");
   };
 
-  const elegirCC = async (ccId) => {
-    setForm((f) => ({ ...f, cc: ccId }));
-
-    // Editando no se pisa: ese parte ya tiene su propio horómetro.
-    if (editando) return;
+  /**
+   * Completa el horómetro de entrada: es la lectura con la que quedó esa
+   * máquina **antes de la fecha del parte** (o más temprano ese mismo día). Va
+   * con la fecha para que cargar o corregir un día atrasado no arrastre el
+   * horómetro de un día posterior que ya está cargado.
+   *
+   * **El horómetro es uno solo para todo el proyecto**: si el CC está enlazado
+   * a un tractor, el backend mira también los services, las reparaciones, las
+   * visitas y las cargas manuales, no solo los partes. Una lectura tomada en
+   * el taller es la que arrastra el próximo parte, y la del parte es la que
+   * ven el preventivo y las reparaciones.
+   */
+  const traerHorometroEntra = async (ccId, fecha) => {
     if (!ccId) {
+      horomAuto.current = "";
+      setOrigenHorom(null);
       setForm((f) => ({ ...f, horomIngreso: "" }));
       return;
     }
 
-    ccPedido.current = ccId;
+    const dia = soloFecha(fecha);
+    const pedido = `${ccId}|${dia}`;
+    ccPedido.current = pedido;
     try {
-      // El horómetro es de la máquina, no del campo: se mira en todos.
-      const res = await fetch(`/api/partes/ultimo-horometro/${ccId}`);
+      // Sin fecha todavía, el backend devuelve la última lectura de todas.
+      const res = await fetch(
+        `/api/partes/ultimo-horometro/${ccId}${dia ? `?fecha=${dia}` : ""}`
+      );
       const data = res.ok ? await res.json() : null;
-      // Si mientras respondía se eligió otro CC, este dato ya no sirve.
-      if (ccPedido.current !== ccId) return;
-      const salida = data?.horomSalida;
-      setForm((f) => (f.cc === ccId ? { ...f, horomIngreso: salida ?? "" } : f));
+      // Si mientras respondía cambió el CC o la fecha, este dato ya no sirve.
+      if (ccPedido.current !== pedido) return;
+      const lectura = data?.horometro ?? "";
+      horomAuto.current = String(lectura);
+      setOrigenHorom(lectura === "" || lectura === null ? null : data);
+      setForm((f) => (f.cc === ccId ? { ...f, horomIngreso: lectura ?? "" } : f));
     } catch {
-      if (ccPedido.current === ccId) setForm((f) => ({ ...f, horomIngreso: "" }));
+      if (ccPedido.current !== pedido) return;
+      horomAuto.current = "";
+      setOrigenHorom(null);
+      setForm((f) => (f.cc === ccId ? { ...f, horomIngreso: "" } : f));
     }
+  };
+
+  const elegirCC = (ccId) => {
+    setForm((f) => ({ ...f, cc: ccId }));
+    // Editando no se pisa: ese parte ya tiene su propio horómetro.
+    if (editando) return;
+    traerHorometroEntra(ccId, form.fecha);
+  };
+
+  // Cambiar la fecha cambia cuál es el día anterior de esa máquina, así que el
+  // horómetro de entrada se vuelve a pedir. Lo escrito a mano no se pisa: solo
+  // se reemplaza lo que había puesto el sistema.
+  const cambiarFecha = (fecha) => {
+    cambiar("fecha", fecha);
+    if (editando || !form.cc) return;
+    if (String(form.horomIngreso ?? "") !== String(horomAuto.current ?? "")) return;
+    traerHorometroEntra(form.cc, fecha);
   };
 
   const tareasOrdenadas = useMemo(() => {
@@ -1161,6 +1326,14 @@ function ProduccionCertificadoMes({
     calcularHoras(form.horaIngreso, form.horaEgreso) +
     (dosTurnos ? calcularHoras(form.horaIngreso2, form.horaEgreso2) : 0);
   const horasCCForm = calcularHorasCC(form.horomIngreso, form.horomSalida);
+
+  // De dónde salió el horómetro de entrada que puso el sistema. Se muestra
+  // mientras sea ese valor: apenas alguien lo escribe a mano, la pista sobra.
+  const pistaHorometro =
+    origenHorom && String(form.horomIngreso ?? "") === String(horomAuto.current ?? "")
+      ? `Última lectura de la máquina: ${origenHorom.horometro} · ` +
+        `${etiquetaFuente(origenHorom.fuente, origenHorom.campo)} del ${formatFecha(origenHorom.fecha)}`
+      : "";
 
   // ── exportar a Excel ──────────────────────────────────────────────
   const exportarExcel = async () => {
@@ -1459,7 +1632,7 @@ function ProduccionCertificadoMes({
                   type="date"
                   max={hoyStr()}
                   value={form.fecha}
-                  onChange={(e) => cambiar("fecha", e.target.value)}
+                  onChange={(e) => cambiarFecha(e.target.value)}
                   style={estiloCelda}
                 />
               </div>
@@ -1541,9 +1714,14 @@ function ProduccionCertificadoMes({
 
               <div style={{ width: "110px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>CC</label>
-                <Form.Control
-                  value={ccTexto}
-                  onChange={(e) => tipearCC(e.target.value)}
+                {/* Libre: lo tipeado que no esté en la lista queda escrito y
+                    en rojo, y al guardar se avisa que ese CC no existe. */}
+                <SelectBuscador
+                  libre
+                  opciones={opcionesCC}
+                  valor={ccTexto}
+                  onChange={tipearCC}
+                  vacio={null}
                   placeholder="Nº"
                   title={
                     ccTexto && !form.cc
@@ -1559,8 +1737,27 @@ function ProduccionCertificadoMes({
               </div>
 
               <div style={{ width: "92px" }}>
-                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Horóm. entra</label>
-                <Form.Control type="number" step="any" value={form.horomIngreso} onChange={(e) => cambiar("horomIngreso", e.target.value)} style={estiloCelda} />
+                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
+                  Horóm. entra
+                  {/* La lectura sale de todo el proyecto (parte, service,
+                      reparación, visita o carga manual): el ícono cuenta de
+                      cuál y de qué día, sin ocupar lugar en la fila. */}
+                  {pistaHorometro && (
+                    <i
+                      className="bi bi-info-circle ms-1"
+                      style={{ color: "#1b4332", cursor: "help" }}
+                      title={pistaHorometro}
+                    ></i>
+                  )}
+                </label>
+                <Form.Control
+                  type="number"
+                  step="any"
+                  value={form.horomIngreso}
+                  onChange={(e) => cambiar("horomIngreso", e.target.value)}
+                  title={pistaHorometro || undefined}
+                  style={estiloCelda}
+                />
               </div>
 
               <div style={{ width: "92px" }}>
@@ -1763,6 +1960,13 @@ function ProduccionCertificadoMes({
             border-right: 3px solid #000000 !important;
           }
         `}</style>
+
+        {/* Corte entre la carga y la tabla: fino pero oscuro, para que se vea
+            dónde termina lo que se escribe y empieza lo cargado. */}
+        <div
+          className="flex-shrink-0 mb-2"
+          style={{ borderTop: "2px solid #1b4332" }}
+        />
 
         {/* Barra de Filtros */}
         <Card className="shadow-sm border-0 rounded-3 px-3 py-2 bg-white flex-shrink-0 mb-2">

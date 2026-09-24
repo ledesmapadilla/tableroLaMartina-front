@@ -165,6 +165,43 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
   );
 };
 
+// Una punta del rango de fechas, con el mismo aspecto que FiltroSelect.
+const FiltroFecha = ({ etiqueta, valor, onChange, min, max }) => (
+  <div className="d-flex align-items-center gap-2">
+    <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
+      {etiqueta}:
+    </span>
+    <div className="input-group input-group-sm" style={{ width: "150px" }}>
+      <Form.Control
+        type="date"
+        value={valor}
+        min={min || undefined}
+        max={max || undefined}
+        onChange={(e) => onChange(e.target.value)}
+        className={`rounded-3 ${valor ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+        style={{
+          fontSize: "0.82rem",
+          height: "32px",
+          padding: "3px 8px",
+          color: valor ? "#dc2626" : "#1e293b",
+          fontWeight: valor ? "700" : "normal",
+        }}
+      />
+      {valor && (
+        <button
+          className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+          type="button"
+          onClick={() => onChange("")}
+          title={`Limpiar filtro ${etiqueta.toLowerCase()}`}
+          style={{ padding: "0 6px", height: "32px" }}
+        >
+          <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+        </button>
+      )}
+    </div>
+  </div>
+);
+
 /** El mismo informe para los dos campos: cambia el establecimiento. */
 function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const { anio, mes } = useParams();
@@ -245,14 +282,17 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const [guardandoCarga, setGuardandoCarga] = useState(false);
   const [carga, setCarga] = useState({ persona: "", descAntic: "", retJudicial: "" });
 
-  const [filtroFecha, setFiltroFecha] = useState("");
+  // Rango de fechas: cualquiera de las dos puntas puede quedar vacía.
+  const [filtroDesde, setFiltroDesde] = useState("");
+  const [filtroHasta, setFiltroHasta] = useState("");
   const [filtroPersona, setFiltroPersona] = useState("Todos");
   const [filtroLegajo, setFiltroLegajo] = useState("Todos");
   const [filtroCC, setFiltroCC] = useState("Todos");
   const [filtroTarea, setFiltroTarea] = useState("Todas");
 
   const hayFiltro =
-    Boolean(filtroFecha) ||
+    Boolean(filtroDesde) ||
+    Boolean(filtroHasta) ||
     filtroPersona !== "Todos" ||
     filtroLegajo !== "Todos" ||
     filtroCC !== "Todos" ||
@@ -329,7 +369,9 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const partesFiltrados = useMemo(
     () =>
       partes.filter((p) => {
-        if (filtroFecha && soloFecha(p.fecha) !== filtroFecha) return false;
+        const dia = soloFecha(p.fecha);
+        if (filtroDesde && dia < filtroDesde) return false;
+        if (filtroHasta && dia > filtroHasta) return false;
         if (filtroPersona !== "Todos" && (p.persona?._id || "") !== filtroPersona) return false;
         if (filtroLegajo !== "Todos" && (p.persona?.legajo || "") !== filtroLegajo) return false;
         if (filtroTarea !== "Todas" && (p.tarea?._id || "") !== filtroTarea) return false;
@@ -338,7 +380,7 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
         }
         return true;
       }),
-    [partes, filtroFecha, filtroPersona, filtroLegajo, filtroCC, filtroTarea]
+    [partes, filtroDesde, filtroHasta, filtroPersona, filtroLegajo, filtroCC, filtroTarea]
   );
 
   // Las opciones salen de todo el período, no de lo ya filtrado: si no, elegir
@@ -1034,7 +1076,12 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
     const celdaPeriodo = ws.getCell("A2");
     celdaPeriodo.value =
       `Período: ${formatFecha(periodo.desde)} al ${formatFecha(periodo.hasta)}` +
-      (cerrado ? "  —  CERRADA" : "  —  abierta, llega hasta hoy");
+      (cerrado ? "  —  CERRADA" : "  —  abierta, llega hasta hoy") +
+      (filtroDesde || filtroHasta
+        ? `  —  Filtrado del ${formatFecha(filtroDesde || periodo.desde)} al ${formatFecha(
+            filtroHasta || periodo.hasta
+          )}`
+        : "");
     celdaPeriodo.font = { bold: true, size: 11 };
 
     ws.addRow([]);
@@ -1212,37 +1259,64 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
     >
       <Container fluid className="px-3 py-2 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
         {/* Encabezado. El volver está en el navbar de Producción, arriba. */}
+        {/* Tres partes: el título a la izquierda, el rango de fechas en el
+            centro y el Excel a la derecha. Los costados ocupan lo mismo, así
+            el rango queda centrado en la página y no entre los dos. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-          <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
-            Tareas por personal - {titulo}
-          </span>
-          {periodo.desde && (
-            <span
-              className="px-2 py-1 rounded-3"
-              style={{ fontSize: "0.76rem", backgroundColor: "#e8f5ee", color: "#1b4332", fontWeight: 600 }}
-            >
-              {formatFecha(periodo.desde)} al {formatFecha(periodo.hasta)}
-              {cerrado ? " · cerrada" : ""}
+          <div className="d-flex align-items-center gap-2 flex-wrap" style={{ flex: "1 1 0" }}>
+            <span className="fw-bold text-nowrap" style={{ color: "#1b4332", fontSize: "1.05rem" }}>
+              Tareas por personal - {titulo}
             </span>
-          )}
+            {periodo.desde && (
+              <span
+                className="px-2 py-1 rounded-3 text-nowrap"
+                style={{ fontSize: "0.76rem", backgroundColor: "#e8f5ee", color: "#1b4332", fontWeight: 600 }}
+              >
+                {formatFecha(periodo.desde)} al {formatFecha(periodo.hasta)}
+                {cerrado ? " · cerrada" : ""}
+              </span>
+            )}
+          </div>
 
-          <Button
-            size="sm"
-            onClick={exportarExcel}
-            disabled={filas.length === 0}
-            className="rounded-3 px-3 d-flex align-items-center gap-2 ms-auto"
-            style={{
-              backgroundColor: "#15803d",
-              borderColor: "#15803d",
-              fontSize: "0.78rem",
-              height: "30px",
-              fontWeight: 600,
-            }}
-            title="Exportar a Excel"
-          >
-            <i className="bi bi-file-earmark-excel-fill"></i>
-            <span>Excel</span>
-          </Button>
+          {/* Cada punta acota a la otra, así no se puede armar un rango al
+              revés. */}
+          <div className="d-flex align-items-center gap-3 flex-wrap justify-content-center">
+            <FiltroFecha
+              etiqueta="Desde"
+              valor={filtroDesde}
+              onChange={setFiltroDesde}
+              min={periodo.desde}
+              max={filtroHasta || periodo.hasta}
+            />
+
+            <FiltroFecha
+              etiqueta="Hasta"
+              valor={filtroHasta}
+              onChange={setFiltroHasta}
+              min={filtroDesde || periodo.desde}
+              max={periodo.hasta}
+            />
+          </div>
+
+          <div className="d-flex justify-content-end" style={{ flex: "1 1 0" }}>
+            <Button
+              size="sm"
+              onClick={exportarExcel}
+              disabled={filas.length === 0}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{
+                backgroundColor: "#15803d",
+                borderColor: "#15803d",
+                fontSize: "0.78rem",
+                height: "30px",
+                fontWeight: 600,
+              }}
+              title="Exportar a Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill"></i>
+              <span>Excel</span>
+            </Button>
+          </div>
         </div>
 
         {/* Filtros. La tarjeta toma el ancho de su contenido y se centra en la
@@ -1252,40 +1326,6 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
           style={{ alignSelf: "center", maxWidth: "100%" }}
         >
           <div className="d-flex align-items-center justify-content-center gap-3 flex-wrap">
-            <div className="d-flex align-items-center gap-2">
-              <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
-                Fecha:
-              </span>
-              <div className="input-group input-group-sm" style={{ width: "150px" }}>
-                <Form.Control
-                  type="date"
-                  value={filtroFecha}
-                  min={periodo.desde || undefined}
-                  max={periodo.hasta || undefined}
-                  onChange={(e) => setFiltroFecha(e.target.value)}
-                  className={`rounded-3 ${filtroFecha ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
-                  style={{
-                    fontSize: "0.82rem",
-                    height: "32px",
-                    padding: "3px 8px",
-                    color: filtroFecha ? "#dc2626" : "#1e293b",
-                    fontWeight: filtroFecha ? "700" : "normal",
-                  }}
-                />
-                {filtroFecha && (
-                  <button
-                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
-                    type="button"
-                    onClick={() => setFiltroFecha("")}
-                    title="Limpiar filtro fecha"
-                    style={{ padding: "0 6px", height: "32px" }}
-                  >
-                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
-                  </button>
-                )}
-              </div>
-            </div>
-
             <FiltroSelect
               etiqueta="Personal"
               ancho="180px"

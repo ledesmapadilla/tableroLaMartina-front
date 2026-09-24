@@ -15,7 +15,6 @@ import { sePuedeApurar, sePuedeApurarFila, apuroDeLaFila, itemsDeLaFila, cuando 
 import {
   Raya,
   BotonAccion,
-  BotonLimpiar,
   FiltroTexto,
   FiltroSelect,
   OjoPedido,
@@ -26,7 +25,7 @@ import { useProveedorDeOP } from './proveedorOP'
 const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
-const ESTADOS        = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Rechazado']
+const ESTADOS        = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Retirado', 'Rechazado']
 // Los grupos salen del catálogo de equipos (utils/equipos.js).
 const GRUPOS = GRUPOS_PEDIDO
 const ESTABLECIMIENTOS = ['Berdina', 'San Pablo']
@@ -55,13 +54,15 @@ export default function AnalistaPedidos() {
   // A qué proveedor se le compró cada ítem, para mostrarlo al lado de la OP.
   const proveedorDeOP = useProveedorDeOP()
   const [selectedId, setSelectedId] = useState(null)
-  const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '', estado: esComprador ? 'Para hacer OP' : 'Para analisis', establecimiento: '' }
+  // La pantalla abre sin filtrar, con todos los estados a la vista
+  // (22/09/2026): ni el analista ni el comprador arrancan filtrados por su
+  // etapa. El único filtro que sigue puesto solo es el de Gerencia, que mira
+  // nada más lo que tiene para autorizar.
+  const FILTROS_INIT = { nro: '', fecha: '', cc: '', repuesto: '', urgencia: '', grupo: '', solicita: '', estado: '', establecimiento: '' }
   const [filtros, setFiltros] = useState(FILTROS_INIT)
   const setF = (k, v) => setFiltros(f => ({ ...f, [k]: v }))
-  // La pantalla arranca filtrada por su etapa, pero la cruz aparece apenas
-  // hay algún filtro puesto y los saca todos, como en el resto de Compras:
-  // antes se veía con todo en "Todos" y al tocarla volvía a filtrar.
-  const limpiar = () => setFiltros(Object.fromEntries(Object.keys(FILTROS_INIT).map((k) => [k, ''])))
+  // Cada filtro se saca con su propia cruz: la cruz que los limpiaba todos de
+  // una se fue, que borraba de golpe lo que se estaba mirando.
   const hayFiltros = Object.values(filtros).some((v) => v !== '')
 
   // La carga vive adentro del efecto y `cargar()` solo pide una vuelta más:
@@ -500,7 +501,10 @@ export default function AnalistaPedidos() {
             className="px-2 py-1 rounded-3"
             style={{ fontSize: '0.76rem', backgroundColor: BORDO_SUAVE, color: BORDO, fontWeight: 600 }}
           >
-            {esComprador ? 'Para hacer OP' : 'Para análisis'} · {listaAMostrar.length}
+            {/* El chip cuenta lo que hay en la tabla. Antes nombraba la etapa
+                ("Para análisis"), pero la pantalla ya no arranca filtrada por
+                ella y el número era de todos los estados (22/09/2026). */}
+            {filtros.estado || 'Todos los estados'} · {listaAMostrar.length}
           </span>
 
           {/* El comprador arma la orden; el analista analiza el ítem elegido. */}
@@ -559,10 +563,8 @@ export default function AnalistaPedidos() {
             <FiltroSelect etiqueta="Urgencia" ancho="104px" valor={filtros.urgencia} vacio="Todas" onChange={(v) => setF('urgencia', v)} opciones={URGENCIAS} />
             <FiltroSelect etiqueta="Grupo" ancho="120px" valor={filtros.grupo} vacio="Todos" onChange={(v) => setF('grupo', v)} opciones={GRUPOS} />
             <FiltroTexto etiqueta="Solicita" ancho="115px" valor={filtros.solicita} onChange={(v) => setF('solicita', v)} placeholder="Solicitante…" />
-            <FiltroSelect etiqueta="Estado" ancho="140px" valor={filtros.estado} vacio="Todos" onChange={(v) => setF('estado', v)} opciones={ESTADOS} />
+            <FiltroSelect etiqueta="Estado" ancho="150px" valor={filtros.estado} vacio="Todos" onChange={(v) => setF('estado', v)} opciones={ESTADOS} destacado />
             <FiltroSelect etiqueta="Taller" ancho="112px" valor={filtros.establecimiento} vacio="Todos" onChange={(v) => setF('establecimiento', v)} opciones={ESTABLECIMIENTOS} />
-
-            {hayFiltros && <BotonLimpiar onClick={limpiar} />}
           </div>
         </Card>
 
@@ -602,7 +604,7 @@ export default function AnalistaPedidos() {
               {listaAMostrar.length === 0 ? (
                 <tr>
                   <td colSpan={16} className="text-center text-muted py-4" style={td}>
-                    {hayFiltros ? 'Ningún pedido coincide con los filtros' : 'No hay pedidos para esta etapa'}
+                    {hayFiltros ? 'Ningún pedido coincide con los filtros' : 'No hay pedidos'}
                   </td>
                 </tr>
               ) : (

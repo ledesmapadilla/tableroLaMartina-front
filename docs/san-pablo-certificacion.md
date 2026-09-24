@@ -53,6 +53,16 @@ Todo sale de props de `ProduccionCertificadoMes`, con las listas en `App.jsx`:
 - **`tareasSinCantidad`** (`desmalezado`, `herbicida`) — la cantidad no es
   obligatoria en esas tareas; en el resto sí. El backend controla lo mismo
   (`faltaLaCantidad`).
+- **El desmalezado va con la medida del lote** (23/09/2026, regla del
+  usuario): un lote medido en hectáreas lleva *Desmalezado x Ha* y no
+  *Desmalezado Mecánico*; uno medido en plantas, al revés. Se compara la
+  unidad de la tarea con la medida cargada en Variables › Lotes, así que vale
+  para cualquier tarea de desmalezado. Un lote sin medida (o con las dos) o
+  fuera del padrón no se controla. No deja guardar: en la planilla sale el
+  aviso y el backend responde 400 al crear y al editar
+  (`desmalezadoFueraDeUnidad`, en `repartoLotes.service.js` y en
+  `ProduccionCertificadoMes.jsx`). Al sumarlo quedaron 2 partes del 04/09 en
+  Showroom con Desmalezado Mecánico que no cumplen: no se tocaron.
 - **`tareasDestacadas`** — las siete tareas de todos los días van primero y en
   negrita en el desplegable (`SelectBuscador` con `destacada`).
 - **`conPadronDeLotes`** — el lote sale de Variables › Lotes; igual se puede
@@ -98,11 +108,14 @@ Todas las jornadas del día del cierre entran, las hayan marcado o no y sin
 importar en qué orden se cargaron. Mientras quede una marcada el lote sigue
 terminado; el reparto se deshace recién cuando se desmarca la última.
 
-**Terminado un lote no se vuelve a trabajar en él con esa tarea.** Si se carga
-un parte con fecha posterior al cierre, la planilla avisa con el lote, la fecha
-del cierre y la tarea, y deja elegir entre *Guardar igual* y *Corregir*: no lo
-bloquea porque una segunda pasada más adelante en el año es válida y se paga
-aparte. El aviso también sale al cambiarle la fecha a un parte ya cargado. Los
+**Terminado un lote no se vuelve a trabajar en él con esa tarea en los días
+siguientes.** Si se carga un parte con la misma tarea **dentro de los 3 días
+posteriores** al cierre, la planilla avisa con el lote, la fecha del cierre, la
+tarea y cuántos días pasaron, y deja elegir entre *Guardar igual* y *Corregir*:
+no lo bloquea porque puede ser lo que quedó por terminar. **Más allá del tercer
+día no dice nada** (22/09/2026, `DIAS_DE_AVISO`): a un mes del cierre es una
+segunda pasada normal, que además se paga aparte, y el aviso era puro ruido.
+El aviso también sale al cambiarle la fecha a un parte ya cargado. Los
 cierres salen de `GET /api/partes/cierres-de-lotes?establecimiento=san-pablo`
 (`[{ lote, tarea, fecha }]`), que la planilla pide una vez al abrir el mes y
 vuelve a pedir cuando cambia alguno: así no hay que preguntar en cada parte.
