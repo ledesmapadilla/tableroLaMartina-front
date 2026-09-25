@@ -230,6 +230,37 @@ export default function AnalistaPedidos() {
     }
   }
 
+  // Deshace el rechazo: el ítem vuelve a "Para analisis". El motivo queda en el
+  // historial, junto al rechazo que se deshace.
+  const volverAAnalisis = async (item) => {
+    const { value: motivo, isConfirmed } = await Swal.fire({
+      title: '¿Volver a análisis?',
+      html: `<div style="font-weight:600;margin-bottom:8px">${item.nombre_repuesto}</div>
+        <div style="font-size:14px;color:#64748b">El rechazo se deshace y el repuesto sigue el circuito normal.</div>`,
+      input: 'textarea',
+      inputLabel: 'Motivo (opcional)',
+      inputPlaceholder: 'Por qué se vuelve a analizar...',
+      showCancelButton: true,
+      confirmButtonText: 'Volver a análisis',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: false,
+      customClass: { confirmButton: 'btn btn-outline-primary me-2', cancelButton: 'btn btn-outline-secondary' },
+    })
+    if (!isConfirmed) return
+    try {
+      const base = item._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+      await api.put(`${base}/${item.pedidoId}/items/${item._id}`, {
+        estado: 'Para analisis',
+        usuario: 'Analista',
+        nota: motivo?.trim() ? `Rechazo deshecho: ${motivo.trim()}` : 'Rechazo deshecho',
+      })
+      cargar()
+      Swal.fire({ icon: 'success', title: 'Vuelve a análisis', timer: 1500, showConfirmButton: false })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
+  }
+
   // Exporta con exceljs, la unica libreria de Excel del proyecto. El formato
   // (titulo, fecha, encabezado verde y bordes) lo pone el helper compartido.
   const exportarExcel = async () => {
@@ -367,7 +398,11 @@ export default function AnalistaPedidos() {
       const hist = await api.get(`${base}/${item.pedidoId}/items/${item._id}/historial`)
       const rechazo = [...hist].reverse().find(h => h.estado === 'Rechazado' || h.estado === 'Cancelado')
       const fecha = rechazo?.fecha ? new Date(rechazo.fecha).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
-      Swal.fire({
+      // El analista puede deshacer un rechazo: el ítem vuelve a "Para analisis"
+      // y sigue el circuito de siempre (25/09/2026). Solo lo rechazado; lo que
+      // canceló el taller no.
+      const puedeReabrir = !esComprador && item.estado === 'Rechazado'
+      const { isDenied } = await Swal.fire({
         icon: 'error',
         title: 'Pedido rechazado',
         html: `<div style="text-align:left;font-size:14px">
@@ -377,9 +412,16 @@ export default function AnalistaPedidos() {
           ${rechazo?.nota ? `<div style="margin-top:10px;padding:10px;background:#fff5f5;border-left:3px solid #dc3545;border-radius:2px"><strong>Motivo:</strong> ${rechazo.nota}</div>` : '<div style="margin-top:6px;color:#888">Sin motivo registrado</div>'}
         </div>`,
         confirmButtonText: 'Cerrar',
+        showDenyButton: puedeReabrir,
+        denyButtonText: 'Volver a análisis',
         buttonsStyling: false,
-        customClass: { confirmButton: 'btn btn-outline-secondary' },
+        customClass: {
+          confirmButton: 'btn btn-outline-secondary',
+          denyButton: `btn btn-outline-primary me-2${sinEditar ? ' disabled' : ''}`,
+        },
+        reverseButtons: true,
       })
+      if (isDenied && !sinEditar) await volverAAnalisis(item)
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
     }
