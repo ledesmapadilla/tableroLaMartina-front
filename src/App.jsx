@@ -101,8 +101,9 @@ import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 import BotonReunionFlotante from "./components/shared/BotonReunionFlotante";
 import NavbarProduccion from "./components/shared/NavbarProduccion";
 
-// Las tareas de San Pablo que se marcan como en proceso o terminadas.
-const TAREAS_CON_ESTADO = ["herbicida", "desmalezado", "pulverizado"];
+// Las tareas de San Pablo que se marcan como en proceso o terminadas. El
+// pulverizado salió el 25/09/2026: lleva la cantidad a mano.
+const TAREAS_CON_ESTADO = ["herbicida", "desmalezado"];
 
 // El desmalezado y el herbicida de San Pablo se cargan sin cantidad; el resto
 // de las tareas la lleva.

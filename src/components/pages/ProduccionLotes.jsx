@@ -16,7 +16,7 @@ const numero = (v, decimales = 2) =>
  * Los lotes de un campo, con sus cantidades (17/09/2026).
  *
  * Vive adentro de Variables porque es un valor de la certificación: en San
- * Pablo el herbicida, el desmalezado y el pulverizado se pagan por lote
+ * Pablo el herbicida y el desmalezado se pagan por lote
  * terminado, y lo que se reparte entre la gente que trabajó es la medida del
  * lote. Por eso cada lote lleva sus **hectáreas** y sus **plantas**: la tarea
  * define con cuál de las dos se paga.

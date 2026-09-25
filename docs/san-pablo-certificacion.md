@@ -40,8 +40,8 @@ Todo sale de props de `ProduccionCertificadoMes`, con las listas en `App.jsx`:
   (22:00 → 02:00 y después 03:00 → 06:00 es válido). Está en los dos lados:
   `tramosSeSolapan` en `partes.controller.js` y en `ProduccionCertificadoMes.jsx`.
   Prueba: `node scripts/_pruebaTramos.mjs` (back, 16 casos, no toca la base).
-- **`conEstado` + `tareasConEstado`** (`herbicida`, `desmalezado`,
-  `pulverizado`) — el círculo verde / rojo del parte (`terminado`). En las
+- **`conEstado` + `tareasConEstado`** (`herbicida`, `desmalezado`; el
+  `pulverizado` salió el 25/09/2026) — el círculo verde / rojo del parte (`terminado`). En las
   demás tareas se ve gris y no se puede tocar. El lote terminado se muestra en
   blanco sobre verde.
 
@@ -80,7 +80,7 @@ buscar el lote por nombre normalizado.
 
 ## El pago por lote terminado
 
-Hecho el 18/09/2026. El herbicida, el desmalezado y el pulverizado no se pagan
+Hecho el 18/09/2026. El herbicida y el desmalezado no se pagan
 por jornada: se pagan cuando el lote queda terminado. El círculo verde de la
 parte marca ese momento y dispara el reparto al guardarlo.
 
@@ -88,8 +88,12 @@ Todo vive en `TableroBack/src/services/repartoLotes.service.js`.
 
 **Qué se reparte.** La medida del lote, según la unidad de la tarea: las tareas
 en Plantas reparten las plantas del padrón y las que están en Hectárea reparten
-las hectáreas. Las que están en Tancadas (casi todos los pulverizados) quedan
-afuera y se siguen cargando a mano; el sistema no avisa nada en ese caso.
+las hectáreas. Las que están en Tancadas quedan afuera y se siguen cargando a
+mano; el sistema no avisa nada en ese caso.
+
+**El pulverizado no entra** (25/09/2026, pedido del usuario): no lleva círculo
+y la cantidad se carga siempre a mano, también en los que se miden en Plantas
+("Pulverizado con arco", "Pulverizado Metalfor, UltraBajoVolumen").
 
 **Entre quiénes.** Entre las jornadas del grupo, en proporción a las horas de
 cada una (`totalHoras`). Si ninguna tiene horas cargadas se reparte en partes
@@ -172,10 +176,6 @@ las dos cosas de después (juntas) y el populate de la respuesta.
 
 ## Pendiente
 
-- Los pulverizados que se miden en Plantas ("Pulverizado con arco",
-  "Pulverizado Metalfor, UltraBajoVolumen") sí entran en el reparto, pero la
-  carga del parte les sigue exigiendo la cantidad a mano y después se la pisa.
-  O se los suma a `TAREAS_SIN_CANTIDAD` o se los deja afuera del reparto.
 - El informe de tareas por personal suma bien las cantidades repartidas, pero
   todavía no muestra el detalle del reparto (qué lote, cuántas horas de cada
   uno). Los datos ya viajan: `resumen=1` devuelve `totalHoras`, `lote`,

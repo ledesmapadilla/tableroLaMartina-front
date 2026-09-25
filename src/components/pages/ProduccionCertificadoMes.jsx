@@ -857,7 +857,7 @@ function ProduccionCertificadoMes({
     }
 
     // Marcado terminado y después se borró el lote: no se guarda así.
-    if (conEstado && form.terminado && !String(form.lote || "").trim()) {
+    if (estadoEnForm && form.terminado && !String(form.lote || "").trim()) {
       avisar({
         icon: "warning",
         title: "Falta el lote",
@@ -953,7 +953,9 @@ function ProduccionCertificadoMes({
     // A qué certificado va el parte según su fecha: la fecha de cierre manda.
     const segunFecha = await resolverFechaDelParte(form.fecha);
     if (!segunFecha) return;
-    const datos = { ...form, ...segunFecha };
+    // Terminado solo en las tareas con círculo: si se marcó con herbicida y
+    // después se cambió a pulverizado, no queda guardado (25/09/2026).
+    const datos = { ...form, ...segunFecha, terminado: estadoEnForm && Boolean(form.terminado) };
 
     setGuardando(true);
     try {
@@ -1328,7 +1330,7 @@ function ProduccionCertificadoMes({
   );
 
   // Qué tareas llevan el círculo de estado: las que tengan alguno de esos
-  // nombres (herbicida, desmalezado, pulverizado en San Pablo).
+  // nombres (herbicida y desmalezado en San Pablo).
   const llevaEstado = (nombreTarea) => {
     if (!conEstado) return false;
     if (tareasConEstado.length === 0) return true;
