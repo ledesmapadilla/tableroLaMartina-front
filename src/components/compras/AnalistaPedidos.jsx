@@ -47,6 +47,10 @@ export default function AnalistaPedidos() {
   const [editPedidoId, setEditPedidoId] = useState(null)
   const [editItemId, setEditItemId] = useState(null)
   const [editSrc, setEditSrc] = useState(null)
+  // El estado con el que se abrió el formulario: si era "Rechazado", el
+  // analista lo puede devolver a "Para analisis" (25/09/2026).
+  const [estadoOriginal, setEstadoOriginal] = useState(null)
+  const reabrible = !esComprador && estadoOriginal === 'Rechazado'
   const [showModal, setShowModal] = useState(false)
   // Pedidos múltiples abiertos con el ojo: sus ítems se muestran debajo, en
   // la misma tabla.
@@ -178,16 +182,23 @@ export default function AnalistaPedidos() {
     setEditPedidoId(item.pedidoId)
     setEditItemId(item._id)
     setEditSrc(item._src)
+    setEstadoOriginal(item.estado)
     setShowModal(true)
   }
 
-  const cerrar = () => { setForm(ITEM_INIT); setEditPedidoId(null); setEditItemId(null); setEditSrc(null); setShowModal(false) }
+  const cerrar = () => { setForm(ITEM_INIT); setEditPedidoId(null); setEditItemId(null); setEditSrc(null); setEstadoOriginal(null); setShowModal(false) }
 
   const guardar = async (e) => {
     e.preventDefault()
     try {
       const { cant, ...rest } = form
-      const payload = { ...rest, usuario: 'Analista', ...(cant !== '' && cant != null ? { cant: Number(cant) } : {}) }
+      const reabre = reabrible && rest.estado === 'Para analisis'
+      const payload = {
+        ...rest,
+        usuario: 'Analista',
+        ...(cant !== '' && cant != null ? { cant: Number(cant) } : {}),
+        ...(reabre ? { nota: 'Rechazo deshecho' } : {}),
+      }
       const base = editSrc === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
       await api.put(`${base}/${editPedidoId}/items/${editItemId}`, payload)
       cargar()
@@ -950,15 +961,29 @@ export default function AnalistaPedidos() {
                 </Form.Select>
               </Col>
 
-              {/* El estado no se edita a mano: lo mueve el circuito del pedido. */}
+              {/* El estado no se edita a mano: lo mueve el circuito del pedido.
+                  La excepción es el rechazado, que el analista puede devolver
+                  a "Para analisis" para que siga el circuito normal. */}
               <Col md={4}>
                 <Form.Label className="fw-semibold text-dark small mb-1">Estado</Form.Label>
-                <Form.Control
-                  className="rounded-3"
-                  style={{ ...campo, backgroundColor: '#f8f9fa', cursor: 'default' }}
-                  value={form.estado === 'Pedido' ? 'Para analisis' : form.estado}
-                  readOnly
-                />
+                {reabrible ? (
+                  <Form.Select
+                    className="rounded-3"
+                    style={campo}
+                    value={form.estado}
+                    onChange={(e) => setForm((f) => ({ ...f, estado: e.target.value }))}
+                  >
+                    <option value="Rechazado">Rechazado</option>
+                    <option value="Para analisis">Para analisis</option>
+                  </Form.Select>
+                ) : (
+                  <Form.Control
+                    className="rounded-3"
+                    style={{ ...campo, backgroundColor: '#f8f9fa', cursor: 'default' }}
+                    value={form.estado === 'Pedido' ? 'Para analisis' : form.estado}
+                    readOnly
+                  />
+                )}
               </Col>
             </Row>
           </Modal.Body>
