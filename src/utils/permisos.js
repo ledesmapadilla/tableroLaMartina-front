@@ -4,11 +4,12 @@
  *
  * Los roles son los que ya traía Compras; no se agregaron nuevos.
  */
-export const ROLES = ["superadmin", "solicitante", "analista", "comprador", "gerente", "celular"];
+export const ROLES = ["superadmin", "solicitante", "analista", "comprador", "gerente", "celular", "liquidacion"];
 
 // "celular" (20/09/2026) nace sin ningún acceso: no entra en los permisos de
 // antes y se le tilda lo que va en Altas › Usuarios › Roles.
-const SIN_CELULAR = ROLES.filter((r) => r !== "celular");
+// "liquidacion" (25/09/2026) nace igual, sin nada.
+const SIN_CELULAR = ROLES.filter((r) => r !== "celular" && r !== "liquidacion");
 const TODOS = SIN_CELULAR;
 const SIN_SOLICITANTE = SIN_CELULAR.filter((r) => r !== "solicitante");
 
