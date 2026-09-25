@@ -270,7 +270,9 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
         porPersona.set(id, { id, nombre, dias: new Set(), horas: 0, combustible: 0, tareas: new Map() });
       }
       const fila = porPersona.get(id);
-      fila.dias.add(soloFecha(p.fecha));
+      // El renglón de pago de un lote terminado no es un día trabajado: paga
+      // una jornada de otra certificación (25/09/2026).
+      if (!p.pagoDe) fila.dias.add(soloFecha(p.fecha));
       fila.horas += Number(p.totalHoras) || 0;
       // El de la máquina. En Berdina suma también el del turbo, como los
       // totales de su planilla mensual (24/09/2026); San Pablo no lo mezcla.

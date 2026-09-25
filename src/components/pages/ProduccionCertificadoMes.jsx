@@ -804,13 +804,19 @@ function ProduccionCertificadoMes({
     if (reparto.estado !== "repartido") return;
     const [anio, mes] = String(reparto.mes || "").split("-");
     const enMes = anio ? ` Se paga en ${MESES[Number(mes) - 1]} de ${anio}.` : "";
+    // Las jornadas de certificaciones anteriores se quedan en su mes y cobran
+    // con un renglón de pago en la del cierre (25/09/2026).
+    const afuera = reparto.fueraDeMes
+      ? ` ${reparto.fueraDeMes} ${reparto.fueraDeMes === 1 ? "es" : "son"} de certificaciones ` +
+        "anteriores: se quedan en su mes y cobran con un renglón de pago en esta."
+      : "";
     avisar({
       icon: "success",
       title: `Lote ${reparto.lote} terminado`,
       text:
         `Se repartieron ${reparto.medida} ${(reparto.unidad || "").toLowerCase()} entre ` +
         `${reparto.jornadas} ${reparto.jornadas === 1 ? "jornada" : "jornadas"}, ` +
-        `según las horas de cada una.${enMes}`,
+        `según las horas de cada una.${enMes}${afuera}`,
       timer: 4000,
       timerProgressBar: true,
     });
@@ -2306,7 +2312,14 @@ function ProduccionCertificadoMes({
                     <td className="text-secondary">{p.tarea?.unidad || "—"}</td>
                     <td>
                       <div className="d-flex justify-content-center gap-1">
-                        {cerrado ? (
+                        {p.pagoDe ? (
+                          // Lo arma el reparto: se corrige editando la jornada.
+                          <i
+                            className="bi bi-lock"
+                            style={{ fontSize: "0.75rem", color: "#15803d" }}
+                            title="Pago por lote terminado de una jornada de otra certificación: se corrige editando esa jornada"
+                          ></i>
+                        ) : cerrado ? (
                           <span className="text-muted" style={{ fontSize: "0.7rem" }}>—</span>
                         ) : (
                           <>

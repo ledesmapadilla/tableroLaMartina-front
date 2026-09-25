@@ -130,16 +130,43 @@ puede auditar. `ParteDiario.repartido` dice cuáles las escribió el sistema, as
 una cantidad cargada a mano no se pisa ni se borra. En la planilla la cantidad
 repartida se ve en verde.
 
-**En qué mes se paga.** En el del cierre, aunque haya jornadas de meses
-anteriores ya cerrados: a esas se les escribe `periodo` con el mes del cierre y
-`motivoFueraDeCierre` = "Pago por lote terminado", que es la maquinaria que ya
-existía para los partes fuera de cierre. La fila deja de estar en la planilla
-del mes viejo y aparece, con sus horas y su cantidad, en la del mes del cierre.
-Un parte que alguien ya había movido a mano, con su propia explicación, se deja
-donde está.
+**En qué mes se paga.** Todo en la certificación en la que se termina el lote,
+y nada en las anteriores (25/09/2026, pedido del usuario). Las horas de todas
+las jornadas del grupo, de cualquier mes, cuentan para sacar la parte de cada
+uno. Ejemplo: el lote 12 tiene 6234 plantas, Olea hizo 10 hs en agosto y
+Pacheco 12 hs en septiembre y lo termina. A Olea le tocan 2833,64 y a Pacheco
+3400,36, y las dos cantidades se cobran en septiembre.
 
-**Al desmarcar** se borra todo lo del grupo: la cantidad vuelve a estar vacía y
-los partes vuelven al mes en el que cae su fecha.
+**La jornada de agosto se queda en agosto**, con sus horas y sin cantidad. Lo
+que le toca se paga con un **renglón de pago** en septiembre: un parte que arma
+el reparto, con la misma persona, tarea, lote y cliente, 0 horas, la fecha del
+día del cierre, la cantidad que le toca y en observación "Pago por lote
+terminado: jornada del 20/08/2026 (10 hs)". `ParteDiario.pagoDe` apunta a la
+jornada que paga.
+- No es una jornada: no entra en el grupo ni en el reparto, y el informe del
+  mes no lo cuenta como día trabajado. Sí suma su cantidad en el informe de
+  tareas por personal.
+- No se edita ni se borra a mano: la planilla muestra un candado en vez del
+  lápiz y el tacho, y el back lo rechaza. Se corrige editando la jornada que
+  paga.
+- Se rehace con el reparto. Borrar la jornada de agosto borra su renglón, y
+  desmarcar el cierre borra todos los renglones del grupo. Un renglón que queda
+  sin jornada, por ejemplo porque la jornada se pasó a otro lote, se borra en
+  el próximo reparto.
+
+Para saber en qué certificación cae cada jornada se usa su fecha, salvo que
+alguien la haya pasado a mano a otro mes con su propia explicación: entonces
+cuenta ese mes, y si es el del cierre cobra en su propia fila. El cartel de la
+planilla avisa cuántas jornadas son de certificaciones anteriores
+(`fueraDeMes` en la respuesta).
+
+Antes (18/09/2026) las jornadas de meses anteriores se mudaban enteras al mes
+del cierre, con `motivoFueraDeCierre` = "Pago por lote terminado". Si queda
+algún parte así, el próximo reparto lo devuelve a su mes y le arma su renglón.
+
+**Al desmarcar** se borra todo lo del grupo: la cantidad vuelve a estar vacía,
+los partes vuelven al mes en el que cae su fecha y se borran los renglones de
+pago.
 
 **Cuándo se rehace.** En cada parte que se guarda, se edita o se borra, porque
 las horas que se reparten pasan a ser otras. Si el grupo todavía está abierto,
@@ -157,7 +184,7 @@ cambiaron también otras filas. En el resto —que es lo habitual— no recarga
 nada.
 
 **Prueba:** `node --env-file .env scripts/_pruebaReparto.mjs` (back) arma sus
-propios datos, corre los 31 casos y los borra por `_id`.
+propios datos, corre los 47 casos y los borra por `_id`.
 
 **Lo que cuesta guardar.** El reparto corre en cada parte que se guarda, así
 que está hecho para no pesar: en Caspinchango no hace ni una consulta (la
