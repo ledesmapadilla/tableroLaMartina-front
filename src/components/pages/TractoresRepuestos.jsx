@@ -16,6 +16,7 @@ import SesionUsuario from "../shared/SesionUsuario";
 const FILTROS = [
   { campo: "filtroAire", titulo: "Filtro de aire" },
   { campo: "filtroCombustible", titulo: "Filtro de combustible" },
+  { campo: "filtroTrampaAgua", titulo: "Filtro trampa de agua" },
   { campo: "filtroAceite", titulo: "Filtro de aceite" },
 ];
 const MARCAS = 3;
@@ -58,9 +59,9 @@ function CeldaFiltro({ lista }) {
 }
 
 /**
- * Repuestos de Tractores: los códigos de filtro de aire, combustible y aceite
- * de cada unidad (tractores, manitou y camiones; las que están en desuso no
- * aparecen), con hasta 3 marcas posibles por filtro.
+ * Repuestos de Tractores: los códigos de filtro de aire, combustible, trampa
+ * de agua y aceite de cada unidad (tractores, manitou y camiones; las que
+ * están en desuso no aparecen), con hasta 3 marcas posibles por filtro.
  */
 export default function TractoresRepuestos() {
   const { puede } = usePermisos();
