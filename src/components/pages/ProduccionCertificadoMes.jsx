@@ -1780,7 +1780,6 @@ function ProduccionCertificadoMes({
                   opciones={opcionesCC}
                   valor={ccTexto}
                   onChange={tipearCC}
-                  vacio={null}
                   placeholder="Nº"
                   title={
                     ccTexto && !form.cc
@@ -1870,7 +1869,6 @@ function ProduccionCertificadoMes({
                     opciones={opcionesLote}
                     valor={form.lote}
                     onChange={(v) => cambiar("lote", v)}
-                    vacio={null}
                     placeholder="Lote"
                     title="Los lotes se dan de alta en Variables › Lotes"
                     style={estiloCelda}
@@ -1963,7 +1961,6 @@ function ProduccionCertificadoMes({
                   opciones={clientesUsados.map((c) => ({ valor: c, texto: c }))}
                   valor={form.cliente}
                   onChange={(v) => cambiar("cliente", v)}
-                  vacio={null}
                   placeholder="Cliente"
                   title="Solo informativo: el precio de la tarea no depende del cliente"
                   style={estiloCelda}

@@ -43,6 +43,9 @@ function SelectBuscador({
   const [busqueda, setBusqueda] = useState("");
   const [marcada, setMarcada] = useState(0);
   const [posicion, setPosicion] = useState(null);
+  // Si se tipeó algo desde que se abrió. En modo libre, tipear y borrar todo
+  // vacía el campo; abrirlo y salir sin tocar nada lo deja como estaba.
+  const [tipeado, setTipeado] = useState(false);
 
   const caja = useRef(null);
   const propio = useRef(null);
@@ -64,6 +67,7 @@ function SelectBuscador({
   const abrir = () => {
     if (disabled) return;
     setBusqueda("");
+    setTipeado(false);
     setMarcada(0);
     setAbierto(true);
   };
@@ -182,6 +186,7 @@ function SelectBuscador({
             ? filtradas.find((o) => normalizar(o.texto) === normalizar(busqueda.trim()))
             : null;
         if (exacta) elegir(exacta);
+        else if (libre && tipeado && !busqueda.trim()) elegir(null);
         else if (filtradas[marcada]) elegir(filtradas[marcada]);
         else if (libre && busqueda.trim()) elegirTexto(busqueda);
         else cerrar();
@@ -219,6 +224,7 @@ function SelectBuscador({
         onMouseDown={() => (abierto ? cerrar() : abrir())}
         onChange={(e) => {
           setBusqueda(e.target.value);
+          setTipeado(true);
           setMarcada(0);
           if (!abierto) setAbierto(true);
         }}
@@ -228,6 +234,7 @@ function SelectBuscador({
         onBlur={() => {
           if (!abierto || eligiendo.current) return;
           if (libre && busqueda.trim()) elegirTexto(busqueda);
+          else if (libre && tipeado) elegir(null);
           else cerrar();
         }}
       />
