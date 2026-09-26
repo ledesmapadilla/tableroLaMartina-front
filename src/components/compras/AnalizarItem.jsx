@@ -5,7 +5,7 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { subirArchivo, borrarArchivo } from '../../services/archivos'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
-import { Raya } from './estilos'
+import { Raya, BotonAccion } from './estilos'
 import { opcionesDePrecio, opcionMinima, opcionElegida } from './precioElegido'
 import { useMontoAutorizacion } from './montoAutorizacion'
 import { usePermisos } from '../../context/permisos'
@@ -32,6 +32,19 @@ const fmtPrecio = (v) =>
 
 // `elegido` vacío es "el más barato"; 1, 2 o 3, el presupuesto elegido a mano.
 const FORM_ITEM_INIT = { stock: '', proveedor1: '', precio1: '', proveedor2: '', precio2: '', proveedor3: '', precio3: '', elegido: '', observaciones: '' }
+
+// Lo que se borra al volver un ítem a análisis: todo lo que cargó el analista.
+const ANALISIS_EN_BLANCO = {
+  stock: null,
+  proveedor1: null,
+  precio1: null,
+  proveedor2: null,
+  precio2: null,
+  proveedor3: null,
+  precio3: null,
+  elegido: null,
+  observaciones: null,
+}
 
 // Lo que el analista carga de cada ítem, tal como queda guardado.
 const formDelItem = (i) => ({
@@ -84,6 +97,8 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   // itemId -> { url, nombre, publicId, tipo }, lo que quedó guardado en el ítem.
   const [archivosMap, setArchivosMap] = useState({})
   const [subiendo, setSubiendo] = useState(null)
+  // Ítems que el analista destildó para que no salgan todavía (26/09/2026).
+  const [retenidos, setRetenidos] = useState(() => new Set())
 
   useEffect(() => {
     const enVista = itemEnVista(estadoVistoDe(state))
@@ -153,8 +168,36 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   }
   const itemsIncompletos = itemsAMostrar.filter(itemSinCargar)
 
+  // Liberar de a partes (26/09/2026): en un pedido largo el analista no tiene
+  // que esperar a tener todo. Procesa los ítems cargados y tildados, que pasan
+  // al comprador (o a Gerencia), y el resto sigue en análisis dentro del mismo
+  // pedido, con lo que ya se le cargó guardado. Al corregir un análisis ya
+  // hecho no hay partes: se guardan todos los ítems a la vista.
+  const liberaDeAPartes = !soloVer && !editando
+  const itemsALiberar = liberaDeAPartes
+    ? itemsAMostrar.filter(i => !itemSinCargar(i) && !retenidos.has(i._id))
+    : itemsAMostrar
+  const idsALiberar = new Set(itemsALiberar.map(i => i._id))
+  const itemsEnEspera = itemsAMostrar.filter(i => !idsALiberar.has(i._id))
+
+  const alternarRetenido = (itemId) =>
+    setRetenidos(prev => {
+      const siguiente = new Set(prev)
+      if (siguiente.has(itemId)) siguiente.delete(itemId)
+      else siguiente.add(itemId)
+      return siguiente
+    })
+
+  // Lo que el pedido ya liberó en otras tandas (o, al corregir, los ítems que
+  // están en otro estado). Cuenta para el umbral de Gerencia: el monto es el
+  // del pedido entero, así partirlo no lo deja por debajo.
+  const idsAMostrar = new Set(itemsAMostrar.map(i => i._id))
+  const montoYaLiberado = (pedidoSeleccionado?.items || [])
+    .filter(i => !idsAMostrar.has(i._id) && !esParaAnalisis(i.estado) && i.estado !== 'Rechazado')
+    .reduce((acc, i) => acc + (opcionElegida(i)?.precio || 0) * (i.cant || 0), 0)
+
   const calcularMontoTotal = () =>
-    itemsAMostrar.reduce((acc, item) => {
+    itemsALiberar.reduce((acc, item) => {
       // El monto que decide si va a autorizar sale del presupuesto elegido.
       const elegida = opcionElegida(formsMap[item._id] || FORM_ITEM_INIT)
       return acc + (elegida ? elegida.precio : 0) * (item.cant || 0)
@@ -165,6 +208,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
     setSelectedKey(key)
     setBusqueda(fmtNro(p.nro_pedido, p._src))
     setShowDropdown(false)
+    setRetenidos(new Set())
     const archivos = {}
     ;(p.items || []).filter(i => enVista(i)).forEach(i => {
       if (i.archivo?.url) archivos[i._id] = i.archivo
@@ -175,6 +219,69 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
       mapa[i._id] = formDelItem(i)
     })
     setFormsMap(mapa)
+  }
+
+  // Volver atrás un análisis, ítem por ítem (26/09/2026): el ítem vuelve a
+  // "Para analisis" en blanco y sale de lo que ven Gerencia y el comprador. El
+  // resto del pedido sigue donde estaba. Solo mientras no haya orden de pago;
+  // el back lo controla también.
+  //
+  // Se borra lo cargado: si quedaba, al reabrir el pedido el ítem aparecía
+  // analizado y tildado para liberar, y salía de nuevo sin querer. Lo que
+  // tenía queda escrito en la nota del historial. El adjunto no se toca: puede
+  // ser el que subió el taller al pedir.
+  const resumenDelAnalisis = (item) => {
+    const elegida = opcionElegida(item)
+    const partes = []
+    if (elegida) {
+      partes.push(`${nombreProveedor(elegida.proveedor) || `Proveedor ${elegida.n}`} ${fmtPrecio(elegida.precio)}`)
+    }
+    if (item.observaciones) partes.push(`obs.: ${item.observaciones}`)
+    return partes.length ? ` · tenía: ${partes.join(' · ')}` : ''
+  }
+  const puedeVolver = puedeEditar && !editando
+
+  const volverAAnalisis = async (item) => {
+    const { value: motivo, isConfirmed } = await Swal.fire({
+      title: '¿Volver a análisis?',
+      html: `<div style="font-weight:600;margin-bottom:8px">${item.nombre_repuesto}</div>
+        <div style="font-size:14px;color:#64748b">Sale de ${NOMBRE_ESTADO[item.estado] || item.estado} y queda para analizar de nuevo, sin precios ni observaciones. Lo que tenía queda en el historial.</div>`,
+      input: 'textarea',
+      inputLabel: 'Motivo (opcional)',
+      inputPlaceholder: 'Por qué se vuelve a analizar…',
+      showCancelButton: true,
+      confirmButtonText: 'Volver a análisis',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#b45309',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.put(`${rutaDelPedido()}/${pedidoSeleccionado._id}/items/${item._id}`, {
+        estado: 'Para analisis',
+        usuario: 'Analista',
+        nota: `Análisis deshecho${motivo?.trim() ? `: ${motivo.trim()}` : ''}${resumenDelAnalisis(item)}`,
+        ...ANALISIS_EN_BLANCO,
+      })
+      // Sale de la vista: acá se ven los ítems que siguen en el estado de antes.
+      const quedan = itemsAMostrar.filter(i => i._id !== item._id)
+      setPedidos(prev =>
+        prev.map(p =>
+          p._id !== pedidoSeleccionado._id
+            ? p
+            : {
+                ...p,
+                items: p.items.map(i =>
+                  i._id === item._id ? { ...i, estado: 'Para analisis', ...ANALISIS_EN_BLANCO } : i
+                ),
+              }
+        )
+      )
+      await Swal.fire({ icon: 'success', title: 'Vuelve a análisis', timer: 1400, showConfirmButton: false })
+      if (quedan.length === 0) navigate(-1)
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
   }
 
   // Cancelar la edición descarta lo tocado: se vuelve a cargar lo guardado.
@@ -286,8 +393,8 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   const getFoco = (itemId, campo) => !!focusMap[`${itemId}_${campo}`]
 
   const procesar = async () => {
-    if (!pedidoSeleccionado || itemsAMostrar.length === 0) return
-    if (itemsIncompletos.length) {
+    if (!pedidoSeleccionado || itemsALiberar.length === 0) return
+    if (!liberaDeAPartes && itemsIncompletos.length) {
       Swal.fire({
         icon: 'warning',
         title: 'Falta cargar el análisis',
@@ -299,15 +406,30 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
       return
     }
     const monto = calcularMontoTotal()
-    const nuevoEstado = monto >= montoAutorizacion ? 'Autorizar' : 'Para hacer OP'
+    const montoPedido = monto + montoYaLiberado
+    const nuevoEstado = montoPedido >= montoAutorizacion ? 'Autorizar' : 'Para hacer OP'
     // Al corregir un análisis el estado se recalcula con la misma regla: si
     // ahora supera el monto, vuelve a Gerencia para autorizar.
     const cambiaEstado = editando && nuevoEstado !== estadoVisto
+    const parcial = itemsEnEspera.length > 0
     const result = await Swal.fire({
-      title: editando ? '¿Guardar los cambios del análisis?' : '¿Procesar pedido?',
+      title: editando
+        ? '¿Guardar los cambios del análisis?'
+        : parcial
+          ? `¿Liberar ${itemsALiberar.length} de ${itemsAMostrar.length} ítems?`
+          : '¿Procesar pedido?',
       html:
-        `Monto total: <b>${fmtPrecio(monto)}</b><br/>Estado → <b>${NOMBRE_ESTADO[nuevoEstado] || nuevoEstado}</b>` +
-        (cambiaEstado ? '<br/><small style="color:#b45309">El pedido cambia de estado.</small>' : ''),
+        `Monto ${parcial || montoYaLiberado ? 'de estos ítems' : 'total'}: <b>${fmtPrecio(monto)}</b>` +
+        (montoYaLiberado
+          ? `<br/>Con lo ya liberado, el pedido suma <b>${fmtPrecio(montoPedido)}</b>`
+          : '') +
+        `<br/>Estado → <b>${NOMBRE_ESTADO[nuevoEstado] || nuevoEstado}</b>` +
+        (cambiaEstado ? '<br/><small style="color:#b45309">El pedido cambia de estado.</small>' : '') +
+        (parcial
+          ? `<br/><small style="color:#64748b">Siguen en análisis: ${itemsEnEspera
+              .map(i => i.nombre_repuesto)
+              .join(', ')}. Lo que ya les cargaste queda guardado.</small>`
+          : ''),
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Procesar',
@@ -323,11 +445,13 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
         // JSON, y al corregir un análisis un precio o proveedor borrado
         // quedaba con el valor viejo.
         const toNum = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n }
+        // Los que siguen en análisis guardan lo cargado sin cambiar de estado.
+        const libera = idsALiberar.has(item._id)
         return api.put(`${base}/${pedidoSeleccionado._id}/items/${item._id}`, {
-          estado:     nuevoEstado,
-          usuario:    'Analista',
+          ...(libera ? { estado: nuevoEstado, usuario: 'Analista' } : {}),
           // El historial tiene que distinguir la corrección del primer análisis.
-          ...(editando ? { nota: 'Análisis editado' } : {}),
+          ...(libera && editando ? { nota: 'Análisis editado' } : {}),
+          ...(libera && parcial ? { nota: 'Liberado antes que el resto del pedido' } : {}),
           stock:      toNum(form.stock),
           proveedor1: form.proveedor1 || null,
           precio1:    toNum(form.precio1),
@@ -339,7 +463,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           observaciones: form.observaciones?.trim() || null,
         })
       }))
-      await Swal.fire({ icon: 'success', title: 'Procesado', timer: 1500, showConfirmButton: false })
+      await Swal.fire({ icon: 'success', title: parcial ? 'Ítems liberados' : 'Procesado', timer: 1500, showConfirmButton: false })
       navigate(-1)
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
@@ -510,9 +634,9 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           {/* Por qué el botón está en gris: qué ítems quedaron sin cargar. El
               aviso va a la vista y no solo en el title, que un botón
               deshabilitado no llega a mostrar. */}
-          {!soloVer && itemsIncompletos.length > 0 && (
+          {editando && itemsIncompletos.length > 0 && (
             <span
-              className={`px-2 py-1 rounded-3${editando ? '' : ' ms-auto'}`}
+              className="px-2 py-1 rounded-3"
               style={{ fontSize: '0.72rem', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 600 }}
               title={itemsIncompletos.map(i => i.nombre_repuesto).join(', ')}
             >
@@ -522,16 +646,45 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                 : `Falta un precio o una observación en ${itemsIncompletos.length} ítems`}
             </span>
           )}
+          {/* Liberando de a partes, los que no salen no traban el botón: se
+              avisa cuántos quedan en análisis. */}
+          {liberaDeAPartes && itemsEnEspera.length > 0 && (
+            <span
+              className="px-2 py-1 rounded-3 ms-auto"
+              style={{ fontSize: '0.72rem', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 600 }}
+              title={itemsEnEspera.map(i => i.nombre_repuesto).join(', ')}
+            >
+              <i className="bi bi-hourglass-split me-1" />
+              {itemsEnEspera.length === 1
+                ? '1 ítem sigue en análisis'
+                : `${itemsEnEspera.length} ítems siguen en análisis`}
+            </span>
+          )}
           {!soloVer && (
             <Button
               size="sm"
-              disabled={itemsAMostrar.length === 0 || itemsIncompletos.length > 0}
+              disabled={
+                itemsALiberar.length === 0 || (editando && itemsIncompletos.length > 0)
+              }
               onClick={procesar}
-              className={`rounded-3 px-3 d-flex align-items-center gap-2${editando || itemsIncompletos.length > 0 ? '' : ' ms-auto'}`}
+              className={`rounded-3 px-3 d-flex align-items-center gap-2${
+                editando || itemsEnEspera.length > 0 ? '' : ' ms-auto'
+              }`}
               style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+              title={
+                itemsALiberar.length === 0 && !editando
+                  ? 'Cargá un precio o una observación en algún ítem y dejalo tildado'
+                  : undefined
+              }
             >
               <i className="bi bi-check-lg"></i>
-              <span>{editando ? 'Guardar cambios' : 'Procesar'}</span>
+              <span>
+                {editando
+                  ? 'Guardar cambios'
+                  : itemsEnEspera.length > 0 && itemsALiberar.length > 0
+                    ? `Procesar ${itemsALiberar.length} de ${itemsAMostrar.length}`
+                    : 'Procesar'}
+              </span>
             </Button>
           )}
         </div>
@@ -627,6 +780,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
         >
           <Table className="mb-0 tabla-informe tabla-compras" style={{ tableLayout: 'fixed', width: '100%' }}>
             <colgroup>
+              {liberaDeAPartes && <col style={{ width: '4%' }} />}
               <col style={{ width: '5%' }} />
               <col style={{ width: '11%' }} />
               <col style={{ width: '4%' }} />
@@ -636,11 +790,17 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
               <col style={{ width: '8%' }} />
               <col style={{ width: '9%' }} />
               <col style={{ width: '8%' }} />
-              <col style={{ width: '18%' }} />
+              <col style={{ width: liberaDeAPartes || puedeVolver ? '14%' : '18%' }} />
               <col style={{ width: '11%' }} />
+              {puedeVolver && <col style={{ width: '4%' }} />}
             </colgroup>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
+                {liberaDeAPartes && (
+                  <th style={thCentro} title="Los tildados salen al procesar; el resto sigue en análisis">
+                    Liberar
+                  </th>
+                )}
                 <th style={thCentro}>Fecha</th>
                 <th style={th}>Repuesto</th>
                 <th style={thCentro}>Stock</th>
@@ -652,18 +812,44 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                 <th style={thCentro}>Precio 3</th>
                 <th style={thCentro}>Observaciones</th>
                 <th style={thCentro}>Presupuesto</th>
+                {puedeVolver && (
+                  <th style={thCentro} title="Volver el ítem a análisis">
+                    Volver
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
               {itemsAMostrar.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={liberaDeAPartes || puedeVolver ? 12 : 11} className="text-center text-muted py-4" style={td}>
                     {selectedKey ? 'Este pedido no tiene ítems para analizar' : 'Elegí un pedido para empezar'}
                   </td>
                 </tr>
               ) : (
                 itemsAMostrar.map((item) => (
                   <tr key={item._id}>
+                    {/* Tildado por defecto: sale en cuanto tiene un precio o una
+                        observación. Destildarlo lo guarda para una tanda
+                        siguiente. */}
+                    {liberaDeAPartes && (
+                      <td style={{ ...tdCargaCentro, paddingTop: '9px' }}>
+                        <Form.Check
+                          type="checkbox"
+                          className="d-inline-block m-0"
+                          checked={idsALiberar.has(item._id)}
+                          disabled={itemSinCargar(item)}
+                          onChange={() => alternarRetenido(item._id)}
+                          title={
+                            itemSinCargar(item)
+                              ? 'Falta un precio o una observación'
+                              : idsALiberar.has(item._id)
+                                ? 'Sale al procesar'
+                                : 'Sigue en análisis'
+                          }
+                        />
+                      </td>
+                    )}
                     <td style={{ ...tdCargaTexto, textAlign: 'center' }}>{fecha}</td>
                     <td style={{ ...tdCargaTexto, fontWeight: 500 }}>{item.nombre_repuesto}</td>
                     <td style={tdCarga}>
@@ -687,6 +873,18 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                     <td style={tdCarga}>{precioInput(item, 'precio3')}</td>
                     <td style={tdCarga}>{observacionesInput(item)}</td>
                     <td style={tdCargaCentro}>{archivoCell(item)}</td>
+                    {puedeVolver && (
+                      <td style={tdCargaCentro}>
+                        <div className="d-flex justify-content-center">
+                          <BotonAccion
+                            icono="bi-arrow-counterclockwise"
+                            titulo="Volver este ítem a análisis"
+                            variante="warning"
+                            onClick={() => volverAAnalisis(item)}
+                          />
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -704,9 +902,11 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
               const elegida = opcionElegida(form)
               const cant = item.cant || 0
               const total = elegida ? elegida.precio * cant : null
-              return { item, opciones, elegida, cant, total }
+              return { item, opciones, elegida, cant, total, espera: !idsALiberar.has(item._id) }
             })
-            const sumaTotal = filas.reduce((acc, r) => acc + (r.total || 0), 0)
+            // El total es lo que sale ahora; lo que sigue en análisis se ve
+            // atenuado y no suma.
+            const sumaTotal = filas.reduce((acc, r) => acc + (r.espera ? 0 : r.total || 0), 0)
 
             return (
               <div className="d-flex flex-column align-items-center flex-shrink-0 pb-3">
@@ -730,10 +930,17 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filas.map(({ item, opciones, elegida, cant, total }) => (
-                        <tr key={item._id}>
+                      {filas.map(({ item, opciones, elegida, cant, total, espera }) => (
+                        <tr key={item._id} style={espera ? { opacity: 0.5 } : undefined}>
                           <td style={tdCentro}>{fecha}</td>
-                          <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
+                          <td style={{ ...td, fontWeight: 500 }}>
+                            {item.nombre_repuesto}
+                            {espera && (
+                              <span className="ms-1" style={{ fontSize: '0.66rem', color: '#b45309', fontWeight: 600 }}>
+                                · sigue en análisis
+                              </span>
+                            )}
+                          </td>
                           <td style={tdCentro}>{cant || <Raya />}</td>
                           <td style={{ ...td, padding: '2px 5px' }}>{selectorProveedor(item, opciones, elegida)}</td>
                           <td style={tdCentro}>{elegida ? fmtPrecio(elegida.precio) : <Raya />}</td>
@@ -766,6 +973,14 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                     ? ', con proveedores elegidos a mano'
                     : ', con el precio más bajo de cada ítem'}
                 </div>
+                {/* Lo que el pedido ya liberó en tandas anteriores cuenta para
+                    el umbral de Gerencia. */}
+                {montoYaLiberado > 0 && (
+                  <div className="text-center" style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                    Ya liberado de este pedido: <b>{fmtPrecio(montoYaLiberado)}</b> · con esto suma{' '}
+                    <b style={{ color: BORDO }}>{fmtPrecio(montoYaLiberado + sumaTotal)}</b>
+                  </div>
+                )}
               </div>
             )
           })()}

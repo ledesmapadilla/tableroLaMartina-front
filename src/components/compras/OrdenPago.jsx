@@ -92,14 +92,19 @@ export default function OrdenPago() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const pedidosAceptados = new Set(opItems.map(i => i.pedidoId))
+  // Se compra por ítem y no por pedido (26/09/2026): un pedido puede tener
+  // parte en la orden, parte dejada para otra y parte todavía en análisis.
+  // Lo que queda para elegir son sus ítems "Para hacer OP" que no estén ya en
+  // la orden.
+  const idsEnOrden = new Set(opItems.map(i => i._id))
+  const itemsParaElegir = (p) =>
+    (p.items || []).filter(i => i.estado === 'Para hacer OP' && !idsEnOrden.has(i._id))
   const pedidosFiltrados = pedidos.filter(p =>
     fmtNro(p.nro_pedido, p._src).toLowerCase().includes(busqueda.toLowerCase()) &&
-    !pedidosAceptados.has(p._id) &&
-    // Un pedido cuyos ítems se rechazaron todos ya no tiene nada para comprar.
-    (p.items || []).some(i => i.estado === 'Para hacer OP')
+    // Un pedido sin ítems libres (rechazados, o todos ya en la orden) no se ofrece.
+    itemsParaElegir(p).length > 0
   )
-  const opItemCount = (p) => (p.items || []).filter(i => i.estado === 'Para hacer OP').length
+  const opItemCount = (p) => itemsParaElegir(p).length
   const esMultiple = (p) => opItemCount(p) > 1
 
   const pedidoSeleccionado = pedidos.find(p => `${p._src}-${p.nro_pedido}` === selectedKey)
@@ -118,8 +123,7 @@ export default function OrdenPago() {
     const p = pedidoSeleccionado
     if (!p) return
     setPreviewKey(selectedKey)
-    const items = (p.items || [])
-      .filter(i => i.estado === 'Para hacer OP')
+    const items = itemsParaElegir(p)
       .map(i => {
         const { precio, proveedor_id } = precioElegidoProveedor(i)
         return {
@@ -219,6 +223,18 @@ export default function OrdenPago() {
       Swal.fire({ icon: 'success', title: 'Ítem rechazado', timer: 1400, showConfirmButton: false })
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+    }
+  }
+
+  // Dejar un ítem para otra orden: sale de la vista previa sin rechazarlo y
+  // sigue "Para hacer OP", así se lo vuelve a elegir cuando se lo compre.
+  const dejarParaDespues = (itemId) => {
+    const quedan = previewItems.filter((i) => i._id !== itemId)
+    setPreviewItems(quedan)
+    if (quedan.length === 0) {
+      setPreviewKey(null)
+      setSelectedKey(null)
+      setBusqueda('')
     }
   }
 
@@ -441,7 +457,7 @@ export default function OrdenPago() {
                     <th style={th}>Resto</th>
                     <th style={th}>Observaciones</th>
                     <th style={thCentro}>Adjunto</th>
-                    <th style={{ ...thCentro, width: 70 }}>Rechazar</th>
+                    <th style={{ ...thCentro, width: 80 }}>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -569,7 +585,12 @@ export default function OrdenPago() {
                         )}
                       </td>
                       <td style={tdCentro}>
-                        <div className="d-flex justify-content-center">
+                        <div className="d-flex justify-content-center gap-1">
+                          <BotonAccion
+                            icono="bi-arrow-return-left"
+                            titulo="Dejar para otra orden (no se rechaza)"
+                            onClick={() => dejarParaDespues(item._id)}
+                          />
                           <BotonAccion
                             icono="bi-x-lg"
                             titulo={
