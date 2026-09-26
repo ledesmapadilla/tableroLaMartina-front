@@ -44,8 +44,18 @@ function ProduccionCertificados({
   const [hovered, setHovered] = useState(null);
   const [periodos, setPeriodos] = useState([]);
 
-  const esAnioEnCurso = anio === hoy.getFullYear();
-  const mesEnCurso = esAnioEnCurso ? hoy.getMonth() + 1 : null;
+  // El mes en curso no es el del calendario sino el período que contiene a
+  // hoy: pasado el cierre (por defecto el 25) ya corre el mes siguiente, y
+  // del cierre de diciembre en adelante el que corre es enero del año que viene.
+  const hoyIso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+  const mesEnCurso =
+    periodos.find(
+      (p) =>
+        p.desde &&
+        p.hasta &&
+        p.desde.slice(0, 10) <= hoyIso &&
+        hoyIso <= p.hasta.slice(0, 10),
+    )?.mes ?? null;
 
   // Los 12 períodos del año en una sola consulta. Los meses que nadie tocó
   // vienen con el corte sugerido, que es el que van a tener al abrirlos.
