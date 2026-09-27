@@ -13,7 +13,7 @@ const API = "/api/pendientes";
 // Los dos listados viven acá: sumar un sector o una persona es tocar esta
 // lista y nada más, sin migrar la base (el back los guarda como texto).
 const SECTORES = ["Camionetas", "Tractores", "Colectivos", "Otros"];
-const RESPONSABLES = ["Victor", "Kevin", "Jorge", "Nacho", "Javier", "Otro"];
+const RESPONSABLES = ["Victor", "Kevin", "Jorge", "Nacho", "Javier", "Pablo", "Otro"];
 
 // Colores muted, los mismos de todo el proyecto.
 const ESTADOS = {
@@ -483,8 +483,24 @@ function Pendientes() {
             </Button>
         </div>
 
-        {/* Barra de filtros */}
-        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0">
+        {/* Filtros y tabla en una misma columna centrada, del ancho de la tabla
+            (27/09/2026): los filtros no se salen de ese ancho, pasan de renglón. */}
+        <div
+          style={{
+            flex: "1 1 auto",
+            minHeight: 0,
+            alignSelf: "center",
+            maxWidth: "100%",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+        {/* Barra de filtros. Ancho 0 y mínimo 100 %: no ensancha la columna, se
+            estira al ancho que le da la tabla. */}
+        <Card
+          className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0"
+          style={{ width: 0, minWidth: "100%" }}
+        >
           <div className="d-flex align-items-center gap-3 flex-wrap">
             <FiltroSelect
               etiqueta="Sector"
@@ -513,6 +529,8 @@ function Pendientes() {
               opciones={Object.keys(ESTADOS)}
             />
 
+            {/* Desde y Hasta van juntos: si no entran, pasan de renglón los dos. */}
+            <div className="d-flex align-items-center gap-3 flex-nowrap">
             <div className="d-flex align-items-center gap-2">
               <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
                 Desde:
@@ -551,6 +569,7 @@ function Pendientes() {
                   fontWeight: hasta ? "700" : "normal",
                 }}
               />
+            </div>
             </div>
 
             <div className="input-group input-group-sm" style={{ width: "260px" }}>
@@ -608,7 +627,6 @@ function Pendientes() {
           style={{
             flex: "1 1 auto",
             minHeight: 0,
-            alignSelf: "center",
             maxWidth: "100%",
             overflowY: "auto",
             overflowX: "auto",
@@ -676,6 +694,7 @@ function Pendientes() {
               )}
             </tbody>
           </Table>
+        </div>
         </div>
       </Container>
 

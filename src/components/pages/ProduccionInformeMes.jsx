@@ -1,7 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button, Card, Container, Form, Modal, Table } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
+import GraficoConsumoCC from "./GraficoConsumoCC";
+import {
+  desvio,
+  SEMAFORO,
+  semaforo,
+  textoDesvio,
+  mapaDeAdmisibles,
+  cuentaParaProduccion,
+} from "../../utils/desvios";
 
 const MESES = [
   "Enero",
@@ -43,34 +52,6 @@ const compararCC = (a, b) =>
 const consumo = (combustible, horas) => (horas > 0 ? redondear(combustible / horas) : null);
 // Igual, pero sin redondear: se usa para litros por unidad.
 const razon = (a, b) => (b > 0 ? a / b : null);
-
-/**
- * Desvío contra el valor admisible (Variables › Valores admisibles,
- * 24/09/2026), en porcentaje: cuánto se apartó lo real del admisible.
- * Sin admisible cargado, o sin dato real, no hay desvío.
- */
-const desvio = (real, admisible) =>
-  real === null || real === undefined || !(admisible > 0) ? null : ((real - admisible) / admisible) * 100;
-
-// El semáforo mira el desvío en contra: en el consumo es gastar de más, en el
-// rendimiento es producir de menos. A favor siempre es verde. Rojo: más del 8 %
-// en contra (regla del usuario); amarillo: entre el 4 % y el 8 %.
-const DESVIO_AMARILLO = 4;
-const DESVIO_ROJO = 8;
-const SEMAFORO = {
-  verde: { backgroundColor: "#dcfce7", color: "#15803d" },
-  amarillo: { backgroundColor: "#fef9c3", color: "#a16207" },
-  rojo: { backgroundColor: "#fee2e2", color: "#b91c1c" },
-};
-const semaforo = (d, malSiSube) => {
-  if (d === null) return null;
-  const enContra = malSiSube ? d : -d;
-  if (enContra > DESVIO_ROJO) return "rojo";
-  if (enContra > DESVIO_AMARILLO) return "amarillo";
-  return "verde";
-};
-const textoDesvio = (d) =>
-  `${d > 0 ? "+" : ""}${d.toLocaleString("es-AR", { maximumFractionDigits: 1, minimumFractionDigits: 1 })} %`;
 
 // Desplegable de filtro con el formato del resto del proyecto: se pinta en
 // rojo cuando está activo y suma una cruz para limpiarlo.
@@ -118,6 +99,316 @@ const FiltroSelect = ({ etiqueta, ancho, valor, vacio, onChange, opciones }) => 
   );
 };
 
+// Cada tabla lleva sus propios filtros (27/09/2026): recortar una no toca las
+// demás.
+const FILTRO_VACIO = { fecha: "", persona: "Todos", cc: "Todos", tarea: "Todas" };
+const TABLAS = ["personal", "cc", "ccTarea", "produccion"];
+
+const hayFiltro = (f) =>
+  Boolean(f.fecha) || f.persona !== "Todos" || f.cc !== "Todos" || f.tarea !== "Todas";
+
+/**
+ * Los filtros recortan los partes antes de sumar: la tabla y su hoja del
+ * Excel muestran siempre lo mismo que se está mirando.
+ *
+ * El filtro de CC va por **código** y no por id: así la misma opción sirve
+ * para el CC del parte y para el turbo, que se guarda como el código de su
+ * centro de costo.
+ */
+const filtrarPartes = (partes, f) =>
+  hayFiltro(f)
+    ? partes.filter((p) => {
+        if (f.fecha && soloFecha(p.fecha) !== f.fecha) return false;
+        if (f.persona !== "Todos" && (p.persona?._id || "") !== f.persona) return false;
+        if (f.tarea !== "Todas" && (p.tarea?._id || "") !== f.tarea) return false;
+        if (f.cc !== "Todos" && p.cc?.cc !== f.cc && (p.turbo || "").trim() !== f.cc) return false;
+        return true;
+      })
+    : partes;
+
+/**
+ * La barra de filtros de una tabla: fecha, personal, CC y tarea. Las opciones
+ * salen de todo el período, no de lo ya filtrado.
+ */
+const BarraFiltros = ({ filtro, onChange, periodo, personas, ccs, tareas }) => (
+  <Card className="mb-2 p-2 shadow-sm border-0 rounded-3" style={{ maxWidth: "100%" }}>
+    <div className="d-flex align-items-center gap-3 flex-wrap">
+      <div className="d-flex align-items-center gap-2">
+        <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
+          Fecha:
+        </span>
+        <div className="input-group input-group-sm" style={{ width: "150px" }}>
+          <Form.Control
+            type="date"
+            value={filtro.fecha}
+            min={periodo.desde || undefined}
+            max={periodo.hasta || undefined}
+            onChange={(e) => onChange("fecha", e.target.value)}
+            className={`rounded-3 ${filtro.fecha ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+            style={{
+              fontSize: "0.82rem",
+              height: "32px",
+              padding: "3px 8px",
+              color: filtro.fecha ? "#dc2626" : "#1e293b",
+              fontWeight: filtro.fecha ? "700" : "normal",
+            }}
+          />
+          {filtro.fecha && (
+            <button
+              className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+              type="button"
+              onClick={() => onChange("fecha", "")}
+              title="Limpiar filtro fecha"
+              style={{ padding: "0 6px", height: "32px" }}
+            >
+              <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <FiltroSelect
+        etiqueta="Personal"
+        ancho="180px"
+        valor={filtro.persona}
+        vacio="Todos"
+        onChange={(v) => onChange("persona", v)}
+        opciones={personas}
+      />
+
+      <FiltroSelect
+        etiqueta="CC"
+        ancho="130px"
+        valor={filtro.cc}
+        vacio="Todos"
+        onChange={(v) => onChange("cc", v)}
+        opciones={ccs}
+      />
+
+      <FiltroSelect
+        etiqueta="Tarea"
+        ancho="185px"
+        valor={filtro.tarea}
+        vacio="Todas"
+        onChange={(v) => onChange("tarea", v)}
+        opciones={tareas}
+      />
+    </div>
+  </Card>
+);
+
+/**
+ * Las tres miradas por centro de costo.
+ *
+ * Dos columnas de horas: las del **turno** (`totalHoras`, siempre cargadas) y
+ * las del **horómetro del CC** (`horasCC`, que dependen de que alguien tome
+ * las lecturas), y un consumo para cada una.
+ *
+ * El **combustible** de la tabla es el cargado. Los **consumos** no: salen del
+ * gasoil consumido estimado de cada parte, que es su parte de la carga que
+ * cierra su tramo entre cargas a tanque lleno (27/09/2026, ver
+ * consumos.service.js en el backend). Los partes cuyo tramo todavía no cerró
+ * (o no tiene carga de inicio conocida) no cuentan para los consumos: ni sus
+ * litros ni sus horas.
+ *
+ * El **turbo es un CC más**: el parte guarda el CC del turbo en `turbo` y su
+ * carga en `combTurbo`. Como el turbo no tiene horas propias, se le imputan
+ * las del CC de esa misma fila del parte.
+ *
+ * Los partes sin CC ni turbo quedan afuera de estas tres tablas.
+ */
+const resumirPorCC = (partes) => {
+  const cc = new Map();
+  const tarea = new Map();
+
+  const VACIA = {
+    combustible: 0,
+    horasTurno: 0,
+    horasCC: 0,
+    cantidad: 0,
+    // Consumo: litros consumidos estimados y sus horas, de los tramos cerrados.
+    litrosCons: 0,
+    horasTurnoCons: 0,
+    horasCCCons: 0,
+    // Producción (ver cuentaParaProduccion): horas, y litros y cantidad de los
+    // que además tienen el tramo cerrado, para los litros por unidad.
+    horasTurnoProd: 0,
+    horasCCProd: 0,
+    litrosConsProd: 0,
+    cantidadConsProd: 0,
+  };
+
+  // `maquina`: lo que devolvió /api/partes/consumos para esa máquina en ese
+  // parte. `prod`: si el parte cuenta para medir producción.
+  const sumar = (mapa, clave, base, { combustible, horasTurno, horasCC, cantidad = 0, maquina, prod }) => {
+    if (!mapa.has(clave)) mapa.set(clave, { id: clave, ...base, ...VACIA });
+    const fila = mapa.get(clave);
+    fila.combustible += combustible;
+    fila.horasTurno += horasTurno;
+    fila.horasCC += horasCC;
+    fila.cantidad += cantidad;
+    const cerrado = maquina?.estado === "cerrado";
+    if (cerrado) {
+      fila.litrosCons += maquina.litros;
+      fila.horasTurnoCons += horasTurno;
+      fila.horasCCCons += horasCC;
+    }
+    if (prod) {
+      fila.horasTurnoProd += horasTurno;
+      fila.horasCCProd += horasCC;
+      if (cerrado) {
+        fila.litrosConsProd += maquina.litros;
+        fila.cantidadConsProd += cantidad;
+      }
+    }
+  };
+
+  for (const p of partes) {
+    const horasTurno = Number(p.totalHoras) || 0;
+    const horasCC = Number(p.horasCC) || 0;
+    const nombreTarea = p.tarea?.tarea || "(sin tarea)";
+    const idTarea = p.tarea?._id || "sin-tarea";
+    const unidad = p.tarea?.unidad || "";
+    const cantidad = Number(p.cantidad) || 0;
+    const prod = cuentaParaProduccion(p);
+
+    if (p.cc?._id) {
+      const datos = {
+        combustible: Number(p.combustible) || 0,
+        horasTurno,
+        horasCC,
+        maquina: p.consumoMaquina?.cc,
+      };
+      sumar(cc, p.cc._id, { cc: p.cc.cc, equipo: p.cc.equipo || "" }, datos);
+      sumar(tarea, `${p.cc._id}|${idTarea}`, { cc: p.cc.cc, tarea: nombreTarea, idTarea, unidad }, {
+        ...datos,
+        cantidad,
+        prod,
+      });
+    }
+
+    const turbo = (p.turbo || "").trim();
+    if (turbo) {
+      // El turbo va como un CC aparte, con su propia carga y las horas del
+      // CC con el que trabajó ese día.
+      const datos = {
+        combustible: Number(p.combTurbo) || 0,
+        horasTurno,
+        horasCC,
+        maquina: p.consumoMaquina?.turbo,
+      };
+      sumar(cc, `turbo:${turbo}`, { cc: turbo, equipo: "Turbo" }, datos);
+      sumar(tarea, `turbo:${turbo}|${idTarea}`, { cc: turbo, tarea: nombreTarea, idTarea, unidad }, {
+        ...datos,
+        cantidad,
+        prod,
+      });
+    }
+  }
+
+  const cerrarFila = (f) => ({
+    ...f,
+    combustible: redondear(f.combustible),
+    horasTurno: redondear(f.horasTurno),
+    horasCC: redondear(f.horasCC),
+    cantidad: redondear(f.cantidad),
+    litrosCons: redondear(f.litrosCons),
+    horasTurnoCons: redondear(f.horasTurnoCons),
+    horasCCCons: redondear(f.horasCCCons),
+    horasTurnoProd: redondear(f.horasTurnoProd),
+    horasCCProd: redondear(f.horasCCProd),
+    litrosConsProd: redondear(f.litrosConsProd),
+    cantidadConsProd: redondear(f.cantidadConsProd),
+    // Consumo real: litros consumidos (no cargados) por hora.
+    consumo: consumo(f.litrosCons, f.horasTurnoCons),
+    consumoCC: consumo(f.litrosCons, f.horasCCCons),
+    // Producción: cuántos litros costó cada unidad y cuántas unidades
+    // salieron por litro, con el gasoil consumido; y cuántas por hora de
+    // turno. Solo con los partes que cuentan para producción: en herbicida y
+    // desmalezado de San Pablo, las jornadas de lotes terminados (27/09/2026).
+    ltsPorUnidad: razon(f.litrosConsProd, f.cantidadConsProd),
+    unidadPorLts: razon(f.cantidadConsProd, f.litrosConsProd),
+    rendimiento: razon(f.cantidad, f.horasTurnoProd),
+    // El mismo contra las horas del horómetro, para el gráfico (27/09/2026).
+    rendimientoCC: razon(f.cantidad, f.horasCCProd),
+  });
+
+  const listaCC = [...cc.values()].map(cerrarFila).sort((a, b) => compararCC(a.cc, b.cc));
+
+  const listaTarea = [...tarea.values()]
+    .map(cerrarFila)
+    .sort((a, b) => compararCC(a.cc, b.cc) || comparar(a.tarea, b.tarea));
+
+  // Los totales de combustible y horas se sacan de los partes y no de las
+  // filas: un parte con turbo aporta sus horas a dos filas (la del CC y la del
+  // turbo) y sumándolas las horas quedarían contadas dos veces. El consumo
+  // total, en cambio, es el de todas las máquinas juntas: litros consumidos
+  // de cada una sobre sus horas (las del turbo cuentan aparte).
+  let combustible = 0;
+  let horasTurno = 0;
+  let horasCC = 0;
+  for (const p of partes) {
+    if (!p.cc?._id && !(p.turbo || "").trim()) continue;
+    combustible += (Number(p.combustible) || 0) + (Number(p.combTurbo) || 0);
+    horasTurno += Number(p.totalHoras) || 0;
+    horasCC += Number(p.horasCC) || 0;
+  }
+  const suma = (campo) => listaCC.reduce((a, f) => a + f[campo], 0);
+
+  return {
+    porCC: listaCC,
+    porTarea: listaTarea,
+    totalesCC: {
+      combustible: redondear(combustible),
+      horasTurno: redondear(horasTurno),
+      horasCC: redondear(horasCC),
+      consumo: consumo(suma("litrosCons"), suma("horasTurnoCons")),
+      consumoCC: consumo(suma("litrosCons"), suma("horasCCCons")),
+    },
+  };
+};
+
+/**
+ * Dónde va el gráfico al lado de una tabla: arranca donde termina la fila de
+ * títulos (`arriba`) y acompaña el alto de las filas de datos (`alto`).
+ * Devuelve [lugar, ref]: la ref va en el marco de la tabla. Es con callback
+ * porque la tabla no existe en el resumen por personal.
+ */
+const useLugarGrafico = () => {
+  const [lugar, setLugar] = useState({ arriba: 0, alto: 0 });
+  const obs = useRef(null);
+  const ref = useCallback((nodo) => {
+    obs.current?.disconnect();
+    if (!nodo) return;
+    const medir = () => {
+      const caja = nodo.getBoundingClientRect();
+      const titulos = nodo.querySelector("thead")?.getBoundingClientRect();
+      const finTitulos = titulos ? titulos.bottom - caja.top : 0;
+      setLugar({ arriba: Math.round(finTitulos), alto: Math.round(caja.height - finTitulos) });
+    };
+    obs.current = new ResizeObserver(medir);
+    obs.current.observe(nodo);
+  }, []);
+  return [lugar, ref];
+};
+
+/**
+ * La columna del gráfico al lado de una tabla. Ocupa todo el alto de la fila y
+ * el gráfico adentro queda pegado justo debajo de la fila de títulos de la
+ * tabla: al bajar por la tabla, los títulos quedan fijos arriba y el gráfico
+ * con ellos, hasta que termina la tabla (27/09/2026).
+ */
+const ColumnaGrafico = ({ lugar, children }) => (
+  <div style={{ flex: "1 1 340px", minWidth: "320px", alignSelf: "stretch", paddingTop: lugar.arriba }}>
+    <div
+      className="d-flex justify-content-center"
+      style={{ position: "sticky", top: lugar.arriba, zIndex: 1 }}
+    >
+      {children}
+    </div>
+  </div>
+);
+
 /**
  * El mismo informe para los dos campos: cambia el establecimiento.
  *
@@ -133,16 +424,12 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
   // Persona cuyo detalle se está mirando (el botón "Ver" de cada fila).
   const [verPersona, setVerPersona] = useState(null);
 
-  const [filtroFecha, setFiltroFecha] = useState("");
-  const [filtroPersona, setFiltroPersona] = useState("Todos");
-  const [filtroCC, setFiltroCC] = useState("Todos");
-  const [filtroTarea, setFiltroTarea] = useState("Todas");
-
-  const hayFiltro =
-    Boolean(filtroFecha) ||
-    filtroPersona !== "Todos" ||
-    filtroCC !== "Todos" ||
-    filtroTarea !== "Todas";
+  // Los filtros de cada tabla, por clave de TABLAS.
+  const [filtros, setFiltros] = useState(() =>
+    Object.fromEntries(TABLAS.map((t) => [t, FILTRO_VACIO]))
+  );
+  const cambiarFiltro = (tabla) => (campo, valor) =>
+    setFiltros((f) => ({ ...f, [tabla]: { ...f[tabla], [campo]: valor } }));
 
   // Los valores admisibles de cada tarea, por id de tarea. Son los mismos para
   // todos los campos y todos los meses.
@@ -152,7 +439,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       try {
         const res = await fetch("/api/admisibles");
         const lista = res.ok ? await res.json() : [];
-        setAdmisibles(new Map((Array.isArray(lista) ? lista : []).map((a) => [String(a.tarea?._id || a.tarea), a])));
+        setAdmisibles(mapaDeAdmisibles(lista));
       } catch {
         setAdmisibles(new Map());
       }
@@ -191,11 +478,19 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
         setPeriodo(rango);
 
         const clave = `${anio}-${String(mes).padStart(2, "0")}`;
-        const resPartes = await fetch(
-          `/api/partes?desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}&${qEstab}`
-        );
+        // Junto con los partes, el consumo entre cargas de cada uno
+        // (27/09/2026): el gasoil cargado no es el consumido, y los consumos
+        // del informe salen de los tramos entre cargas a tanque lleno.
+        const consulta = `desde=${rango.desde}&hasta=${rango.hasta}&periodo=${clave}&${qEstab}`;
+        const [resPartes, resConsumos] = await Promise.all([
+          fetch(`/api/partes?${consulta}`),
+          fetch(`/api/partes/consumos?${consulta}`),
+        ]);
         const lista = resPartes.ok ? await resPartes.json() : [];
-        setPartes(Array.isArray(lista) ? lista : []);
+        const consumos = resConsumos.ok ? await resConsumos.json() : {};
+        setPartes(
+          (Array.isArray(lista) ? lista : []).map((p) => ({ ...p, consumoMaquina: consumos?.[p._id] || null }))
+        );
       } catch {
         setPartes([]);
       } finally {
@@ -204,26 +499,11 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     })();
   }, [anio, mes, qEstab]);
 
-  /**
-   * Los filtros recortan los partes antes de sumar: todas las tablas y el
-   * Excel muestran siempre lo mismo que se está mirando.
-   *
-   * El filtro de CC va por **código** y no por id: así la misma opción sirve
-   * para el CC del parte y para el turbo, que se guarda como el código de su
-   * centro de costo.
-   */
-  const partesFiltrados = useMemo(
-    () =>
-      partes.filter((p) => {
-        if (filtroFecha && soloFecha(p.fecha) !== filtroFecha) return false;
-        if (filtroPersona !== "Todos" && (p.persona?._id || "") !== filtroPersona) return false;
-        if (filtroTarea !== "Todas" && (p.tarea?._id || "") !== filtroTarea) return false;
-        if (filtroCC !== "Todos" && p.cc?.cc !== filtroCC && (p.turbo || "").trim() !== filtroCC) {
-          return false;
-        }
-        return true;
-      }),
-    [partes, filtroFecha, filtroPersona, filtroCC, filtroTarea]
+  // Los partes del resumen por personal, con sus filtros. El detalle de "Ver"
+  // sale de estos mismos.
+  const partesPersonal = useMemo(
+    () => filtrarPartes(partes, filtros.personal),
+    [partes, filtros.personal]
   );
 
   // Las opciones salen de todo el período, no de lo ya filtrado: si no, elegir
@@ -263,7 +543,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     const porPersona = new Map();
     const usadas = new Map();
 
-    for (const p of partesFiltrados) {
+    for (const p of partesPersonal) {
       const id = p.persona?._id || "sin-persona";
       const nombre = p.persona?.apellidoNombre || "(sin persona)";
       if (!porPersona.has(id)) {
@@ -319,135 +599,34 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
         tareas: sumaTareas,
       },
     };
-  }, [partesFiltrados, establecimiento]);
+  }, [partesPersonal, establecimiento]);
 
   // Los partes de la persona abierta, del más viejo al más nuevo. Es de dónde
   // sale cada número de su fila, sin tener que volver a la planilla.
   const detalle = useMemo(() => {
     if (!verPersona) return [];
-    return partesFiltrados
+    return partesPersonal
       .filter((p) => (p.persona?._id || "sin-persona") === verPersona.id)
       .sort(
         (a, b) =>
           soloFecha(a.fecha).localeCompare(soloFecha(b.fecha)) ||
           String(a.createdAt || "").localeCompare(String(b.createdAt || ""))
       );
-  }, [partesFiltrados, verPersona]);
+  }, [partesPersonal, verPersona]);
 
-  /**
-   * Las tres miradas por centro de costo.
-   *
-   * Dos columnas de horas: las del **turno** (`totalHoras`, siempre cargadas) y
-   * las del **horómetro del CC** (`horasCC`, que dependen de que alguien tome
-   * las lecturas), y un consumo para cada una.
-   *
-   * El **turbo es un CC más**: el parte guarda el CC del turbo en `turbo` y su
-   * carga en `combTurbo`. Como el turbo no tiene horas propias, se le imputan
-   * las del CC de esa misma fila del parte.
-   *
-   * Los partes sin CC ni turbo quedan afuera de estas tres tablas.
-   */
-  const { porCC, porTarea, totalesCC } = useMemo(() => {
-    const cc = new Map();
-    const tarea = new Map();
-
-    const sumar = (mapa, clave, base, combustible, horasTurno, horasCC, cantidad = 0) => {
-      if (!mapa.has(clave)) {
-        mapa.set(clave, { id: clave, ...base, combustible: 0, horasTurno: 0, horasCC: 0, cantidad: 0 });
-      }
-      const fila = mapa.get(clave);
-      fila.combustible += combustible;
-      fila.horasTurno += horasTurno;
-      fila.horasCC += horasCC;
-      fila.cantidad += cantidad;
-    };
-
-    for (const p of partesFiltrados) {
-      const horasTurno = Number(p.totalHoras) || 0;
-      const horasCC = Number(p.horasCC) || 0;
-      const nombreTarea = p.tarea?.tarea || "(sin tarea)";
-      const idTarea = p.tarea?._id || "sin-tarea";
-      const unidad = p.tarea?.unidad || "";
-      const cantidad = Number(p.cantidad) || 0;
-
-      if (p.cc?._id) {
-        const combustible = Number(p.combustible) || 0;
-        sumar(cc, p.cc._id, { cc: p.cc.cc, equipo: p.cc.equipo || "" }, combustible, horasTurno, horasCC);
-        sumar(
-          tarea,
-          `${p.cc._id}|${idTarea}`,
-          { cc: p.cc.cc, tarea: nombreTarea, idTarea, unidad },
-          combustible,
-          horasTurno,
-          horasCC,
-          cantidad
-        );
-      }
-
-      const turbo = (p.turbo || "").trim();
-      if (turbo) {
-        // El turbo va como un CC aparte, con su propia carga y las horas del
-        // CC con el que trabajó ese día.
-        const combTurbo = Number(p.combTurbo) || 0;
-        sumar(cc, `turbo:${turbo}`, { cc: turbo, equipo: "Turbo" }, combTurbo, horasTurno, horasCC);
-        sumar(
-          tarea,
-          `turbo:${turbo}|${idTarea}`,
-          { cc: turbo, tarea: nombreTarea, idTarea, unidad },
-          combTurbo,
-          horasTurno,
-          horasCC,
-          cantidad
-        );
-      }
-    }
-
-    const cerrarFila = (f) => ({
-      ...f,
-      combustible: redondear(f.combustible),
-      horasTurno: redondear(f.horasTurno),
-      horasCC: redondear(f.horasCC),
-      cantidad: redondear(f.cantidad),
-      consumo: consumo(f.combustible, f.horasTurno),
-      consumoCC: consumo(f.combustible, f.horasCC),
-      // Producción: cuántos litros costó cada unidad, cuántas unidades salieron
-      // por litro y cuántas por hora de turno.
-      ltsPorUnidad: razon(f.combustible, f.cantidad),
-      unidadPorLts: razon(f.cantidad, f.combustible),
-      rendimiento: razon(f.cantidad, f.horasTurno),
-    });
-
-    const listaCC = [...cc.values()].map(cerrarFila).sort((a, b) => compararCC(a.cc, b.cc));
-
-    const listaTarea = [...tarea.values()]
-      .map(cerrarFila)
-      .sort((a, b) => compararCC(a.cc, b.cc) || comparar(a.tarea, b.tarea));
-
-    // Los totales se sacan de los partes y no de las filas: un parte con turbo
-    // aporta sus horas a dos filas (la del CC y la del turbo) y sumándolas las
-    // horas quedarían contadas dos veces. El combustible sí se suma entero.
-    let combustible = 0;
-    let horasTurno = 0;
-    let horasCC = 0;
-    for (const p of partesFiltrados) {
-      if (!p.cc?._id && !(p.turbo || "").trim()) continue;
-      combustible += (Number(p.combustible) || 0) + (Number(p.combTurbo) || 0);
-      horasTurno += Number(p.totalHoras) || 0;
-      horasCC += Number(p.horasCC) || 0;
-    }
-
-    return {
-      porCC: listaCC,
-      porTarea: listaTarea,
-      totalesCC: {
-        combustible: redondear(combustible),
-        horasTurno: redondear(horasTurno),
-        horasCC: redondear(horasCC),
-        consumo: consumo(combustible, horasTurno),
-        consumoCC: consumo(combustible, horasCC),
-      },
-    };
-  }, [partesFiltrados]);
+  // Las tres tablas por centro de costo, cada una con sus filtros.
+  const { porCC, totalesCC } = useMemo(
+    () => resumirPorCC(filtrarPartes(partes, filtros.cc)),
+    [partes, filtros.cc]
+  );
+  const { porTarea } = useMemo(
+    () => resumirPorCC(filtrarPartes(partes, filtros.ccTarea)),
+    [partes, filtros.ccTarea]
+  );
+  const { porTarea: porTareaProduccion } = useMemo(
+    () => resumirPorCC(filtrarPartes(partes, filtros.produccion)),
+    [partes, filtros.produccion]
+  );
 
   const exportarExcel = async () => {
     const wb = await nuevoWorkbook();
@@ -510,6 +689,16 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       cell.font = { bold: true, color: { argb: COLOR_EXCEL[color].letra } };
       cell.numFmt = '+0.0" %";-0.0" %";0.0" %"';
     };
+    // El valor comparado, como en pantalla: verde y amarillo solo la letra,
+    // rojo también el fondo.
+    const pintarMedida = (cell, d, malSiSube) => {
+      const color = semaforo(d, malSiSube);
+      if (!color || cell.value === null) return;
+      if (color === "rojo") {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_EXCEL[color].fondo } };
+      }
+      cell.font = { bold: true, color: { argb: COLOR_EXCEL[color].letra } };
+    };
 
     const resaltarTotal = (fila) =>
       fila.eachCell({ includeEmpty: true }, (cell) => {
@@ -565,7 +754,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     const cols1 = [
       "CC",
       "Equipo",
-      "Combustible (lts)",
+      "Combustible cargado (lts)",
       "Hs turno",
       "Hs CC",
       "Consumo (lts/hs turno)",
@@ -604,7 +793,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     const cols2 = [
       "CC",
       "Tarea",
-      "Combustible (lts)",
+      "Combustible cargado (lts)",
       "Hs turno",
       "Hs CC",
       "Lts/hs turno",
@@ -628,6 +817,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       ]);
       bordear(fila, [1, 2]);
       pintarDesvio(fila.getCell(9), a.desvioConsumo, true);
+      pintarMedida(fila.getCell(6), a.desvioConsumo, true);
     });
     ws2.columns = [
       { width: 12 },
@@ -646,7 +836,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     const cols3 = [
       "CC",
       "Tarea",
-      "Combustible (lts)",
+      "Combustible cargado (lts)",
       "Cantidad producida",
       "Unidad",
       "Consumo (lts/unidad)",
@@ -656,7 +846,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       "Desvío (%)",
     ];
     encabezar(ws3, cols3, "PRODUCCIÓN Y RENDIMIENTO POR CC Y TAREA");
-    porTarea.forEach((f) => {
+    porTareaProduccion.forEach((f) => {
       const a = contraAdmisible(f);
       const fila = ws3.addRow([
         f.cc,
@@ -672,6 +862,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       ]);
       bordear(fila, [1, 2, 5]);
       pintarDesvio(fila.getCell(10), a.desvioRendimiento, false);
+      pintarMedida(fila.getCell(8), a.desvioRendimiento, false);
     });
     ws3.columns = [
       { width: 12 },
@@ -712,6 +903,15 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
   };
   const td = { fontSize: "0.7rem", padding: "1px 5px", verticalAlign: "middle" };
 
+  // Debajo del título de las tablas por CC: de dónde salen los consumos.
+  const notaConsumo = (
+    <div className="mb-1" style={{ fontSize: "0.7rem", color: "#64748b" }}>
+      <i className="bi bi-fuel-pump me-1"></i>
+      Consumo = litros que hizo falta para volver a llenar el tanque ÷ horas trabajadas desde el llenado
+      anterior. Los últimos días, que esperan el próximo llenado, todavía no cuentan.
+    </div>
+  );
+
   const rotulo = (texto) => (
     <div className="fw-bold mb-1" style={{ color: "#1b4332", fontSize: "0.82rem" }}>
       {texto}
@@ -729,6 +929,32 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       {valor === null || valor === 0 ? <span style={{ color: "#cbd5e1" }}>—</span> : numero(valor)}
     </td>
   );
+
+  // El valor que se compara contra el admisible lleva el color de su
+  // semáforo (27/09/2026): en verde y amarillo solo la letra; en rojo, con
+  // fondo, como la píldora del desvío.
+  const celdaMedida = (valor, d, malSiSube) => {
+    const color = semaforo(d, malSiSube);
+    if (valor === null || valor === 0 || color === null) return celdaNumero(valor, true);
+    if (color !== "rojo") {
+      return (
+        <td style={{ ...td, textAlign: "center", fontWeight: 700, color: SEMAFORO[color].color }}>
+          {numero(valor)}
+        </td>
+      );
+    }
+    return (
+      <td style={{ ...td, textAlign: "center" }}>
+        <span
+          className="px-2 rounded-pill fw-bold d-inline-block"
+          style={SEMAFORO[color]}
+          title="Fuera del admisible"
+        >
+          {numero(valor)}
+        </span>
+      </td>
+    );
+  };
 
   // El desvío: el porcentaje con su signo, en una píldora con el color del
   // semáforo. Sin admisible cargado va la raya.
@@ -755,10 +981,27 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     );
   };
 
-  const sinDatos = (columnas, texto) => (
+  // Dónde va el gráfico de cada tabla (ver useLugarGrafico).
+  const [lugarGraficoCC, refTablaCC] = useLugarGrafico();
+  const [lugarGraficoTarea, refTablaTarea] = useLugarGrafico();
+  const [lugarGraficoProduccion, refTablaProduccion] = useLugarGrafico();
+
+  // La barra de filtros de una tabla, entre su título y la tabla.
+  const filtrosDe = (tabla) => (
+    <BarraFiltros
+      filtro={filtros[tabla]}
+      onChange={cambiarFiltro(tabla)}
+      periodo={periodo}
+      personas={personasDelPeriodo}
+      ccs={ccsDelPeriodo}
+      tareas={tareasDelPeriodo}
+    />
+  );
+
+  const sinDatos = (columnas, texto, tabla) => (
     <tr>
       <td colSpan={columnas} className="text-center text-muted py-4" style={td}>
-        {cargando ? "Cargando…" : hayFiltro ? "Ningún parte coincide con los filtros" : texto}
+        {cargando ? "Cargando…" : hayFiltro(filtros[tabla]) ? "Ningún parte coincide con los filtros" : texto}
       </td>
     </tr>
   );
@@ -809,72 +1052,6 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
           </Button>
         </div>
 
-        {/* Filtros */}
-        <Card className="mb-3 p-2 shadow-sm border-0 rounded-3">
-          <div className="d-flex align-items-center gap-3 flex-wrap">
-            <div className="d-flex align-items-center gap-2">
-              <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
-                Fecha:
-              </span>
-              <div className="input-group input-group-sm" style={{ width: "150px" }}>
-                <Form.Control
-                  type="date"
-                  value={filtroFecha}
-                  min={periodo.desde || undefined}
-                  max={periodo.hasta || undefined}
-                  onChange={(e) => setFiltroFecha(e.target.value)}
-                  className={`rounded-3 ${filtroFecha ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
-                  style={{
-                    fontSize: "0.82rem",
-                    height: "32px",
-                    padding: "3px 8px",
-                    color: filtroFecha ? "#dc2626" : "#1e293b",
-                    fontWeight: filtroFecha ? "700" : "normal",
-                  }}
-                />
-                {filtroFecha && (
-                  <button
-                    className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
-                    type="button"
-                    onClick={() => setFiltroFecha("")}
-                    title="Limpiar filtro fecha"
-                    style={{ padding: "0 6px", height: "32px" }}
-                  >
-                    <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <FiltroSelect
-              etiqueta="Personal"
-              ancho="180px"
-              valor={filtroPersona}
-              vacio="Todos"
-              onChange={setFiltroPersona}
-              opciones={personasDelPeriodo}
-            />
-
-            <FiltroSelect
-              etiqueta="CC"
-              ancho="130px"
-              valor={filtroCC}
-              vacio="Todos"
-              onChange={setFiltroCC}
-              opciones={ccsDelPeriodo}
-            />
-
-            <FiltroSelect
-              etiqueta="Tarea"
-              ancho="185px"
-              valor={filtroTarea}
-              vacio="Todas"
-              onChange={setFiltroTarea}
-              opciones={tareasDelPeriodo}
-            />
-          </div>
-        </Card>
-
         {/* Cortes gruesos adentro de cada tabla: separan las horas de los
             consumos, y los consumos del admisible y su desvío. En el resumen por personal separa las horas y el
             combustible de las tareas (24/09/2026). Van por posición de
@@ -910,6 +1087,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
           {/* ── Resumen por personal ── */}
           <div className="mb-5">
             {rotulo("Resumen por personal")}
+            {filtrosDe("personal")}
             {/* Sin scroll lateral (24/09/2026): la tabla va al ancho de la
                 pantalla y son las columnas las que se angostan. Con las ~17
                 tareas de Berdina, cada título baja en varios renglones.
@@ -946,7 +1124,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                 </thead>
                 <tbody>
                   {cargando || filas.length === 0 ? (
-                    sinDatos(6 + tareas.length, "No hay partes cargados en este período")
+                    sinDatos(6 + tareas.length, "No hay partes cargados en este período", "personal")
                   ) : (
                     <>
                       {filas.map((f) => (
@@ -1006,13 +1184,18 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
           <>
           <div className="mb-5">
             {rotulo("Por centro de costo")}
-            <div className="bg-white rounded-3 shadow-sm" style={marco}>
+            {notaConsumo}
+            {filtrosDe("cc")}
+            {/* La tabla y el gráfico lado a lado. El gráfico arranca donde termina
+                la fila de títulos de la tabla y se centra en el lugar libre. */}
+            <div className="d-flex gap-3 flex-wrap align-items-start">
+            <div ref={refTablaCC} className="bg-white rounded-3 shadow-sm" style={{ ...marco, flex: "0 0 auto" }}>
               <Table className="mb-0 tabla-informe tabla-cc" style={{ width: "auto", minWidth: "620px" }}>
                 <thead>
                   <tr>
                     <th style={{ ...th, textAlign: "left", minWidth: "90px" }}>CC</th>
                     <th style={{ ...th, textAlign: "left", minWidth: "110px" }}>Equipo</th>
-                    <th style={{ ...th, textAlign: "center" }}>Combustible<br />(lts)</th>
+                    <th style={{ ...th, textAlign: "center" }}>Combustible<br />cargado (lts)</th>
                     <th style={{ ...th, textAlign: "center" }}>Hs<br />turno</th>
                     <th style={{ ...th, textAlign: "center" }}>Hs<br />CC</th>
                     <th style={{ ...th, textAlign: "center" }}>
@@ -1027,7 +1210,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                 </thead>
                 <tbody>
                   {cargando || porCC.length === 0 ? (
-                    sinDatos(7, "No hay partes con centro de costo en este período")
+                    sinDatos(7, "No hay partes con centro de costo en este período", "cc")
                   ) : (
                     <>
                       {porCC.map((f) => (
@@ -1069,12 +1252,21 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                 </tbody>
               </Table>
             </div>
+            {/* El gráfico, centrado en el lugar que deja la tabla */}
+            <ColumnaGrafico lugar={lugarGraficoCC}>
+              <GraficoConsumoCC filas={porCC} altoTabla={lugarGraficoCC.alto} />
+            </ColumnaGrafico>
+            </div>
           </div>
 
           {/* ── Por centro de costo y tarea ── */}
           <div className="mb-5">
             {rotulo("Por centro de costo y tarea")}
-            <div className="bg-white rounded-3 shadow-sm" style={marco}>
+            {notaConsumo}
+            {filtrosDe("ccTarea")}
+            {/* Igual que la tabla por CC: el gráfico al lado, con la tarea a elegir. */}
+            <div className="d-flex gap-3 flex-wrap align-items-start">
+            <div ref={refTablaTarea} className="bg-white rounded-3 shadow-sm" style={{ ...marco, flex: "0 0 auto" }}>
               <Table
                 className="mb-0 tabla-informe tabla-cc-tarea"
                 style={{ width: "auto", minWidth: "780px" }}
@@ -1083,7 +1275,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                   <tr>
                     <th style={{ ...th, textAlign: "left", minWidth: "90px" }}>CC</th>
                     <th style={{ ...th, textAlign: "left", minWidth: "160px" }}>Tarea</th>
-                    <th style={{ ...th, textAlign: "center" }}>Combustible<br />(lts)</th>
+                    <th style={{ ...th, textAlign: "center" }}>Combustible<br />cargado (lts)</th>
                     <th style={{ ...th, textAlign: "center" }}>Hs<br />turno</th>
                     <th style={{ ...th, textAlign: "center" }}>Hs<br />CC</th>
                     <th style={{ ...th, textAlign: "center" }}>
@@ -1106,7 +1298,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                 </thead>
                 <tbody>
                   {cargando || porTarea.length === 0
-                    ? sinDatos(9, "No hay partes con centro de costo en este período")
+                    ? sinDatos(9, "No hay partes con centro de costo en este período", "ccTarea")
                     : porTarea.map((f) => {
                         const a = contraAdmisible(f);
                         return (
@@ -1116,7 +1308,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                             {celdaNumero(f.combustible)}
                             {celdaNumero(f.horasTurno)}
                             {celdaNumero(f.horasCC)}
-                            {celdaNumero(f.consumo, true)}
+                            {celdaMedida(f.consumo, a.desvioConsumo, true)}
                             {celdaNumero(f.consumoCC, true)}
                             {/* Contra el consumo admisible de la tarea */}
                             {celdaNumero(a.consumoAdm)}
@@ -1127,12 +1319,20 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                 </tbody>
               </Table>
             </div>
+            <ColumnaGrafico lugar={lugarGraficoTarea}>
+              <GraficoConsumoCC filas={porTarea} altoTabla={lugarGraficoTarea.alto} porTarea />
+            </ColumnaGrafico>
+            </div>
           </div>
 
           {/* ── Producción y rendimiento ── */}
           <div className="mb-4">
             {rotulo("Producción y rendimiento por centro de costo y tarea")}
-            <div className="bg-white rounded-3 shadow-sm" style={marco}>
+            {notaConsumo}
+            {filtrosDe("produccion")}
+            {/* El gráfico al lado, con la tarea y la medida a elegir. */}
+            <div className="d-flex gap-3 flex-wrap align-items-start">
+            <div ref={refTablaProduccion} className="bg-white rounded-3 shadow-sm" style={{ ...marco, flex: "0 0 auto" }}>
               <Table
                 className="mb-0 tabla-informe tabla-produccion"
                 style={{ width: "auto", minWidth: "820px" }}
@@ -1141,7 +1341,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                   <tr>
                     <th style={{ ...th, textAlign: "left", minWidth: "90px" }}>CC</th>
                     <th style={{ ...th, textAlign: "left", minWidth: "160px" }}>Tarea</th>
-                    <th style={{ ...th, textAlign: "center" }}>Combustible<br />(lts)</th>
+                    <th style={{ ...th, textAlign: "center" }}>Combustible<br />cargado (lts)</th>
                     <th style={{ ...th, textAlign: "center" }}>
                       Cant. producida
                       <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>de la tarea</div>
@@ -1170,9 +1370,9 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                   </tr>
                 </thead>
                 <tbody>
-                  {cargando || porTarea.length === 0
-                    ? sinDatos(10, "No hay partes con centro de costo en este período")
-                    : porTarea.map((f) => {
+                  {cargando || porTareaProduccion.length === 0
+                    ? sinDatos(10, "No hay partes con centro de costo en este período", "produccion")
+                    : porTareaProduccion.map((f) => {
                         const a = contraAdmisible(f);
                         return (
                         <tr key={f.id}>
@@ -1189,7 +1389,11 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                             )}
                           </td>
                           {celdaNumero(f.unidadPorLts === null ? null : redondear(f.unidadPorLts), true)}
-                          {celdaNumero(f.rendimiento === null ? null : redondear(f.rendimiento), true)}
+                          {celdaMedida(
+                            f.rendimiento === null ? null : redondear(f.rendimiento),
+                            a.desvioRendimiento,
+                            false
+                          )}
                           {/* Contra el rendimiento admisible de la tarea */}
                           {celdaNumero(a.rendimientoAdm)}
                           {celdaDesvio(a.desvioRendimiento, false)}
@@ -1198,6 +1402,15 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                       })}
                 </tbody>
               </Table>
+            </div>
+            <ColumnaGrafico lugar={lugarGraficoProduccion}>
+              <GraficoConsumoCC
+                filas={porTareaProduccion}
+                altoTabla={lugarGraficoProduccion.alto}
+                porTarea
+                tipo="produccion"
+              />
+            </ColumnaGrafico>
             </div>
           </div>
           </>

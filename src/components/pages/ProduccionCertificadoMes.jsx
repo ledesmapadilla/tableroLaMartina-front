@@ -7,6 +7,14 @@ import SelectBuscador from "../shared/SelectBuscador";
 import { CLIENTES, unirClientes } from "../../utils/clientes";
 import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
 import { useSinGuardar } from "../../utils/sinGuardar";
+import {
+  desviosDelParte,
+  mapaDeAdmisibles,
+  SEMAFORO,
+  textoDesvio,
+  DESVIO_AMARILLO,
+  DESVIO_ROJO,
+} from "../../utils/desvios";
 
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -59,6 +67,108 @@ const SEP = "sep-bloque";
 // tarea) parten en renglones en vez de ensanchar la tabla: así entra en el
 // ancho de la pantalla sin scroll lateral (24/09/2026).
 const AJUSTA = { whiteSpace: "normal", wordBreak: "break-word", minWidth: "70px" };
+
+// Los nombres van dentro del html del cartel: se escapan.
+const escaparHtml = (texto) =>
+  String(texto ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+const nfDesvio = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
+
+// Cada tipo de desvío con su ícono (27/09/2026): el surtidor para el consumo
+// y el triángulo para el rendimiento, así se distinguen de un vistazo.
+const TIPOS_DE_DESVIO = {
+  consumo: { icono: "bi-fuel-pump-fill", titulo: "Desvío de consumo" },
+  rendimiento: { icono: "bi-exclamation-triangle-fill", titulo: "Desvío de rendimiento" },
+};
+
+/**
+ * Los avisos al lado del personal cuando el parte se desvió del admisible de
+ * su tarea (27/09/2026), con el mismo criterio que el informe del mes: uno
+ * por tipo (consumo y rendimiento), cada uno rojo o amarillo según su peor
+ * desvío. Al tocarlo se detalla cada desvío de ese tipo con su admisible.
+ */
+const AlertaDesvio = ({ parte, desvios }) => (
+  <>
+    {Object.keys(TIPOS_DE_DESVIO).map((tipo) => {
+      const delTipo = desvios.filter((d) => d.tipo === tipo);
+      return delTipo.length ? <IconoDesvio key={tipo} parte={parte} desvios={delTipo} tipo={tipo} /> : null;
+    })}
+  </>
+);
+
+const IconoDesvio = ({ parte, desvios, tipo }) => {
+  const { icono, titulo } = TIPOS_DE_DESVIO[tipo];
+  const peor = desvios[0].color;
+  const ver = () => {
+    const filas = desvios
+      .map(
+        (d) => `
+        <tr>
+          <td style="text-align:left;padding:5px 8px;border-bottom:1px solid #e2e8f0">
+            <div style="font-weight:600">${escaparHtml(d.medida)}</div>
+            ${d.nota ? `<div style="color:#64748b;font-size:0.72rem;line-height:1.35;margin-top:2px">${escaparHtml(d.nota)}</div>` : ""}
+          </td>
+          <td style="padding:5px 8px;white-space:nowrap;text-align:center;border-bottom:1px solid #e2e8f0"><b>${nfDesvio.format(d.real)}</b> ${escaparHtml(d.unidad)}</td>
+          <td style="padding:5px 8px;white-space:nowrap;text-align:center;border-bottom:1px solid #e2e8f0">${nfDesvio.format(d.admisible)} ${escaparHtml(d.unidad)}</td>
+          <td style="padding:5px 8px;white-space:nowrap;text-align:center;border-bottom:1px solid #e2e8f0">
+            <span style="padding:1px 8px;border-radius:999px;font-weight:700;
+              background:${SEMAFORO[d.color].backgroundColor};color:${SEMAFORO[d.color].color}">
+              ${textoDesvio(d.desvio)}
+            </span>
+          </td>
+        </tr>`
+      )
+      .join("");
+    Swal.fire({
+      icon: "warning",
+      iconColor: SEMAFORO[peor].color,
+      title: titulo,
+      // Ancho para que la explicación de cada desvío entre en pocos renglones;
+      // en un celular ocupa casi toda la pantalla.
+      width: "min(820px, 96vw)",
+      html: `
+        <div style="font-size:0.84rem;line-height:1.45;text-align:left">
+          <div style="margin-bottom:.5rem">
+            <b>${escaparHtml(parte.persona?.apellidoNombre || "")}</b> —
+            ${escaparHtml(parte.tarea?.tarea || "")}
+            ${parte.cc?.cc ? ` · CC ${escaparHtml(parte.cc.cc)}` : ""}
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:0.8rem">
+            <thead>
+              <tr style="background:#1b4332;color:#fff">
+                <th style="text-align:left;padding:5px 8px;width:55%">Medida</th>
+                <th style="padding:5px 8px;text-align:center">Real</th>
+                <th style="padding:5px 8px;text-align:center">Admisible</th>
+                <th style="padding:5px 8px;text-align:center">Desvío</th>
+              </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+          </table>
+          <div style="color:#64748b;font-size:0.72rem;margin-top:.6rem">
+            Amarillo: más del ${DESVIO_AMARILLO} % en contra · Rojo: más del ${DESVIO_ROJO} % en contra.
+            ${
+              tipo === "consumo"
+                ? "En contra es gastar de más. El gasoil que se carga al llenar el tanque es lo que la máquina gastó desde el llenado anterior: por eso el consumo se mide entre dos llenados y no por día."
+                : "En contra es producir de menos."
+            }
+          </div>
+        </div>`,
+      confirmButtonText: "Cerrar",
+      confirmButtonColor: "#1b4332",
+    });
+  };
+  return (
+    <i
+      role="button"
+      tabIndex={0}
+      className={`bi ${icono} ms-1`}
+      style={{ color: peor === "rojo" ? "#dc2626" : "#eab308", cursor: "pointer" }}
+      title={`${titulo}: toque para ver el detalle`}
+      onClick={ver}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && ver()}
+    ></i>
+  );
+};
 
 const hoyStr = () => {
   const d = new Date();
@@ -354,6 +464,15 @@ function ProduccionCertificadoMes({
   const [cerrado, setCerrado] = useState(false);
   const [fechaCierre, setFechaCierre] = useState(null);
   const [partes, setPartes] = useState([]);
+  // Los valores admisibles por tarea: con ellos se marca el parte cuyo día se
+  // desvió (27/09/2026). Son los mismos para todos los campos y meses.
+  const [admisibles, setAdmisibles] = useState(new Map());
+  useEffect(() => {
+    fetch("/api/admisibles")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((lista) => setAdmisibles(mapaDeAdmisibles(lista)))
+      .catch(() => setAdmisibles(new Map()));
+  }, []);
   const [personal, setPersonal] = useState([]);
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
@@ -370,6 +489,8 @@ function ProduccionCertificadoMes({
   const [filtroTurbo, setFiltroTurbo] = useState("Todos");
   // Arranca en "Todos": filtrar por un cliente escondería los partes del otro.
   const [filtroCliente, setFiltroCliente] = useState("Todos");
+  // Solo los partes con alarma de desvío (consumo o rendimiento), 27/09/2026.
+  const [soloAlarmas, setSoloAlarmas] = useState(false);
 
   const [form, setForm] = useState(FORM_VACIO);
   const [editando, setEditando] = useState(null);
@@ -435,6 +556,25 @@ function ProduccionCertificadoMes({
       setPartes([]);
     }
   };
+
+  // El consumo entre cargas de cada parte (27/09/2026), para el triángulo de
+  // desvíos. Guardar, editar o borrar un parte puede mover los tramos de su
+  // máquina, así que se vuelve a pedir cada vez que cambian los partes. Si
+  // llega una respuesta vieja después de una nueva, se descarta.
+  const [consumos, setConsumos] = useState({});
+  const pedidoConsumos = useRef(0);
+  useEffect(() => {
+    // Sin partes no hay nada que pedir; lo que haya quedado va por id de parte
+    // y no molesta.
+    if (!periodo.desde || !periodo.hasta || partes.length === 0) return;
+    const pedido = ++pedidoConsumos.current;
+    fetch(
+      `/api/partes/consumos?desde=${periodo.desde}&hasta=${periodo.hasta}&periodo=${clavePeriodo}&${qEstab}`
+    )
+      .then((res) => (res.ok ? res.json() : {}))
+      .then((data) => pedido === pedidoConsumos.current && setConsumos(data || {}))
+      .catch(() => pedido === pedidoConsumos.current && setConsumos({}));
+  }, [partes, periodo.desde, periodo.hasta, clavePeriodo, qEstab]);
 
   // El backend devuelve el parte recién guardado ya poblado, así que se lo
   // acomoda en la lista que está en pantalla en lugar de volver a pedir todo
@@ -787,6 +927,52 @@ function ProduccionCertificadoMes({
   // El cartel que explica qué hizo el reparto al guardar el parte. Solo
   // aparece cuando hubo algo que repartir o que deshacer: en las tareas que se
   // cargan a mano no molesta.
+  /**
+   * Qué desvíos dejó a la vista el parte recién guardado (27/09/2026), para
+   * avisarle a quien lo carga. Devuelve los tipos: "rendimiento", "consumo".
+   *
+   * - Los del propio parte, con los mismos criterios que los íconos.
+   * - Si el parte trae una carga de gasoil, esa carga cierra el período de su
+   *   máquina desde el llenado anterior: el consumo de esos días recién ahora
+   *   se conoce, y también se avisa si se desvió.
+   */
+  const desviosAlGuardar = async (guardado) => {
+    if (!guardado?._id || !periodo.desde) return [];
+    let cons;
+    try {
+      const res = await fetch(
+        `/api/partes/consumos?desde=${periodo.desde}&hasta=${periodo.hasta}&periodo=${clavePeriodo}&${qEstab}`
+      );
+      cons = res.ok ? await res.json() : {};
+    } catch {
+      cons = {};
+    }
+    const encontrados = desviosDelParte(guardado, admisibles, cons[guardado._id]);
+
+    const dia = soloFecha(guardado.fecha);
+    const ccGuardado = guardado.cc?._id || guardado.cc;
+    const turboGuardado = (guardado.turbo || "").trim();
+    for (const p of partes) {
+      if (String(p._id) === String(guardado._id)) continue;
+      const c = cons[p._id];
+      if (!c) continue;
+      const cierraCC =
+        Number(guardado.combustible) > 0 &&
+        ccGuardado &&
+        String(p.cc?._id || p.cc) === String(ccGuardado) &&
+        c.cc?.tramo?.carga?.dia === dia;
+      const cierraTurbo =
+        Number(guardado.combTurbo) > 0 &&
+        turboGuardado &&
+        (p.turbo || "").trim() === turboGuardado &&
+        c.turbo?.tramo?.carga?.dia === dia;
+      if (!cierraCC && !cierraTurbo) continue;
+      const soloEsaMaquina = { cc: cierraCC ? c.cc : null, turbo: cierraTurbo ? c.turbo : null };
+      encontrados.push(...desviosDelParte(p, admisibles, soloEsaMaquina).filter((d) => d.tipo === "consumo"));
+    }
+    return ["rendimiento", "consumo"].filter((t) => encontrados.some((d) => d.tipo === t));
+  };
+
   const contarElReparto = (reparto) => {
     if (!reparto) return;
     if (reparto.aviso) {
@@ -810,7 +996,7 @@ function ProduccionCertificadoMes({
       ? ` ${reparto.fueraDeMes} ${reparto.fueraDeMes === 1 ? "es" : "son"} de certificaciones ` +
         "anteriores: se quedan en su mes y cobran con un renglón de pago en esta."
       : "";
-    avisar({
+    return avisar({
       icon: "success",
       title: `Lote ${reparto.lote} terminado`,
       text:
@@ -999,15 +1185,31 @@ function ProduccionCertificadoMes({
 
         // Si el estado del lote movió el pago, eso es lo que hay que contar;
         // el "guardado" de siempre sobra.
+        // Los desvíos se buscan mientras se muestra el aviso de guardado.
+        const buscandoDesvios = desviosAlGuardar(guardado).catch(() => []);
         const reparto = guardado?.reparto;
-        if (reparto?.aviso || reparto?.estado === "repartido" || reparto?.estado === "limpiado") {
-          contarElReparto(reparto);
-        } else {
-          avisar({
-            icon: "success",
-            title: eraEdicion ? "Parte actualizado" : "Parte guardado",
-            timer: 1500,
-            showConfirmButton: false,
+        const avisoGuardado =
+          reparto?.aviso || reparto?.estado === "repartido" || reparto?.estado === "limpiado"
+            ? contarElReparto(reparto)
+            : avisar({
+                icon: "success",
+                title: eraEdicion ? "Parte actualizado" : "Parte guardado",
+                timer: 1500,
+                showConfirmButton: false,
+              });
+        await avisoGuardado;
+
+        // Si quedó un desvío, quien carga el parte tiene que darse por
+        // enterado: el cartel no se cierra solo, solo con OK (27/09/2026).
+        const tipos = await buscandoDesvios;
+        if (tipos.length) {
+          await avisar({
+            icon: "warning",
+            title: `Desvío en ${tipos.join(" y en ")}`,
+            confirmButtonText: "OK",
+            confirmButtonColor: "#1b4332",
+            allowOutsideClick: false,
+            allowEscapeKey: false,
           });
         }
       } else {
@@ -1258,7 +1460,17 @@ function ProduccionCertificadoMes({
     return delPadron;
   }, [turbos, form.turbo]);
 
+  // Los desvíos de cada parte, calculados una vez: los usan los íconos de la
+  // tabla y el filtro de alarmas.
+  const desviosPorParte = useMemo(
+    () => new Map(partes.map((p) => [p._id, desviosDelParte(p, admisibles, consumos[p._id])])),
+    [partes, admisibles, consumos]
+  );
+  const conAlarma = (p) => (desviosPorParte.get(p._id) || []).length > 0;
+  const cantidadConAlarma = partes.filter(conAlarma).length;
+
   const hayFiltro =
+    soloAlarmas ||
     Boolean(busqueda) ||
     Boolean(filtroFecha) ||
     filtroPersona !== "Todos" ||
@@ -1270,6 +1482,7 @@ function ProduccionCertificadoMes({
   const partesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return partes.filter((p) => {
+      if (soloAlarmas && !(desviosPorParte.get(p._id) || []).length) return false;
       if (filtroFecha && soloFecha(p.fecha) !== filtroFecha) return false;
       if (filtroPersona !== "Todos" && (p.persona?._id || "") !== filtroPersona) return false;
       if (filtroTarea !== "Todas" && (p.tarea?._id || "") !== filtroTarea) return false;
@@ -1289,7 +1502,18 @@ function ProduccionCertificadoMes({
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
     });
-  }, [partes, busqueda, filtroFecha, filtroPersona, filtroTarea, filtroCC, filtroTurbo, filtroCliente]);
+  }, [
+    partes,
+    busqueda,
+    filtroFecha,
+    filtroPersona,
+    filtroTarea,
+    filtroCC,
+    filtroTurbo,
+    filtroCliente,
+    soloAlarmas,
+    desviosPorParte,
+  ]);
 
   // Opciones de los desplegables: solo lo que aparece en el período cargado.
   const personasDelPeriodo = useMemo(() => {
@@ -2172,14 +2396,37 @@ function ProduccionCertificadoMes({
               opciones={turbosDelPeriodo.map((t) => [t, t])}
             />
 
-            {hayFiltro && (
+            {/* Filtro de alarmas: un círculo que se prende y deja solo los
+                partes con desvío de consumo o de rendimiento. */}
+            <button
+              type="button"
+              onClick={() => setSoloAlarmas((v) => !v)}
+              className="btn btn-sm d-flex align-items-center gap-1 flex-shrink-0 rounded-pill"
+              style={{
+                fontSize: "0.78rem",
+                height: "32px",
+                padding: "0 10px",
+                border: `1px solid ${soloAlarmas ? "#dc2626" : "#cbd5e1"}`,
+                backgroundColor: soloAlarmas ? "#fee2e2" : "#fff",
+                color: soloAlarmas ? "#b91c1c" : "#1e293b",
+                fontWeight: soloAlarmas ? 700 : 500,
+              }}
+              title={soloAlarmas ? "Mostrar todos los partes" : "Mostrar solo los partes con alarma de desvío"}
+              aria-pressed={soloAlarmas}
+            >
+              <i
+                className={`bi ${soloAlarmas ? "bi-record-circle-fill" : "bi-circle"}`}
+                style={{ color: soloAlarmas ? "#dc2626" : "#94a3b8" }}
+              ></i>
+              Alarmas
               <span
-                className="text-muted flex-shrink-0"
-                style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}
+                className="rounded-pill px-1"
+                style={{ backgroundColor: cantidadConAlarma ? "#dc2626" : "#e2e8f0", color: cantidadConAlarma ? "#fff" : "#64748b", fontSize: "0.68rem", minWidth: "18px" }}
               >
-                {partesFiltrados.length} de {partes.length}
+                {cantidadConAlarma}
               </span>
-            )}
+            </button>
+
           </div>
         </Card>
 
@@ -2253,7 +2500,10 @@ function ProduccionCertificadoMes({
                         ></i>
                       )}
                     </td>
-                    <td className="text-start ps-2" style={AJUSTA}>{p.persona?.apellidoNombre || "—"}</td>
+                    <td className="text-start ps-2" style={AJUSTA}>
+                      {p.persona?.apellidoNombre || "—"}
+                      <AlertaDesvio parte={p} desvios={desviosPorParte.get(p._id) || []} />
+                    </td>
                     <td className="text-secondary">{p.horaIngreso || "—"}</td>
                     <td className="text-secondary">{p.horaEgreso || "—"}</td>
                     {dosTurnos && (
