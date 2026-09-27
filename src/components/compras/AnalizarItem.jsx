@@ -99,6 +99,10 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   const [subiendo, setSubiendo] = useState(null)
   // Ítems que el analista destildó para que no salgan todavía (26/09/2026).
   const [retenidos, setRetenidos] = useState(() => new Set())
+  // Liberar parte de un ítem (26/09/2026): itemId -> cuántas unidades salen, y
+  // qué pasa con las que no ({ accion: 'pendiente' | 'rechazar', motivo }).
+  const [cantLiberar, setCantLiberar] = useState({})
+  const [restoMap, setRestoMap] = useState({})
 
   useEffect(() => {
     const enVista = itemEnVista(estadoVistoDe(state))
@@ -196,11 +200,33 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
     .filter(i => !idsAMostrar.has(i._id) && !esParaAnalisis(i.estado) && i.estado !== 'Rechazado')
     .reduce((acc, i) => acc + (opcionElegida(i)?.precio || 0) * (i.cant || 0), 0)
 
+  // Cuántas unidades salen de cada ítem: todo lo pedido, salvo que el analista
+  // baje la cantidad. Lo que no sale se separa en otro ítem del pedido (el
+  // back, en /dividir), que queda en análisis o rechazado.
+  const cantDe = (item) =>
+    liberaDeAPartes && cantLiberar[item._id] !== undefined ? cantLiberar[item._id] : item.cant
+  const esParcial = (item) => {
+    const n = Number(cantDe(item))
+    return typeof item.cant === 'number' && Number.isInteger(n) && n >= 1 && n < item.cant
+  }
+  const restoDe = (item) => restoMap[item._id] || { accion: 'pendiente', motivo: '' }
+  const problemaDeCantidad = (item) => {
+    const n = Number(cantDe(item))
+    if (typeof item.cant !== 'number') return null
+    if (!Number.isInteger(n) || n < 1 || n > item.cant) {
+      return `${item.nombre_repuesto}: la cantidad a liberar va de 1 a ${item.cant}, en unidades enteras. Para no liberar nada, destildalo.`
+    }
+    if (esParcial(item) && restoDe(item).accion === 'rechazar' && !restoDe(item).motivo.trim()) {
+      return `${item.nombre_repuesto}: escribí el motivo del rechazo de las ${item.cant - n} que no salen.`
+    }
+    return null
+  }
+
   const calcularMontoTotal = () =>
     itemsALiberar.reduce((acc, item) => {
       // El monto que decide si va a autorizar sale del presupuesto elegido.
       const elegida = opcionElegida(formsMap[item._id] || FORM_ITEM_INIT)
-      return acc + (elegida ? elegida.precio : 0) * (item.cant || 0)
+      return acc + (elegida ? elegida.precio : 0) * (Number(cantDe(item)) || 0)
     }, 0)
 
   const elegirPedido = (p) => {
@@ -209,6 +235,8 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
     setBusqueda(fmtNro(p.nro_pedido, p._src))
     setShowDropdown(false)
     setRetenidos(new Set())
+    setCantLiberar({})
+    setRestoMap({})
     const archivos = {}
     ;(p.items || []).filter(i => enVista(i)).forEach(i => {
       if (i.archivo?.url) archivos[i._id] = i.archivo
@@ -405,17 +433,23 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
       })
       return
     }
+    const problema = liberaDeAPartes ? itemsALiberar.map(problemaDeCantidad).find(Boolean) : null
+    if (problema) {
+      Swal.fire({ icon: 'warning', title: 'Revisá las cantidades', text: problema, confirmButtonColor: '#4a0812' })
+      return
+    }
+    const partidos = liberaDeAPartes ? itemsALiberar.filter(esParcial) : []
     const monto = calcularMontoTotal()
     const montoPedido = monto + montoYaLiberado
     const nuevoEstado = montoPedido >= montoAutorizacion ? 'Autorizar' : 'Para hacer OP'
     // Al corregir un análisis el estado se recalcula con la misma regla: si
     // ahora supera el monto, vuelve a Gerencia para autorizar.
     const cambiaEstado = editando && nuevoEstado !== estadoVisto
-    const parcial = itemsEnEspera.length > 0
+    const parcial = itemsEnEspera.length > 0 || partidos.length > 0
     const result = await Swal.fire({
       title: editando
         ? '¿Guardar los cambios del análisis?'
-        : parcial
+        : itemsEnEspera.length > 0
           ? `¿Liberar ${itemsALiberar.length} de ${itemsAMostrar.length} ítems?`
           : '¿Procesar pedido?',
       html:
@@ -425,7 +459,16 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           : '') +
         `<br/>Estado → <b>${NOMBRE_ESTADO[nuevoEstado] || nuevoEstado}</b>` +
         (cambiaEstado ? '<br/><small style="color:#b45309">El pedido cambia de estado.</small>' : '') +
-        (parcial
+        partidos
+          .map(i => {
+            const n = Number(cantDe(i))
+            const r = restoDe(i)
+            return `<br/><small style="color:#b45309">${i.nombre_repuesto}: salen ${n} de ${i.cant}; ${
+              i.cant - n
+            } ${r.accion === 'rechazar' ? 'se rechazan' : 'siguen en análisis'}.</small>`
+          })
+          .join('') +
+        (itemsEnEspera.length > 0
           ? `<br/><small style="color:#64748b">Siguen en análisis: ${itemsEnEspera
               .map(i => i.nombre_repuesto)
               .join(', ')}. Lo que ya les cargaste queda guardado.</small>`
@@ -439,6 +482,17 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
     if (!result.isConfirmed) return
     try {
       const base = pedidoSeleccionado._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
+      // Primero se separa lo que no sale: el ítem baja a la cantidad liberada y
+      // el resto pasa a otro ítem del pedido. Uno por vez, que cada división
+      // guarda el pedido entero.
+      for (const item of partidos) {
+        const r = restoDe(item)
+        await api.put(`${base}/${pedidoSeleccionado._id}/items/${item._id}/dividir`, {
+          cant: Number(cantDe(item)),
+          resto: { accion: r.accion, motivo: r.motivo.trim() },
+          usuario: 'Analista',
+        })
+      }
       await Promise.all(itemsAMostrar.map(item => {
         const form = formsMap[item._id] || FORM_ITEM_INIT
         // Vacío va como null y no como undefined: undefined no viaja en el
@@ -451,7 +505,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           ...(libera ? { estado: nuevoEstado, usuario: 'Analista' } : {}),
           // El historial tiene que distinguir la corrección del primer análisis.
           ...(libera && editando ? { nota: 'Análisis editado' } : {}),
-          ...(libera && parcial ? { nota: 'Liberado antes que el resto del pedido' } : {}),
+          ...(libera && itemsEnEspera.length > 0 ? { nota: 'Liberado antes que el resto del pedido' } : {}),
           stock:      toNum(form.stock),
           proveedor1: form.proveedor1 || null,
           precio1:    toNum(form.precio1),
@@ -560,6 +614,64 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
           </option>
         ))}
       </select>
+    )
+  }
+
+  // La cantidad en el resumen: al liberar, se puede bajar. Si sale menos de lo
+  // pedido, se elige qué pasa con el resto: sigue en análisis (otro ítem, en
+  // blanco) o se rechaza con motivo.
+  const celdaCantidad = (item, espera) => {
+    const editable = liberaDeAPartes && !espera && typeof item.cant === 'number' && item.cant > 1
+    if (!editable) return item.cant || <Raya />
+    const n = cantDe(item)
+    const resto = restoDe(item)
+    const queda = item.cant - Number(n)
+    const setResto = (campo, valor) =>
+      setRestoMap((m) => ({ ...m, [item._id]: { ...restoDe(item), [campo]: valor } }))
+    return (
+      <div className="d-flex flex-column align-items-center gap-1">
+        <div className="d-flex align-items-center gap-1">
+          <Form.Control
+            type="number"
+            min="1"
+            max={item.cant}
+            step="1"
+            size="sm"
+            className="rounded-3"
+            style={{ width: 64, fontSize: '0.78rem', height: '28px' }}
+            value={n ?? ''}
+            onChange={(e) => setCantLiberar((m) => ({ ...m, [item._id]: e.target.value }))}
+            title="Cuántas unidades salen ahora"
+          />
+          <span className="text-muted" style={{ fontSize: '0.7rem', whiteSpace: 'nowrap' }}>
+            de {item.cant}
+          </span>
+        </div>
+        {esParcial(item) && (
+          <>
+            <Form.Select
+              size="sm"
+              className="rounded-3"
+              style={{ minWidth: 150, fontSize: '0.74rem', height: '28px' }}
+              value={resto.accion}
+              onChange={(e) => setResto('accion', e.target.value)}
+            >
+              <option value="pendiente">Dejar {queda} en análisis</option>
+              <option value="rechazar">Rechazar {queda}</option>
+            </Form.Select>
+            {resto.accion === 'rechazar' && (
+              <Form.Control
+                size="sm"
+                className="rounded-3"
+                style={{ minWidth: 150, fontSize: '0.74rem', height: '28px' }}
+                value={resto.motivo}
+                onChange={(e) => setResto('motivo', e.target.value)}
+                placeholder="Motivo del rechazo…"
+              />
+            )}
+          </>
+        )}
+      </div>
     )
   }
 
@@ -900,7 +1012,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
               const form = formsMap[item._id] || FORM_ITEM_INIT
               const opciones = opcionesDePrecio(form)
               const elegida = opcionElegida(form)
-              const cant = item.cant || 0
+              const cant = Number(cantDe(item)) || 0
               const total = elegida ? elegida.precio * cant : null
               return { item, opciones, elegida, cant, total, espera: !idsALiberar.has(item._id) }
             })
@@ -930,7 +1042,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {filas.map(({ item, opciones, elegida, cant, total, espera }) => (
+                      {filas.map(({ item, opciones, elegida, total, espera }) => (
                         <tr key={item._id} style={espera ? { opacity: 0.5 } : undefined}>
                           <td style={tdCentro}>{fecha}</td>
                           <td style={{ ...td, fontWeight: 500 }}>
@@ -941,7 +1053,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                               </span>
                             )}
                           </td>
-                          <td style={tdCentro}>{cant || <Raya />}</td>
+                          <td style={{ ...tdCentro, padding: '2px 5px' }}>{celdaCantidad(item, espera)}</td>
                           <td style={{ ...td, padding: '2px 5px' }}>{selectorProveedor(item, opciones, elegida)}</td>
                           <td style={tdCentro}>{elegida ? fmtPrecio(elegida.precio) : <Raya />}</td>
                           <td style={{ ...tdCentro, fontWeight: 600 }}>
