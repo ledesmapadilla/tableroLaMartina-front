@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { isMobile } from "./utils/device";
 
@@ -12,94 +13,107 @@ import MenuCompras from "./components/compras/Menu";
 import RutaProtegida from "./components/shared/RutaProtegida";
 import Login from "./components/shared/Login";
 import { PERMISOS, esRutaPublica } from "./utils/permisos";
-import InicioCompras from "./components/compras/Inicio";
-import Berdina from "./components/compras/Berdina";
-import BerdinaPedidos from "./components/compras/BerdinaPedidos";
-import NuevoPedido from "./components/compras/NuevoPedido";
-import Pendientes from "./components/compras/Pendientes";
-import SanPabloCompras from "./components/compras/SanPablo";
-import SanPabloPedidos from "./components/compras/SanPabloPedidos";
-import SanPabloNuevoPedido from "./components/compras/SanPabloNuevoPedido";
-import Analista from "./components/compras/Analista";
-import AnalistaPedidos from "./components/compras/AnalistaPedidos";
-import AnalistaPendientes from "./components/compras/AnalistaPendientes";
+const InicioCompras = lazy(() => import("./components/compras/Inicio"));
+const Berdina = lazy(() => import("./components/compras/Berdina"));
+const BerdinaPedidos = lazy(() => import("./components/compras/BerdinaPedidos"));
+const NuevoPedido = lazy(() => import("./components/compras/NuevoPedido"));
+const Pendientes = lazy(() => import("./components/compras/Pendientes"));
+const SanPabloCompras = lazy(() => import("./components/compras/SanPablo"));
+const SanPabloPedidos = lazy(() => import("./components/compras/SanPabloPedidos"));
+const SanPabloNuevoPedido = lazy(() => import("./components/compras/SanPabloNuevoPedido"));
+const Analista = lazy(() => import("./components/compras/Analista"));
+const AnalistaPedidos = lazy(() => import("./components/compras/AnalistaPedidos"));
+const AnalistaPendientes = lazy(() => import("./components/compras/AnalistaPendientes"));
 // El stock del almacén: los artículos y los movimientos viven en la base.
-import Stock from "./components/compras/Stock";
-import StockRubro from "./components/compras/StockRubro";
-import StockCatalogo from "./components/compras/StockCatalogo";
-import AnalizarItem from "./components/compras/AnalizarItem";
-import OrdenPago from "./components/compras/OrdenPago";
-import Gerencia from "./components/compras/Gerencia";
-import GerenciaHistorial from "./components/compras/GerenciaHistorial";
-import VerOP from "./components/compras/VerOP";
-import Usuarios from "./components/compras/Usuarios";
-import Roles from "./components/compras/Roles";
-import Proveedores from "./components/compras/Proveedores";
+const Stock = lazy(() => import("./components/compras/Stock"));
+const StockRubro = lazy(() => import("./components/compras/StockRubro"));
+const StockCatalogo = lazy(() => import("./components/compras/StockCatalogo"));
+const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
+const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
+const Gerencia = lazy(() => import("./components/compras/Gerencia"));
+const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistorial"));
+const VerOP = lazy(() => import("./components/compras/VerOP"));
+const Usuarios = lazy(() => import("./components/compras/Usuarios"));
+const Roles = lazy(() => import("./components/compras/Roles"));
+const Proveedores = lazy(() => import("./components/compras/Proveedores"));
 
 import Footer from "./components/shared/Footer";
 import PaginaPrincipal from "./components/pages/PaginaPrincipal";
-import Inicio from "./components/pages/Inicio";
-import AltaCentrosCosto from "./components/pages/AltaCentrosCosto";
-import ProduccionAltaPersonal from "./components/pages/ProduccionAltaPersonal";
-import ProduccionAltaTareas from "./components/pages/ProduccionAltaTareas";
-import ProduccionEstablecimientos from "./components/pages/ProduccionEstablecimientos";
-import ProduccionCertificados from "./components/pages/ProduccionCertificados";
-import ProduccionCertificadoMenu from "./components/pages/ProduccionCertificadoMenu";
-import ProduccionInformesMenu from "./components/pages/ProduccionInformesMenu";
-import ProduccionInformeMes from "./components/pages/ProduccionInformeMes";
-import ProduccionInformeTareasPersonal from "./components/pages/ProduccionInformeTareasPersonal";
-import ProduccionCertificadoMes from "./components/pages/ProduccionCertificadoMes";
-import ProduccionVariables from "./components/pages/ProduccionVariables";
-import ProduccionVariablesMenu from "./components/pages/ProduccionVariablesMenu";
-import ProduccionLotes from "./components/pages/ProduccionLotes";
-import ProduccionAdmisibles from "./components/pages/ProduccionAdmisibles";
-import ProduccionCampoMenu from "./components/pages/ProduccionCampoMenu";
-import Error404 from "./components/pages/Error404";
-import Camionetas from "./components/pages/Camionetas";
-import ReparacionesSanPablo from "./components/pages/ReparacionesSanPablo";
-import IngresosSanPablo from "./components/pages/IngresosSanPablo";
-import IngresosEscaleras from "./components/pages/IngresosEscaleras";
-import CosechasSanPablo from "./components/pages/CosechasSanPablo";
+const Inicio = lazy(() => import("./components/pages/Inicio"));
+const AltaCentrosCosto = lazy(() => import("./components/pages/AltaCentrosCosto"));
+const ProduccionAltaPersonal = lazy(() => import("./components/pages/ProduccionAltaPersonal"));
+const ProduccionAltaTareas = lazy(() => import("./components/pages/ProduccionAltaTareas"));
+const ProduccionEstablecimientos = lazy(() => import("./components/pages/ProduccionEstablecimientos"));
+const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
+const ProduccionCertificadoMenu = lazy(() => import("./components/pages/ProduccionCertificadoMenu"));
+const ProduccionInformesMenu = lazy(() => import("./components/pages/ProduccionInformesMenu"));
+const ProduccionInformeMes = lazy(() => import("./components/pages/ProduccionInformeMes"));
+const ProduccionInformeTareasPersonal = lazy(() => import("./components/pages/ProduccionInformeTareasPersonal"));
+const ProduccionCertificadoMes = lazy(() => import("./components/pages/ProduccionCertificadoMes"));
+const ProduccionVariables = lazy(() => import("./components/pages/ProduccionVariables"));
+const ProduccionVariablesMenu = lazy(() => import("./components/pages/ProduccionVariablesMenu"));
+const ProduccionLotes = lazy(() => import("./components/pages/ProduccionLotes"));
+const ProduccionAdmisibles = lazy(() => import("./components/pages/ProduccionAdmisibles"));
+const ProduccionCampoMenu = lazy(() => import("./components/pages/ProduccionCampoMenu"));
+const Error404 = lazy(() => import("./components/pages/Error404"));
+const Camionetas = lazy(() => import("./components/pages/Camionetas"));
+const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesSanPablo"));
+const IngresosSanPablo = lazy(() => import("./components/pages/IngresosSanPablo"));
+const IngresosEscaleras = lazy(() => import("./components/pages/IngresosEscaleras"));
+const CosechasSanPablo = lazy(() => import("./components/pages/CosechasSanPablo"));
 import RutaCosecha from "./components/shared/RutaCosecha";
 import TractorIcon from "./components/shared/TractorIcon";
-import Colectivo from "./components/pages/Colectivo";
-import ColectivosAltas from "./components/pages/ColectivosAltas";
-import ColectivosPreventivo from "./components/pages/ColectivosPreventivo";
-import ColectivosReparaciones from "./components/pages/ColectivosReparaciones";
-import CamionetasAltas from "./components/pages/CamionetasAltas";
-import CamionetasCheckList from "./components/pages/CamionetasCheckList";
-import ResumenCheckList from "./components/pages/ResumenCheckList";
-import CamionetasServices from "./components/pages/CamionetasServices";
-import ServicesKilometros from "./components/pages/ServicesKilometros";
-import ServicesUltimoService from "./components/pages/ServicesUltimoService";
-import ServicesReparaciones from "./components/pages/ServicesReparaciones";
-import ReparacionesCamioneta from "./components/pages/ReparacionesCamioneta";
-import TareaDetalle from "./components/pages/TareaDetalle";
-import ResumenCamionetas from "./components/pages/ResumenCamionetas";
-import ResumenReparaciones from "./components/pages/ResumenReparaciones";
-import HistorialReparaciones from "./components/pages/HistorialReparaciones";
-import Tractores from "./components/pages/Tractores";
-import TractoresPreventivo from "./components/pages/TractoresPreventivo";
-import TractoresReparaciones from "./components/pages/TractoresReparaciones";
-import TractoresRepuestos from "./components/pages/TractoresRepuestos";
-import TractoresAltas from "./components/pages/TractoresAltas";
-import TractoresGrupo from "./components/pages/TractoresGrupo";
-import ReparacionesTractor from "./components/pages/ReparacionesTractor";
-import ReportarFallaTractor from "./components/pages/ReportarFallaTractor";
-import TareasTractor from "./components/pages/TareasTractor";
-import TareasTractorVieja from "./components/pages/TareasTractorVieja";
-import TareasTractorNueva from "./components/pages/TareasTractorNueva";
-import HistorialTractor from "./components/pages/HistorialTractor";
-import ResumenReparacionesTractores from "./components/pages/ResumenReparacionesTractores";
-import Visitas from "./components/pages/Visitas";
+const Colectivo = lazy(() => import("./components/pages/Colectivo"));
+const ColectivosAltas = lazy(() => import("./components/pages/ColectivosAltas"));
+const ColectivosPreventivo = lazy(() => import("./components/pages/ColectivosPreventivo"));
+const ColectivosReparaciones = lazy(() => import("./components/pages/ColectivosReparaciones"));
+const CamionetasAltas = lazy(() => import("./components/pages/CamionetasAltas"));
+const CamionetasCheckList = lazy(() => import("./components/pages/CamionetasCheckList"));
+const ResumenCheckList = lazy(() => import("./components/pages/ResumenCheckList"));
+const CamionetasServices = lazy(() => import("./components/pages/CamionetasServices"));
+const ServicesKilometros = lazy(() => import("./components/pages/ServicesKilometros"));
+const ServicesUltimoService = lazy(() => import("./components/pages/ServicesUltimoService"));
+const ServicesReparaciones = lazy(() => import("./components/pages/ServicesReparaciones"));
+const ReparacionesCamioneta = lazy(() => import("./components/pages/ReparacionesCamioneta"));
+const TareaDetalle = lazy(() => import("./components/pages/TareaDetalle"));
+const ResumenCamionetas = lazy(() => import("./components/pages/ResumenCamionetas"));
+const ResumenReparaciones = lazy(() => import("./components/pages/ResumenReparaciones"));
+const HistorialReparaciones = lazy(() => import("./components/pages/HistorialReparaciones"));
+const Tractores = lazy(() => import("./components/pages/Tractores"));
+const TractoresPreventivo = lazy(() => import("./components/pages/TractoresPreventivo"));
+const TractoresReparaciones = lazy(() => import("./components/pages/TractoresReparaciones"));
+const TractoresRepuestos = lazy(() => import("./components/pages/TractoresRepuestos"));
+const TractoresAltas = lazy(() => import("./components/pages/TractoresAltas"));
+const TractoresGrupo = lazy(() => import("./components/pages/TractoresGrupo"));
+const ReparacionesTractor = lazy(() => import("./components/pages/ReparacionesTractor"));
+const ReportarFallaTractor = lazy(() => import("./components/pages/ReportarFallaTractor"));
+const TareasTractor = lazy(() => import("./components/pages/TareasTractor"));
+const TareasTractorVieja = lazy(() => import("./components/pages/TareasTractorVieja"));
+const TareasTractorNueva = lazy(() => import("./components/pages/TareasTractorNueva"));
+const HistorialTractor = lazy(() => import("./components/pages/HistorialTractor"));
+const ResumenReparacionesTractores = lazy(() => import("./components/pages/ResumenReparacionesTractores"));
+const Visitas = lazy(() => import("./components/pages/Visitas"));
 // Con alias: Compras ya trae su propio Pendientes, que es el de los pedidos.
-import PendientesReunion from "./components/pages/Pendientes";
-import CamionetasPreventivo from "./components/pages/CamionetasPreventivo";
-import CamionetaMenuReparaciones from "./components/pages/CamionetaMenuReparaciones";
-import ReportarFallaCamioneta from "./components/pages/ReportarFallaCamioneta";
+const PendientesReunion = lazy(() => import("./components/pages/Pendientes"));
+const CamionetasPreventivo = lazy(() => import("./components/pages/CamionetasPreventivo"));
+const CamionetaMenuReparaciones = lazy(() => import("./components/pages/CamionetaMenuReparaciones"));
+const ReportarFallaCamioneta = lazy(() => import("./components/pages/ReportarFallaCamioneta"));
 import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 import BotonReunionFlotante from "./components/shared/BotonReunionFlotante";
 import NavbarProduccion from "./components/shared/NavbarProduccion";
+
+// Las pantallas se bajan recién cuando se abren (27/09/2026): antes iban las
+// 78 en un solo JS de 1,5 MB que el navegador tenía que bajar y leer antes de
+// mostrar nada. Lo que queda con import común es lo que se ve siempre (menús,
+// login, la principal, los botones flotantes). Mientras llega una pantalla se
+// muestra esto.
+function CargandoPantalla() {
+  return (
+    <div className="d-flex justify-content-center py-5">
+      <span className="spinner-border text-secondary" role="status" aria-label="Cargando" />
+    </div>
+  );
+}
 
 // Las tareas de San Pablo que se marcan como en proceso o terminadas. El
 // pulverizado salió el 25/09/2026: lleva la cantidad a mano.
@@ -136,10 +150,12 @@ function App() {
         <div className="app-wrapper" style={{ width: "100%", minHeight: "100vh" }}>
           <div className="layout-right" style={{ width: "100%", marginLeft: 0, padding: 0 }}>
             <main style={{ padding: 0 }}>
-              <Routes>
-                <Route path="/visitas" element={<Visitas />} />
-                <Route path="*" element={<Navigate to="/visitas" replace />} />
-              </Routes>
+              <Suspense fallback={<CargandoPantalla />}>
+                <Routes>
+                  <Route path="/visitas" element={<Visitas />} />
+                  <Route path="*" element={<Navigate to="/visitas" replace />} />
+                </Routes>
+              </Suspense>
             </main>
             <Footer />
           </div>
@@ -203,6 +219,7 @@ function LayoutDesktop() {
           {esProduccion && <NavbarProduccion />}
           {esCompras && !esPublica && <MenuCompras />}
           <main>
+            <Suspense fallback={<CargandoPantalla />}>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/" element={<PaginaPrincipal />} />
@@ -427,6 +444,7 @@ function LayoutDesktop() {
               <Route path="/pendientes" element={<PendientesReunion />} />
               <Route path="*" element={<Error404 />} />
             </Routes>
+            </Suspense>
           </main>
           <Footer />
         </div>
