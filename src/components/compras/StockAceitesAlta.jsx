@@ -4,7 +4,7 @@ import { Container, Card, Table, Button, Form, Modal, Row, Col } from 'react-boo
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { usePermisos } from '../../context/permisos'
-import { Raya, BotonAccion, BotonLimpiar, Buscador } from './estilos'
+import { Raya, BotonAccion, BotonLimpiar, BotonVolver, Buscador } from './estilos'
 import { A, litros, normalizar } from './aceites'
 
 /**
@@ -165,8 +165,9 @@ export default function StockAceitesAlta() {
         className="px-3 py-2 d-flex flex-column flex-grow-1"
         style={{ maxWidth: '1000px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
       >
-        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
+        {/* Encabezado, con su Volver como en el Sistema de Gestión. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <BotonVolver />
           <div
             className="rounded-3 d-flex align-items-center justify-content-center"
             style={{
@@ -215,19 +216,20 @@ export default function StockAceitesAlta() {
           </div>
         </Card>
 
+        {/* La tabla va del ancho del encabezado y del buscador, no del de su
+            contenido, así quedan alineados. Si la pantalla es angosta, el
+            scroll queda adentro del marco. */}
         <div
           className="shadow-sm rounded-3 bg-white"
           style={{
             flex: '0 1 auto',
             minHeight: 0,
-            alignSelf: 'center',
-            maxWidth: '100%',
             overflowY: 'auto',
             overflowX: 'auto',
             border: '1px solid #cbd5e1',
           }}
         >
-          <Table className="mb-0 tabla-informe" style={{ width: 'auto', minWidth: '760px' }}>
+          <Table className="mb-0 tabla-informe" style={{ width: '100%', minWidth: '760px' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
                 <th style={th}>Tipo de aceite</th>

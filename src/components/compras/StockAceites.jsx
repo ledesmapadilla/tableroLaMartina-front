@@ -5,41 +5,25 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { usePermisos } from '../../context/permisos'
 import { exportarPlanilla } from '../../helpers/excel'
-import { Raya, BotonAccion, BotonLimpiar, FiltroSelect, Buscador } from './estilos'
+import { Raya, BotonAccion, BotonLimpiar, BotonVolver, FiltroSelect } from './estilos'
 import ModalMovimientoAceite from './ModalMovimientoAceite'
-import { A, litros, pesos, nombreAceite, normalizar, hoy, fechaCorta } from './aceites'
+import { useMovimientosAceite } from './useMovimientosAceite'
+import { A, litros, nombreAceite, hoy, fechaCorta } from './aceites'
 
 /**
- * Los movimientos de aceites (28/09/2026).
+ * Movimientos de aceites (28/09/2026).
  *
- * Copiada de Mantenimiento › Consumo de aceites del Sistema de Gestión Lepa y
- * pasada al formato del Tablero. Allá eran dos pantallas —los consumos con el
- * stock arriba, y las compras aparte, a las que se llegaba con "Ver detalle de
- * compra"—; acá son una sola con dos vistas, Consumos y Compras, y el stock de
- * cada aceite en una franja arriba que al tocarla filtra la tabla.
+ * Copia de Mantenimiento › Consumo de aceites del Sistema de Gestión Lepa, con
+ * la misma tabla: primero una fila de stock por cada aceite —con el saldo en
+ * la columna Stock y el botón "Ver detalle de compra"— y después los consumos.
+ * Las compras están en su propia pantalla (StockAceitesCompras.jsx), igual que
+ * allá.
  *
- * La máquina y la obra de allá acá son el grupo y el centro de costo, que es
- * como se imputa todo en el Tablero.
- *
- * Los aceites se dan de alta en su propia pantalla (StockAceitesAlta.jsx), con
- * el botón "Alta de aceites".
+ * Lo único que cambia es a dónde va el consumo: la máquina, la obra y la razón
+ * social de allá acá son el grupo y el centro de costo, que es como se imputa
+ * todo en el Tablero.
  */
-const MOV_VACIO = {
-  fecha: hoy(),
-  aceite: '',
-  litros: '',
-  proveedor: '',
-  marca: '',
-  precio: '',
-  grupo: '',
-  cc: '',
-  observaciones: '',
-}
-
-const VISTAS = [
-  { valor: 'Salida', texto: 'Consumos', icono: 'bi-droplet-half' },
-  { valor: 'Entrada', texto: 'Compras', icono: 'bi-cart-plus' },
-]
+const COLUMNAS = 7
 
 export default function StockAceites() {
   const navigate = useNavigate()
@@ -65,18 +49,10 @@ export default function StockAceites() {
   const [movimientos, setMovimientos] = useState([])
   const [cargando, setCargando] = useState(true)
 
-  // Qué se mira: los consumos (como en el Sistema de Gestión) o las compras.
-  const [vista, setVista] = useState('Salida')
+  // Los filtros del original: tipo de aceite y a dónde fue (acá, grupo y C.C.).
   const [fAceite, setFAceite] = useState('')
   const [fGrupo, setFGrupo] = useState('')
   const [fCC, setFCC] = useState('')
-  const [fProveedor, setFProveedor] = useState('')
-  const [busqueda, setBusqueda] = useState('')
-
-  // La compra o el consumo que se está cargando. En null, el modal está cerrado.
-  const [mov, setMov] = useState(null)
-  const [movDatos, setMovDatos] = useState(MOV_VACIO)
-  const [guardando, setGuardando] = useState(false)
 
   // Con .then y no con async/await: así el compilador de React ve que el
   // estado se toca en la respuesta y no adentro del efecto que la pide.
@@ -95,180 +71,69 @@ export default function StockAceites() {
     cargar()
   }, [])
 
-  const compras = vista === 'Entrada'
-  const deLaVista = movimientos.filter((m) => m.movimiento === vista)
+  const movs = useMovimientosAceite({ recargar: cargar })
 
-  // Las opciones salen de todo lo de la vista, no de lo ya filtrado: si no,
-  // elegir un aceite vacía el resto de los desplegables.
+  // Los consumos, del más nuevo al más viejo (el back ya los manda así).
+  const consumos = movimientos.filter((m) => m.movimiento === 'Salida')
+
+  // Las opciones salen de todos los consumos, no de lo ya filtrado.
   const unicos = (valores) => [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b))
-  const opcionesAceite = unicos(aceites.map(nombreAceite))
-  const opcionesGrupo = unicos(deLaVista.map((m) => m.grupo))
-  const opcionesCC = unicos(deLaVista.filter((m) => !fGrupo || m.grupo === fGrupo).map((m) => m.cc))
-  const opcionesProveedor = unicos(deLaVista.map((m) => m.proveedor))
+  const opcionesAceite = unicos(consumos.map((m) => nombreAceite(m.aceite)))
+  const opcionesGrupo = unicos(consumos.map((m) => m.grupo))
+  const opcionesCC = unicos(consumos.filter((m) => !fGrupo || m.grupo === fGrupo).map((m) => m.cc))
 
-  const busq = normalizar(busqueda.trim())
-  const lista = deLaVista.filter((m) => {
+  // Los filtros son de los consumos: las filas de stock están siempre, como
+  // en el original.
+  const consumosFiltrados = consumos.filter((m) => {
     if (fAceite && nombreAceite(m.aceite) !== fAceite) return false
-    if (compras) {
-      if (fProveedor && m.proveedor !== fProveedor) return false
-    } else {
-      if (fGrupo && m.grupo !== fGrupo) return false
-      if (fCC && m.cc !== fCC) return false
-    }
-    if (!busq) return true
-    return [nombreAceite(m.aceite), m.proveedor, m.marca, m.grupo, m.cc, m.observaciones].some((v) =>
-      normalizar(v).includes(busq)
-    )
+    if (fGrupo && m.grupo !== fGrupo) return false
+    if (fCC && m.cc !== fCC) return false
+    return true
   })
 
-  const totalLitros = lista.reduce((s, m) => s + (m.litros || 0), 0)
-  const totalPrecio = lista.reduce((s, m) => s + (m.precio || 0), 0)
-
-  const hayFiltros = !!(fAceite || fGrupo || fCC || fProveedor || busqueda)
+  const hayFiltros = !!(fAceite || fGrupo || fCC)
   const limpiar = () => {
     setFAceite('')
     setFGrupo('')
     setFCC('')
-    setFProveedor('')
-    setBusqueda('')
   }
 
-  const cambiarVista = (v) => {
-    setVista(v)
-    // Los filtros propios de cada vista no tienen sentido en la otra.
-    setFGrupo('')
-    setFCC('')
-    setFProveedor('')
-  }
-
-  // ── Cargar, corregir y borrar ──
-
-  const setCampo = (campo, valor) => setMovDatos((d) => ({ ...d, [campo]: valor }))
-
-  const abrir = (movimiento) => {
-    setMov({ movimiento })
-    // Si la tabla está filtrada por un aceite, arranca elegido.
-    const filtrado = aceites.find((a) => nombreAceite(a) === fAceite)
-    setMovDatos({
-      ...MOV_VACIO,
-      fecha: hoy(),
-      aceite: filtrado?._id || '',
-      marca: movimiento === 'Entrada' ? filtrado?.marca || '' : '',
+  // El "Ver" del original: el consumo entero en un cartel.
+  const verConsumo = (m) =>
+    Swal.fire({
+      title: 'Detalle del consumo',
+      html: `<div style="text-align:left;font-size:0.9rem">
+          <p><b>Fecha:</b> ${fechaCorta(m.fecha)}</p>
+          <p><b>Aceite:</b> ${nombreAceite(m.aceite)}</p>
+          <p><b>Litros:</b> ${litros(m.litros)}</p>
+          <p><b>Grupo:</b> ${m.grupo || '—'}</p>
+          <p><b>C.C.:</b> ${m.cc || '—'}</p>
+          <p><b>Observaciones:</b> ${m.observaciones || '—'}</p>
+        </div>`,
+      confirmButtonText: 'Cerrar',
+      confirmButtonColor: A.color,
     })
-  }
-
-  const editar = (m) => {
-    setMov({ movimiento: m.movimiento, editando: m._id })
-    setMovDatos({
-      fecha: m.fecha ? m.fecha.slice(0, 10) : hoy(),
-      aceite: m.aceite?._id || '',
-      litros: m.litros ?? '',
-      proveedor: m.proveedor || '',
-      marca: m.marca || '',
-      precio: m.precio ?? '',
-      grupo: m.grupo || '',
-      cc: m.cc || '',
-      observaciones: m.observaciones || '',
-    })
-  }
-
-  const cerrar = () => setMov(null)
-
-  const guardar = async (e) => {
-    e.preventDefault()
-    // Los desplegables con buscador no son campos del formulario: lo
-    // obligatorio se controla acá.
-    const falta = !movDatos.aceite
-      ? 'Elegí el aceite'
-      : mov.movimiento === 'Entrada' && !movDatos.proveedor
-        ? 'Elegí el proveedor'
-        : mov.movimiento === 'Salida' && !movDatos.grupo
-          ? 'Elegí el grupo'
-          : null
-    if (falta) return Swal.fire({ icon: 'warning', title: 'Falta un dato', text: falta })
-
-    setGuardando(true)
-    try {
-      const base = `${A.API}/${movDatos.aceite}/movimientos`
-      if (mov.editando) await api.put(`${base}/${mov.editando}`, movDatos)
-      else await api.post(base, { ...movDatos, movimiento: mov.movimiento })
-      const texto = mov.movimiento === 'Entrada' ? 'Compra' : 'Consumo'
-      setMov(null)
-      // Lo recién cargado se ve en su vista.
-      setVista(mov.movimiento)
-      cargar()
-      Swal.fire({
-        icon: 'success',
-        title: mov.editando ? `${texto} actualizado` : `${texto} registrado`,
-        timer: 1200,
-        showConfirmButton: false,
-      })
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo guardar' })
-    } finally {
-      setGuardando(false)
-    }
-  }
-
-  const borrar = async (m) => {
-    const esCompra = m.movimiento === 'Entrada'
-    const resultado = await Swal.fire({
-      title: esCompra ? '¿Borrar esta compra?' : '¿Borrar este consumo?',
-      text: `${litros(m.litros)} L de ${nombreAceite(m.aceite)} del ${fechaCorta(m.fecha)}`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Sí, borrar',
-      cancelButtonText: 'Cancelar',
-    })
-    if (!resultado.isConfirmed) return
-    try {
-      await api.delete(`${A.API}/${m.aceite._id}/movimientos/${m._id}`)
-      cargar()
-      Swal.fire({
-        icon: 'success',
-        title: esCompra ? 'Compra borrada' : 'Consumo borrado',
-        timer: 1200,
-        showConfirmButton: false,
-      })
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message || 'No se pudo borrar' })
-    }
-  }
-
-  // ── Excel: lo que se ve, con las columnas de la vista ──
 
   const exportar = () => {
-    const columnas = compras
-      ? [
-          { titulo: 'Fecha', ancho: 12, valor: (m) => fechaCorta(m.fecha) },
-          { titulo: 'Proveedor', ancho: 28, valor: (m) => m.proveedor },
-          { titulo: 'Aceite', ancho: 36, valor: (m) => nombreAceite(m.aceite) },
-          { titulo: 'Marca', ancho: 16, valor: (m) => m.marca },
-          { titulo: 'Litros', ancho: 10, valor: (m) => m.litros },
-          { titulo: 'Precio', ancho: 14, valor: (m) => m.precio ?? '' },
-          { titulo: '$/L', ancho: 12, valor: (m) => (m.precio && m.litros ? Math.round(m.precio / m.litros) : '') },
-          { titulo: 'Observaciones', ancho: 36, valor: (m) => m.observaciones },
-        ]
-      : [
-          { titulo: 'Fecha', ancho: 12, valor: (m) => fechaCorta(m.fecha) },
-          { titulo: 'Aceite', ancho: 36, valor: (m) => nombreAceite(m.aceite) },
-          { titulo: 'Litros', ancho: 10, valor: (m) => m.litros },
-          { titulo: 'Grupo', ancho: 18, valor: (m) => m.grupo },
-          { titulo: 'C.C.', ancho: 14, valor: (m) => m.cc },
-          { titulo: 'Observaciones', ancho: 36, valor: (m) => m.observaciones },
-        ]
+    const columnas = [
+      { titulo: 'Fecha', ancho: 12, valor: (m) => fechaCorta(m.fecha) },
+      { titulo: 'Tipo de aceite', ancho: 36, valor: (m) => nombreAceite(m.aceite) },
+      { titulo: 'Litros', ancho: 10, valor: (m) => m.litros },
+      { titulo: 'Grupo', ancho: 18, valor: (m) => m.grupo },
+      { titulo: 'C.C.', ancho: 14, valor: (m) => m.cc },
+      { titulo: 'Stock', ancho: 10, valor: () => '' },
+    ]
     exportarPlanilla({
-      titulo: `Aceites — ${compras ? 'Compras' : 'Consumos'}`,
-      hoja: compras ? 'Compras' : 'Consumos',
+      titulo: 'Movimientos de aceites',
+      hoja: 'Aceites',
       columnas,
-      filas: lista.map((m) => columnas.map((c) => c.valor(m) ?? '')),
-      archivo: `aceites_${compras ? 'compras' : 'consumos'}_${hoy()}.xlsx`,
+      filas: [
+        ...aceites.map((a) => ['', `Stock ${nombreAceite(a)}`, '', '', '', a.existencia]),
+        ...consumosFiltrados.map((m) => columnas.map((c) => c.valor(m) ?? '')),
+      ],
+      archivo: `aceites_movimientos_${hoy()}.xlsx`,
     })
   }
-
-  const columnas = compras ? 9 : 7
 
   return (
     <div
@@ -286,8 +151,8 @@ export default function StockAceites() {
         className="px-3 py-2 d-flex flex-column flex-grow-1"
         style={{ maxWidth: '1200px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
       >
-        {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <BotonVolver />
           <div
             className="rounded-3 d-flex align-items-center justify-content-center"
             style={{
@@ -305,28 +170,6 @@ export default function StockAceites() {
             Movimientos de aceites
           </span>
 
-          {/* Consumos o compras: la tabla cambia de columnas. */}
-          <div className="btn-group btn-group-sm ms-2" role="group">
-            {VISTAS.map((v) => (
-              <button
-                key={v.valor}
-                type="button"
-                onClick={() => cambiarVista(v.valor)}
-                className="btn d-inline-flex align-items-center gap-1 px-3"
-                style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  backgroundColor: vista === v.valor ? A.color : '#fff',
-                  color: vista === v.valor ? '#fff' : A.color,
-                  border: `1px solid ${A.color}`,
-                }}
-              >
-                <i className={`bi ${v.icono}`}></i>
-                <span>{v.texto}</span>
-              </button>
-            ))}
-          </div>
-
           <div className="d-flex align-items-center gap-2 ms-auto flex-wrap">
             <Button
               size="sm"
@@ -342,7 +185,7 @@ export default function StockAceites() {
             <Button
               size="sm"
               onClick={exportar}
-              disabled={lista.length === 0}
+              disabled={aceites.length === 0}
               className="d-inline-flex align-items-center gap-1 rounded-3 px-3 py-1 shadow-sm"
               style={{ fontSize: '0.82rem', backgroundColor: '#15803d', borderColor: '#15803d' }}
               title="Exportar a Excel"
@@ -352,241 +195,164 @@ export default function StockAceites() {
             </Button>
             <Button
               size="sm"
-              onClick={() => abrir('Entrada')}
+              onClick={() => movs.abrir('Entrada')}
               disabled={sinEditar || aceites.length === 0}
               className="d-inline-flex align-items-center gap-1 rounded-3 px-3 py-1 shadow-sm"
-              style={{ fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#15803d', borderColor: '#15803d' }}
+              style={{ fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' }}
               title={sinEditar ? 'Sin permiso para editar' : 'Registrar una compra de aceite'}
             >
               <i className="bi bi-cart-plus"></i>
-              <span>Compra</span>
+              <span>Compra de aceite</span>
             </Button>
             <Button
               size="sm"
-              onClick={() => abrir('Salida')}
+              onClick={() => movs.abrir('Salida')}
               disabled={sinEditar || aceites.length === 0}
               className="d-inline-flex align-items-center gap-1 rounded-3 px-3 py-1 shadow-sm"
               style={{ fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#9d2235', borderColor: '#9d2235' }}
               title={sinEditar ? 'Sin permiso para editar' : 'Registrar un consumo de aceite'}
             >
               <i className="bi bi-droplet-half"></i>
-              <span>Consumo</span>
+              <span>Consumo de aceite</span>
             </Button>
           </div>
         </div>
 
-        {/* El stock de cada aceite. Tocar uno filtra la tabla por ese aceite;
-            tocarlo de nuevo saca el filtro. */}
-        <Card className="mb-2 p-2 shadow-sm border-0 rounded-3">
-          <div className="d-flex align-items-center gap-2 flex-wrap">
-            <span className="fw-bold text-dark me-1" style={{ fontSize: '0.72rem' }}>
-              Stock
-            </span>
-            {aceites.length === 0 ? (
-              <span className="text-muted" style={{ fontSize: '0.78rem' }}>
-                {cargando ? 'Cargando…' : 'No hay aceites dados de alta: cargalos con "Alta de aceites".'}
-              </span>
-            ) : (
-              aceites.map((a) => {
-                const nombre = nombreAceite(a)
-                const elegido = fAceite === nombre
-                const vacio = !a.existencia
-                return (
-                  <button
-                    key={a._id}
-                    type="button"
-                    onClick={() => setFAceite(elegido ? '' : nombre)}
-                    className="btn btn-sm rounded-3 d-inline-flex align-items-center gap-2 px-2 py-1"
-                    style={{
-                      fontSize: '0.76rem',
-                      backgroundColor: elegido ? A.color : A.colorSuave,
-                      color: elegido ? '#fff' : A.color,
-                      border: `1px solid ${elegido ? A.color : '#fde68a'}`,
-                    }}
-                    title={elegido ? 'Sacar el filtro' : `Ver solo ${nombre}`}
-                  >
-                    <span>
-                      {a.tipo} · {a.marca}
-                      {a.denominacion ? ` · ${a.denominacion}` : ''}
-                    </span>
-                    <b style={{ color: elegido ? '#fde047' : vacio ? '#dc2626' : A.color }}>{litros(a.existencia)} L</b>
-                  </button>
-                )
-              })
-            )}
-          </div>
-        </Card>
-
         <Card className="mb-3 p-2 shadow-sm border-0 rounded-3">
           <div className="d-flex align-items-end gap-2 flex-wrap">
             <FiltroSelect
-              etiqueta="Aceite"
-              ancho="260px"
+              etiqueta="Tipo de aceite"
+              ancho="280px"
               valor={fAceite}
               vacio="Todos"
               onChange={setFAceite}
               opciones={opcionesAceite}
             />
-            {compras ? (
-              <FiltroSelect
-                etiqueta="Proveedor"
-                ancho="220px"
-                valor={fProveedor}
-                vacio="Todos"
-                onChange={setFProveedor}
-                opciones={opcionesProveedor}
-              />
-            ) : (
-              <>
-                <FiltroSelect
-                  etiqueta="Grupo"
-                  ancho="170px"
-                  valor={fGrupo}
-                  vacio="Todos"
-                  onChange={(v) => {
-                    setFGrupo(v)
-                    setFCC('')
-                  }}
-                  opciones={opcionesGrupo}
-                />
-                <FiltroSelect
-                  etiqueta="C.C."
-                  ancho="130px"
-                  valor={fCC}
-                  vacio="Todos"
-                  onChange={setFCC}
-                  opciones={opcionesCC}
-                />
-              </>
-            )}
-            <div className="d-flex flex-column" style={{ width: '260px' }}>
-              <span className="fw-bold text-dark mb-1" style={{ fontSize: '0.72rem' }}>
-                Buscar
-              </span>
-              <Buscador valor={busqueda} onChange={setBusqueda} placeholder="Aceite, observaciones…" />
-            </div>
+            <FiltroSelect
+              etiqueta="Grupo"
+              ancho="200px"
+              valor={fGrupo}
+              vacio="Todos"
+              onChange={(v) => {
+                setFGrupo(v)
+                setFCC('')
+              }}
+              opciones={opcionesGrupo}
+            />
+            <FiltroSelect
+              etiqueta="C.C."
+              ancho="150px"
+              valor={fCC}
+              vacio="Todos"
+              onChange={setFCC}
+              opciones={opcionesCC}
+            />
             {hayFiltros && <BotonLimpiar onClick={limpiar} />}
           </div>
         </Card>
 
+        {/* La tabla va del ancho del encabezado y de los filtros. Si la
+            pantalla es angosta, el scroll queda adentro del marco. */}
         <div
           className="shadow-sm rounded-3 bg-white"
           style={{
             flex: '0 1 auto',
             minHeight: 0,
-            alignSelf: 'center',
-            maxWidth: '100%',
             overflowY: 'auto',
             overflowX: 'auto',
             border: '1px solid #cbd5e1',
           }}
         >
-          <Table className="mb-0 tabla-informe" style={{ width: 'auto', minWidth: compras ? '1000px' : '820px' }}>
+          <Table className="mb-0 tabla-informe" style={{ width: '100%', minWidth: '820px' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-              {compras ? (
-                <tr>
-                  <th style={thCentro}>Fecha</th>
-                  <th style={th}>Proveedor</th>
-                  <th style={th}>Aceite</th>
-                  <th style={th}>Marca</th>
-                  <th style={thCentro}>Litros</th>
-                  <th style={thCentro}>Precio</th>
-                  <th style={thCentro}>$/L</th>
-                  <th style={th}>Observaciones</th>
-                  <th style={{ ...thCentro, width: '80px' }}>Acciones</th>
-                </tr>
-              ) : (
-                <tr>
-                  <th style={thCentro}>Fecha</th>
-                  <th style={th}>Aceite</th>
-                  <th style={thCentro}>Litros</th>
-                  <th style={th}>Grupo</th>
-                  <th style={thCentro}>C.C.</th>
-                  <th style={th}>Observaciones</th>
-                  <th style={{ ...thCentro, width: '80px' }}>Acciones</th>
-                </tr>
-              )}
+              <tr>
+                <th style={thCentro}>Fecha</th>
+                <th style={th}>Tipo de aceite</th>
+                <th style={thCentro}>Litros</th>
+                <th style={th}>Grupo</th>
+                <th style={thCentro}>C.C.</th>
+                <th style={thCentro}>Stock</th>
+                <th style={{ ...thCentro, width: '150px' }}></th>
+              </tr>
             </thead>
             <tbody>
-              {lista.length === 0 ? (
+              {aceites.length === 0 && consumosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={columnas} className="text-center text-muted py-4" style={td}>
-                    {cargando
-                      ? 'Cargando…'
-                      : hayFiltros
-                        ? compras
-                          ? 'Ninguna compra coincide con los filtros'
-                          : 'Ningún consumo coincide con los filtros'
-                        : compras
-                          ? 'No hay compras registradas'
-                          : 'No hay consumos registrados'}
+                  <td colSpan={COLUMNAS} className="text-center text-muted py-4" style={td}>
+                    {cargando ? 'Cargando…' : 'No hay movimientos registrados'}
                   </td>
                 </tr>
               ) : (
                 <>
-                  {lista.map((m) => {
-                    const acciones = (
+                  {/* Primero, el stock de cada aceite. */}
+                  {aceites.map((a) => (
+                    <tr key={a._id}>
+                      <td style={tdCentro}>
+                        <Raya />
+                      </td>
+                      <td style={{ ...td, fontWeight: 700, color: '#15803d' }}>Stock {nombreAceite(a)}</td>
+                      <td style={tdCentro}>
+                        <Raya />
+                      </td>
+                      <td style={td}>
+                        <Raya />
+                      </td>
+                      <td style={tdCentro}>
+                        <Raya />
+                      </td>
+                      <td style={{ ...tdNumero, fontWeight: 700, color: a.existencia ? '#1e293b' : '#dc2626' }}>
+                        {litros(a.existencia)}
+                      </td>
+                      <td style={tdCentro}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/compras/analista/aceites/compras?aceite=${a._id}`)}
+                          className="btn btn-sm rounded-3 py-0 px-2"
+                          style={{
+                            fontSize: '0.68rem',
+                            color: '#1d4ed8',
+                            border: '1px solid #1d4ed8',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Ver detalle de compra
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Después, los consumos. */}
+                  {consumosFiltrados.map((m) => (
+                    <tr key={m._id}>
+                      <td style={tdNumero}>{fechaCorta(m.fecha)}</td>
+                      <td style={td}>{nombreAceite(m.aceite)}</td>
+                      <td style={tdNumero}>{litros(m.litros)}</td>
+                      <td style={td}>{m.grupo || <Raya />}</td>
+                      <td style={tdCentro}>{m.cc || <Raya />}</td>
+                      <td style={tdCentro}>
+                        <Raya />
+                      </td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center gap-2">
+                          <BotonAccion icono="bi-eye" titulo="Ver" onClick={() => verConsumo(m)} />
                           <BotonAccion
                             icono="bi-pencil"
-                            titulo={sinEditar ? 'Sin permiso para editar' : 'Corregir'}
+                            titulo={sinEditar ? 'Sin permiso para editar' : 'Editar'}
                             variante="primary"
                             deshabilitado={sinEditar}
-                            onClick={() => editar(m)}
+                            onClick={() => movs.editar(m)}
                           />
                           <BotonAccion
                             icono="bi-trash"
                             titulo={sinEditar ? 'Sin permiso para editar' : 'Borrar'}
                             variante="danger"
                             deshabilitado={sinEditar}
-                            onClick={() => borrar(m)}
+                            onClick={() => movs.borrar(m)}
                           />
                         </div>
                       </td>
-                    )
-                    return compras ? (
-                      <tr key={m._id}>
-                        <td style={tdNumero}>{fechaCorta(m.fecha)}</td>
-                        <td style={td}>{m.proveedor || <Raya />}</td>
-                        <td style={td}>{nombreAceite(m.aceite)}</td>
-                        <td style={td}>{m.marca || <Raya />}</td>
-                        <td style={tdNumero}>{litros(m.litros)}</td>
-                        <td style={tdNumero}>{m.precio != null ? pesos(m.precio) : <Raya />}</td>
-                        <td style={tdNumero}>
-                          {m.precio && m.litros ? pesos(Math.round(m.precio / m.litros)) : <Raya />}
-                        </td>
-                        <td style={td}>{m.observaciones || <Raya />}</td>
-                        {acciones}
-                      </tr>
-                    ) : (
-                      <tr key={m._id}>
-                        <td style={tdNumero}>{fechaCorta(m.fecha)}</td>
-                        <td style={td}>{nombreAceite(m.aceite)}</td>
-                        <td style={tdNumero}>{litros(m.litros)}</td>
-                        <td style={td}>{m.grupo || <Raya />}</td>
-                        <td style={tdCentro}>{m.cc || <Raya />}</td>
-                        <td style={td}>{m.observaciones || <Raya />}</td>
-                        {acciones}
-                      </tr>
-                    )
-                  })}
-                  {compras ? (
-                    <tr className="fila-total">
-                      <td style={{ ...td, fontWeight: 700, color: A.color }}>TOTAL</td>
-                      <td style={td} colSpan={3}></td>
-                      <td style={{ ...tdNumero, fontWeight: 700 }}>{litros(totalLitros)}</td>
-                      <td style={{ ...tdNumero, fontWeight: 700 }}>{pesos(totalPrecio)}</td>
-                      <td style={td} colSpan={3}></td>
                     </tr>
-                  ) : (
-                    <tr className="fila-total">
-                      <td style={{ ...td, fontWeight: 700, color: A.color }}>TOTAL</td>
-                      <td style={td}></td>
-                      <td style={{ ...tdNumero, fontWeight: 700 }}>{litros(totalLitros)}</td>
-                      <td style={td} colSpan={4}></td>
-                    </tr>
-                  )}
+                  ))}
                 </>
               )}
             </tbody>
@@ -595,13 +361,13 @@ export default function StockAceites() {
       </Container>
 
       <ModalMovimientoAceite
-        mov={mov}
-        datos={movDatos}
+        mov={movs.mov}
+        datos={movs.movDatos}
         aceites={aceites}
-        guardando={guardando}
-        onCampo={setCampo}
-        onGuardar={guardar}
-        onCerrar={cerrar}
+        guardando={movs.guardando}
+        onCampo={movs.setCampo}
+        onGuardar={movs.guardar}
+        onCerrar={movs.cerrar}
       />
     </div>
   )

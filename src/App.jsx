@@ -33,6 +33,7 @@ const StockCatalogo = lazy(() => import("./components/compras/StockCatalogo"));
 const Almacen = lazy(() => import("./components/compras/Almacen"));
 const StockAceites = lazy(() => import("./components/compras/StockAceites"));
 const StockAceitesAlta = lazy(() => import("./components/compras/StockAceitesAlta"));
+const StockAceitesCompras = lazy(() => import("./components/compras/StockAceitesCompras"));
 const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
 const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
 const Gerencia = lazy(() => import("./components/compras/Gerencia"));
@@ -255,6 +256,7 @@ function LayoutDesktop() {
               <Route path="/compras/analista/almacen" element={<RutaProtegida><Almacen /></RutaProtegida>} />
               <Route path="/compras/analista/aceites" element={<RutaProtegida><StockAceites /></RutaProtegida>} />
               <Route path="/compras/analista/aceites/alta" element={<RutaProtegida><StockAceitesAlta /></RutaProtegida>} />
+              <Route path="/compras/analista/aceites/compras" element={<RutaProtegida><StockAceitesCompras /></RutaProtegida>} />
               <Route path="/compras/analista/stock" element={<RutaProtegida><Stock /></RutaProtegida>} />
               {/* El catálogo general no es un rubro: es todo el almacén junto
                   y de solo lectura. Va antes del comodín. */}

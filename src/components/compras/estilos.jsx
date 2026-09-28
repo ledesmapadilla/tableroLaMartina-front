@@ -1,4 +1,5 @@
 import { Form } from 'react-bootstrap'
+import { useNavigate } from 'react-router-dom'
 import { BORDO } from './formato'
 
 /**
@@ -212,3 +213,24 @@ export const Buscador = ({ valor, onChange, placeholder }) => (
     )}
   </div>
 )
+
+/**
+ * Volver a la pantalla anterior, en el encabezado de la pantalla (28/09/2026).
+ * Es la flecha de docs/formato-tablas.md §7, con la palabra al lado para que
+ * se la encuentre sin buscarla en el navbar.
+ */
+export const BotonVolver = () => {
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(-1)}
+      className="btn btn-sm btn-outline-secondary rounded-3 d-inline-flex align-items-center gap-1 px-2 py-1"
+      style={{ fontSize: '0.82rem' }}
+      title="Volver a la pantalla anterior"
+    >
+      <i className="bi bi-arrow-left"></i>
+      <span>Volver</span>
+    </button>
+  )
+}
