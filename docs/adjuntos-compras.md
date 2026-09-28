@@ -73,3 +73,22 @@ molesta a nadie, en lugar de un link roto en pantalla.
 
 Cuando se borra un ítem entero, su archivo **queda en Cloudinary**. Es un
 pendiente conocido; con el volumen de este proyecto no apura.
+
+## El adjunto del pedido entero (28/09/2026)
+
+Un pedido de varios ítems puede llevar, además del adjunto de cada ítem, uno
+propio que abarca a todos: el presupuesto único, el remito de todo lo pedido.
+
+- **Dónde se sube:** en la fila del pedido, la que va en negrita en Pedidos del
+  taller (Berdina y San Pablo). Los ítems, abiertos con el ojo, siguen con el
+  suyo. Un pedido de un solo ítem no tiene fila de pedido: su adjunto es el
+  del ítem.
+- **Dónde se guarda:** en el pedido, con la misma forma que el de un ítem
+  (`TableroBack/src/models/archivoAdjunto.js`).
+- **La ruta:** `PUT /api/berdina|sanpablo/pedidos/:id/archivo` con
+  `{ archivo }` para subirlo o `{ archivo: null }` para sacarlo
+  (`controllers/archivoPedido.js`). Pide "Editar" en las mismas pantallas que
+  el de un ítem: la lista `PUEDEN_ADJUNTAR` es una sola y la usa también la
+  firma de Cloudinary.
+- **Dónde se ve:** en la fila en negrita de Analista/Comprador (solo mirar) y
+  en Gerencia, primero en la lista de adjuntos, como "Todo el pedido".

@@ -140,7 +140,16 @@ export default function Gerencia() {
   // el taller. Esta pantalla se mira en el celular, así que no lleva una
   // columna más: el acceso va debajo del número de pedido, que suma alto y no
   // ancho. Con uno solo se abre derecho; con varios se elige cuál.
-  const adjuntosDe = (grupo) => (grupo.items || []).filter((i) => i.archivo?.url)
+  // Primero el del pedido entero, si lo tiene (28/09/2026): es el que abarca a
+  // todos los ítems. Va con la misma forma que un ítem para que el cartel no
+  // tenga que distinguirlos.
+  const adjuntosDe = (grupo) => {
+    const delPedido = (grupo.items || []).find((i) => i.archivoPedido?.url)?.archivoPedido
+    return [
+      ...(delPedido ? [{ archivo: delPedido, nombre_repuesto: 'Todo el pedido' }] : []),
+      ...(grupo.items || []).filter((i) => i.archivo?.url),
+    ]
+  }
 
   const escaparHtml = (s) =>
     String(s).replace(/[&<>"']/g, (c) =>

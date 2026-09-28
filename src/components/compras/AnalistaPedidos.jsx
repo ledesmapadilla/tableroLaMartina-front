@@ -97,6 +97,8 @@ export default function AnalistaPedidos() {
       nro_pedido: p.nro_pedido,
       fecha: p.fecha,
       pedidoId: p._id,
+      // El adjunto del pedido entero, si lo tiene (28/09/2026).
+      archivoPedido: p.archivo,
       _src: p._src,
     }))
   )
@@ -118,6 +120,11 @@ export default function AnalistaPedidos() {
     return true
   })
 
+  // El adjunto que se ve en una fila: el del ítem si es uno solo, el del
+  // pedido entero si es la fila en negrita de un pedido de varios ítems.
+  const adjuntoDeFila = (fila, unItem) =>
+    unItem ? unItem.archivo : fila._agrupado && fila._count > 1 ? fila.archivoPedido : null
+
   const uniq = (arr) => [...new Set(arr.filter(v => v !== null && v !== undefined && v !== ''))]
   const colapsar = (vals) => vals.length === 0 ? '' : vals.length === 1 ? vals[0] : 'Varios'
 
@@ -136,6 +143,7 @@ export default function AnalistaPedidos() {
     _src: items[0]._src,
     nro_pedido: items[0].nro_pedido,
     fecha: items[0].fecha,
+    archivoPedido: items[0].archivoPedido,
     cc:              colapsar(uniq(items.map(i => i.cc))),
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
     cant:            colapsar(uniq(items.map(i => i.cant?.toString()))),
@@ -788,14 +796,16 @@ export default function AnalistaPedidos() {
                       </td>
                       <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
                       {/* El presupuesto que subió el analista o el taller. Acá
-                          solo se mira: adjuntar es de ellos (tabla de Roles). */}
+                          solo se mira: adjuntar es de ellos (tabla de Roles).
+                          En la fila en negrita de un pedido de varios ítems
+                          va el adjunto del pedido entero. */}
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
-                        {unItem?.archivo?.url ? (
+                        {adjuntoDeFila(item, unItem)?.url ? (
                           <a
-                            href={unItem.archivo.url}
+                            href={adjuntoDeFila(item, unItem).url}
                             target="_blank"
                             rel="noreferrer"
-                            title={unItem.archivo.nombre || 'Ver el adjunto'}
+                            title={adjuntoDeFila(item, unItem).nombre || 'Ver el adjunto'}
                             className="d-inline-flex align-items-center gap-1 text-decoration-none"
                             style={{ color: BORDO, fontWeight: 600, fontSize: '0.7rem' }}
                           >

@@ -63,7 +63,7 @@ export default function BerdinaPedidos() {
   useEffect(() => { cargar() }, [])
 
   const items = pedidos.flatMap(p =>
-    (p.items || []).map(item => ({ ...item, nro_pedido: p.nro_pedido, fecha: p.fecha, pedidoId: p._id }))
+    (p.items || []).map(item => ({ ...item, nro_pedido: p.nro_pedido, fecha: p.fecha, pedidoId: p._id, archivoPedido: p.archivo }))
   )
 
   const lista = items.filter(item => {
@@ -95,6 +95,9 @@ export default function BerdinaPedidos() {
     _key: items[0].nro_pedido,
     nro_pedido: items[0].nro_pedido,
     fecha: items[0].fecha,
+    // El pedido y su adjunto, para la columna Adjunto de la fila en negrita.
+    pedidoId: items[0].pedidoId,
+    archivoPedido: items[0].archivoPedido,
     cc:              colapsar(uniq(items.map(i => i.cc))),
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
     cant:            colapsar(uniq(items.map(i => i.cant?.toString()))),
@@ -168,13 +171,23 @@ export default function BerdinaPedidos() {
   // El archivo se sube a Cloudinary y en el ítem queda su URL, así se ve desde
   // cualquier computadora (services/archivos.js). El taller adjunta lo que
   // acompaña al pedido: un remito, la foto de la pieza, un presupuesto suyo.
+  //
+  // Desde el 28/09/2026 un pedido de varios ítems lleva además su propio
+  // adjunto, el que abarca a todos: se sube en la fila del pedido (la que va
+  // en negrita) y se guarda en el pedido, no en un ítem.
   const [subiendo, setSubiendo] = useState(null)
 
-  const adjuntar = async (item, file) => {
-    setSubiendo(item._id)
+  // `destino` dice a dónde va el archivo: un ítem o el pedido entero.
+  const urlDe = (destino) =>
+    destino.pedido
+      ? `/berdina/pedidos/${destino.pedidoId}/archivo`
+      : `/berdina/pedidos/${destino.pedidoId}/items/${destino._id}`
+
+  const adjuntar = async (destino, file) => {
+    setSubiendo(destino.clave)
     try {
       const archivo = await subirArchivo(file)
-      await api.put(`/berdina/pedidos/${item.pedidoId}/items/${item._id}`, { archivo })
+      await api.put(urlDe(destino), { archivo })
       cargar()
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'No se pudo adjuntar', text: err.message })
@@ -183,39 +196,55 @@ export default function BerdinaPedidos() {
     }
   }
 
-  const quitarArchivo = async (item) => {
+  const quitarArchivo = async (destino) => {
     try {
-      // Primero se lo saca del ítem: si después falla el borrado en Cloudinary,
-      // queda un archivo suelto y no un link roto en pantalla.
-      await api.put(`/berdina/pedidos/${item.pedidoId}/items/${item._id}`, { archivo: null })
+      // Primero se lo saca del ítem o del pedido: si después falla el borrado
+      // en Cloudinary, queda un archivo suelto y no un link roto en pantalla.
+      await api.put(urlDe(destino), { archivo: null })
       cargar()
-      await borrarArchivo(item.archivo || {})
+      await borrarArchivo(destino.archivo || {})
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'No se pudo quitar el archivo', text: err.message })
     }
   }
 
-  const celdaAdjunto = (item) => {
-    if (!item) return <Raya />
-    if (item.archivo?.url) {
+  // A dónde va el adjunto de una fila: el ítem si es uno solo, el pedido
+  // entero si es la fila en negrita de un pedido de varios ítems.
+  const destinoDe = (fila, unItem) => {
+    if (unItem) return { ...unItem, clave: unItem._id, archivo: unItem.archivo }
+    if (fila._agrupado && fila._count > 1) {
+      return {
+        pedido: true,
+        pedidoId: fila.pedidoId,
+        clave: `pedido-${fila.pedidoId}`,
+        archivo: fila.archivoPedido,
+      }
+    }
+    return null
+  }
+
+  const celdaAdjunto = (destino) => {
+    if (!destino) return <Raya />
+    const titulo = destino.pedido ? 'el pedido entero' : 'el ítem'
+    if (destino.archivo?.url) {
       return (
         <div className="d-flex align-items-center justify-content-center gap-1">
           <a
-            href={item.archivo.url}
+            href={destino.archivo.url}
             target="_blank"
             rel="noreferrer"
-            title={item.archivo.nombre || 'Ver el adjunto'}
+            title={`${destino.archivo.nombre || 'Ver el adjunto'} (de ${titulo})`}
             className="text-truncate"
-            style={{ maxWidth: 70, fontSize: '0.7rem' }}
+            style={{ maxWidth: 70, fontSize: '0.7rem', fontWeight: destino.pedido ? 700 : 400 }}
           >
-            <i className="bi bi-paperclip" /> {item.archivo.nombre || 'Ver'}
+            <i className="bi bi-paperclip" /> {destino.archivo.nombre || 'Ver'}
           </a>
           {!sinEditar && (
             <button
               className="btn btn-sm btn-link text-danger p-0"
               style={{ lineHeight: 1 }}
               title="Quitar el archivo"
-              onClick={() => quitarArchivo(item)}
+              onClick={() => quitarArchivo(destino)}
             >
               <i className="bi bi-x-lg" style={{ fontSize: '0.7rem' }} />
             </button>
@@ -223,12 +252,12 @@ export default function BerdinaPedidos() {
         </div>
       )
     }
-    const estaSubiendo = subiendo === item._id
+    const estaSubiendo = subiendo === destino.clave
     return (
       <label
         className={`btn btn-sm btn-outline-dark mb-0 py-0 px-2${sinEditar || estaSubiendo ? ' disabled' : ''}`}
-        style={{ fontSize: '0.7rem' }}
-        title={sinEditar ? 'Sin permiso para editar' : 'Adjuntar un PDF o una foto'}
+        style={{ fontSize: '0.7rem', fontWeight: destino.pedido ? 700 : 400 }}
+        title={sinEditar ? 'Sin permiso para editar' : `Adjuntar un PDF o una foto para ${titulo}`}
       >
         {estaSubiendo ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
         <input
@@ -236,7 +265,7 @@ export default function BerdinaPedidos() {
           accept=".pdf,image/*,.xlsx,.xls,.csv,.doc,.docx"
           hidden
           disabled={sinEditar || estaSubiendo}
-          onChange={(e) => { const file = e.target.files?.[0]; if (file) adjuntar(item, file); e.target.value = '' }}
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) adjuntar(destino, file); e.target.value = '' }}
         />
       </label>
     )
@@ -708,7 +737,7 @@ export default function BerdinaPedidos() {
                         {badgeEstado(item.estado)}
                       </td>
                       <td style={tdCentro}><CeldaOP oc={item.oc} proveedor={proveedorDeOP(item)} /></td>
-                      <td style={tdCentro}>{celdaAdjunto(unItem)}</td>
+                      <td style={tdCentro}>{celdaAdjunto(destinoDe(item, unItem))}</td>
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>{celdaApuro(item)}</td>
                       <td style={tdCentro}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
