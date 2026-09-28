@@ -255,8 +255,16 @@ export default function BerdinaPedidos() {
     const estaSubiendo = subiendo === destino.clave
     return (
       <label
-        className={`btn btn-sm btn-outline-dark mb-0 py-0 px-2${sinEditar || estaSubiendo ? ' disabled' : ''}`}
-        style={{ fontSize: '0.7rem', fontWeight: destino.pedido ? 700 : 400 }}
+        // Bajito, con interlineado 1 y sin el alto mínimo del botón: si no, la
+        // fila del pedido crece para que entre.
+        className={`btn btn-outline-dark mb-0${sinEditar || estaSubiendo ? ' disabled' : ''}`}
+        style={{
+          fontSize: '0.66rem',
+          lineHeight: 1,
+          padding: '1px 6px',
+          borderRadius: '4px',
+          fontWeight: destino.pedido ? 700 : 400,
+        }}
         title={sinEditar ? 'Sin permiso para editar' : `Adjuntar un PDF o una foto para ${titulo}`}
       >
         {estaSubiendo ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
