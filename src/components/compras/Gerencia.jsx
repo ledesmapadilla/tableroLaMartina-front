@@ -6,6 +6,7 @@ import { BotonAccion } from './estilos'
 import { verHistorialPedido, conCreacion } from './detallePedido'
 import { opcionElegida } from './precioElegido'
 import UmbralAutorizacion from './UmbralAutorizacion'
+import { useMontoAutorizacion } from './montoAutorizacion'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { usePermisos } from '../../context/permisos'
@@ -29,6 +30,43 @@ const calcCostoItem = (item) => {
   return elegida ? elegida.precio * (item.cant || 0) : null
 }
 
+// Los estados en los que un ítem todavía no salió del análisis: no cuentan
+// para el umbral, igual que en AnalizarItem.
+const ESPERAN_ANALISIS = ['Para analisis', 'En analisis', 'Pedido', 'Para revision']
+
+// Las tres decisiones de Gerencia. `bajaElMonto`: lo decidido deja de contar
+// para el umbral del pedido, y lo que queda esperando puede no necesitar más
+// la autorización.
+const ACCIONES = {
+  aprobar: {
+    titulo: '¿Aprobar?',
+    boton: 'Aprobar',
+    claseBoton: 'btn-outline-success',
+    estado: 'Para hacer OP',
+    hecho: 'Aprobado',
+  },
+  rechazar: {
+    titulo: '¿Rechazar?',
+    boton: 'Rechazar',
+    claseBoton: 'btn-outline-danger',
+    estado: 'Rechazado',
+    hecho: 'Rechazado',
+    pideMotivo: true,
+    placeholder: 'Motivo del rechazo',
+    bajaElMonto: true,
+  },
+  revisar: {
+    titulo: '¿Enviar a revisión?',
+    boton: 'Enviar a revisar',
+    claseBoton: 'btn-outline-warning',
+    estado: 'Para revision',
+    hecho: 'Enviado a revisar',
+    pideMotivo: true,
+    placeholder: 'Qué debe revisar el analista',
+    bajaElMonto: true,
+  },
+}
+
 const urgenciaMasAlta = (items) =>
   items.reduce((best, i) =>
     (URG_ORDER[i.urgencia] ?? 4) < (URG_ORDER[best] ?? 4) ? i.urgencia : best
@@ -41,6 +79,8 @@ export default function Gerencia() {
   const { puede } = usePermisos()
   const { user } = useAuth()
   const sinEditar = !puede('compras.gerencia', 'editar')
+  // Para recalcular el umbral cuando se rechaza parte de un pedido.
+  const { monto: montoAutorizacion } = useMontoAutorizacion()
   const [grupos, setGrupos] = useState([])
   const [cargando, setCargando] = useState(true)
 
@@ -267,92 +307,152 @@ export default function Gerencia() {
     }
   }
 
-  const aprobar = async (grupo) => {
+  /**
+   * Aprobar, rechazar o mandar a revisar (28/09/2026: ítem por ítem).
+   *
+   * Con un ítem solo la decisión es sobre ese. Con varios se abre la lista con
+   * todos tildados y el gerente destilda los que no van: los destildados
+   * quedan acá, esperando su decisión, igual que en el análisis por tandas.
+   *
+   * Si rechaza o manda a revisar una parte, el umbral se recalcula con lo que
+   * queda del pedido: si ya no llega al monto, lo que seguía esperando no
+   * necesita autorización y pasa solo a "Para hacer OP".
+   */
+  const decidir = async (grupo, accion) => {
+    const a = ACCIONES[accion]
     const nro = fmtNro(grupo.nro_pedido, grupo._src)
-    const { isConfirmed } = await Swal.fire({
-      title: '¿Aprobar pedido?',
-      html: `<div style="font-weight:600;margin-bottom:6px">${nro}</div>
-             <div style="font-size:13px;color:#555">${grupo.items.length > 1 ? `${grupo.items.length} ítems` : grupo.items[0].nombre_repuesto} → <strong>Para hacer OP</strong></div>`,
-      icon: 'question',
+    const varios = grupo.items.length > 1
+
+    const lista = grupo.items
+      .map(
+        (i) => `<label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;margin-bottom:6px;
+                              border:1px solid #e2e8f0;border-radius:10px;text-align:left;font-size:0.8rem;cursor:pointer">
+            <input type="checkbox" class="item-decision" value="${i._id}" checked
+                   style="width:18px;height:18px;margin-top:1px;flex-shrink:0" />
+            <span style="flex:1">
+              <b style="color:#1e293b">${escaparHtml(i.nombre_repuesto || '—')}</b>
+              <span style="color:#64748b"> · ${i.cant ?? '—'} ${escaparHtml(i.unidad || '')}</span>
+              <div style="color:${BORDO};font-weight:600">${
+                calcCostoItem(i) == null ? 'Sin precio' : fmtPrecio(calcCostoItem(i))
+              }</div>
+            </span>
+          </label>`
+      )
+      .join('')
+
+    const { value, isConfirmed } = await Swal.fire({
+      title: a.titulo,
+      html:
+        `<div style="font-weight:600;margin-bottom:8px">${nro}</div>` +
+        (varios
+          ? `<div style="font-size:0.78rem;color:#64748b;margin-bottom:6px">Destildá los que no van: quedan esperando.</div>
+             <div style="max-height:40vh;overflow:auto">${lista}</div>`
+          : `<div style="font-size:13px;color:#555">${escaparHtml(grupo.items[0].nombre_repuesto || '')}${
+              accion === 'aprobar' ? ' → <strong>Para hacer OP</strong>' : ''
+            }</div>`) +
+        (a.pideMotivo
+          ? `<textarea id="motivo-decision" class="swal2-textarea" placeholder="${a.placeholder}"
+                       style="margin:10px 0 0;width:100%;font-size:0.85rem"></textarea>`
+          : ''),
+      width: 380,
+      padding: '0.9rem',
+      icon: varios ? undefined : 'question',
       showCancelButton: true,
-      confirmButtonText: 'Aprobar',
+      confirmButtonText: a.boton,
       cancelButtonText: 'Cancelar',
       buttonsStyling: false,
-      customClass: { confirmButton: 'btn btn-outline-success me-2', cancelButton: 'btn btn-outline-secondary' },
+      customClass: { confirmButton: `btn ${a.claseBoton} me-2`, cancelButton: 'btn btn-outline-secondary' },
+      preConfirm: () => {
+        const ids = varios
+          ? [...document.querySelectorAll('.item-decision:checked')].map((c) => c.value)
+          : [grupo.items[0]._id]
+        if (ids.length === 0) {
+          Swal.showValidationMessage('Tildá al menos un ítem')
+          return false
+        }
+        const motivo = a.pideMotivo ? document.getElementById('motivo-decision').value.trim() : ''
+        if (a.pideMotivo && !motivo) {
+          Swal.showValidationMessage('El motivo es obligatorio')
+          return false
+        }
+        return { ids, motivo }
+      },
     })
     if (!isConfirmed) return
+
+    const elegidos = new Set(value.ids)
+    const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
     try {
-      const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
-      await Promise.all(grupo.items.map(item =>
-        api.put(`${base}/${item.pedidoId}/items/${item._id}`, { estado: 'Para hacer OP', usuario: 'Gerencia' })
-      ))
+      await Promise.all(
+        grupo.items
+          .filter((i) => elegidos.has(i._id))
+          .map((item) =>
+            api.put(`${base}/${item.pedidoId}/items/${item._id}`, {
+              estado: a.estado,
+              usuario: 'Gerencia',
+              ...(value.motivo ? { nota: value.motivo } : {}),
+            })
+          )
+      )
+
+      // Lo que quedó esperando, si lo decidido bajó el pedido del umbral.
+      const quedan = grupo.items.filter((i) => !elegidos.has(i._id))
+      const pasaron = a.bajaElMonto && quedan.length ? await pasarSiBajoDelUmbral(base, quedan) : null
+
       cargar()
-      Swal.fire({ icon: 'success', title: 'Aprobado', timer: 1500, showConfirmButton: false })
+      if (pasaron) {
+        Swal.fire({
+          icon: 'info',
+          title: a.hecho,
+          html:
+            `Sin lo ${accion === 'rechazar' ? 'rechazado' : 'mandado a revisar'}, el pedido suma ` +
+            `<b>${fmtPrecio(pasaron.monto)}</b>, debajo del umbral de <b>${fmtPrecio(montoAutorizacion)}</b>.<br/>` +
+            `${pasaron.cantidad === 1 ? 'El ítem que quedaba pasó' : `Los ${pasaron.cantidad} ítems que quedaban pasaron`} ` +
+            'a <b>Para hacer OP</b> sin autorización.',
+          confirmButtonColor: BORDO,
+        })
+      } else {
+        Swal.fire({ icon: 'success', title: a.hecho, timer: 1500, showConfirmButton: false })
+      }
     } catch (err) {
+      cargar()
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
     }
   }
 
-  const rechazar = async (grupo) => {
-    const nro = fmtNro(grupo.nro_pedido, grupo._src)
-    const { value: motivo, isConfirmed } = await Swal.fire({
-      title: '¿Rechazar pedido?',
-      html: `<div style="font-weight:600;margin-bottom:8px">${nro}</div>`,
-      input: 'textarea',
-      inputLabel: 'Motivo del rechazo',
-      inputPlaceholder: 'Explicá el motivo...',
-      showCancelButton: true,
-      confirmButtonText: 'Rechazar',
-      cancelButtonText: 'Cancelar',
-      buttonsStyling: false,
-      customClass: { confirmButton: 'btn btn-outline-danger me-2', cancelButton: 'btn btn-outline-secondary' },
-      preConfirm: (val) => {
-        if (!val?.trim()) { Swal.showValidationMessage('El motivo es obligatorio'); return false }
-        return val.trim()
-      },
-    })
-    if (!isConfirmed) return
-    try {
-      const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
-      await Promise.all(grupo.items.map(item =>
-        api.put(`${base}/${item.pedidoId}/items/${item._id}`, { estado: 'Rechazado', usuario: 'Gerencia', nota: motivo })
-      ))
-      cargar()
-      Swal.fire({ icon: 'success', title: 'Rechazado', timer: 1500, showConfirmButton: false })
-    } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
-    }
-  }
+  /**
+   * Recalcula el umbral con lo que queda del pedido y, si ya no llega, pasa lo
+   * que seguía esperando a "Para hacer OP". Es la misma cuenta del análisis:
+   * todo lo liberado del pedido que no está rechazado ni de vuelta en análisis.
+   * Devuelve el monto y cuántos pasaron, o null si no pasó ninguno.
+   */
+  const pasarSiBajoDelUmbral = async (base, quedan) => {
+    // A mano y no con Object.groupBy: Gerencia decide desde el celular y en
+    // uno con el navegador viejo no existe.
+    const porPedido = quedan.reduce((acc, i) => {
+      ;(acc[i.pedidoId] ||= []).push(i)
+      return acc
+    }, {})
+    let resultado = null
+    for (const [pedidoId, items] of Object.entries(porPedido)) {
+      const pedido = await api.get(`${base}/${pedidoId}`)
+      const monto = (pedido.items || [])
+        .filter((i) => !ESPERAN_ANALISIS.includes(i.estado) && i.estado !== 'Rechazado')
+        .reduce((acc, i) => acc + (calcCostoItem(i) ?? 0), 0)
+      if (monto >= montoAutorizacion) continue
 
-  const revisar = async (grupo) => {
-    const nro = fmtNro(grupo.nro_pedido, grupo._src)
-    const { value: motivo, isConfirmed } = await Swal.fire({
-      title: '¿Enviar a revisión?',
-      html: `<div style="font-weight:600;margin-bottom:8px">${nro}</div>`,
-      input: 'textarea',
-      inputLabel: 'Motivo de la revisión',
-      inputPlaceholder: 'Explicá qué debe revisar el analista...',
-      showCancelButton: true,
-      confirmButtonText: 'Enviar a revisar',
-      cancelButtonText: 'Cancelar',
-      buttonsStyling: false,
-      customClass: { confirmButton: 'btn btn-outline-warning me-2', cancelButton: 'btn btn-outline-secondary' },
-      preConfirm: (val) => {
-        if (!val?.trim()) { Swal.showValidationMessage('El motivo es obligatorio'); return false }
-        return val.trim()
-      },
-    })
-    if (!isConfirmed) return
-    try {
-      const base = grupo._src === 'berdina' ? '/berdina/pedidos' : '/sanpablo/pedidos'
-      await Promise.all(grupo.items.map(item =>
-        api.put(`${base}/${item.pedidoId}/items/${item._id}`, { estado: 'Para revision', usuario: 'Gerencia', nota: motivo })
-      ))
-      cargar()
-      Swal.fire({ icon: 'success', title: 'Enviado a revisar', timer: 1500, showConfirmButton: false })
-    } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+      await Promise.all(
+        items.map((item) =>
+          api.put(`${base}/${pedidoId}/items/${item._id}`, {
+            estado: 'Para hacer OP',
+            usuario: 'Gerencia',
+            nota: `Pasa sin autorización: con lo que quedó, el pedido suma ${fmtPrecio(monto)}, debajo del umbral de ${fmtPrecio(montoAutorizacion)}`,
+          })
+        )
+      )
+      resultado = { monto, cantidad: (resultado?.cantidad || 0) + items.length }
     }
+    return resultado
   }
 
   const badgeUrgencia = (u) => {
@@ -540,7 +640,7 @@ export default function Gerencia() {
                             titulo={sinEditar ? 'Sin permiso para editar' : 'Rechazar'}
                             variante="danger"
                             deshabilitado={sinEditar}
-                            onClick={() => rechazar(grupo)}
+                            onClick={() => decidir(grupo, 'rechazar')}
                             grande
                           />
                           <BotonAccion
@@ -548,7 +648,7 @@ export default function Gerencia() {
                             titulo={sinEditar ? 'Sin permiso para editar' : 'Mandar a revisar'}
                             variante="warning"
                             deshabilitado={sinEditar}
-                            onClick={() => revisar(grupo)}
+                            onClick={() => decidir(grupo, 'revisar')}
                             grande
                           />
                           <BotonAccion
@@ -556,7 +656,7 @@ export default function Gerencia() {
                             titulo={sinEditar ? 'Sin permiso para editar' : 'Aprobar'}
                             variante="success"
                             deshabilitado={sinEditar}
-                            onClick={() => aprobar(grupo)}
+                            onClick={() => decidir(grupo, 'aprobar')}
                             grande
                           />
                         </div>
