@@ -3,48 +3,34 @@ import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { grillaCentrada } from '../../utils/grillaTarjetas'
 
-// Qué se puede hacer desde el analista. Cada una lleva su color: son cosas
-// distintas y de un vistazo se tiene que ver cuál es cuál. Pedidos se queda
-// con el bordó de Compras.
+/**
+ * La puerta del almacén de repuestos del analista (28/09/2026).
+ *
+ * Dos tarjetas: los aceites, que vienen del Sistema de Gestión Lepa y se
+ * cuentan en litros, y el almacén de siempre, con sus seis rubros y el
+ * catálogo general (Stock.jsx).
+ */
 const OPCIONES = [
   {
-    id: 'pedidos',
-    titulo: 'Pedidos',
-    subtitulo: 'Pedidos a analizar y sus precios',
-    icono: 'bi bi-cart-fill',
-    destino: '/compras/analista/pedidos',
+    id: 'aceites',
+    titulo: 'Aceites',
+    subtitulo: 'Compras, consumos y stock en litros',
+    icono: 'bi bi-droplet-fill',
+    destino: '/compras/analista/aceites',
     colores: {
-      fondo: 'linear-gradient(135deg, #7a1828 0%, #9d2235 100%)',
-      fondoHover: 'linear-gradient(135deg, #4a0812 0%, #7a1828 100%)',
-      borde: '#f59e0b',
-      icono: '#fcd34d',
-      brillo: 'rgba(245,158,11,0.25)',
+      fondo: 'linear-gradient(135deg, #713f12 0%, #a16207 100%)',
+      fondoHover: 'linear-gradient(135deg, #422006 0%, #713f12 100%)',
+      borde: '#facc15',
+      icono: '#fde047',
+      brillo: 'rgba(250,204,21,0.25)',
     },
   },
   {
-    id: 'pendientes',
-    titulo: 'Pendientes',
-    subtitulo: 'Lo pedido que todavía no se resolvió',
-    icono: 'bi bi-hourglass-split',
-    destino: '/compras/analista/pendientes',
-    colores: {
-      fondo: 'linear-gradient(135deg, #3730a3 0%, #4f46e5 100%)',
-      fondoHover: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 100%)',
-      borde: '#818cf8',
-      icono: '#c7d2fe',
-      brillo: 'rgba(129,140,248,0.25)',
-    },
-  },
-  {
-    id: 'stock',
-    // El stock de la empresa: es la suma de los dos talleres, no un tercer
-    // depósito. Por eso los otros dos llevan el nombre del taller.
-    permiso: 'compras.stock',
-    titulo: 'Almacén de repuestos',
-    subtitulo: 'Todo el stock de la empresa: Berdina y San Pablo',
+    id: 'almacen',
+    titulo: 'Almacén',
+    subtitulo: 'Repuestos, filtros, cubiertas, ferretería, electricidad y herramientas',
     icono: 'bi bi-box-seam-fill',
-    // Abre la puerta del almacén: los aceites o los rubros de siempre.
-    destino: '/compras/analista/almacen',
+    destino: '/compras/analista/stock',
     colores: {
       fondo: 'linear-gradient(135deg, #334155 0%, #475569 100%)',
       fondoHover: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
@@ -55,7 +41,7 @@ const OPCIONES = [
   },
 ]
 
-export default function Analista() {
+export default function Almacen() {
   const navigate = useNavigate()
   const [hovered, setHovered] = useState(null)
 
@@ -65,7 +51,8 @@ export default function Analista() {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: '#f8f9fa',
+        // El mismo fondo oscuro que el menú de los rubros, que es lo que sigue.
+        backgroundColor: '#0f172a',
         height: '100%',
         overflow: 'hidden',
       }}
@@ -75,13 +62,9 @@ export default function Analista() {
         className="px-4 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: '1040px', width: '100%', margin: '0 auto' }}
       >
-        {/* Sin encabezado: las tarjetas hablan solas. */}
-
-        {/* Tarjetas del analista */}
+        {/* Sin encabezado: las tarjetas hablan solas, igual que en el analista. */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
-          <div
-            style={{ ...grillaCentrada(OPCIONES.length), gap: '1.75rem' }}
-          >
+          <div style={{ ...grillaCentrada(OPCIONES.length), gap: '1.75rem' }}>
             {OPCIONES.map((o) => {
               const isHovered = hovered === o.id
               return (
@@ -122,14 +105,9 @@ export default function Analista() {
                     <i className={o.icono} style={{ fontSize: '2.1rem', color: o.colores.icono }}></i>
                   </div>
 
-                  <span style={{ fontSize: '1.25rem', letterSpacing: '0.2px' }}>
-                    {o.titulo}
-                  </span>
+                  <span style={{ fontSize: '1.25rem', letterSpacing: '0.2px' }}>{o.titulo}</span>
 
-                  <span
-                    className="mt-2 px-2"
-                    style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)' }}
-                  >
+                  <span className="mt-2 px-2" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.72)' }}>
                     {o.subtitulo}
                   </span>
                 </div>

@@ -28,6 +28,11 @@ const AnalistaPendientes = lazy(() => import("./components/compras/AnalistaPendi
 const Stock = lazy(() => import("./components/compras/Stock"));
 const StockRubro = lazy(() => import("./components/compras/StockRubro"));
 const StockCatalogo = lazy(() => import("./components/compras/StockCatalogo"));
+// La puerta del almacén (aceites o el almacén de siempre) y los aceites, que
+// vienen del Sistema de Gestión Lepa.
+const Almacen = lazy(() => import("./components/compras/Almacen"));
+const StockAceites = lazy(() => import("./components/compras/StockAceites"));
+const StockAceitesAlta = lazy(() => import("./components/compras/StockAceitesAlta"));
 const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
 const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
 const Gerencia = lazy(() => import("./components/compras/Gerencia"));
@@ -247,6 +252,9 @@ function LayoutDesktop() {
               <Route path="/compras/analista" element={<RutaProtegida><Analista /></RutaProtegida>} />
               <Route path="/compras/analista/pedidos" element={<RutaProtegida><AnalistaPedidos key="analista" /></RutaProtegida>} />
               <Route path="/compras/analista/pendientes" element={<RutaProtegida><AnalistaPendientes /></RutaProtegida>} />
+              <Route path="/compras/analista/almacen" element={<RutaProtegida><Almacen /></RutaProtegida>} />
+              <Route path="/compras/analista/aceites" element={<RutaProtegida><StockAceites /></RutaProtegida>} />
+              <Route path="/compras/analista/aceites/alta" element={<RutaProtegida><StockAceitesAlta /></RutaProtegida>} />
               <Route path="/compras/analista/stock" element={<RutaProtegida><Stock /></RutaProtegida>} />
               {/* El catálogo general no es un rubro: es todo el almacén junto
                   y de solo lectura. Va antes del comodín. */}
