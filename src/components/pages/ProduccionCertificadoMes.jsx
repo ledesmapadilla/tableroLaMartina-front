@@ -1479,6 +1479,9 @@ function ProduccionCertificadoMes({
     filtroTurbo !== "Todos" ||
     filtroCliente !== "Todos";
 
+  // En pantalla va lo último arriba: `partes` viene ordenado de la fecha más
+  // vieja a la más nueva (y dentro del día por orden de carga), así que se lo
+  // da vuelta. El Excel lo reordena por su cuenta.
   const partesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return partes.filter((p) => {
@@ -1501,7 +1504,7 @@ function ProduccionCertificadoMes({
       ]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(q));
-    });
+    }).reverse();
   }, [
     partes,
     busqueda,
