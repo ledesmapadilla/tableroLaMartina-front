@@ -44,6 +44,9 @@ const FORM_VACIO = {
   combustible: "",
   turbo: "",
   combTurbo: "",
+  // El ayudamemoria de la mañana (30/09/2026): se guarda con lo que se sabe
+  // hasta ahí, sin validar, y se completa al terminar la jornada.
+  provisorio: false,
 };
 
 // Los avisos de esta pantalla van chicos: la carga es rápida y repetitiva, y
@@ -491,6 +494,8 @@ function ProduccionCertificadoMes({
   const [filtroCliente, setFiltroCliente] = useState("Todos");
   // Solo los partes con alarma de desvío (consumo o rendimiento), 27/09/2026.
   const [soloAlarmas, setSoloAlarmas] = useState(false);
+  // Solo los partes provisorios, los que quedan por completar (30/09/2026).
+  const [soloProvisorios, setSoloProvisorios] = useState(false);
 
   const [form, setForm] = useState(FORM_VACIO);
   const [editando, setEditando] = useState(null);
@@ -503,7 +508,7 @@ function ProduccionCertificadoMes({
     Boolean(editando) ||
       Object.entries(form).some(
         ([campo, valor]) =>
-          !["fecha", "cliente", "terminado"].includes(campo) && String(valor ?? "").trim() !== ""
+          !["fecha", "cliente", "terminado", "provisorio"].includes(campo) && String(valor ?? "").trim() !== ""
       )
   );
 
@@ -783,6 +788,19 @@ function ProduccionCertificadoMes({
   };
 
   const cerrarCertificacion = async () => {
+    // Con partes provisorios no se cierra: lo que se certifica son datos reales.
+    const pendientes = partes.filter((p) => p.provisorio).length;
+    if (pendientes) {
+      avisar({
+        icon: "warning",
+        title: "Quedan partes provisorios",
+        text:
+          `${pendientes === 1 ? "Hay 1 parte provisorio" : `Hay ${pendientes} partes provisorios`} en este mes. ` +
+          "Complételos con los datos reales antes de cerrar la certificación.",
+      });
+      return;
+    }
+
     // Viene puesta la fecha de cierre del período (por defecto el 25); se
     // puede cambiar, y si no coincide con el último parte hay que confirmarla.
     // Al corregir se vuelve a preguntar con lo que se había escrito.
@@ -1031,14 +1049,55 @@ function ProduccionCertificadoMes({
       body: JSON.stringify({ ...datos, establecimiento }),
     });
 
+  /**
+   * El otro día que esa persona dejó en provisorio, entre los partes que están
+   * en pantalla. **Con un día en provisorio no se le carga ningún otro día**,
+   * ni provisorio ni completo, hasta completarlo. Cada campo va por su cuenta.
+   * Acá se mira solo este mes, para avisar antes de mandar nada; los otros
+   * meses los controla el backend al guardar (`diaProvisorioPendiente` en
+   * partes.controller.js).
+   */
+  const diaProvisorioPendiente = (persona, fecha) => {
+    const dia = soloFecha(fecha);
+    if (!persona || !dia) return null;
+    const otro = partes.find(
+      (p) =>
+        p.provisorio &&
+        p._id !== editando &&
+        (p.persona?._id || p.persona) === persona &&
+        soloFecha(p.fecha) !== dia
+    );
+    return otro ? soloFecha(otro.fecha) : null;
+  };
+
+  const avisarProvisorioPendiente = (texto) =>
+    avisar({ icon: "warning", title: "Hay un día provisorio sin completar", text: texto });
+
+  const alternarProvisorio = () => {
+    if (!form.provisorio) {
+      const pendiente = diaProvisorioPendiente(form.persona, form.fecha);
+      if (pendiente) {
+        avisarProvisorioPendiente(
+          `Esta persona tiene partes provisorios del ${formatFecha(pendiente)}. ` +
+            "Hay que completarlos con los datos reales antes de cargarle otro día."
+        );
+        return;
+      }
+    }
+    cambiar("provisorio", !form.provisorio);
+  };
+
   const guardarParte = async () => {
     if (cerrado) return;
-    // Mismos obligatorios que valida el backend.
+    // Mismos obligatorios que valida el backend. Un provisorio solo necesita
+    // saber de quién y de qué día es: el resto se completa después.
     const falta = [];
     if (!form.fecha) falta.push("la fecha");
     if (!form.persona) falta.push("la persona");
-    if (!form.tarea) falta.push("la tarea");
-    if (pideCantidad && (form.cantidad === "" || form.cantidad === null)) falta.push("la cantidad");
+    if (!form.provisorio && !form.tarea) falta.push("la tarea");
+    if (!form.provisorio && pideCantidad && (form.cantidad === "" || form.cantidad === null)) {
+      falta.push("la cantidad");
+    }
     if (falta.length) {
       avisar({
         icon: "warning",
@@ -1049,7 +1108,7 @@ function ProduccionCertificadoMes({
     }
 
     // Marcado terminado y después se borró el lote: no se guarda así.
-    if (estadoEnForm && form.terminado && !String(form.lote || "").trim()) {
+    if (!form.provisorio && estadoEnForm && form.terminado && !String(form.lote || "").trim()) {
       avisar({
         icon: "warning",
         title: "Falta el lote",
@@ -1059,7 +1118,7 @@ function ProduccionCertificadoMes({
     }
 
     // Los dos tramos del día no se pueden pisar.
-    if (dosTurnos && tramosSeSolapan(form)) {
+    if (!form.provisorio && dosTurnos && tramosSeSolapan(form)) {
       avisar({
         icon: "error",
         title: "Horarios que se pisan",
@@ -1075,7 +1134,7 @@ function ProduccionCertificadoMes({
     }
 
     // El desmalezado tiene que coincidir con la medida del lote: no se guarda.
-    const unidadMal = desmalezadoFueraDeUnidad(form, lotes, tareas);
+    const unidadMal = form.provisorio ? null : desmalezadoFueraDeUnidad(form, lotes, tareas);
     if (unidadMal) {
       avisar({
         icon: "error",
@@ -1096,7 +1155,7 @@ function ProduccionCertificadoMes({
     const fechaAnterior = editando
       ? soloFecha(partes.find((p) => p._id === editando)?.fecha)
       : null;
-    if (!editando || fechaAnterior !== soloFecha(form.fecha)) {
+    if (!form.provisorio && (!editando || fechaAnterior !== soloFecha(form.fecha))) {
       const cierre = cierreDelLote(form, cierresDeLotes);
       if (cierre) {
         const nombreTarea = tareas.find((t) => t._id === form.tarea)?.tarea || "esa tarea";
@@ -1142,12 +1201,35 @@ function ProduccionCertificadoMes({
       return;
     }
 
+    // Con un día en provisorio no se le carga otro a esa persona, sea
+    // provisorio o completo. Corregir un parte completo de otro día sin
+    // cambiarle la fecha ni la persona no es cargar un día: eso se deja.
+    const original = editando ? partes.find((p) => p._id === editando) : null;
+    const cargaOtroDia =
+      form.provisorio ||
+      !original ||
+      soloFecha(original.fecha) !== soloFecha(form.fecha) ||
+      (original.persona?._id || "") !== form.persona;
+    const pendiente = cargaOtroDia ? diaProvisorioPendiente(form.persona, form.fecha) : null;
+    if (pendiente) {
+      avisarProvisorioPendiente(
+        `Esta persona tiene partes provisorios del ${formatFecha(pendiente)}. ` +
+          "Hay que completarlos con los datos reales antes de cargarle otro día."
+      );
+      return;
+    }
+
     // A qué certificado va el parte según su fecha: la fecha de cierre manda.
     const segunFecha = await resolverFechaDelParte(form.fecha);
     if (!segunFecha) return;
     // Terminado solo en las tareas con círculo: si se marcó con herbicida y
-    // después se cambió a pulverizado, no queda guardado (25/09/2026).
-    const datos = { ...form, ...segunFecha, terminado: estadoEnForm && Boolean(form.terminado) };
+    // después se cambió a pulverizado, no queda guardado (25/09/2026). Un
+    // provisorio tampoco da un lote por terminado: eso dispara el pago.
+    const datos = {
+      ...form,
+      ...segunFecha,
+      terminado: !form.provisorio && estadoEnForm && Boolean(form.terminado),
+    };
 
     setGuardando(true);
     try {
@@ -1186,14 +1268,22 @@ function ProduccionCertificadoMes({
         // Si el estado del lote movió el pago, eso es lo que hay que contar;
         // el "guardado" de siempre sobra.
         // Los desvíos se buscan mientras se muestra el aviso de guardado.
-        const buscandoDesvios = desviosAlGuardar(guardado).catch(() => []);
+        // Con datos provisorios no se busca nada: todavía no son los reales.
+        const buscandoDesvios = guardado?.provisorio
+          ? Promise.resolve([])
+          : desviosAlGuardar(guardado).catch(() => []);
         const reparto = guardado?.reparto;
+        const tituloGuardado = guardado?.provisorio
+          ? "Parte provisorio guardado"
+          : eraEdicion
+            ? "Parte actualizado"
+            : "Parte guardado";
         const avisoGuardado =
           reparto?.aviso || reparto?.estado === "repartido" || reparto?.estado === "limpiado"
             ? contarElReparto(reparto)
             : avisar({
                 icon: "success",
-                title: eraEdicion ? "Parte actualizado" : "Parte guardado",
+                title: tituloGuardado,
                 timer: 1500,
                 showConfirmButton: false,
               });
@@ -1214,7 +1304,11 @@ function ProduccionCertificadoMes({
         }
       } else {
         // El cuerpo del error ya lo leyó guardarConReglaHorometro.
-        avisar({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar" });
+        if (cuerpo?.motivo === "PROVISORIO_PENDIENTE") {
+          avisarProvisorioPendiente(cuerpo.error);
+        } else {
+          avisar({ icon: "error", title: "Error", text: cuerpo?.error || "No se pudo guardar" });
+        }
       }
     } catch {
       avisar({ icon: "error", title: "Sin conexión", text: "No se pudo conectar con el servidor" });
@@ -1259,6 +1353,9 @@ function ProduccionCertificadoMes({
       combustible: p.combustible ?? "",
       turbo: p.turbo || "",
       combTurbo: p.combTurbo ?? "",
+      // Sigue en provisorio hasta que se apague el botón: ahí vuelven todas
+      // las validaciones.
+      provisorio: Boolean(p.provisorio),
     });
     refPersona.current?.focus();
   };
@@ -1462,15 +1559,21 @@ function ProduccionCertificadoMes({
 
   // Los desvíos de cada parte, calculados una vez: los usan los íconos de la
   // tabla y el filtro de alarmas.
+  // Un provisorio no tiene desvíos: sus datos todavía no son los reales.
   const desviosPorParte = useMemo(
-    () => new Map(partes.map((p) => [p._id, desviosDelParte(p, admisibles, consumos[p._id])])),
+    () =>
+      new Map(
+        partes.map((p) => [p._id, p.provisorio ? [] : desviosDelParte(p, admisibles, consumos[p._id])])
+      ),
     [partes, admisibles, consumos]
   );
   const conAlarma = (p) => (desviosPorParte.get(p._id) || []).length > 0;
   const cantidadConAlarma = partes.filter(conAlarma).length;
+  const cantidadProvisorios = partes.filter((p) => p.provisorio).length;
 
   const hayFiltro =
     soloAlarmas ||
+    soloProvisorios ||
     Boolean(busqueda) ||
     Boolean(filtroFecha) ||
     filtroPersona !== "Todos" ||
@@ -1486,6 +1589,7 @@ function ProduccionCertificadoMes({
     const q = busqueda.trim().toLowerCase();
     return partes.filter((p) => {
       if (soloAlarmas && !(desviosPorParte.get(p._id) || []).length) return false;
+      if (soloProvisorios && !p.provisorio) return false;
       if (filtroFecha && soloFecha(p.fecha) !== filtroFecha) return false;
       if (filtroPersona !== "Todos" && (p.persona?._id || "") !== filtroPersona) return false;
       if (filtroTarea !== "Todas" && (p.tarea?._id || "") !== filtroTarea) return false;
@@ -1515,6 +1619,7 @@ function ProduccionCertificadoMes({
     filtroTurbo,
     filtroCliente,
     soloAlarmas,
+    soloProvisorios,
     desviosPorParte,
   ]);
 
@@ -2200,11 +2305,40 @@ function ProduccionCertificadoMes({
                 />
               </div>
 
+              {/* Valores provisorios: prendido, el parte se guarda con lo que
+                  haya, sin validar. Se apaga al completarlo con los datos
+                  reales y ahí vuelven todas las validaciones. */}
+              <button
+                type="button"
+                onClick={alternarProvisorio}
+                // Enter en el botón no tiene que guardar el parte de la fila.
+                onKeyDown={(e) => e.stopPropagation()}
+                className="btn btn-sm d-flex align-items-center gap-1 flex-shrink-0 rounded-3 ms-4"
+                style={{
+                  fontSize: "0.78rem",
+                  height: "30px",
+                  padding: "0 10px",
+                  border: `1px solid ${form.provisorio ? "#b45309" : "#cbd5e1"}`,
+                  backgroundColor: form.provisorio ? "#fef3c7" : "#fff",
+                  color: form.provisorio ? "#92400e" : "#1e293b",
+                  fontWeight: form.provisorio ? 700 : 500,
+                }}
+                title={
+                  form.provisorio
+                    ? "Valores provisorios: se guarda sin validar. Apáguelo al cargar los datos reales."
+                    : "Guardar con valores provisorios, sin validar, para completar al final de la jornada"
+                }
+                aria-pressed={form.provisorio}
+              >
+                <i className={`bi ${form.provisorio ? "bi-hourglass-split" : "bi-hourglass"}`}></i>
+                Provisorio
+              </button>
+
               <Button
                 size="sm"
                 onClick={guardarParte}
                 disabled={guardando}
-                className="rounded-3 px-3 d-flex align-items-center gap-1 ms-4"
+                className="rounded-3 px-3 d-flex align-items-center gap-1"
                 style={{ backgroundColor: editando ? "#0e7490" : "#15803d", borderColor: "transparent", fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
               >
                 <i className={`bi bi-${editando ? "check-lg" : "plus-lg"}`}></i>
@@ -2430,6 +2564,36 @@ function ProduccionCertificadoMes({
               </span>
             </button>
 
+            {/* Los provisorios que quedan por completar. Solo aparece cuando
+                hay alguno (o con el filtro puesto, para poder sacarlo). */}
+            {(cantidadProvisorios > 0 || soloProvisorios) && (
+              <button
+                type="button"
+                onClick={() => setSoloProvisorios((v) => !v)}
+                className="btn btn-sm d-flex align-items-center gap-1 flex-shrink-0 rounded-pill"
+                style={{
+                  fontSize: "0.78rem",
+                  height: "32px",
+                  padding: "0 10px",
+                  border: `1px solid ${soloProvisorios ? "#b45309" : "#cbd5e1"}`,
+                  backgroundColor: soloProvisorios ? "#fef3c7" : "#fff",
+                  color: soloProvisorios ? "#92400e" : "#1e293b",
+                  fontWeight: soloProvisorios ? 700 : 500,
+                }}
+                title={soloProvisorios ? "Mostrar todos los partes" : "Mostrar solo los partes provisorios, sin completar"}
+                aria-pressed={soloProvisorios}
+              >
+                <i className="bi bi-hourglass-split" style={{ color: "#b45309" }}></i>
+                Provisorios
+                <span
+                  className="rounded-pill px-1"
+                  style={{ backgroundColor: "#b45309", color: "#fff", fontSize: "0.68rem", minWidth: "18px" }}
+                >
+                  {cantidadProvisorios}
+                </span>
+              </button>
+            )}
+
           </div>
         </Card>
 
@@ -2483,9 +2647,23 @@ function ProduccionCertificadoMes({
                 </tr>
               ) : (
                 partesFiltrados.map((p) => (
-                  <tr key={p._id} className={editando === p._id ? "fila-editando" : undefined}>
+                  <tr
+                    key={p._id}
+                    className={
+                      [p.provisorio && "fila-provisoria", editando === p._id && "fila-editando"]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
+                  >
                     <td className="fw-semibold text-dark">
                       {formatFecha(p.fecha)}
+                      {p.provisorio && (
+                        <i
+                          className="bi bi-hourglass-split ms-1"
+                          style={{ color: "#b45309" }}
+                          title="Provisorio: faltan los datos reales. Edite el parte, complételo y apague Provisorio."
+                        ></i>
+                      )}
                       {/* Posterior al cierre pero dejado en este mes: con su
                           explicación va en ámbar; sin ella en rojo, hasta que
                           se la cargue editando el parte. */}

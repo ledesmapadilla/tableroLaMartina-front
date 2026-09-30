@@ -75,6 +75,12 @@ main {
   background-color: #e8f5ee;
   border-top: 2px solid #1b4332 !important;
 }
+/* El parte provisorio, con el ámbar del botón Provisorio: son los que quedan
+   por completar. También va después de la cebra, y antes de la fila en
+   edición para que esa le gane. */
+.tabla-informe tbody tr.fila-provisoria > td {
+  background-color: #fef3c7;
+}
 /* Va después de la cebra: la fila que se está editando manda sobre el fondo
    alternado. */
 .tabla-informe tbody tr.fila-editando > td {
