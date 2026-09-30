@@ -11,7 +11,7 @@ cambian lo que difiere.
 | --- | --- |
 | `/produccion/san-pablo` | grilla de meses |
 | `/produccion/variables` | Remuneración, Lotes y Valores admisibles (de todo Producción) |
-| `/produccion/variables/remuneracion` | precios por tarea, únicos para los dos campos (`ProduccionVariables`) |
+| `/produccion/variables/remuneracion/:campo` | precios por tarea de cada campo; Berdina y San Pablo arrancaron el 30/09/2026 con la misma lista (`ProduccionVariables`) |
 | `/produccion/variables/lotes/san-pablo` | padrón de lotes (`ProduccionLotes`) |
 | `/produccion/san-pablo/:anio/:mes` | menú del mes: Datos certificación e Informes |
 | `…/:mes/planilla` | carga de partes (`ProduccionCertificadoMes`) |

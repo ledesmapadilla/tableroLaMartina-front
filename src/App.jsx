@@ -291,9 +291,25 @@ function LayoutDesktop() {
                   es la tarjeta chica del medio en la entrada. Remuneración
                   entra directo; Lotes pide antes de qué campo son. */}
               <Route path="/produccion/variables" element={<ProduccionVariablesMenu />} />
+              {/* Remuneración vuelve a ser de cada campo (30/09/2026): pide el
+                  campo antes, como Lotes. */}
               <Route
                 path="/produccion/variables/remuneracion"
-                element={<ProduccionVariables />}
+                element={
+                  <ProduccionCampoMenu
+                    titulo="Remuneración"
+                    subtitulo="De qué campo son los precios"
+                    base="/produccion/variables/remuneracion"
+                  />
+                }
+              />
+              <Route
+                path="/produccion/variables/remuneracion/caspinchango"
+                element={<ProduccionVariables establecimiento="caspinchango" />}
+              />
+              <Route
+                path="/produccion/variables/remuneracion/san-pablo"
+                element={<ProduccionVariables establecimiento="san-pablo" />}
               />
               <Route
                 path="/produccion/variables/lotes"

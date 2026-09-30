@@ -313,9 +313,8 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
           fetch(`/api/periodos/${anio}/${mes}?${qEstab}`),
           // Los precios se traen enteros, no por período: la vigencia que rige
           // un parte puede ser de meses anteriores.
-          // El precio de una tarea es uno solo para todo Producción: no se
-          // pide por campo (18/09/2026).
-          fetch("/api/variables"),
+          // Cada campo tiene sus precios (30/09/2026).
+          fetch(`/api/variables?${qEstab}`),
           fetch(`/api/descuentos/${anio}/${mes}?${qEstab}`),
           fetch(`/api/cambios/${anio}/${mes}?${qEstab}`),
         ]);

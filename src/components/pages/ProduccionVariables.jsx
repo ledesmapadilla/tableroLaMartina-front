@@ -5,6 +5,7 @@ import { Container, Table, Button, Form, Modal, Row, Col, Card, InputGroup } fro
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { usePermisos } from "../../context/permisos";
+import { nombreEstablecimiento } from "../../utils/establecimientos";
 
 const API_VARIABLES = "/api/variables";
 const API_TAREAS = "/api/tareas";
@@ -34,6 +35,12 @@ const formatPesos = (valor) =>
         maximumFractionDigits: 2,
       });
 
+// Cantidad con separador de miles: 1.500 o 12,5.
+const formatCantidad = (valor) =>
+  valor === null || valor === undefined || valor === ""
+    ? "—"
+    : Number(valor).toLocaleString("es-AR", { maximumFractionDigits: 2 });
+
 const ESTADOS = ["Todas", "Con precio", "Sin precio"];
 
 // Lo que se descuenta del bruto para llegar al neto. El que se carga es el
@@ -45,6 +52,10 @@ const brutoDesdeNeto = (neto) => {
   if (neto === "" || neto === null || neto === undefined || !Number.isFinite(valor)) return null;
   return Math.round((valor / (1 - RETENCION)) * 100) / 100;
 };
+
+// El precio de alto rendimiento va con otro color de letra, para que no se
+// confunda con el normal.
+const COLOR_ALTO = "#b45309";
 
 // Para ordenar el historial y saber cuál rige: manda la vigencia, y si no está
 // cargada se cae a la fecha de carga.
@@ -63,16 +74,19 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
  * `/produccion/variables/remuneracion`, en la tarjeta Variables de la entrada
  * de Producción.
  *
- * El precio de una tarea es **uno solo para todo Producción** (18/09/2026):
- * antes había un listado por campo, pero eran el mismo salvo una tarea, así
- * que se unificaron. El historial de los dos quedó en una sola línea de
- * tiempo y rige, como siempre, la vigencia más nueva.
+ * Cada campo tiene sus precios (30/09/2026): Remuneración se abre en Berdina
+ * y San Pablo. Del 18/09 al 30/09 fueron uno solo para todo Producción; al
+ * separarlos, los dos arrancaron con la misma lista.
  */
-function ProduccionVariables() {
+function ProduccionVariables({ establecimiento = "caspinchango" }) {
   // Ver sin editar (tabla de Roles): los botones quedan a la vista pero
   // deshabilitados.
   const { puede } = usePermisos();
   const sinEditar = !puede("produccion.variables", "editar");
+  // San Pablo no tiene precio de alto rendimiento (30/09/2026): sus columnas
+  // y sus campos no se muestran.
+  const conAlto = establecimiento !== "san-pablo";
+  const siAlto = (...cosas) => (conAlto ? cosas : []);
   const [tareas, setTareas] = useState([]);
   const [precios, setPrecios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
@@ -98,13 +112,14 @@ function ProduccionVariables() {
 
   // El bruto del modal se recalcula mientras se tipea el neto.
   const netoTipeado = watch("neto");
+  const netoAltoTipeado = watch("netoAlto");
 
   const cargar = async () => {
     try {
       const [resTareas, resPrecios] = await Promise.all([
         // Las tareas son de La Martina y se comparten entre los dos campos.
         fetch(API_TAREAS),
-        fetch(API_VARIABLES),
+        fetch(`${API_VARIABLES}?establecimiento=${establecimiento}`),
       ]);
       const datosTareas = resTareas.ok ? await resTareas.json() : [];
       const datosPrecios = resPrecios.ok ? await resPrecios.json() : [];
@@ -118,7 +133,9 @@ function ProduccionVariables() {
 
   useEffect(() => {
     cargar();
-  }, []);
+    // Se vuelve a pedir al pasar de un campo al otro.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [establecimiento]);
 
   // Todas las cargas agrupadas por tarea, de la vigencia más nueva a la más
   // vieja.
@@ -199,6 +216,8 @@ function ProduccionVariables() {
     reset({
       tarea: tarea?._id || "",
       neto: "",
+      cantAlto: "",
+      netoAlto: "",
       fecha: hoyStr(),
       vigenciaDesde: vigenciaSugerida,
     });
@@ -212,6 +231,8 @@ function ProduccionVariables() {
     reset({
       tarea: carga.tarea?._id || "",
       neto: carga.neto ?? "",
+      cantAlto: carga.cantAlto ?? "",
+      netoAlto: carga.netoAlto ?? "",
       fecha: soloFecha(carga.fecha),
       vigenciaDesde: soloFecha(carga.vigenciaDesde),
     });
@@ -234,6 +255,8 @@ function ProduccionVariables() {
     reset({
       tarea: f._id,
       neto: f.vigente?.neto ?? "",
+      cantAlto: f.vigente?.cantAlto ?? "",
+      netoAlto: f.vigente?.netoAlto ?? "",
       fecha: hoyStr(),
       vigenciaDesde: vigenciaSugerida,
     });
@@ -252,7 +275,7 @@ function ProduccionVariables() {
       const res = await fetch(editando ? `${API_VARIABLES}/${editando}` : API_VARIABLES, {
         method: editando ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, establecimiento }),
       });
       if (res.ok) {
         cerrarModal();
@@ -344,11 +367,20 @@ function ProduccionVariables() {
   const exportarExcel = async () => {
     const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Variables");
-    const columnas = ["#", "Tarea", "Unidad", "$ neto", "$ bruto", "Fecha", "Vigencia desde"];
+    const columnas = [
+      "#",
+      "Tarea",
+      "Unidad",
+      "$ neto normal",
+      "$ bruto normal",
+      ...siAlto("Cant. alto Rto.", "$ neto alto Rto.", "$ bruto alto Rto."),
+      "Fecha",
+      "Vigencia desde",
+    ];
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
-    celdaTitulo.value = "VARIABLES DE LA CERTIFICACIÓN";
+    celdaTitulo.value = `REMUNERACIÓN — ${nombreEstablecimiento(establecimiento).toUpperCase()}`;
     celdaTitulo.font = { bold: true, size: 14 };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 28;
@@ -378,6 +410,7 @@ function ProduccionVariables() {
         f.unidad || "—",
         v?.neto ?? "—",
         v?.bruto ?? "—",
+        ...siAlto(v?.cantAlto ?? "—", v?.netoAlto ?? "—", v?.brutoAlto ?? "—"),
         v?.fecha ? formatFecha(v.fecha) : "—",
         v?.vigenciaDesde ? formatFecha(v.vigenciaDesde) : "—",
       ]);
@@ -393,19 +426,34 @@ function ProduccionVariables() {
       fila.getCell(2).alignment = { horizontal: "left", vertical: "middle" };
       // Los importes van como número con formato de moneda, para que en el
       // Excel se puedan sumar.
-      [4, 5].forEach((col) => {
+      [4, 5, ...siAlto(7, 8)].forEach((col) => {
         if (typeof fila.getCell(col).value === "number") {
           fila.getCell(col).numFmt = '"$" #,##0.00';
         }
       });
+      // El de alto rendimiento con otro color de letra, como en la pantalla.
+      siAlto(6, 7, 8).forEach((col) => {
+        fila.getCell(col).font = { color: { argb: "FFB45309" } };
+      });
+      // La cantidad, con las líneas de los costados más fuertes.
+      if (conAlto) {
+        const cant = fila.getCell(6);
+        cant.border = {
+          ...cant.border,
+          left: { style: "medium", color: { argb: "FF475569" } },
+          right: { style: "medium", color: { argb: "FF475569" } },
+        };
+        if (typeof cant.value === "number") cant.numFmt = "#,##0.##";
+      }
     });
 
     ws.columns = [
       { width: 6 },
       { width: 44 },
       { width: 14 },
-      { width: 14 },
-      { width: 14 },
+      { width: 16 },
+      { width: 16 },
+      ...siAlto({ width: 15 }, { width: 17 }, { width: 17 }),
       { width: 14 },
       { width: 16 },
     ];
@@ -417,7 +465,7 @@ function ProduccionVariables() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `variables_certificacion_${hoyStr()}.xlsx`;
+    a.download = `remuneracion_${establecimiento}_${hoyStr()}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -471,7 +519,7 @@ function ProduccionVariables() {
       <Container
         fluid
         className="px-4 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "1020px", width: "100%", margin: "0 auto", overflow: "hidden" }}
+        style={{ maxWidth: "1240px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
         {/* Encabezado: título + acciones de toda la tabla. El volver está en el
             navbar de Producción, arriba. */}
@@ -492,9 +540,8 @@ function ProduccionVariables() {
             </div>
             <div className="d-flex flex-column lh-sm">
               <span className="fw-bold" style={{ color: "#1b4332", fontSize: "1rem" }}>
-                Variables
+                Remuneración · {nombreEstablecimiento(establecimiento)}
               </span>
-              {/* El campo en el que se está parado lo dice el navbar, arriba. */}
               <span className="text-muted" style={{ fontSize: "0.78rem" }}>
                 {conPrecio} de {filas.length} tareas con precio · rigen para todos los meses
               </span>
@@ -640,8 +687,16 @@ function ProduccionVariables() {
                 {th("Tarea", { textAlign: "left" })}
                 {th("Unidad", { width: "100px" })}
                 {/* Primero el neto, que es el que se carga; el bruto es cuenta */}
-                {th("$ neto", { width: "115px" })}
-                {th("$ bruto", { width: "115px" })}
+                {th("$ neto normal", { width: "110px" })}
+                {th("$ bruto normal", { width: "110px" })}
+                {/* El de alto rendimiento, con su color de letra */}
+                {conAlto && (
+                  <th className="col-bordes-fuertes" style={{ ...estiloTh, width: "95px", color: "#fcd34d" }}>
+                    Cant. alto Rto.
+                  </th>
+                )}
+                {conAlto && th("$ neto alto Rto.", { width: "110px", color: "#fcd34d" })}
+                {conAlto && th("$ bruto alto Rto.", { width: "110px", color: "#fcd34d" })}
                 {th("Fecha", { width: "125px" }, "Cuándo se cargó el valor")}
                 {th("Vigencia desde", { width: "125px" }, "Desde cuándo se aplica")}
                 {th("Acciones", { width: "125px" })}
@@ -650,7 +705,7 @@ function ProduccionVariables() {
             <tbody>
               {filasFiltradas.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-muted py-4" style={{ fontSize: "0.8rem" }}>
+                  <td colSpan={conAlto ? 11 : 8} className="text-muted py-4" style={{ fontSize: "0.8rem" }}>
                     {hayFiltro
                       ? "Ninguna tarea coincide con los filtros"
                       : "No hay tareas dadas de alta"}
@@ -670,6 +725,19 @@ function ProduccionVariables() {
                       <td className="fw-bold" style={{ color: "#1b4332" }}>
                         {v ? formatPesos(v.bruto) : raya}
                       </td>
+                      {conAlto && (
+                        <>
+                          <td className="fw-bold col-bordes-fuertes" style={{ color: COLOR_ALTO }}>
+                            {v?.cantAlto != null ? formatCantidad(v.cantAlto) : raya}
+                          </td>
+                          <td className="fw-bold" style={{ color: COLOR_ALTO }}>
+                            {v?.netoAlto != null ? formatPesos(v.netoAlto) : raya}
+                          </td>
+                          <td className="fw-bold" style={{ color: COLOR_ALTO }}>
+                            {v?.brutoAlto != null ? formatPesos(v.brutoAlto) : raya}
+                          </td>
+                        </>
+                      )}
                       <td className="text-secondary">{v?.fecha ? formatFecha(v.fecha) : raya}</td>
                       <td className="text-secondary">
                         {v?.vigenciaDesde ? formatFecha(v.vigenciaDesde) : raya}
@@ -799,7 +867,7 @@ function ProduccionVariables() {
                   contra qué número se está cargando. */}
               <Col md={6} className="text-center">
                 <Form.Label className="fw-semibold text-dark small mb-1">
-                  $ neto <span className="text-danger">*</span>
+                  $ neto normal <span className="text-danger">*</span>
                 </Form.Label>
                 {/* El signo va en el prefijo del campo: adentro es un number,
                     que no admite el 12.500,00 con separadores. */}
@@ -828,7 +896,7 @@ function ProduccionVariables() {
               </Col>
 
               <Col md={6} className="text-center">
-                <Form.Label className="fw-semibold text-dark small mb-1">$ bruto</Form.Label>
+                <Form.Label className="fw-semibold text-dark small mb-1">$ bruto normal</Form.Label>
                 <div
                   className="rounded-3 d-flex align-items-center justify-content-center px-2 fw-bold mx-auto"
                   style={{
@@ -848,6 +916,78 @@ function ProduccionVariables() {
                   Bruto = neto / (1 - {String(RETENCION).replace(".", ",")})
                 </span>
               </Col>
+
+              {/* El de alto rendimiento: optativo, misma cuenta, otro color.
+                  San Pablo no lo tiene. */}
+              {conAlto && (
+                <>
+                  <Col md={12} className="text-center">
+                    <Form.Label className="fw-semibold small mb-1" style={{ color: COLOR_ALTO }}>
+                      Cant. alto Rto.
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      step="any"
+                      className="rounded-3 text-center fw-bold mx-auto"
+                      style={{ fontSize: "0.85rem", maxWidth: "165px", color: COLOR_ALTO }}
+                      {...register("cantAlto", {
+                        min: { value: 0, message: "No puede ser negativa" },
+                      })}
+                      isInvalid={!!errors.cantAlto}
+                    />
+                    <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                      {errors.cantAlto?.message}
+                    </Form.Control.Feedback>
+                  </Col>
+
+                  <Col md={6} className="text-center">
+                    <Form.Label className="fw-semibold small mb-1" style={{ color: COLOR_ALTO }}>
+                      $ neto alto Rto.
+                    </Form.Label>
+                    <InputGroup className="mx-auto" style={{ maxWidth: "165px" }}>
+                      <InputGroup.Text
+                        className="bg-light text-muted fw-bold"
+                        style={{ fontSize: "0.85rem" }}
+                      >
+                        $
+                      </InputGroup.Text>
+                      <Form.Control
+                        type="number"
+                        step="any"
+                        className="text-center fw-bold"
+                        style={{ fontSize: "0.85rem", color: COLOR_ALTO }}
+                        {...register("netoAlto", {
+                          min: { value: 0, message: "No puede ser negativo" },
+                        })}
+                        isInvalid={!!errors.netoAlto}
+                      />
+                      <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                        {errors.netoAlto?.message}
+                      </Form.Control.Feedback>
+                    </InputGroup>
+                  </Col>
+
+                  <Col md={6} className="text-center">
+                    <Form.Label className="fw-semibold small mb-1" style={{ color: COLOR_ALTO }}>
+                      $ bruto alto Rto.
+                    </Form.Label>
+                    <div
+                      className="rounded-3 d-flex align-items-center justify-content-center px-2 fw-bold mx-auto"
+                      style={{
+                        height: "38px",
+                        maxWidth: "165px",
+                        fontSize: "0.85rem",
+                        backgroundColor: "#fef3c7",
+                        border: "1px solid #fcd34d",
+                        color: COLOR_ALTO,
+                      }}
+                      title="Se calcula solo a partir del neto de alto rendimiento"
+                    >
+                      {formatPesos(brutoDesdeNeto(netoAltoTipeado))}
+                    </div>
+                  </Col>
+                </>
+              )}
 
               <Col md={6} className="text-center">
                 <Form.Label className="fw-semibold text-dark small mb-1">
@@ -978,8 +1118,15 @@ function ProduccionVariables() {
             <thead>
               <tr className="align-middle">
                 {th("Vigencia desde", { width: "150px" }, "Desde cuándo se aplica")}
-                {th("$ neto")}
-                {th("$ bruto")}
+                {th("$ neto normal")}
+                {th("$ bruto normal")}
+                {conAlto && (
+                  <th className="col-bordes-fuertes" style={{ ...estiloTh, color: "#fcd34d" }}>
+                    Cant. alto Rto.
+                  </th>
+                )}
+                {conAlto && th("$ neto alto Rto.", { color: "#fcd34d" })}
+                {conAlto && th("$ bruto alto Rto.", { color: "#fcd34d" })}
                 {th("Fecha", { width: "150px" }, "Cuándo se cargó el valor")}
                 {th("Acciones", { width: "110px" })}
               </tr>
@@ -1010,6 +1157,19 @@ function ProduccionVariables() {
                   <td className="fw-bold" style={{ color: "#1b4332" }}>
                     {formatPesos(h.bruto)}
                   </td>
+                  {conAlto && (
+                    <>
+                      <td className="fw-bold col-bordes-fuertes" style={{ color: COLOR_ALTO }}>
+                        {formatCantidad(h.cantAlto)}
+                      </td>
+                      <td className="fw-bold" style={{ color: COLOR_ALTO }}>
+                        {formatPesos(h.netoAlto)}
+                      </td>
+                      <td className="fw-bold" style={{ color: COLOR_ALTO }}>
+                        {formatPesos(h.brutoAlto)}
+                      </td>
+                    </>
+                  )}
                   <td className="text-secondary">{h.fecha ? formatFecha(h.fecha) : "—"}</td>
                   <td>
                     <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
