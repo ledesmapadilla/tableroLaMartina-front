@@ -60,6 +60,36 @@ const conUnidad = (valor, unidad) =>
 const horasDe = (obj) =>
   typeof obj?.acumuladas === "number" ? obj.acumuladas : obj?.horometro;
 
+// Horas que traía la máquina cuando se puso el horómetro que tiene ahora: lo
+// que hay que restarle a las acumuladas para leerlas en el horómetro nuevo.
+const baseDe = (obj) =>
+  typeof obj?.acumuladas === "number" && typeof obj?.horometro === "number"
+    ? obj.acumuladas - obj.horometro
+    : 0;
+
+/**
+ * Lo que se muestra de cada tractor (01/10/2026). Las cuentas del service se
+ * hacen en horas acumuladas, pero después de un cambio de horómetro lo que se
+ * lee es el horómetro nuevo, que arranca de 0: el actual y el próximo service
+ * van en ese horómetro. Ej.: el anterior hizo 100 hs desde el service, así que
+ * el próximo toca a las 150 hs del nuevo (250 desde el service).
+ */
+const lecturasDeFila = (hmObj, reg, intervalo) => {
+  const hsActuales = horasDe(hmObj);
+  const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
+  const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
+  const base = baseDe(hmObj);
+  return {
+    hsActuales,
+    hsUltimoService,
+    hsProxService,
+    base,
+    lecturaActual: typeof hmObj?.horometro === "number" ? hmObj.horometro : hsActuales,
+    proxEnActual:
+      hsProxService !== null ? Math.round((hsProxService - base) * 100) / 100 : null,
+  };
+};
+
 // De donde se tomo la lectura vigente de horometro.
 const ORIGEN_LECTURA = {
   manual: "carga manual",
@@ -165,6 +195,19 @@ function getEstadoTractor(
   };
 }
 
+// Opciones del filtro de estado: los de la columna Estado y, además, atrasado
+// y sin service juntos, que son los que hay que salir a hacer.
+const ATRASADO_SIN_SERVICE = "ATRASADO_SIN_SERVICE";
+const FILTROS_ESTADO = [
+  { valor: "TODOS", texto: "Todos los estados" },
+  { valor: "Al día", texto: "Al día" },
+  { valor: "Próximo", texto: "Próximo" },
+  { valor: "Atrasado", texto: "Atrasado" },
+  { valor: "Sin service", texto: "Sin service" },
+  { valor: ATRASADO_SIN_SERVICE, texto: "Atrasado + Sin service" },
+  { valor: "Parado", texto: "Parado" },
+];
+
 function TractoresPreventivo() {
   // Ver sin editar (tabla de Roles): los botones que cargan service, horómetro
   // u observaciones quedan a la vista pero deshabilitados.
@@ -183,6 +226,7 @@ function TractoresPreventivo() {
 
   const [filtroBusqueda, setFiltroBusqueda] = useState("");
   const [filtroGrupo, setFiltroGrupo] = useState("TODOS");
+  const [filtroEstado, setFiltroEstado] = useState("TODOS");
 
   // Modal Cargar Service
   const [showModal, setShowModal] = useState(false);
@@ -658,6 +702,18 @@ function TractoresPreventivo() {
 
   // Ordenados por número de CC (la tabla y el Excel). El back los manda por
   // grupo y supervisor.
+  // El estado de un tractor, con la misma cuenta que la columna Estado.
+  const estadoDe = (t) => {
+    const reg = ultimosServices.find((u) => u.tractor?._id === t._id || u.tractor === t._id);
+    const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
+    const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
+    const unidad = unidadDe(t);
+    const intervalo = reg?.intervalo || unidad.intervalo;
+    const { hsActuales, hsUltimoService } = lecturasDeFila(hmObj, reg, intervalo);
+    const estaParado = paradasTractores.has(t._id?.toString());
+    return getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado, unidad.margen).label;
+  };
+
   const tractoresFiltrados = tractores
     .filter((t) => {
       const matchBusqueda =
@@ -666,6 +722,16 @@ function TractoresPreventivo() {
         (t.supervisor || "").toLowerCase().includes(filtroBusqueda.toLowerCase());
 
       if (!matchBusqueda) return false;
+
+      if (filtroEstado !== "TODOS") {
+        const estado = estadoDe(t);
+        // Los dos que piden ir a hacer el service, juntos.
+        if (filtroEstado === ATRASADO_SIN_SERVICE) {
+          if (estado !== "Atrasado" && estado !== "Sin service") return false;
+        } else if (estado !== filtroEstado) {
+          return false;
+        }
+      }
 
       if (filtroGrupo === "TODOS") return true;
       if (filtroGrupo === "OTROS") return !t.gruppo || t.gruppo > 5;
@@ -741,12 +807,14 @@ function TractoresPreventivo() {
       );
       const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
       const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
-      const hsActuales = horasDe(hmObj);
       const fechaHsActual = hmObj?.fecha;
-      const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
       const unidad = unidadDe(t);
       const intervalo = reg?.intervalo || unidad.intervalo;
-      const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
+      const { hsActuales, hsUltimoService, lecturaActual, proxEnActual } = lecturasDeFila(
+        hmObj,
+        reg,
+        intervalo
+      );
 
       const estaParado = paradasTractores.has(t._id?.toString());
       const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado, unidad.margen);
@@ -758,10 +826,10 @@ function TractoresPreventivo() {
         t.supervisor || "—",
         t.gruppo ? `Grupo ${t.gruppo}` : "—",
         fechaHsActual ? formatFecha(fechaHsActual) : "—",
-        conUnidad(hsActuales, unidad),
+        conUnidad(lecturaActual, unidad),
         reg ? formatFecha(reg.fecha) : "—",
         conUnidad(hsUltimoService, unidad),
-        conUnidad(hsProxService, unidad),
+        conUnidad(proxEnActual, unidad),
         reg?.observaciones || "—",
         estado.label,
       ]);
@@ -1020,6 +1088,27 @@ function TractoresPreventivo() {
               <option value="5">Grupo 5</option>
               <option value="OTROS">Otros / Sin Grupo</option>
             </Form.Select>
+
+            {/* Filtro por Estado: en rojo mientras filtra, como los demás */}
+            <Form.Select
+              size="sm"
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className={`rounded-3 shadow-sm ${filtroEstado !== "TODOS" ? "fw-bold filtro-activo" : ""}`}
+              style={{
+                width: "200px",
+                fontSize: "0.84rem",
+                borderColor: "#cbd5e1",
+                color: filtroEstado !== "TODOS" ? "#dc2626" : undefined,
+              }}
+              title="Filtrar por estado"
+            >
+              {FILTROS_ESTADO.map((f) => (
+                <option key={f.valor} value={f.valor}>
+                  {f.texto}
+                </option>
+              ))}
+            </Form.Select>
           </div>
 
           {/* Botón Excel a la derecha */}
@@ -1109,12 +1198,11 @@ function TractoresPreventivo() {
                 );
                 const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
                 const hmObj = ultimosHorometros[t.cc] || ultimosHorometros[cleanCC];
-                const hsActuales = horasDe(hmObj);
                 const fechaHsActual = hmObj?.fecha;
-                const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
                 const unidad = unidadDe(t);
                 const intervalo = reg?.intervalo || unidad.intervalo;
-                const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
+                const { hsActuales, hsUltimoService, hsProxService, base, lecturaActual, proxEnActual } =
+                  lecturasDeFila(hmObj, reg, intervalo);
                 const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado, unidad.margen);
 
                 return (
@@ -1211,8 +1299,14 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Horómetro (Horómetro actual) */}
-                    <td className="fw-bold" style={{ fontSize: "0.74rem", color: "#0f172a", padding: "2px 4px" }}>
-                      {conUnidad(hsActuales, unidad)}
+                    {/* Lo que marca el horómetro que tiene puesto: después de
+                        un cambio arranca de 0. Las acumuladas, en el título. */}
+                    <td
+                      className="fw-bold"
+                      style={{ fontSize: "0.74rem", color: "#0f172a", padding: "2px 4px" }}
+                      title={base ? `${conUnidad(hsActuales, unidad)} en total, sumando los horómetros anteriores` : undefined}
+                    >
+                      {conUnidad(lecturaActual, unidad)}
                       <BadgeHorometro numero={hmObj?.numeroHorometro} />
                     </td>
 
@@ -1228,8 +1322,21 @@ function TractoresPreventivo() {
                     </td>
 
                     {/* Hm. Próx. Srv. */}
-                    <td className="fw-semibold" style={{ fontSize: "0.72rem", color: "#2563eb", padding: "2px 4px" }}>
-                      {conUnidad(hsProxService, unidad)}
+                    {/* En el horómetro que tiene puesto, que es el que se va a
+                        mirar para saber cuándo toca. */}
+                    <td
+                      className="fw-semibold"
+                      style={{ fontSize: "0.72rem", color: "#2563eb", padding: "2px 4px" }}
+                      title={
+                        base
+                          ? `${conUnidad(hsProxService, unidad)} en total: ${conUnidad(intervalo, unidad)} desde el último service`
+                          : undefined
+                      }
+                    >
+                      {conUnidad(proxEnActual, unidad)}
+                      {base > 0 && proxEnActual !== null && (
+                        <BadgeHorometro numero={hmObj?.numeroHorometro} />
+                      )}
                     </td>
 
                     {/* Obs */}
@@ -1300,6 +1407,8 @@ function TractoresPreventivo() {
                       ? "Cargando datos..."
                       : filtroBusqueda
                       ? `Sin resultados para "${filtroBusqueda}"`
+                      : filtroEstado !== "TODOS" || filtroGrupo !== "TODOS"
+                      ? "Ningún tractor coincide con los filtros"
                       : "Sin tractores registrados"}
                   </td>
                 </tr>
