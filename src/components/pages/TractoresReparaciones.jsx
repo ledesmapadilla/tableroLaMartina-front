@@ -207,6 +207,21 @@ function TractoresReparaciones() {
     }).length;
   };
 
+  // El supervisor del grupo sale de sus tractores (el que más se repite), así
+  // sigue al día si cambia; el de gruposInfo queda para un grupo sin tractores.
+  const supervisorDe = (g) => {
+    const cuenta = new Map();
+    for (const t of tractores) {
+      const nombre = String(t.supervisor || "").trim();
+      if (Number(t.gruppo ?? 6) !== Number(g.numero) || !nombre) continue;
+      cuenta.set(nombre, (cuenta.get(nombre) || 0) + 1);
+    }
+    const [masVisto] = [...cuenta.entries()].sort((a, b) => b[1] - a[1]);
+    const nombre = masVisto ? masVisto[0] : g.supervisor || "";
+    // "brandan alejandro" → "Brandan Alejandro".
+    return nombre.replace(/(^|\s)(\p{L})/gu, (m, esp, letra) => esp + letra.toUpperCase());
+  };
+
   const totalTractores = tractores.length;
 
   return (
@@ -315,9 +330,13 @@ function TractoresReparaciones() {
 
       {/* Grid Central de Grupos */}
       <div
-        className="flex-grow-1 p-4 d-flex align-items-center justify-content-center"
+        // Centrado con margin:auto en la grilla y no con align-items: cuando
+        // las tarjetas no entran, align-items las cortaba arriba y abajo sin
+        // dejar scrollear hasta los bordes.
+        className="flex-grow-1 p-4 d-flex"
         style={{
           overflowY: "auto",
+          minHeight: 0,
         }}
       >
         <div
@@ -329,6 +348,7 @@ function TractoresReparaciones() {
             gap: "1.5rem",
             maxWidth: "1020px",
             width: "100%",
+            margin: "auto",
             justifyContent: "center",
           }}
         >
@@ -411,6 +431,17 @@ function TractoresReparaciones() {
                 <h5 className="fw-bold text-center mt-1 mb-0" style={{ fontSize: "1.1rem", letterSpacing: "0.2px" }}>
                   {g.label}
                 </h5>
+
+                {/* El supervisor del grupo */}
+                {supervisorDe(g) && (
+                  <span
+                    className="d-flex align-items-center gap-1 mt-1"
+                    style={{ fontSize: "0.76rem", color: g.accent, fontWeight: 600 }}
+                  >
+                    <i className="bi bi-person-fill"></i>
+                    {supervisorDe(g)}
+                  </span>
+                )}
 
                 <div
                   className="text-center px-2 mt-2"

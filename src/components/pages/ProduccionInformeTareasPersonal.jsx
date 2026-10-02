@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { Button, Card, Container, Form, InputGroup, Modal, Table } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
+import { RETENCION, precioVigente, pagaAlto, repartirDia } from "../../utils/altoRendimiento";
 
 const MESES = [
   "Enero",
@@ -75,45 +76,7 @@ const claveCliente = (c) => (c || "").trim().toLowerCase();
 const claveDeFila = (idPersona, idTarea, cliente) =>
   `${idPersona}|${idTarea}|${claveCliente(cliente)}`;
 
-// Lo que se descuenta del bruto para llegar al neto. Es el mismo valor que usa
-// el backend al guardar el precio; acá solo hace falta para las cargas viejas
-// que quedaron sin el bruto calculado.
-const RETENCION = 0.205;
-
-/**
- * Precio que rige para una tarea en una fecha dada, con su neto y su bruto.
- * Los dos salen de la misma carga de Variables: el que se escribe es el neto y
- * el backend guarda el bruto ya calculado con la retención.
- *
- * Los precios se cargan en **Variables** (`/produccion/variables/remuneracion`)
- * y son una fila por cada vez que el valor cambió: el que corresponde a un
- * parte es el de la vigencia más nueva que no sea posterior a su fecha. Si el
- * parte cae antes de la primera vigencia cargada, no hay precio: eso es una
- * raya, no un cero.
- *
- * El precio no distingue cliente: es el mismo para todo lo que se certifica
- * (17/09/2026).
- */
-const precioVigente = (variables, idTarea, fecha) => {
-  const deLaTarea = variables.filter((v) => (v.tarea?._id || v.tarea) === idTarea);
-  if (deLaTarea.length === 0) return null;
-
-  const dia = soloFecha(fecha);
-  const vigentes = deLaTarea
-    .filter((v) => v.vigenciaDesde && soloFecha(v.vigenciaDesde) <= dia)
-    .sort((a, b) => soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde)));
-
-  const neto = vigentes[0]?.neto;
-  if (!Number.isFinite(neto)) return null;
-
-  // El bruto se guarda con el precio; si una carga vieja no lo tiene, se
-  // rehace la misma cuenta que hace el backend.
-  const bruto = vigentes[0]?.bruto;
-  return {
-    neto,
-    bruto: Number.isFinite(bruto) ? bruto : redondear(neto / (1 - RETENCION)),
-  };
-};
+// Los precios y el alto rendimiento: los comparte con la planilla y el resumen.
 
 const comparar = (a, b) => String(a).localeCompare(String(b), "es", { sensitivity: "base" });
 const compararCC = (a, b) =>
@@ -272,6 +235,8 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const [verFila, setVerFila] = useState(null);
   const [guardandoFila, setGuardandoFila] = useState(false);
   const [edicion, setEdicion] = useState({ cantidad: "", precioUnitario: "", detalle: "" });
+  // El renglón de alto rendimiento cuyo detalle por día está abierto.
+  const [detalleAlto, setDetalleAlto] = useState(null);
 
   // Modal del historial: la fila cuyos cambios se están mirando y corrigiendo.
   const [verHistorial, setVerHistorial] = useState(null);
@@ -456,15 +421,15 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const { filas, totalPorPersona, numeroPorPersona } = useMemo(() => {
     const mapa = new Map();
 
-    for (const p of partesFiltrados) {
-      const idPersona = p.persona?._id || "sin-persona";
-      const idTarea = p.tarea?._id || "sin-tarea";
-      const clave = claveDeFila(idPersona, idTarea, p.cliente);
-      if (!mapa.has(clave)) {
-        mapa.set(clave, {
-          clave,
-          idPersona,
-          idTarea,
+    // El renglón de un parte; `alto` es el de alto rendimiento, que va aparte.
+    const filaDe = (p, clave, alto = false) => {
+      const claveFila = alto ? `${clave}|alto` : clave;
+      if (!mapa.has(claveFila)) {
+        mapa.set(claveFila, {
+          clave: claveFila,
+          alto,
+          idPersona: p.persona?._id || "sin-persona",
+          idTarea: p.tarea?._id || "sin-tarea",
           persona: p.persona?.apellidoNombre || "(sin persona)",
           legajo: p.persona?.legajo || "",
           tarea: p.tarea?.tarea || "(sin tarea)",
@@ -479,26 +444,88 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
           precios: new Set(),
         });
       }
+      return mapa.get(claveFila);
+    };
 
-      const fila = mapa.get(clave);
-      const cantidad = Number(p.cantidad) || 0;
+    const sumar = (fila, cantidad, neto, bruto) => {
       fila.cantidad += cantidad;
+      if (neto === null) return;
+      fila.cantidadConPrecio += cantidad;
+      fila.importe += cantidad * neto;
+      fila.importeBruto += cantidad * bruto;
+      fila.precios.add(neto);
+    };
 
-      // El precio se busca parte por parte: depende del cliente al que se le
-      // certifica y de la vigencia que regía ese día.
-      const precio = precioVigente(variables, idTarea, p.fecha);
-      if (precio !== null) {
-        fila.cantidadConPrecio += cantidad;
-        fila.importe += cantidad * precio.neto;
-        fila.importeBruto += cantidad * precio.bruto;
-        fila.precios.add(precio.neto);
+    // Los partes se juntan por renglón y por día: el alto rendimiento se mide
+    // con lo que la persona hizo en el día.
+    const porDia = new Map();
+    for (const p of partesFiltrados) {
+      const clave = claveDeFila(p.persona?._id || "sin-persona", p.tarea?._id || "sin-tarea", p.cliente);
+      const claveDia = `${clave}|${soloFecha(p.fecha)}`;
+      const dia = porDia.get(claveDia) || { parte: p, clave, cantidad: 0 };
+      dia.cantidad += Number(p.cantidad) || 0;
+      porDia.set(claveDia, dia);
+    }
+
+    // Todos los días de cada renglón con tope de alto rendimiento: es el
+    // detalle que abre el cartel "Alto Rto.".
+    const diasPorClave = new Map();
+
+    for (const { parte: p, clave, cantidad } of porDia.values()) {
+      const fila = filaDe(p, clave);
+      // El precio es el de la vigencia que regía ese día.
+      const precio = precioVigente(variables, fila.idTarea, p.fecha);
+      if (precio === null) {
+        sumar(fila, cantidad, null);
+      } else if (pagaAlto(establecimiento, precio)) {
+        const { normal, alto } = repartirDia(cantidad, precio.cantAlto, fila.tarea);
+        sumar(fila, normal, precio.neto, precio.bruto);
+        if (alto > 0) sumar(filaDe(p, clave, true), alto, precio.netoAlto, precio.brutoAlto);
+        const dias = diasPorClave.get(clave) || [];
+        dias.push({
+          fecha: soloFecha(p.fecha),
+          cantidad,
+          normal,
+          alto,
+          tope: precio.cantAlto,
+          neto: precio.neto,
+          netoAlto: precio.netoAlto,
+          importe: redondear(normal * precio.neto + alto * precio.netoAlto),
+        });
+        diasPorClave.set(clave, dias);
+      } else {
+        sumar(fila, cantidad, precio.neto, precio.bruto);
+        // Un día de antes del tope también va al detalle, sin alto
+        // rendimiento: así se ven todos los días de la tarea.
+        const dias = diasPorClave.get(clave) || [];
+        dias.push({
+          fecha: soloFecha(p.fecha),
+          cantidad,
+          normal: cantidad,
+          alto: 0,
+          tope: null,
+          neto: precio.neto,
+          netoAlto: null,
+          importe: redondear(cantidad * precio.neto),
+        });
+        diasPorClave.set(clave, dias);
       }
     }
 
+    // El detalle va en el renglón de alto rendimiento, del día más viejo al
+    // más nuevo.
+    for (const f of mapa.values()) {
+      if (!f.alto) continue;
+      const claveBase = f.clave.replace(/\|alto$/, "");
+      f.dias = (diasPorClave.get(claveBase) || []).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    }
+
     // Cuántos renglones hay por persona y tarea: define si una corrección
-    // huérfana se puede reubicar sin ambigüedad.
+    // huérfana se puede reubicar sin ambigüedad. El de alto rendimiento no
+    // cuenta: no se corrige a mano.
     const renglonesPorTarea = new Map();
     for (const f of mapa.values()) {
+      if (f.alto) continue;
       const clave = `${f.idPersona}|${f.idTarea}`;
       renglonesPorTarea.set(clave, (renglonesPorTarea.get(clave) || 0) + 1);
     }
@@ -533,8 +560,11 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
          * aplicarla a los dos duplicaría el importe.
          */
         const clavePorTarea = `${f.idPersona}|${f.idTarea}`;
-        const ajuste =
-          ajustes.porRenglon.get(claveDeFila(f.idPersona, f.idTarea, f.cliente)) ||
+        // El renglón de alto rendimiento sale siempre de los partes: las
+        // correcciones son del renglón normal.
+        const ajuste = f.alto
+          ? {}
+          : ajustes.porRenglon.get(claveDeFila(f.idPersona, f.idTarea, f.cliente)) ||
           (renglonesPorTarea.get(clavePorTarea) === 1
             ? ajustes.porTarea.get(clavePorTarea)
             : null) ||
@@ -578,7 +608,9 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
         (a, b) =>
           comparar(a.persona, b.persona) ||
           comparar(a.tarea, b.tarea) ||
-          comparar(a.cliente, b.cliente)
+          comparar(a.cliente, b.cliente) ||
+          // El de alto rendimiento, abajo del normal.
+          Number(a.alto) - Number(b.alto)
       );
 
     // El total de una persona suma solo las tareas con precio cargado; si no
@@ -596,7 +628,7 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
     }
 
     return { filas: lista, totalPorPersona: totales, numeroPorPersona: numeros };
-  }, [partesFiltrados, variables, ajustes]);
+  }, [partesFiltrados, variables, ajustes, establecimiento]);
 
   // ── descuentos por persona ────────────────────────────────────────
   const SIN_DESCUENTO = { descAntic: 0, retJudicial: 0 };
@@ -803,7 +835,7 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
     if (delRenglon.length) return delRenglon;
 
     const hayUnoSolo =
-      filas.filter((f) => f.idPersona === fila.idPersona && f.idTarea === fila.idTarea).length === 1;
+      filas.filter((f) => !f.alto && f.idPersona === fila.idPersona && f.idTarea === fila.idTarea).length === 1;
     if (!hayUnoSolo) return [];
 
     return cambios.filter(
@@ -1108,7 +1140,7 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
         primeraDePersona ? numeroPorPersona.get(f.idPersona) : null,
         primeraDePersona ? f.legajo || "—" : null,
         primeraDePersona ? f.persona : null,
-        f.tarea,
+        f.alto ? `${f.tarea} (alto Rto.)` : f.tarea,
         f.cliente || "—",
         f.unidad || "—",
         f.cantidad || null,
@@ -1595,7 +1627,27 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
                           {primeraDePersona ? f.legajo || raya : ""}
                         </td>
                         <td style={{ ...td, fontWeight: 500 }}>{primeraDePersona ? f.persona : ""}</td>
-                        <td style={td}>{f.tarea}</td>
+                        <td style={td}>
+                          {f.tarea}
+                          {/* De la tancada del tope en adelante, al neto alto. */}
+                          {f.alto && (
+                            <button
+                              type="button"
+                              onClick={() => setDetalleAlto(f)}
+                              className="ms-1 px-1 rounded-1 border-0"
+                              style={{
+                                backgroundColor: "#fef3c7",
+                                color: "#b45309",
+                                fontSize: "0.6rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                              }}
+                              title="Ver el detalle por día"
+                            >
+                              Alto Rto. <i className="bi bi-search" style={{ fontSize: "0.55rem" }}></i>
+                            </button>
+                          )}
+                        </td>
                         {/* El precio se certifica por cliente: sin él la fila
                             no se puede valorizar, así que se marca en rojo. */}
                         <td style={{ ...td, color: f.cliente ? "#64748b" : "#dc2626" }}>
@@ -1666,9 +1718,14 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
                           <div className="d-flex justify-content-center gap-1">
                             <button
                               onClick={() => abrirEdicionFila(f)}
+                              disabled={f.alto}
                               className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
                               style={{ width: "20px", height: "20px" }}
-                              title={`Corregir la cantidad o el precio de ${f.tarea}`}
+                              title={
+                                f.alto
+                                  ? "El alto rendimiento sale de los partes: se corrige el renglón normal"
+                                  : `Corregir la cantidad o el precio de ${f.tarea}`
+                              }
                             >
                               <i className="bi bi-pencil" style={{ fontSize: "0.65rem" }}></i>
                             </button>
@@ -1677,6 +1734,9 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
                                 Se pinta en ámbar cuando tiene alguna. */}
                             <button
                               onClick={() => verHistorialFila(f)}
+                              // El de alto rendimiento no tiene correcciones
+                              // propias: las del renglón normal son de ese.
+                              disabled={f.alto}
                               className={`btn btn-sm d-flex align-items-center justify-content-center rounded-2 p-0 ${
                                 f.corregida ? "btn-warning" : "btn-outline-secondary"
                               }`}
@@ -1817,6 +1877,72 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
           </div>
         </div>
       </Container>
+
+      {/* Detalle por día de un renglón de alto rendimiento: todos los días de
+          la tarea en el período y cuánto de cada uno fue a cada precio. */}
+      <Modal show={Boolean(detalleAlto)} onHide={() => setDetalleAlto(null)} size="lg" centered>
+        <Modal.Header closeButton closeVariant="white" style={{ backgroundColor: "#1b4332", color: "#fff" }}>
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-lightning-charge-fill" style={{ color: "#f59e0b" }}></i>
+            <span>Alto rendimiento por día</span>
+          </Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body style={{ backgroundColor: "#f8f9fa" }}>
+          <div className="fw-bold mb-2" style={{ color: "#1b4332", fontSize: "0.86rem" }}>
+            {detalleAlto?.persona} — {detalleAlto?.tarea}
+            {detalleAlto?.cliente && (
+              <span className="text-muted fw-normal" style={{ fontSize: "0.76rem" }}>
+                {" "}
+                · {detalleAlto.cliente}
+              </span>
+            )}
+          </div>
+
+          <div className="bg-white rounded-3" style={{ border: "1px solid #e2e8f0", overflow: "auto" }}>
+            <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: "center" }}>Fecha</th>
+                  <th style={{ ...th, textAlign: "center" }}>{detalleAlto?.unidad || "Cantidad"}</th>
+                  <th style={{ ...th, textAlign: "center" }}>Objetivo</th>
+                  <th style={{ ...th, textAlign: "center" }}>A precio normal</th>
+                  <th style={{ ...th, textAlign: "center", color: "#fcd34d" }}>A alto Rto.</th>
+                  <th style={{ ...th, textAlign: "center" }}>Neto del día</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(detalleAlto?.dias || []).map((d) => (
+                  <tr key={d.fecha} style={d.alto > 0 ? { backgroundColor: "#fffbeb" } : undefined}>
+                    <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                      {formatFecha(d.fecha)}
+                      {d.alto > 0 && (
+                        <span
+                          className="ms-1 px-1 rounded-1"
+                          style={{ backgroundColor: "#fef3c7", color: "#b45309", fontSize: "0.58rem", fontWeight: 700 }}
+                        >
+                          Alto Rto.
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 600 }}>{numero(d.cantidad)}</td>
+                    <td style={{ ...td, textAlign: "center", color: "#64748b" }}>
+                      {d.tope === null ? raya : numero(d.tope)}
+                    </td>
+                    <td style={{ ...td, textAlign: "center", color: "#64748b" }}>
+                      {numero(d.normal)} × {pesos(d.neto)}
+                    </td>
+                    <td style={{ ...td, textAlign: "center", color: "#b45309", fontWeight: d.alto > 0 ? 700 : 400 }}>
+                      {d.alto > 0 ? `${numero(d.alto)} × ${pesos(d.netoAlto)}` : raya}
+                    </td>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 600 }}>{pesos(d.importe)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </Modal.Body>
+      </Modal>
 
       {/* Historial de correcciones de un renglón. El valor y el motivo de cada
           registro se pueden corregir; el campo, el valor anterior y la fecha

@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
+import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
 import { CLIENTES, unirClientes } from "../../utils/clientes";
 import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
 import { useSinGuardar } from "../../utils/sinGuardar";
@@ -476,6 +477,20 @@ function ProduccionCertificadoMes({
       .then((lista) => setAdmisibles(mapaDeAdmisibles(lista)))
       .catch(() => setAdmisibles(new Map()));
   }, []);
+  // Los precios del campo: con ellos se marca la cantidad de los días de alto
+  // rendimiento (02/10/2026).
+  const [variables, setVariables] = useState([]);
+  useEffect(() => {
+    fetch(`/api/variables?establecimiento=${establecimiento}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((lista) => setVariables(Array.isArray(lista) ? lista : []))
+      .catch(() => setVariables([]));
+  }, [establecimiento]);
+  // Los partes de los días de alto rendimiento: la misma cuenta del informe.
+  const enAltoRendimiento = useMemo(
+    () => partesEnAltoRendimiento(partes, variables, establecimiento),
+    [partes, variables, establecimiento]
+  );
   const [personal, setPersonal] = useState([]);
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
@@ -2736,8 +2751,25 @@ function ProduccionCertificadoMes({
                     <td className="text-start ps-2" style={AJUSTA}>{p.tarea?.tarea || "—"}</td>
                     {/* La cantidad de un lote terminado la escribió el reparto, no
                         una persona: se marca para que se entienda de dónde salió. */}
-                    <td className="fw-semibold" style={p.repartido ? { color: "#15803d" } : undefined}
-                        title={p.repartido ? "Repartida al terminar el lote, según las horas de la jornada" : undefined}>
+                    {/* Un día de alto rendimiento se destaca en ámbar, como el
+                        cartel del informe de tareas por personal. */}
+                    <td
+                      className="fw-semibold"
+                      style={
+                        enAltoRendimiento.has(p._id)
+                          ? { color: "#b45309", fontWeight: 700 }
+                          : p.repartido
+                          ? { color: "#15803d" }
+                          : undefined
+                      }
+                      title={
+                        enAltoRendimiento.has(p._id)
+                          ? "Día de alto rendimiento: se paga con el neto alto Rto."
+                          : p.repartido
+                          ? "Repartida al terminar el lote, según las horas de la jornada"
+                          : undefined
+                      }
+                    >
                       {p.cantidad ?? "—"}
                     </td>
                     <td className="text-secondary">{p.tarea?.unidad || "—"}</td>

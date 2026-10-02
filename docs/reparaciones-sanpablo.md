@@ -41,4 +41,12 @@ ruta `/api/ingresos-sanpablo`). Cada documento tiene `cosecha` y `tipo`.
   cosecha. El historial muestra, por supervisor, retiradas de la cosecha
   anterior e ingresadas y retiradas de esta (sin nuevas ni bajas).
 
+**Frentes** (02/10/2026): colección `FrenteSanPablo` (nombre único y cliente),
+en `/api/ingresos-sanpablo/frentes` con los mismos permisos que los ingresos.
+Se dan de alta con el botón **Alta de frente** de Carros porta escaleras y se
+eligen (`frente`, optativo) en el ingreso de un carro, en el ingreso sin carro
+y en el retiro de Escaleras. Las escaleras de un carro copian el frente de su
+carro, y la salida de un retiro, el del retiro. Componentes en
+`shared/FrenteSanPablo.jsx`.
+
 Todo lo cargado antes de las cosechas quedó en la 2027.

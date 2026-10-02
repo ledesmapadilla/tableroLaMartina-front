@@ -9,6 +9,8 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import { compararCC } from "../../utils/ordenCC";
 import { useSupervisores, opcionesSupervisor } from "../../utils/supervisores";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
+import { CeldaFrente, SelectFrente } from "../shared/FrenteSanPablo";
+import { textoFrente } from "../../utils/frentes";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
 
@@ -23,7 +25,7 @@ const GRIS_CLARO = "#a0aec0";
 const TEXTO = "#1e293b";
 const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
-const COLUMNAS = 9;
+const COLUMNAS = 10;
 
 // El equipo del padrón de CC que se ofrece en el retiro.
 const EQUIPO_CARRO = "Carro porta escaleras";
@@ -74,6 +76,8 @@ export default function IngresosEscaleras({ icono }) {
 
   const [ingresos, setIngresos] = useState([]);
   const [carros, setCarros] = useState([]);
+  // Los frentes se dan de alta en Carros porta escaleras.
+  const [frentes, setFrentes] = useState([]);
   const [cargando, setCargando] = useState(true);
   // El modal abierto: "nuevas", "carro" o "retiro"; la fila que se edita (null
   // en un alta) y su formulario.
@@ -102,6 +106,10 @@ export default function IngresosEscaleras({ icono }) {
   useEffect(() => {
     cargar();
     api
+      .get("/ingresos-sanpablo/frentes")
+      .then((data) => setFrentes(Array.isArray(data) ? data : []))
+      .catch(() => setFrentes([]));
+    api
       .get("/centros-costo")
       .then((data) =>
         setCarros(
@@ -123,13 +131,13 @@ export default function IngresosEscaleras({ icono }) {
   const abrirSinCarro = () => {
     setModo("sinCarro");
     setEditando(null);
-    setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", ingresadoPor: "", observaciones: "" });
+    setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", ingresadoPor: "", frente: "", observaciones: "" });
   };
 
   const abrirRetiro = () => {
     setModo("retiro");
     setEditando(null);
-    setForm({ fechaIngreso: hoy(), ingresadoPor: "", cc: "", cantidadEscaleras: "", observaciones: "" });
+    setForm({ fechaIngreso: hoy(), ingresadoPor: "", cc: "", frente: "", cantidadEscaleras: "", observaciones: "" });
   };
 
   const abrirBaja = () => {
@@ -167,6 +175,7 @@ export default function IngresosEscaleras({ icono }) {
       ingresadoPor: i.ingresadoPor || "",
       observaciones: i.observaciones || "",
       ...(m === "retiro" ? { cc: i.cc?._id || "" } : {}),
+      ...(m === "retiro" || m === "sinCarro" ? { frente: i.frente?._id || "" } : {}),
     });
   };
 
@@ -384,7 +393,8 @@ export default function IngresosEscaleras({ icono }) {
       titulo: `Reparaciones San Pablo — Escaleras — Cosecha ${cosecha}`,
       columnas: [
         { titulo: "Fecha", ancho: 12 },
-        { titulo: "Quién", ancho: 24 },
+        { titulo: "Frente", ancho: 22 },
+        { titulo: "Ingresa/Retira", ancho: 24 },
         { titulo: "Carro porta escaleras", ancho: 26 },
         { titulo: "Cant.", ancho: 10 },
         { titulo: "Cant. sanas", ancho: 12 },
@@ -398,6 +408,7 @@ export default function IngresosEscaleras({ icono }) {
         const numero = (v) => (v == null ? "" : v);
         return [
           fechaCorta(i.fechaIngreso),
+          textoFrente(i.frente),
           i.ingresadoPor || "",
           m === "nuevas"
             ? "Nuevas"
@@ -475,7 +486,7 @@ export default function IngresosEscaleras({ icono }) {
       <Container
         fluid
         className="px-3 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "1060px", width: "100%", margin: "0 auto", overflow: "hidden" }}
+        style={{ maxWidth: "1160px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
         <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
           <span className="fw-bold" style={{ color: COLOR, fontSize: "1.05rem" }}>
@@ -517,7 +528,23 @@ export default function IngresosEscaleras({ icono }) {
         {/* Totales, fuera de la tabla. */}
         <Card className="mb-3 px-3 py-2 shadow-sm border-0 rounded-3 flex-shrink-0">
           <div className="d-flex justify-content-around align-items-center flex-wrap gap-3">
-            {totales.map(([rotulo, valor, color]) => (
+            {totales.map(([rotulo, valor, color]) =>
+              rotulo === "En taller" ? (
+                // Lo que hay hoy en el taller es el número que más se mira: va
+                // en un recuadro oscuro y más grande.
+                <div
+                  key={rotulo}
+                  className="d-flex flex-column align-items-center lh-sm px-3 py-1 rounded-3 shadow-sm"
+                  style={{ backgroundColor: COLOR, color: "#fff" }}
+                >
+                  <span className="fw-bold" style={{ fontSize: "1.75rem" }}>
+                    {cargando ? "—" : valor}
+                  </span>
+                  <span className="fw-semibold" style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.8)" }}>
+                    {rotulo}
+                  </span>
+                </div>
+              ) : (
               <div key={rotulo} className="d-flex flex-column align-items-center lh-sm">
                 <span className="fw-bold" style={{ fontSize: "1.3rem", color }}>
                   {cargando ? "—" : valor}
@@ -526,7 +553,8 @@ export default function IngresosEscaleras({ icono }) {
                   {rotulo}
                 </span>
               </div>
-            ))}
+              )
+            )}
           </div>
         </Card>
 
@@ -537,15 +565,16 @@ export default function IngresosEscaleras({ icono }) {
             minHeight: 0,
             maxWidth: "100%",
             overflowY: "auto",
-            overflowX: "auto",
+            overflowX: "hidden",
             border: "1px solid #cbd5e1",
           }}
         >
-          <Table className="mb-0 tabla-informe" style={{ width: "100%", minWidth: "860px" }}>
+          <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
               <tr>
                 <th style={thCentro}>Fecha</th>
-                <th style={th}>Quién</th>
+                <th style={th}>Frente</th>
+                <th style={th}>Ingresa/Retira</th>
                 <th style={thCentro}>Carro porta escaleras</th>
                 <th style={thCentro}>Cant.</th>
                 <th style={thCentro}>Cant. sanas</th>
@@ -568,8 +597,12 @@ export default function IngresosEscaleras({ icono }) {
                   return (
                     <tr key={i._id}>
                       <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso) || <Raya />}</td>
+                      {/* Las de un carro traen el frente de su carro. */}
+                      <td style={td}>
+                        <CeldaFrente frente={i.frente} />
+                      </td>
                       <td style={td}>{i.ingresadoPor || <Raya />}</td>
-                      <td style={{ ...tdCentro, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <td style={{ ...tdCentro, fontWeight: 700 }}>
                         {m === "nuevas" && (
                           <span
                             className="px-2 rounded-pill"
@@ -770,6 +803,14 @@ export default function IngresosEscaleras({ icono }) {
                       ))}
                     </Form.Select>
                   </Col>
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">Frente</Form.Label>
+                    <SelectFrente
+                      frentes={frentes}
+                      valor={form.frente}
+                      onChange={(v) => setForm({ ...form, frente: v })}
+                    />
+                  </Col>
                   {campoObservaciones("De dónde vienen, cómo llegaron…")}
                 </Row>
               )}
@@ -778,6 +819,18 @@ export default function IngresosEscaleras({ icono }) {
                 <Row className="g-3 form-ingresos">
                   {campoFecha}
                   {campoCantidad}
+                  {/* El frente, arriba y obligatorio: es adónde van. */}
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">
+                      Frente <span className="text-danger">*</span>
+                    </Form.Label>
+                    <SelectFrente
+                      frentes={frentes}
+                      valor={form.frente}
+                      onChange={(v) => setForm({ ...form, frente: v })}
+                      required
+                    />
+                  </Col>
                   <Col xs={12}>
                     <Form.Label className="fw-semibold text-dark small mb-1">
                       Supervisor <span className="text-danger">*</span>
@@ -801,9 +854,10 @@ export default function IngresosEscaleras({ icono }) {
                     <Form.Label className="fw-semibold text-dark small mb-1">
                       Carro porta escaleras <span className="text-danger">*</span>
                     </Form.Label>
+                    {/* Angosto: alcanza para el número de CC. */}
                     <Form.Select
                       className="rounded-3"
-                      style={{ ...campo, color: form.cc ? TEXTO : GRIS_CLARO }}
+                      style={{ ...campo, maxWidth: "180px", color: form.cc ? TEXTO : GRIS_CLARO }}
                       value={form.cc}
                       onChange={(e) => setForm({ ...form, cc: e.target.value })}
                       required
@@ -888,8 +942,9 @@ export default function IngresosEscaleras({ icono }) {
                     <i className="bi bi-lock-fill me-1"></i>
                     Entraron el {fechaCorta(editando.fechaIngreso)}
                     {editando.ingresadoPor ? ` con ${editando.ingresadoPor}` : ""}:{" "}
-                    <strong>{editando.cantidadEscaleras ?? 0} escaleras</strong>. Eso se cambia en Carros porta
-                    escaleras.
+                    <strong>{editando.cantidadEscaleras ?? 0} escaleras</strong>
+                    {editando.frente?.nombre ? ` del frente ${editando.frente.nombre}` : ""}. Eso se cambia en
+                    Carros porta escaleras.
                   </div>
 
                   <Row className="g-3 form-ingresos">

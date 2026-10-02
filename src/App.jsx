@@ -139,6 +139,7 @@ const TAREAS_SAN_PABLO = [
   "Horas la martina",
   "Horas máquina",
   "Pulverizado FMC",
+  "Pulverizado Nodriza",
 ];
 
 function App() {

@@ -254,9 +254,13 @@ function TractoresGrupo() {
 
       {/* Grilla Limpia y Moderna de Tractores del Grupo */}
       <div
-        className="flex-grow-1 p-4 d-flex align-items-center justify-content-center"
+        // Centrado con margin:auto en la grilla y no con align-items: cuando
+        // las tarjetas no entran, align-items las cortaba arriba y abajo sin
+        // dejar scrollear hasta los bordes.
+        className="flex-grow-1 p-4 d-flex"
         style={{
           overflowY: "auto",
+          minHeight: 0,
         }}
       >
         <div
@@ -265,6 +269,7 @@ function TractoresGrupo() {
             gap: "1.25rem",
             maxWidth: "1080px",
             width: "100%",
+            margin: "auto",
           }}
         >
           {tractores.map((t) => {

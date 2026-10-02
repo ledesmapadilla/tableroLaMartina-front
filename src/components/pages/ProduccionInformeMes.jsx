@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button, Card, Container, Form, Modal, Table } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import GraficoConsumoCC from "./GraficoConsumoCC";
+import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
 import {
   desvio,
   SEMAFORO,
@@ -416,6 +417,15 @@ const ColumnaGrafico = ({ lugar, children }) => (
  * que abre el botón Resumen de la planilla de carga (24/09/2026).
  */
 function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal = false }) {
+  // Los precios del campo: con ellos se marca la cantidad de los días de alto
+  // rendimiento (02/10/2026).
+  const [variables, setVariables] = useState([]);
+  useEffect(() => {
+    fetch(`/api/variables?establecimiento=${establecimiento}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((lista) => setVariables(Array.isArray(lista) ? lista : []))
+      .catch(() => setVariables([]));
+  }, [establecimiento]);
   const { anio, mes } = useParams();
   const [periodo, setPeriodo] = useState({ desde: "", hasta: "" });
   const [cerrado, setCerrado] = useState(false);
@@ -505,6 +515,22 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     () => filtrarPartes(partes, filtros.personal),
     [partes, filtros.personal]
   );
+
+  // Los partes de los días de alto rendimiento, con la misma cuenta del
+  // informe de tareas por personal. Sale de todo el período: un filtro no
+  // cambia qué día fue de alto rendimiento.
+  const enAltoRendimiento = useMemo(
+    () => partesEnAltoRendimiento(partes, variables, establecimiento),
+    [partes, variables, establecimiento]
+  );
+  // Persona y tarea con algún día de alto rendimiento: su total se destaca.
+  const tareasEnAlto = useMemo(() => {
+    const s = new Set();
+    for (const p of partes) {
+      if (enAltoRendimiento.has(p._id)) s.add(`${p.persona?._id || "sin-persona"}|${p.tarea?._id}`);
+    }
+    return s;
+  }, [partes, enAltoRendimiento]);
 
   // Las opciones salen de todo el período, no de lo ya filtrado: si no, elegir
   // una persona vaciaría el resto de los desplegables.
@@ -1135,7 +1161,19 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                           <td style={{ ...td, textAlign: "center", fontWeight: 600 }}>{numero(f.horas)}</td>
                           {celdaNumero(f.combustible)}
                           {tareas.map((t) => (
-                            <td key={t.id} style={{ ...td, textAlign: "center" }}>
+                            <td
+                              key={t.id}
+                              style={{
+                                ...td,
+                                textAlign: "center",
+                                ...(tareasEnAlto.has(`${f.id}|${t.id}`) ? { color: "#b45309", fontWeight: 700 } : null),
+                              }}
+                              title={
+                                tareasEnAlto.has(`${f.id}|${t.id}`)
+                                  ? "Tiene días de alto rendimiento: el detalle está en Ver"
+                                  : undefined
+                              }
+                            >
                               {f.tareas.has(t.id) ? (
                                 numero(redondear(f.tareas.get(t.id)))
                               ) : (
@@ -1492,7 +1530,18 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                       </td>
                       <td style={{ ...td, textAlign: "center" }}>{p.cc?.cc || "—"}</td>
                       <td style={td}>{p.tarea?.tarea || "—"}</td>
-                      <td style={{ ...td, textAlign: "center" }}>
+                      <td
+                        style={{
+                          ...td,
+                          textAlign: "center",
+                          ...(enAltoRendimiento.has(p._id) ? { color: "#b45309", fontWeight: 700 } : null),
+                        }}
+                        title={
+                          enAltoRendimiento.has(p._id)
+                            ? "Día de alto rendimiento: se paga con el neto alto Rto."
+                            : undefined
+                        }
+                      >
                         {p.cantidad === null || p.cantidad === undefined ? "—" : numero(p.cantidad)}
                       </td>
                       <td style={{ ...td, textAlign: "center" }}>{p.tarea?.unidad || "—"}</td>

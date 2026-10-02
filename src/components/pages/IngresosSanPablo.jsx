@@ -9,6 +9,8 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import { useSupervisores, opcionesSupervisor } from "../../utils/supervisores";
 import { usePermisos } from "../../context/permisos";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
+import { CeldaFrente, SelectFrente } from "../shared/FrenteSanPablo";
+import { textoFrente } from "../../utils/frentes";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
 
@@ -87,8 +89,9 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   const sinEditar = !puede("sanpablo.ingresos", "editar");
   // Los carros porta escaleras cargan además cuántas escaleras traen.
   const conEscaleras = tipo === "carros-porta-escaleras";
-  // Los carros porta escaleras suman la cantidad de escaleras y la fecha de egreso.
-  const columnas = conEscaleras ? 9 : 7;
+  // Los carros porta escaleras suman el frente, la cantidad de escaleras y la
+  // fecha de egreso.
+  const columnas = conEscaleras ? 10 : 7;
 
   const [ingresos, setIngresos] = useState([]);
   const [centros, setCentros] = useState([]);
@@ -99,6 +102,16 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   const [editando, setEditando] = useState(null);
   // Historial (solo carros porta escaleras).
   const [verHistorial, setVerHistorial] = useState(false);
+  // Los frentes dados de alta y el formulario del alta de uno (solo carros
+  // porta escaleras).
+  const [frentes, setFrentes] = useState([]);
+  const [nuevoFrente, setNuevoFrente] = useState(null);
+
+  const cargarFrentes = () =>
+    api
+      .get("/ingresos-sanpablo/frentes")
+      .then((data) => setFrentes(Array.isArray(data) ? data : []))
+      .catch(() => setFrentes([]));
 
   const cargar = () =>
     api
@@ -109,6 +122,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
 
   useEffect(() => {
     cargar();
+    if (conEscaleras) cargarFrentes();
     api
       .get("/centros-costo")
       .then((data) =>
@@ -126,6 +140,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     setEditando(null);
     setForm({
       cc: "",
+      frente: "",
       fechaIngreso: hoy(),
       fechaEgreso: "",
       ingresadoPor: "",
@@ -140,6 +155,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     setEditando(i);
     setForm({
       cc: i.cc?._id || "",
+      frente: i.frente?._id || "",
       fechaIngreso: aInput(i.fechaIngreso),
       fechaEgreso: aInput(i.fechaEgreso),
       ingresadoPor: i.ingresadoPor || "",
@@ -159,8 +175,11 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     e.preventDefault();
     const eraEdicion = Boolean(editando);
     try {
-      if (eraEdicion) await api.put(`/ingresos-sanpablo/${editando._id}`, form);
-      else await api.post("/ingresos-sanpablo", { ...form, tipo, cosecha });
+      // El frente es solo de los carros porta escaleras.
+      const { frente, ...resto } = form;
+      const datos = conEscaleras ? { ...resto, frente } : resto;
+      if (eraEdicion) await api.put(`/ingresos-sanpablo/${editando._id}`, datos);
+      else await api.post("/ingresos-sanpablo", { ...datos, tipo, cosecha });
       cerrar();
       cargar();
       Swal.fire({
@@ -169,6 +188,18 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
         timer: 1400,
         showConfirmButton: false,
       });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message });
+    }
+  };
+
+  const guardarFrente = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post("/ingresos-sanpablo/frentes", nuevoFrente);
+      setNuevoFrente(null);
+      cargarFrentes();
+      Swal.fire({ icon: "success", title: "Frente dado de alta", timer: 1400, showConfirmButton: false });
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message });
     }
@@ -218,10 +249,17 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
       titulo: `Reparaciones San Pablo — ${titulo} — Cosecha ${cosecha}`,
       columnas: [
         { titulo: "Equipo (CC)", ancho: 24 },
-        ...(conEscaleras ? [{ titulo: "Cant. escaleras", ancho: 14 }] : []),
+        // En los carros, quién lo ingresa va entre el frente y la cantidad.
+        ...(conEscaleras
+          ? [
+              { titulo: "Frente", ancho: 22 },
+              { titulo: "Quién lo ingresa", ancho: 24 },
+              { titulo: "Cant. escaleras", ancho: 14 },
+            ]
+          : []),
         { titulo: "Fecha ingreso", ancho: 14 },
         ...(conEscaleras ? [{ titulo: "Fecha egreso", ancho: 14 }] : []),
-        { titulo: "Quién lo ingresa", ancho: 24 },
+        ...(conEscaleras ? [] : [{ titulo: "Quién lo ingresa", ancho: 24 }]),
         { titulo: "Revisada", ancho: 12 },
         { titulo: "Plan de mantenimiento", ancho: 20 },
         { titulo: "Observaciones", ancho: 40 },
@@ -230,10 +268,11 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
         const cc = [i.cc?.cc, i.cc?.descripcion].filter(Boolean).join(" · ");
         return [
           i.salida ? `Salida · ${cc}` : cc,
+          ...(conEscaleras ? [textoFrente(i.frente), i.ingresadoPor || ""] : []),
           ...(conEscaleras ? [i.cantidadEscaleras == null ? "" : i.salida ? -i.cantidadEscaleras : i.cantidadEscaleras] : []),
           fechaCorta(i.fechaIngreso),
           ...(conEscaleras ? [fechaCorta(i.fechaEgreso)] : []),
-          i.ingresadoPor || "",
+          ...(conEscaleras ? [] : [i.ingresadoPor || ""]),
           i.salida ? "" : i.revisada ? "Sí" : "No",
           i.salida ? "" : i.planMantenimiento ? "Sí" : "No",
           i.observaciones || "",
@@ -291,7 +330,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
       <Container
         fluid
         className="px-3 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "900px", width: "100%", margin: "0 auto", overflow: "hidden" }}
+        style={{ maxWidth: conEscaleras ? "1120px" : "900px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
         {/* Encabezado de la pantalla */}
         <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
@@ -325,6 +364,20 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
             <Button
               size="sm"
               variant="outline-secondary"
+              onClick={() => setNuevoFrente({ nombre: "", cliente: "" })}
+              disabled={sinEditar}
+              title={sinEditar ? "Sin permiso para editar" : "Dar de alta un frente"}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+            >
+              <i className="bi bi-geo-alt"></i>
+              <span>Alta de frente</span>
+            </Button>
+          )}
+          {conEscaleras && (
+            <Button
+              size="sm"
+              variant="outline-secondary"
               onClick={() => setVerHistorial(true)}
               className="rounded-3 px-3 d-flex align-items-center gap-2"
               style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
@@ -353,18 +406,21 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
             minHeight: 0,
             maxWidth: "100%",
             overflowY: "auto",
-            overflowX: "auto",
+            overflowX: "hidden",
             border: "1px solid #cbd5e1",
           }}
         >
-          <Table className="mb-0 tabla-informe" style={{ width: "100%", minWidth: conEscaleras ? "800px" : "700px" }}>
+          <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
               <tr>
                 <th style={thCentro}>Equipo (CC)</th>
+                {conEscaleras && <th style={th}>Frente</th>}
+                {/* En los carros va entre el frente y la cantidad. */}
+                {conEscaleras && <th style={th}>Quién lo ingresa</th>}
                 {conEscaleras && <th style={thCentro}>Cant. escaleras</th>}
                 <th style={thCentro}>Fecha ingreso</th>
                 {conEscaleras && <th style={thCentro}>Fecha egreso</th>}
-                <th style={th}>Quién lo ingresa</th>
+                {!conEscaleras && <th style={th}>Quién lo ingresa</th>}
                 <th style={thCentro}>Revisada</th>
                 <th style={thCentro}>Plan de mantenimiento</th>
                 <th style={th}>Observaciones</th>
@@ -382,7 +438,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                 ingresos.map((i) =>
                   i.salida ? (
                     <tr key={i._id}>
-                      <td style={{ ...tdCentro, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <td style={{ ...tdCentro, fontWeight: 700 }}>
                         <span
                           className="px-2 me-1 rounded-pill"
                           style={{ backgroundColor: "#ffedd5", color: NARANJA, fontSize: "0.66rem" }}
@@ -398,6 +454,12 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                         )}
                       </td>
                       {conEscaleras && (
+                        <td style={td}>
+                          <CeldaFrente frente={i.frente} />
+                        </td>
+                      )}
+                      {conEscaleras && <td style={td}>{i.ingresadoPor || <Raya />}</td>}
+                      {conEscaleras && (
                         <td style={{ ...tdCentro, fontWeight: 700, color: NARANJA }}>
                           {i.cantidadEscaleras == null ? <Raya /> : `−${i.cantidadEscaleras}`}
                         </td>
@@ -408,7 +470,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                           <Raya />
                         </td>
                       )}
-                      <td style={td}>{i.ingresadoPor || <Raya />}</td>
+                      {!conEscaleras && <td style={td}>{i.ingresadoPor || <Raya />}</td>}
                       <td style={tdCentro}>
                         <Raya />
                       </td>
@@ -426,7 +488,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                     </tr>
                   ) : (
                     <tr key={i._id}>
-                      <td style={{ ...tdCentro, fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <td style={{ ...tdCentro, fontWeight: 700 }}>
                         {i.cc?.cc || <Raya />}
                         {i.cc?.descripcion && (
                           <span className="text-muted fw-normal" style={{ fontSize: "0.66rem" }}>
@@ -435,12 +497,18 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                           </span>
                         )}
                       </td>
+                      {conEscaleras && (
+                        <td style={td}>
+                          <CeldaFrente frente={i.frente} />
+                        </td>
+                      )}
+                      {conEscaleras && <td style={td}>{i.ingresadoPor || <Raya />}</td>}
                       {conEscaleras && <td style={tdCentro}>{i.cantidadEscaleras ?? <Raya />}</td>}
                       <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso) || <Raya />}</td>
                       {conEscaleras && (
                         <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaEgreso) || <Raya />}</td>
                       )}
-                      <td style={td}>{i.ingresadoPor || <Raya />}</td>
+                      {!conEscaleras && <td style={td}>{i.ingresadoPor || <Raya />}</td>}
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
                         <Circulo
                           marcada={i.revisada}
@@ -568,6 +636,17 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                   </Col>
                 )}
 
+                {conEscaleras && (
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">Frente</Form.Label>
+                    <SelectFrente
+                      frentes={frentes}
+                      valor={form.frente}
+                      onChange={(v) => setForm({ ...form, frente: v })}
+                    />
+                  </Col>
+                )}
+
                 <Col xs={6}>
                   <Form.Label className="fw-semibold text-dark small mb-1">
                     Fecha ingreso <span className="text-danger">*</span>
@@ -658,6 +737,99 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                 variant="outline-secondary"
                 size="sm"
                 onClick={cerrar}
+                className="rounded-3 px-3 py-1"
+                style={{ fontSize: "0.84rem" }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                type="submit"
+                className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+                style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
+              >
+                <i className="bi bi-check-lg"></i>
+                <span>Guardar</span>
+              </Button>
+            </Modal.Footer>
+          </Form>
+        )}
+      </Modal>
+
+      {/* Alta de un frente: nombre y cliente. */}
+      <Modal
+        show={Boolean(nuevoFrente)}
+        onHide={() => setNuevoFrente(null)}
+        centered
+        dialogClassName="modal-cc"
+        contentClassName="border-0 shadow-lg rounded-4"
+      >
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: COLOR,
+            color: "#fff",
+            borderTopLeftRadius: "1rem",
+            borderTopRightRadius: "1rem",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-geo-alt"></i>
+            <span>Alta de frente</span>
+          </Modal.Title>
+        </Modal.Header>
+        {nuevoFrente && (
+          <Form onSubmit={guardarFrente}>
+            <Modal.Body className="p-4">
+              <Row className="g-3 form-ingresos">
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Nombre del frente <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    className="rounded-3"
+                    style={campo}
+                    value={nuevoFrente.nombre}
+                    onChange={(e) => setNuevoFrente({ ...nuevoFrente, nombre: e.target.value })}
+                    placeholder="Nombre del frente"
+                    maxLength={80}
+                    autoFocus
+                    required
+                  />
+                </Col>
+                <Col xs={12}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">
+                    Cliente <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control
+                    className="rounded-3"
+                    style={campo}
+                    value={nuevoFrente.cliente}
+                    onChange={(e) => setNuevoFrente({ ...nuevoFrente, cliente: e.target.value })}
+                    placeholder="Cliente"
+                    maxLength={80}
+                    required
+                  />
+                </Col>
+                {frentes.length > 0 && (
+                  <Col xs={12}>
+                    <div className="text-muted" style={{ fontSize: "0.72rem" }}>
+                      Ya dados de alta: {frentes.map((f) => f.nombre).join(", ")}
+                    </div>
+                  </Col>
+                )}
+              </Row>
+            </Modal.Body>
+            <Modal.Footer
+              className="bg-light border-0 py-2 px-4"
+              style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
+            >
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={() => setNuevoFrente(null)}
                 className="rounded-3 px-3 py-1"
                 style={{ fontSize: "0.84rem" }}
               >
