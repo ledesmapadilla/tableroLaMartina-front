@@ -55,6 +55,13 @@ export const ALTAS = [
     permiso: "altas.tareas",
   },
   {
+    grupo: "Producción",
+    label: "Clientes",
+    icono: "bi bi-building",
+    to: "/produccion/altas/clientes",
+    permiso: "altas.clientes",
+  },
+  {
     grupo: "Flota",
     label: "Camionetas",
     icono: "bi bi-car-front-fill",

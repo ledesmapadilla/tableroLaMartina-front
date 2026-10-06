@@ -62,6 +62,9 @@ function ReparacionesCamioneta() {
 
   const [camioneta, setCamioneta] = useState(null);
   const [trabajos, setTrabajos] = useState([]);
+  // Copia de los trabajos tal como estan guardados: el estado de parada se mira
+  // aca y no en `trabajos`, que cambia apenas se elige "Terminada" en el combo.
+  const [trabajosGuardados, setTrabajosGuardados] = useState([]);
   const [paradas, setParadas] = useState([]);
   const [cargando, setCargando] = useState(true);
 
@@ -83,7 +86,9 @@ function ReparacionesCamioneta() {
       );
 
       if (data?.camioneta) setCamioneta(data.camioneta);
-      setTrabajos(Array.isArray(data?.trabajos) ? data.trabajos : []);
+      const lista = Array.isArray(data?.trabajos) ? data.trabajos : [];
+      setTrabajos(lista);
+      setTrabajosGuardados(lista);
       setParadas(Array.isArray(data?.paradas) ? data.paradas : []);
     } catch {
       // noop
@@ -101,9 +106,14 @@ function ReparacionesCamioneta() {
     return paradas.find((p) => !p.fechaArranque);
   }, [paradas]);
 
+  // Con `trabajos` la tarea que paraba la unidad dejaba de contar al elegir
+  // "Terminada" (antes de guardar), y al guardar no se preguntaba si ponerla
+  // en servicio.
   const tieneTrabajoParada = useMemo(() => {
-    return trabajos.some((t) => t.maquinaParada && t.estado !== "Terminada" && t.estado !== "terminada");
-  }, [trabajos]);
+    return trabajosGuardados.some(
+      (t) => t.maquinaParada && t.estado !== "Terminada" && t.estado !== "terminada" && t.estado !== "Terminado"
+    );
+  }, [trabajosGuardados]);
 
   const estaParada = Boolean(paradaAbierta || tieneTrabajoParada);
 

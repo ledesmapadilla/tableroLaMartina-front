@@ -410,10 +410,34 @@ function Rubro({ r }) {
       excel: { ancho: 18, valor: (f) => f.ubicacion || '—' },
       celda: (f) => f.ubicacion || <Raya />,
     },
+    // Las observaciones largas desarmaban la fila: va un ojo que abre el texto
+    // entero, o una raya si no hay (02/10/2026). El Excel lleva el texto.
     observaciones: {
       titulo: 'Observaciones',
+      ancho: '110px',
+      centrada: true,
       excel: { ancho: 40, valor: (f) => f.observaciones || '—' },
-      celda: (f) => f.observaciones || <Raya />,
+      celda: (f) =>
+        f.observaciones?.trim() ? (
+          <div className="d-flex justify-content-center">
+            <BotonAccion
+              icono="bi-eye"
+              titulo="Ver la observación"
+              variante="primary"
+              onClick={() =>
+                Swal.fire({
+                  title: `Observaciones · ${f.codigo || ''}`,
+                  text: f.observaciones,
+                  confirmButtonText: 'Cerrar',
+                  confirmButtonColor: '#64748b',
+                  customClass: { htmlContainer: 'text-start' },
+                })
+              }
+            />
+          </div>
+        ) : (
+          <Raya />
+        ),
     },
     movimientos: {
       titulo: 'Movimientos',
@@ -482,8 +506,10 @@ function Rubro({ r }) {
             title="Ver por dónde anduvo"
             style={{
               fontSize: '0.7rem',
-              fontWeight: enAlguien(f) ? 700 : 400,
-              color: enAlguien(f) ? '#b45309' : '#94a3b8',
+              // "En almacén" en un gris oscuro: en gris claro parecía un
+              // dato vacío (02/10/2026).
+              fontWeight: enAlguien(f) ? 700 : 600,
+              color: enAlguien(f) ? '#b45309' : '#334155',
               width: '96px',
               flex: '0 0 auto',
             }}
@@ -599,12 +625,6 @@ function Rubro({ r }) {
           </div>
           <span className="fw-bold" style={{ color: r.color, fontSize: '1.05rem' }}>
             {r.titulo}
-          </span>
-          <span
-            className="px-2 py-1 rounded-3"
-            style={{ fontSize: '0.76rem', backgroundColor: r.colorSuave, color: r.color, fontWeight: 600 }}
-          >
-            {lista.length} {lista.length === 1 ? singular : plural}
           </span>
 
           <div className="d-flex align-items-center gap-2 ms-auto">

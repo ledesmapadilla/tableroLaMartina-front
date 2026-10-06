@@ -66,7 +66,7 @@ main {
   padding: 2px 5px;
 }
 /* Una columna que se separa de las vecinas con líneas más fuertes a los dos
-   lados (la Cant. alto Rto. de Remuneración). */
+   lados (el Objetivo alto Rto. de Remuneración). */
 .tabla-informe th.col-bordes-fuertes,
 .tabla-informe td.col-bordes-fuertes {
   border-left: 2px solid #475569 !important;

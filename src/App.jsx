@@ -49,6 +49,7 @@ const Inicio = lazy(() => import("./components/pages/Inicio"));
 const AltaCentrosCosto = lazy(() => import("./components/pages/AltaCentrosCosto"));
 const ProduccionAltaPersonal = lazy(() => import("./components/pages/ProduccionAltaPersonal"));
 const ProduccionAltaTareas = lazy(() => import("./components/pages/ProduccionAltaTareas"));
+const ProduccionAltaClientes = lazy(() => import("./components/pages/ProduccionAltaClientes"));
 const ProduccionEstablecimientos = lazy(() => import("./components/pages/ProduccionEstablecimientos"));
 const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
 const ProduccionCertificadoMenu = lazy(() => import("./components/pages/ProduccionCertificadoMenu"));
@@ -395,6 +396,7 @@ function LayoutDesktop() {
               <Route path="/produccion/altas/cc" element={<RutaProtegida><AltaCentrosCosto /></RutaProtegida>} />
               <Route path="/produccion/altas/personal" element={<RutaProtegida><ProduccionAltaPersonal /></RutaProtegida>} />
               <Route path="/produccion/altas/tareas" element={<RutaProtegida><ProduccionAltaTareas /></RutaProtegida>} />
+              <Route path="/produccion/altas/clientes" element={<RutaProtegida><ProduccionAltaClientes /></RutaProtegida>} />
               <Route path="/camionetas" element={<Camionetas />} />
               <Route path="/camionetas/preventivo" element={<CamionetasPreventivo />} />
               <Route path="/camionetas/reparaciones" element={<Navigate to="/camionetas/services/reparaciones" replace />} />

@@ -6,6 +6,14 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { usePermisos } from "../../context/permisos";
 import { nombreEstablecimiento } from "../../utils/establecimientos";
+import {
+  CLIENTE_POR_DEFECTO,
+  clienteDe,
+  claveCliente,
+  mismoCliente,
+  useClientes,
+  opcionesDeClientes,
+} from "../../utils/clientes";
 
 const API_VARIABLES = "/api/variables";
 const API_TAREAS = "/api/tareas";
@@ -64,8 +72,9 @@ const cuandoRige = (v) => soloFecha(v.vigenciaDesde) || soloFecha(v.fecha) || ""
 /**
  * Variables de la certificación: el precio con el que se paga cada tarea.
  *
- * La tabla muestra el precio vigente de cada tarea. El precio ya no distingue
- * cliente: el mismo valor rige para todo lo que se certifica (17/09/2026).
+ * La tabla muestra el precio vigente de cada tarea para el cliente elegido
+ * arriba: cada cliente tiene su tabla (04/10/2026). Del 17/09 al 04/10 el
+ * precio fue uno solo; los de esa época pasaron a Citrusvil.
  *
  * Cada carga de precio es una fila propia: la última vigencia es la que rige y
  * las anteriores quedan en el **historial** de esa tarea.
@@ -91,6 +100,9 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
   const [precios, setPrecios] = useState([]);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todas");
+  // De qué cliente es la tabla que se mira. Arranca en Citrusvil, el que
+  // viene puesto en cada parte.
+  const [clienteSel, setClienteSel] = useState(CLIENTE_POR_DEFECTO);
 
   // Modal de carga / edición. `editando` es el id de la carga que se corrige;
   // en el alta va en null.
@@ -137,11 +149,26 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [establecimiento]);
 
-  // Todas las cargas agrupadas por tarea, de la vigencia más nueva a la más
-  // vieja.
+  // Los clientes salen del padrón (Altas › Clientes). En el selector van los
+  // activos y, si no está entre ellos, el que se está mirando.
+  const { activos: clientesActivos } = useClientes();
+  const clientes = useMemo(
+    () => opcionesDeClientes(clientesActivos, clienteSel).map((o) => o.valor),
+    [clientesActivos, clienteSel]
+  );
+
+  // Las cargas del cliente elegido. Un precio sin cliente cuenta como de
+  // Citrusvil (ver clienteDe).
+  const preciosDelCliente = useMemo(
+    () => precios.filter((p) => mismoCliente(p, { cliente: clienteSel })),
+    [precios, clienteSel]
+  );
+
+  // Las cargas del cliente agrupadas por tarea, de la vigencia más nueva a la
+  // más vieja.
   const historialPorTarea = useMemo(() => {
     const mapa = new Map();
-    for (const p of precios) {
+    for (const p of preciosDelCliente) {
       const id = p.tarea?._id || p.tarea;
       if (!mapa.has(id)) mapa.set(id, []);
       mapa.get(id).push(p);
@@ -150,7 +177,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       lista.sort((a, b) => cuandoRige(b).localeCompare(cuandoRige(a)));
     }
     return mapa;
-  }, [precios]);
+  }, [preciosDelCliente]);
 
   // Una fila por tarea, con el precio que rige hoy.
   const filas = useMemo(
@@ -215,6 +242,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     setTareaFija(tarea);
     reset({
       tarea: tarea?._id || "",
+      cliente: clienteSel,
       neto: "",
       cantAlto: "",
       netoAlto: "",
@@ -230,6 +258,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     setTareaFija(carga.tarea);
     reset({
       tarea: carga.tarea?._id || "",
+      cliente: clienteDe(carga),
       neto: carga.neto ?? "",
       cantAlto: carga.cantAlto ?? "",
       netoAlto: carga.netoAlto ?? "",
@@ -254,6 +283,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     setTareaFija({ _id: f._id, tarea: f.tarea, unidad: f.unidad });
     reset({
       tarea: f._id,
+      cliente: clienteSel,
       neto: f.vigente?.neto ?? "",
       cantAlto: f.vigente?.cantAlto ?? "",
       netoAlto: f.vigente?.netoAlto ?? "",
@@ -280,6 +310,10 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       if (res.ok) {
         cerrarModal();
         await cargar();
+        // Se pasa a la tabla del cliente del precio, escrito como ya estaba
+        // en la lista si es uno conocido.
+        const conocido = clientes.find((c) => claveCliente(c) === claveCliente(data.cliente));
+        setClienteSel(conocido || (data.cliente || "").trim() || CLIENTE_POR_DEFECTO);
         Swal.fire({
           icon: "success",
           title: editando ? "Precio actualizado" : "Precio cargado",
@@ -303,7 +337,8 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     const anteriores = precios.filter(
       (p) =>
         p._id !== carga._id &&
-        (p.tarea?._id || p.tarea) === idTarea
+        (p.tarea?._id || p.tarea) === idTarea &&
+        mismoCliente(p, carga)
     );
     const quedaVigente = anteriores.sort((a, b) =>
       soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde))
@@ -373,14 +408,14 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       "Unidad",
       "$ neto normal",
       "$ bruto normal",
-      ...siAlto("Cant. alto Rto.", "$ neto alto Rto.", "$ bruto alto Rto."),
+      ...siAlto("Objetivo alto Rto.", "$ neto alto Rto.", "$ bruto alto Rto."),
       "Fecha",
       "Vigencia desde",
     ];
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
-    celdaTitulo.value = `REMUNERACIÓN — ${nombreEstablecimiento(establecimiento).toUpperCase()}`;
+    celdaTitulo.value = `REMUNERACIÓN — ${nombreEstablecimiento(establecimiento).toUpperCase()} — ${clienteSel.toUpperCase()}`;
     celdaTitulo.font = { bold: true, size: 14 };
     celdaTitulo.alignment = { horizontal: "center", vertical: "middle" };
     ws.getRow(1).height = 28;
@@ -465,7 +500,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `remuneracion_${establecimiento}_${hoyStr()}.xlsx`;
+    a.download = `remuneracion_${establecimiento}_${claveCliente(clienteSel).replace(/s+/g, "-")}_${hoyStr()}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -543,7 +578,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                 Remuneración · {nombreEstablecimiento(establecimiento)}
               </span>
               <span className="text-muted" style={{ fontSize: "0.78rem" }}>
-                {conPrecio} de {filas.length} tareas con precio · rigen para todos los meses
+                {conPrecio} de {filas.length} tareas con precio para {clienteSel} · rigen para todos los meses
               </span>
             </div>
           </div>
@@ -582,9 +617,38 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
           </div>
         </div>
 
-        {/* Buscador + estado */}
+        {/* Cliente + buscador + estado */}
         <Card className="shadow-sm border-0 rounded-3 px-3 py-2 bg-white flex-shrink-0 mb-2">
           <div className="d-flex align-items-center gap-3 flex-wrap">
+            {/* Cada cliente tiene su tabla de precios. No es un filtro: va
+                siempre uno elegido, por eso no se pinta de rojo. */}
+            <div className="d-flex align-items-center gap-2">
+              <span className="fw-bold text-dark small flex-shrink-0" style={{ fontSize: "0.8rem" }}>
+                Cliente:
+              </span>
+              <Form.Select
+                size="sm"
+                value={clienteSel}
+                onChange={(e) => setClienteSel(e.target.value)}
+                className="rounded-3 fw-bold"
+                style={{
+                  width: "170px",
+                  fontSize: "0.82rem",
+                  height: "32px",
+                  padding: "3px 24px 3px 8px",
+                  color: "#1b4332",
+                  borderColor: "#1b4332",
+                }}
+                title="Elegir de qué cliente es la tabla de precios"
+              >
+                {clientes.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Form.Select>
+            </div>
+
             <div style={{ width: "220px" }}>
               <div className="input-group input-group-sm">
                 <span
@@ -692,7 +756,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                 {/* El de alto rendimiento, con su color de letra */}
                 {conAlto && (
                   <th className="col-bordes-fuertes" style={{ ...estiloTh, width: "95px", color: "#fcd34d" }}>
-                    Cant. alto Rto.
+                    Objetivo alto Rto.
                   </th>
                 )}
                 {conAlto && th("$ neto alto Rto.", { width: "110px", color: "#fcd34d" })}
@@ -863,6 +927,44 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                 )}
               </Col>
 
+              {/* El cliente al que se le paga este precio, del padrón de
+                  Altas › Clientes: no se escribe a mano. */}
+              <Col md={12} className="text-center">
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Cliente <span className="text-danger">*</span>
+                </Form.Label>
+                <div className="mx-auto" style={{ maxWidth: "240px" }}>
+                  <Controller
+                    name="cliente"
+                    control={control}
+                    rules={{ validate: (v) => Boolean((v || "").trim()) || "Hay que elegir el cliente" }}
+                    defaultValue=""
+                    render={({ field }) => (
+                      <SelectBuscador
+                        opciones={opcionesDeClientes(clientesActivos, field.value)}
+                        valor={field.value || ""}
+                        onChange={field.onChange}
+                        vacio={null}
+                        placeholder="— Seleccionar —"
+                        invalido={!!errors.cliente}
+                        className="rounded-3 text-center"
+                        style={{ fontSize: "0.85rem", height: "38px" }}
+                        inputRef={field.ref}
+                        title="El precio se aplica a los partes de este cliente"
+                      />
+                    )}
+                  />
+                  {errors.cliente && (
+                    <span className="text-danger d-block" style={{ fontSize: "0.78rem" }}>
+                      {errors.cliente.message}
+                    </span>
+                  )}
+                </div>
+                <span className="text-muted d-block mt-1" style={{ fontSize: "0.72rem" }}>
+                  ¿Falta uno? Se da de alta en Altas › Clientes
+                </span>
+              </Col>
+
               {/* Se carga el neto; el bruto es cuenta y va al lado, para ver
                   contra qué número se está cargando. */}
               <Col md={6} className="text-center">
@@ -923,7 +1025,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                 <>
                   <Col md={12} className="text-center">
                     <Form.Label className="fw-semibold small mb-1" style={{ color: COLOR_ALTO }}>
-                      Cant. alto Rto.
+                      Objetivo alto Rto.
                     </Form.Label>
                     <Form.Control
                       type="number"
@@ -1105,7 +1207,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <i className="bi bi-clock-history" style={{ color: "#cbd5e1" }}></i>
             <span>
-              {historialAbierto?.tarea}
+              {historialAbierto?.tarea} · {clienteSel}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -1122,7 +1224,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                 {th("$ bruto normal")}
                 {conAlto && (
                   <th className="col-bordes-fuertes" style={{ ...estiloTh, color: "#fcd34d" }}>
-                    Cant. alto Rto.
+                    Objetivo alto Rto.
                   </th>
                 )}
                 {conAlto && th("$ neto alto Rto.", { color: "#fcd34d" })}

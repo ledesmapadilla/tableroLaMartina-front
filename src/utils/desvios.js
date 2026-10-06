@@ -90,9 +90,8 @@ const textoTramo = (t, conHorasCC) => {
  *   el tramo es lo que se consumió en él (ver consumos.service.js en el
  *   backend). `consumo` es lo que devuelve /api/partes/consumos para este
  *   parte; si su tramo todavía no cerró, el consumo no se mide.
- * - Rendimiento: cantidad / horas de turno, contra el rendimiento admisible.
- *   Si el parte no tiene horas de turno pero sí horómetro, se usan las horas
- *   del CC (`conHorasCC`).
+ * - Rendimiento: cantidad / horas del CC, contra el rendimiento admisible.
+ *   Si el parte no tiene hs CC, se usan las de turno (04/10/2026).
  *
  * Devuelve solo los que están fuera (amarillo o rojo), el peor primero, cada
  * uno con { tipo, medida, real, admisible, unidad, desvio, color, nota }. El
@@ -130,16 +129,18 @@ export const desviosDelParte = (p, admisibles, consumo = null) => {
 
   // En las tareas por lote, el rendimiento es el del lote terminado; en
   // proceso todavía no se sabe y no se mide.
-  const turno = Number(p.totalHoras) || 0;
-  const horas = turno > 0 ? turno : Number(p.horasCC) || 0;
+  // Contra las hs CC; sin ellas, contra las de turno (04/10/2026). También en
+  // las tareas por lote: el reparto de la cantidad sigue por horas de turno.
+  const porLote = esTareaPorLote(p);
+  const horasCC = Number(p.horasCC) || 0;
+  const horas = horasCC > 0 ? horasCC : Number(p.totalHoras) || 0;
   if (horas > 0 && cuentaParaProduccion(p)) {
-    const porLote = esTareaPorLote(p);
     const nombre = porLote ? `Rendimiento del lote ${(p.lote || "").trim() || "—"} (terminado)` : "Rendimiento";
     const nota = porLote
-      ? "Es el del lote entero: sus plantas o hectáreas repartidas entre sus jornadas según las horas."
-      : turno > 0
-        ? `${Number(p.cantidad) || 0} ${unidad} en ${turno} hs de turno`
-        : `${Number(p.cantidad) || 0} ${unidad} en ${horas} hs de CC (el parte no tiene horas de turno)`;
+      ? `Las plantas o hectáreas del lote se reparten entre sus jornadas según las horas de turno; esta jornada: ${Number(p.cantidad) || 0} ${unidad} en ${horas} hs de ${horasCC > 0 ? "CC" : "turno"}.`
+      : horasCC > 0
+        ? `${Number(p.cantidad) || 0} ${unidad} en ${horasCC} hs de CC`
+        : `${Number(p.cantidad) || 0} ${unidad} en ${horas} hs de turno (el parte no tiene hs CC)`;
     medir("rendimiento", nombre, (Number(p.cantidad) || 0) / horas, a.rendimiento, `${unidad}/hs`, false, nota);
   }
 

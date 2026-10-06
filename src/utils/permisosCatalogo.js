@@ -66,6 +66,7 @@ export const CATALOGO = [
   { seccion: "Altas", clave: "altas.proveedores", label: "Proveedores", hoy: PERMISOS.comprasAnalista },
   { seccion: "Altas", clave: "altas.personal", label: "Personal", hoy: PERMISOS.produccion },
   { seccion: "Altas", clave: "altas.tareas", label: "Tareas", hoy: PERMISOS.produccion },
+  { seccion: "Altas", clave: "altas.clientes", label: "Clientes", hoy: PERMISOS.produccion },
   { seccion: "Altas", clave: "altas.camionetas", label: "Camionetas", hoy: PERMISOS.mantenimiento },
   { seccion: "Altas", clave: "altas.tractores", label: "Tractores", hoy: PERMISOS.mantenimiento },
   { seccion: "Altas", clave: "altas.colectivos", label: "Colectivos", hoy: PERMISOS.mantenimiento },

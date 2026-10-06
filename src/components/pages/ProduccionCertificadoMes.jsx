@@ -5,7 +5,7 @@ import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
-import { CLIENTES, unirClientes } from "../../utils/clientes";
+import { CLIENTE_POR_DEFECTO, useClientes, opcionesDeClientes } from "../../utils/clientes";
 import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
 import { useSinGuardar } from "../../utils/sinGuardar";
 import {
@@ -26,9 +26,9 @@ const FORM_VACIO = {
   fecha: "",
   persona: "",
   cc: "",
-  // El cliente es solo informativo: el precio de Variables es el mismo para
-  // todos. Viene puesto en Citrusvil (17/09/2026).
-  cliente: CLIENTES[0],
+  // El cliente define con qué precio de Variables se paga la tarea
+  // (04/10/2026). Viene puesto en Citrusvil.
+  cliente: CLIENTE_POR_DEFECTO,
   horaIngreso: "",
   horaEgreso: "",
   // El segundo tramo del día, solo en San Pablo.
@@ -1109,6 +1109,9 @@ function ProduccionCertificadoMes({
     const falta = [];
     if (!form.fecha) falta.push("la fecha");
     if (!form.persona) falta.push("la persona");
+    // El cliente define el precio: obligatorio siempre, también en el
+    // provisorio (04/10/2026).
+    if (!(form.cliente || "").trim()) falta.push("el cliente");
     if (!form.provisorio && !form.tarea) falta.push("la tarea");
     if (!form.provisorio && pideCantidad && (form.cantidad === "" || form.cantidad === null)) {
       falta.push("la cantidad");
@@ -1353,7 +1356,7 @@ function ProduccionCertificadoMes({
       fecha: soloFecha(p.fecha),
       persona: p.persona?._id || "",
       cc: p.cc?._id || "",
-      cliente: p.cliente || CLIENTES[0],
+      cliente: p.cliente || CLIENTE_POR_DEFECTO,
       horaIngreso: p.horaIngreso || "",
       horaEgreso: p.horaEgreso || "",
       horaIngreso2: p.horaIngreso2 || "",
@@ -1419,17 +1422,9 @@ function ProduccionCertificadoMes({
     () => [...new Set(partes.map((p) => (p.lote || "").trim()).filter(Boolean))].sort(),
     [partes]
   );
-  /**
-   * Los clientes que se ofrecen al cargar un parte: los dos de siempre más los
-   * que ya se escribieron en el período. Es un dato informativo, el precio no
-   * depende de él.
-   */
-  const clientesUsados = useMemo(() => {
-    const enPartes = [...new Set(partes.map((p) => (p.cliente || "").trim()).filter(Boolean))].sort(
-      (a, b) => a.localeCompare(b, "es", { sensitivity: "base" })
-    );
-    return unirClientes(enPartes);
-  }, [partes]);
+  // Los clientes que se ofrecen al cargar un parte: los activos del padrón
+  // (Altas › Clientes). El cliente define con qué precio se paga la tarea.
+  const { activos: clientesActivos } = useClientes();
   const turbos = useMemo(
     () => centros.filter((c) => (c.equipo || "").trim().toLowerCase() === "turbo"),
     [centros]
@@ -2303,20 +2298,22 @@ function ProduccionCertificadoMes({
 
               <div style={{ width: "140px" }}>
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
-                  Cliente
+                  Cliente <span className="text-danger">*</span>
                 </label>
-                {/* Desplegable con buscador en vez del datalist: el clic abre
-                    la lista, que con el datalist solo aparecía al tipear. Va en
-                    modo libre, porque el cliente sigue siendo texto y se puede
-                    escribir uno que todavía no está en la lista. */}
+                {/* Desplegable con buscador: solo los clientes del padrón
+                    (Altas › Clientes), sin escribir a mano (04/10/2026). */}
                 <SelectBuscador
-                  libre
-                  opciones={clientesUsados.map((c) => ({ valor: c, texto: c }))}
+                  opciones={opcionesDeClientes(clientesActivos, form.cliente)}
+                  vacio={null}
                   valor={form.cliente}
                   onChange={(v) => cambiar("cliente", v)}
                   placeholder="Cliente"
-                  title="Solo informativo: el precio de la tarea no depende del cliente"
-                  style={estiloCelda}
+                  title="Define con qué precio de Variables se paga la tarea"
+                  style={{
+                    ...estiloCelda,
+                    // En rojo mientras esté vacío: sin cliente el parte no entra.
+                    borderColor: (form.cliente || "").trim() ? undefined : "#dc2626",
+                  }}
                 />
               </div>
 
@@ -2716,7 +2713,7 @@ function ProduccionCertificadoMes({
                     <td className={`text-secondary ${SEP}`}>{p.combustible ?? "—"}</td>
                     <td className="text-secondary">{p.turbo || "—"}</td>
                     <td className={`text-secondary ${SEP}`}>{p.combTurbo ?? "—"}</td>
-                    {/* Informativo: el precio de la tarea no depende de él. */}
+                    {/* Define con qué precio de Variables se paga la tarea. */}
                     <td className="text-start ps-2 text-secondary" style={AJUSTA}>{p.cliente || "—"}</td>
                     {/* El lote terminado se marca: número blanco sobre verde.
                         En proceso va como cualquier otro dato. */}

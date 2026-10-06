@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button, Card, Container, Form, Modal, Table } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import GraficoConsumoCC from "./GraficoConsumoCC";
-import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
+import { diasDeAltoRendimiento, partesEnAltoRendimiento } from "../../utils/altoRendimiento";
 import {
   desvio,
   SEMAFORO,
@@ -237,6 +237,10 @@ const resumirPorCC = (partes) => {
     horasCCProd: 0,
     litrosConsProd: 0,
     cantidadConsProd: 0,
+    // Cuántos de esos partes hay y cuántos traen horas de CC: el rendimiento
+    // va contra las hs CC solo si las tienen todos (04/10/2026).
+    partesProd: 0,
+    partesProdConCC: 0,
   };
 
   // `maquina`: lo que devolvió /api/partes/consumos para esa máquina en ese
@@ -257,6 +261,8 @@ const resumirPorCC = (partes) => {
     if (prod) {
       fila.horasTurnoProd += horasTurno;
       fila.horasCCProd += horasCC;
+      fila.partesProd += 1;
+      if (horasCC > 0) fila.partesProdConCC += 1;
       if (cerrado) {
         fila.litrosConsProd += maquina.litros;
         fila.cantidadConsProd += cantidad;
@@ -307,7 +313,13 @@ const resumirPorCC = (partes) => {
     }
   }
 
-  const cerrarFila = (f) => ({
+  const cerrarFila = (f) => {
+    const rendimiento = razon(f.cantidad, f.horasTurnoProd);
+    const rendimientoCC = razon(f.cantidad, f.horasCCProd);
+    // El rendimiento que se compara contra el admisible (04/10/2026): el de
+    // las hs CC si todos los partes las tienen; si falta alguna, el de turno.
+    const conCC = f.partesProd > 0 && f.partesProdConCC === f.partesProd && rendimientoCC !== null;
+    return {
     ...f,
     combustible: redondear(f.combustible),
     horasTurno: redondear(f.horasTurno),
@@ -329,10 +341,13 @@ const resumirPorCC = (partes) => {
     // desmalezado de San Pablo, las jornadas de lotes terminados (27/09/2026).
     ltsPorUnidad: razon(f.litrosConsProd, f.cantidadConsProd),
     unidadPorLts: razon(f.cantidadConsProd, f.litrosConsProd),
-    rendimiento: razon(f.cantidad, f.horasTurnoProd),
-    // El mismo contra las horas del horómetro, para el gráfico (27/09/2026).
-    rendimientoCC: razon(f.cantidad, f.horasCCProd),
-  });
+    rendimiento,
+    // El mismo contra las horas del horómetro (27/09/2026).
+    rendimientoCC,
+    baseRendimiento: conCC ? "cc" : "turno",
+    rendimientoMedido: conCC ? rendimientoCC : rendimiento,
+    };
+  };
 
   const listaCC = [...cc.values()].map(cerrarFila).sort((a, b) => compararCC(a.cc, b.cc));
 
@@ -456,7 +471,8 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     })();
   }, []);
   // Admisible y desvío de una fila por CC y tarea: el consumo contra los
-  // lts/hs de turno, y el rendimiento contra las unidades por hora de turno.
+  // lts/hs de turno, y el rendimiento contra las unidades por hora de CC, o
+  // de turno si a algún parte le faltan las hs CC (`baseRendimiento`).
   const contraAdmisible = (f) => {
     const a = admisibles.get(String(f.idTarea));
     const consumoAdm = a?.consumo ?? null;
@@ -465,7 +481,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       consumoAdm,
       desvioConsumo: desvio(f.consumo, consumoAdm),
       rendimientoAdm,
-      desvioRendimiento: desvio(f.rendimiento, rendimientoAdm),
+      desvioRendimiento: desvio(f.rendimientoMedido, rendimientoAdm),
     };
   };
 
@@ -531,6 +547,21 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
     }
     return s;
   }, [partes, enAltoRendimiento]);
+  // La persona y la tarea cuyo detalle de alto rendimiento por día está
+  // abierto: se abre tocando la cantidad destacada, como el cartel "Alto
+  // Rto." del informe Contable - Pagos (06/10/2026).
+  const [detalleAlto, setDetalleAlto] = useState(null);
+  const abrirDetalleAlto = (fila, tarea) => {
+    const dias = diasDeAltoRendimiento(partes, variables, establecimiento, fila.id, tarea.id);
+    setDetalleAlto({
+      persona: fila.nombre,
+      tarea: tarea.nombre,
+      unidad: tarea.unidad,
+      dias,
+      // El cliente va en una columna solo si la tarea se hizo para más de uno.
+      variosClientes: new Set(dias.map((d) => d.cliente)).size > 1,
+    });
+  };
 
   // Las opciones salen de todo el período, no de lo ya filtrado: si no, elegir
   // una persona vaciaría el resto de los desplegables.
@@ -868,6 +899,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       "Consumo (lts/unidad)",
       "Consumo (unidad/lts)",
       "Rendimiento (un/hs turno)",
+      "Rendimiento (un/hs CC)",
       "Admisible (un/hs)",
       "Desvío (%)",
     ];
@@ -883,12 +915,13 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
         f.ltsPorUnidad === null ? null : Math.round(f.ltsPorUnidad * 10000) / 10000,
         f.unidadPorLts === null ? null : redondear(f.unidadPorLts),
         f.rendimiento === null ? null : redondear(f.rendimiento),
+        f.rendimientoCC === null ? null : redondear(f.rendimientoCC),
         a.rendimientoAdm,
         a.desvioRendimiento === null ? null : Math.round(a.desvioRendimiento * 10) / 10,
       ]);
       bordear(fila, [1, 2, 5]);
-      pintarDesvio(fila.getCell(10), a.desvioRendimiento, false);
-      pintarMedida(fila.getCell(8), a.desvioRendimiento, false);
+      pintarDesvio(fila.getCell(11), a.desvioRendimiento, false);
+      pintarMedida(fila.getCell(f.baseRendimiento === "cc" ? 9 : 8), a.desvioRendimiento, false);
     });
     ws3.columns = [
       { width: 12 },
@@ -898,6 +931,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
       { width: 11 },
       { width: 20 },
       { width: 20 },
+      { width: 22 },
       { width: 22 },
       { width: 12 },
       { width: 12 },
@@ -1092,8 +1126,8 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
           .tabla-cc-tarea td:nth-child(5),
           .tabla-cc-tarea th:nth-child(7),
           .tabla-cc-tarea td:nth-child(7),
-          .tabla-produccion th:nth-child(8),
-          .tabla-produccion td:nth-child(8) {
+          .tabla-produccion th:nth-child(9),
+          .tabla-produccion td:nth-child(9) {
             border-right: 3px solid #1b4332 !important;
           }
           /* Los títulos de cada tabla quedan fijos arriba al bajar por ella
@@ -1168,13 +1202,24 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                                 textAlign: "center",
                                 ...(tareasEnAlto.has(`${f.id}|${t.id}`) ? { color: "#b45309", fontWeight: 700 } : null),
                               }}
-                              title={
-                                tareasEnAlto.has(`${f.id}|${t.id}`)
-                                  ? "Tiene días de alto rendimiento: el detalle está en Ver"
-                                  : undefined
-                              }
                             >
-                              {f.tareas.has(t.id) ? (
+                              {f.tareas.has(t.id) && tareasEnAlto.has(`${f.id}|${t.id}`) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => abrirDetalleAlto(f, t)}
+                                  className="px-1 rounded-1 border-0"
+                                  style={{
+                                    backgroundColor: "#fef3c7",
+                                    color: "#b45309",
+                                    fontSize: "inherit",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                  title="Tiene días de alto rendimiento: ver el detalle por día"
+                                >
+                                  {numero(redondear(f.tareas.get(t.id)))}
+                                </button>
+                              ) : f.tareas.has(t.id) ? (
                                 numero(redondear(f.tareas.get(t.id)))
                               ) : (
                                 <span style={{ color: "#cbd5e1" }}>—</span>
@@ -1367,6 +1412,10 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
           <div className="mb-4">
             {rotulo("Producción y rendimiento por centro de costo y tarea")}
             {notaConsumo}
+            <div className="mb-1" style={{ fontSize: "0.7rem", color: "#64748b" }}>
+              <i className="bi bi-speedometer2 me-1"></i>
+              El rendimiento se compara con las hs CC; si a algún parte le faltan, con las hs de turno. La columna pintada es la que se usó.
+            </div>
             {filtrosDe("produccion")}
             {/* El gráfico al lado, con la tarea y la medida a elegir. */}
             <div className="d-flex gap-3 flex-wrap align-items-start">
@@ -1398,6 +1447,10 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                       <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>un / hs turno</div>
                     </th>
                     <th style={{ ...th, textAlign: "center" }}>
+                      Rendimiento
+                      <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>un / hs CC</div>
+                    </th>
+                    <th style={{ ...th, textAlign: "center" }}>
                       Admisible
                       <div style={{ fontSize: "0.6rem", fontWeight: 400, opacity: 0.75 }}>un / hs</div>
                     </th>
@@ -1409,7 +1462,7 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                 </thead>
                 <tbody>
                   {cargando || porTareaProduccion.length === 0
-                    ? sinDatos(10, "No hay partes con centro de costo en este período", "produccion")
+                    ? sinDatos(11, "No hay partes con centro de costo en este período", "produccion")
                     : porTareaProduccion.map((f) => {
                         const a = contraAdmisible(f);
                         return (
@@ -1427,9 +1480,15 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                             )}
                           </td>
                           {celdaNumero(f.unidadPorLts === null ? null : redondear(f.unidadPorLts), true)}
+                          {/* Se pinta la columna con la que se midió el desvío */}
                           {celdaMedida(
                             f.rendimiento === null ? null : redondear(f.rendimiento),
-                            a.desvioRendimiento,
+                            f.baseRendimiento === "turno" ? a.desvioRendimiento : null,
+                            false
+                          )}
+                          {celdaMedida(
+                            f.rendimientoCC === null ? null : redondear(f.rendimientoCC),
+                            f.baseRendimiento === "cc" ? a.desvioRendimiento : null,
                             false
                           )}
                           {/* Contra el rendimiento admisible de la tarea */}
@@ -1559,6 +1618,72 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
             Cerrar
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* Detalle por día de una cantidad con alto rendimiento: todos los días
+          de la tarea en el período y cuánto de cada uno fue a cada precio.
+          Es el del informe Contable - Pagos, sin los importes. */}
+      <Modal show={Boolean(detalleAlto)} onHide={() => setDetalleAlto(null)} size="lg" centered>
+        <Modal.Header closeButton closeVariant="white" style={{ backgroundColor: "#1b4332", color: "#fff" }}>
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-lightning-charge-fill" style={{ color: "#f59e0b" }}></i>
+            <span>Alto rendimiento por día</span>
+          </Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body style={{ backgroundColor: "#f8f9fa" }}>
+          <div className="fw-bold mb-2" style={{ color: "#1b4332", fontSize: "0.86rem" }}>
+            {detalleAlto?.persona} — {detalleAlto?.tarea}
+          </div>
+
+          <div className="bg-white rounded-3" style={{ border: "1px solid #e2e8f0", overflow: "auto" }}>
+            <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...th, textAlign: "center" }}>Fecha</th>
+                  {detalleAlto?.variosClientes && (
+                    <th style={{ ...th, textAlign: "left" }}>Cliente</th>
+                  )}
+                  <th style={{ ...th, textAlign: "center" }}>{detalleAlto?.unidad || "Cantidad"}</th>
+                  <th style={{ ...th, textAlign: "center" }}>Objetivo</th>
+                  <th style={{ ...th, textAlign: "center" }}>A precio normal</th>
+                  <th style={{ ...th, textAlign: "center", color: "#fcd34d" }}>A alto Rto.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(detalleAlto?.dias || []).map((d) => (
+                  <tr
+                    key={`${d.fecha}|${d.cliente}`}
+                    style={d.alto > 0 ? { backgroundColor: "#fffbeb" } : undefined}
+                  >
+                    <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                      {formatFecha(d.fecha)}
+                      {d.alto > 0 && (
+                        <span
+                          className="ms-1 px-1 rounded-1"
+                          style={{ backgroundColor: "#fef3c7", color: "#b45309", fontSize: "0.58rem", fontWeight: 700 }}
+                        >
+                          Alto Rto.
+                        </span>
+                      )}
+                    </td>
+                    {detalleAlto.variosClientes && (
+                      <td style={{ ...td, color: "#64748b" }}>{d.cliente}</td>
+                    )}
+                    <td style={{ ...td, textAlign: "center", fontWeight: 600 }}>{numero(d.cantidad)}</td>
+                    <td style={{ ...td, textAlign: "center", color: "#64748b" }}>
+                      {d.tope === null ? "—" : numero(d.tope)}
+                    </td>
+                    <td style={{ ...td, textAlign: "center", color: "#64748b" }}>{numero(d.normal)}</td>
+                    <td style={{ ...td, textAlign: "center", color: "#b45309", fontWeight: d.alto > 0 ? 700 : 400 }}>
+                      {d.alto > 0 ? numero(d.alto) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        </Modal.Body>
       </Modal>
     </div>
   );

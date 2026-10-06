@@ -31,6 +31,7 @@ const REGLAS = [
   [/^\/produccion\/altas\/cc/, "altas.centrosCosto"],
   [/^\/produccion\/altas\/personal/, "altas.personal"],
   [/^\/produccion\/altas\/tareas/, "altas.tareas"],
+  [/^\/produccion\/altas\/clientes/, "altas.clientes"],
   // Variables dejó de colgar de cada campo y pasó a la entrada (18/09/2026).
   // Sus tres tarjetas tienen permiso propio; el menú se ve si ve alguna.
   [/^\/produccion\/variables\/remuneracion/, "produccion.variables"],

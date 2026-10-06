@@ -473,8 +473,8 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
 
     for (const { parte: p, clave, cantidad } of porDia.values()) {
       const fila = filaDe(p, clave);
-      // El precio es el de la vigencia que regía ese día.
-      const precio = precioVigente(variables, fila.idTarea, p.fecha);
+      // El precio es el del cliente del parte, en la vigencia que regía ese día.
+      const precio = precioVigente(variables, fila.idTarea, fila.cliente, p.fecha);
       if (precio === null) {
         sumar(fila, cantidad, null);
       } else if (pagaAlto(establecimiento, precio)) {

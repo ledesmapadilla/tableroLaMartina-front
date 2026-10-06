@@ -6,8 +6,11 @@
  * rendimiento). Está acá para que los tres hagan la misma cuenta.
  */
 
+import { claveCliente, clienteDe, mismoCliente } from "./clientes";
+
 const soloFecha = (iso) => (iso || "").slice(0, 10);
 const redondear = (v) => Math.round((Number(v) || 0) * 100) / 100;
+const comparar = (a, b) => String(a || "").localeCompare(String(b || ""));
 
 // Lo que se descuenta del bruto para llegar al neto. Es el mismo valor que usa
 // el backend al guardar el precio; acá solo hace falta para las cargas viejas
@@ -25,11 +28,15 @@ export const RETENCION = 0.205;
  * parte cae antes de la primera vigencia cargada, no hay precio: eso es una
  * raya, no un cero.
  *
- * El precio no distingue cliente: es el mismo para todo lo que se certifica
- * (17/09/2026).
+ * El precio es por cliente (04/10/2026): el parte se paga con el de su
+ * cliente, y si ese cliente no tiene precio para la tarea no hay importe. Un
+ * parte o un precio sin cliente cuenta como de Citrusvil (ver clienteDe).
  */
-export const precioVigente = (variables, idTarea, fecha) => {
-  const deLaTarea = variables.filter((v) => (v.tarea?._id || v.tarea) === idTarea);
+export const precioVigente = (variables, idTarea, cliente, fecha) => {
+  const delCliente = { cliente };
+  const deLaTarea = variables.filter(
+    (v) => (v.tarea?._id || v.tarea) === idTarea && mismoCliente(v, delCliente)
+  );
   if (deLaTarea.length === 0) return null;
 
   const dia = soloFecha(fecha);
@@ -98,6 +105,35 @@ export const repartirDia = (cantidad, tope, nombreTarea) => {
   return { normal, alto: redondear(cantidad - normal) };
 };
 
+// Los partes juntados por persona, tarea, cliente y día: así se mide el alto
+// rendimiento, igual que en el informe de tareas por personal.
+const juntarPorDia = (partes) => {
+  const porDia = new Map();
+  for (const p of partes) {
+    const idTarea = p.tarea?._id || p.tarea;
+    if (!idTarea) continue;
+    const clave = [
+      p.persona?._id || p.persona || "sin-persona",
+      idTarea,
+      claveCliente(clienteDe(p)),
+      soloFecha(p.fecha),
+    ].join("|");
+    const dia = porDia.get(clave) || {
+      idPersona: p.persona?._id || p.persona || "sin-persona",
+      idTarea,
+      tarea: p.tarea?.tarea,
+      cliente: clienteDe(p),
+      fecha: p.fecha,
+      cantidad: 0,
+      ids: [],
+    };
+    dia.cantidad += Number(p.cantidad) || 0;
+    dia.ids.push(p._id);
+    porDia.set(clave, dia);
+  }
+  return [...porDia.values()];
+};
+
 /**
  * Los partes que caen en un día de alto rendimiento: los ids de todos los
  * partes de una persona, tarea y cliente en un día en que algo se pagó al
@@ -107,26 +143,38 @@ export const partesEnAltoRendimiento = (partes, variables, establecimiento) => {
   const ids = new Set();
   if (establecimiento !== ESTABLECIMIENTO_ALTO || !variables.length) return ids;
 
-  const porDia = new Map();
-  for (const p of partes) {
-    const idTarea = p.tarea?._id || p.tarea;
-    if (!idTarea) continue;
-    const clave = [
-      p.persona?._id || p.persona || "sin-persona",
-      idTarea,
-      (p.cliente || "").trim().toLowerCase(),
-      soloFecha(p.fecha),
-    ].join("|");
-    const dia = porDia.get(clave) || { idTarea, tarea: p.tarea?.tarea, fecha: p.fecha, cantidad: 0, ids: [] };
-    dia.cantidad += Number(p.cantidad) || 0;
-    dia.ids.push(p._id);
-    porDia.set(clave, dia);
-  }
-
-  for (const dia of porDia.values()) {
-    const precio = precioVigente(variables, dia.idTarea, dia.fecha);
+  for (const dia of juntarPorDia(partes)) {
+    const precio = precioVigente(variables, dia.idTarea, dia.cliente, dia.fecha);
     if (!pagaAlto(establecimiento, precio)) continue;
     if (repartirDia(dia.cantidad, precio.cantAlto, dia.tarea).alto > 0) dia.ids.forEach((id) => ids.add(id));
   }
   return ids;
+};
+
+/**
+ * Los días de una persona en una tarea, con cuánto de cada uno fue al precio
+ * normal y cuánto al de alto rendimiento: el detalle que abre el resumen por
+ * personal al tocar una cantidad destacada. Van todos los días de la tarea,
+ * también los que no llegaron al objetivo, del más viejo al más nuevo.
+ * Solo cantidades: el resumen no muestra importes.
+ */
+export const diasDeAltoRendimiento = (partes, variables, establecimiento, idPersona, idTarea) => {
+  const dias = [];
+  for (const dia of juntarPorDia(partes)) {
+    if (dia.idPersona !== idPersona || dia.idTarea !== idTarea) continue;
+    const precio = precioVigente(variables, dia.idTarea, dia.cliente, dia.fecha);
+    const conAlto = pagaAlto(establecimiento, precio);
+    const { normal, alto } = conAlto
+      ? repartirDia(dia.cantidad, precio.cantAlto, dia.tarea)
+      : { normal: dia.cantidad, alto: 0 };
+    dias.push({
+      fecha: soloFecha(dia.fecha),
+      cliente: dia.cliente,
+      cantidad: redondear(dia.cantidad),
+      tope: conAlto ? precio.cantAlto : null,
+      normal: redondear(normal),
+      alto,
+    });
+  }
+  return dias.sort((a, b) => a.fecha.localeCompare(b.fecha) || comparar(a.cliente, b.cliente));
 };
