@@ -20,6 +20,7 @@ const COLOR_SUAVE = "#f1f5f9";
 const VERDE = "#047857";
 const VERDE_OK = "#16a34a";
 const ROJO = "#dc2626";
+const GRIS = "#9ca3af";
 const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
 
@@ -61,9 +62,11 @@ function CirculoOk({ marcado, onClick, deshabilitado, tamano = 18 }) {
 
 /**
  * La x de "Con problema": roja, con borde y sin relleno. Abre el modal del
- * problema; con el problema escrito pasa a ser el ojo, lleno de rojo.
+ * problema; con el problema escrito pasa a ser el ojo, lleno de rojo. Con
+ * la fila en OK (y sin problema) la x se apaga en gris.
  */
-function CirculoProblema({ conProblema, onClick, deshabilitado, tamano = 18 }) {
+function CirculoProblema({ conProblema, apagado, onClick, deshabilitado, tamano = 18 }) {
+  const color = apagado && !conProblema ? GRIS : ROJO;
   return (
     <button
       type="button"
@@ -75,9 +78,10 @@ function CirculoProblema({ conProblema, onClick, deshabilitado, tamano = 18 }) {
         width: `${tamano}px`,
         height: `${tamano}px`,
         borderRadius: "50%",
-        border: `2px solid ${ROJO}`,
-        backgroundColor: conProblema ? ROJO : "#fff",
-        color: conProblema ? "#fff" : ROJO,
+        border: `2px solid ${color}`,
+        backgroundColor: conProblema ? color : "#fff",
+        color: conProblema ? "#fff" : color,
+        transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
         cursor: deshabilitado ? "default" : "pointer",
         opacity: deshabilitado ? 0.6 : 1,
         flexShrink: 0,
@@ -474,6 +478,7 @@ export default function ChequeosManitou() {
                         {/* El ojo se puede abrir para leer aun sin permiso. */}
                         <CirculoProblema
                           conProblema={f.tarea === "x"}
+                          apagado={f.chequeado}
                           onClick={() =>
                             setModalProblema(
                               f.tarea === "x"
