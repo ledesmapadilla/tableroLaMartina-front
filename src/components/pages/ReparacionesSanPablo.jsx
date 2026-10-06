@@ -40,16 +40,18 @@ const tarjetas = [
     icono: "bi bi-box-seam-fill",
   },
   {
-    id: "carros-porta-escaleras",
-    titulo: "Carros porta escaleras",
-    bg: "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
-    hoverBg: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
-    accentColor: "#67e8f9",
-    icono: "bi bi-ladder",
+    id: "carros-porta-bolsones",
+    titulo: "Carros porta bolsones",
+    bg: "linear-gradient(135deg, #831843 0%, #9d174d 100%)",
+    hoverBg: "linear-gradient(135deg, #500724 0%, #831843 100%)",
+    accentColor: "#f472b6",
+    icono: "bi bi-bag-fill",
   },
+  // Carros porta escaleras se maneja desde Escaleras (06/10/2026): su
+  // tarjeta se borró y su página cae en el 404.
   {
     id: "escaleras",
-    titulo: "Escaleras",
+    titulo: "Carros porta escaleras / Escaleras",
     bg: "linear-gradient(135deg, #365314 0%, #4d7c0f 100%)",
     hoverBg: "linear-gradient(135deg, #1a2e05 0%, #365314 100%)",
     accentColor: "#a3e635",

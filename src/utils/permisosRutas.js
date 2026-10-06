@@ -86,7 +86,7 @@ const REGLAS = [
   [/^\/colectivo/, GRUPO.colectivos],
 
   // ── Reparaciones San Pablo ──
-  [/^\/reparaciones\/sanpablo\/\d+\/(manitous|tolvas|carros-porta-escaleras|escaleras)/, "sanpablo.ingresos"],
+  [/^\/reparaciones\/sanpablo\/\d+\/(manitous|tolvas|carros-porta-bolsones|escaleras)/, "sanpablo.ingresos"],
 
   // ── Reunión ──
   // Pendientes solo se llega desde el botón de Reunión, así que pide su permiso.

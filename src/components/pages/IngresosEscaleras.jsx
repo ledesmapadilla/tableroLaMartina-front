@@ -9,7 +9,8 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import { compararCC } from "../../utils/ordenCC";
 import { useSupervisores, opcionesSupervisor } from "../../utils/supervisores";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
-import { CeldaFrente, SelectFrente } from "../shared/FrenteSanPablo";
+import { CeldaFrente, SelectFrente, ModalAltaFrente } from "../shared/FrenteSanPablo";
+import HistorialCarros from "../shared/HistorialCarros";
 import { textoFrente } from "../../utils/frentes";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
@@ -25,7 +26,9 @@ const GRIS_CLARO = "#a0aec0";
 const TEXTO = "#1e293b";
 const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
-const COLUMNAS = 10;
+// Las columnas de cada solapa: los egresos no llevan sanas, rotas ni
+// reparadas.
+const COLUMNAS = { ingresos: 10, egresos: 7 };
 
 // El equipo del padrón de CC que se ofrece en el retiro.
 const EQUIPO_CARRO = "Carro porta escaleras";
@@ -42,6 +45,10 @@ const fechaCorta = (iso) => {
   const [a, m, d] = aInput(iso).split("-");
   return a ? `${d}/${m}/${a}` : "";
 };
+
+// En el ingreso, el carro "S/N": vienen sin carro (06/10/2026). Se guarda
+// como cc null.
+const SIN_NUMERO = "sn";
 
 const numeroOVacio = (v) => (v === null || v === undefined ? "" : v);
 const suma = (lista, campoNum) => lista.reduce((s, i) => s + (i[campoNum] || 0), 0);
@@ -76,8 +83,9 @@ export default function IngresosEscaleras({ icono }) {
 
   const [ingresos, setIngresos] = useState([]);
   const [carros, setCarros] = useState([]);
-  // Los frentes se dan de alta en Carros porta escaleras.
+  // Los frentes se dan de alta acá.
   const [frentes, setFrentes] = useState([]);
+  const [altaFrente, setAltaFrente] = useState(false);
   const [cargando, setCargando] = useState(true);
   // El modal abierto: "nuevas", "carro" o "retiro"; la fila que se edita (null
   // en un alta) y su formulario.
@@ -85,7 +93,13 @@ export default function IngresosEscaleras({ icono }) {
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(null);
   const [verHistorial, setVerHistorial] = useState(false);
+  // Ingresos (nuevas, ingresos y lo de los carros) y egresos (retiros y
+  // bajas) van en solapas separadas (06/10/2026).
+  const [solapa, setSolapa] = useState("ingresos");
   const [anterior, setAnterior] = useState([]);
+  // El historial de los carros porta escaleras (06/10/2026): sale de estos
+  // mismos movimientos.
+  const [verHistorialCarros, setVerHistorialCarros] = useState(false);
   const cosechaAnterior = cosecha - 1;
 
   useEffect(() => {
@@ -96,6 +110,12 @@ export default function IngresosEscaleras({ icono }) {
       .catch(() => setAnterior([]));
   }, [verHistorial, cosechaAnterior]);
 
+  const cargarFrentes = () =>
+    api
+      .get("/ingresos-sanpablo/frentes")
+      .then((data) => setFrentes(Array.isArray(data) ? data : []))
+      .catch(() => setFrentes([]));
+
   const cargar = () =>
     api
       .get(`/ingresos-sanpablo?cosecha=${cosecha}&tipo=escaleras`)
@@ -105,10 +125,7 @@ export default function IngresosEscaleras({ icono }) {
 
   useEffect(() => {
     cargar();
-    api
-      .get("/ingresos-sanpablo/frentes")
-      .then((data) => setFrentes(Array.isArray(data) ? data : []))
-      .catch(() => setFrentes([]));
+    cargarFrentes();
     api
       .get("/centros-costo")
       .then((data) =>
@@ -131,7 +148,17 @@ export default function IngresosEscaleras({ icono }) {
   const abrirSinCarro = () => {
     setModo("sinCarro");
     setEditando(null);
-    setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", ingresadoPor: "", frente: "", observaciones: "" });
+    setForm({
+      fechaIngreso: hoy(),
+      cantidadEscaleras: "",
+      ingresadoPor: "",
+      frente: "",
+      cc: "",
+      escalerasSanas: "",
+      escalerasRotas: "",
+      escalerasReparadas: "",
+      observaciones: "",
+    });
   };
 
   const abrirRetiro = () => {
@@ -175,6 +202,14 @@ export default function IngresosEscaleras({ icono }) {
       ingresadoPor: i.ingresadoPor || "",
       observaciones: i.observaciones || "",
       ...(m === "retiro" ? { cc: i.cc?._id || "" } : {}),
+      ...(m === "sinCarro"
+        ? {
+            cc: i.cc?._id || SIN_NUMERO,
+            escalerasSanas: numeroOVacio(i.escalerasSanas),
+            escalerasRotas: numeroOVacio(i.escalerasRotas),
+            escalerasReparadas: numeroOVacio(i.escalerasReparadas),
+          }
+        : {}),
       ...(m === "retiro" || m === "sinCarro" ? { frente: i.frente?._id || "" } : {}),
     });
   };
@@ -188,11 +223,13 @@ export default function IngresosEscaleras({ icono }) {
   const guardar = async (e) => {
     e.preventDefault();
     const eraEdicion = Boolean(editando);
+    // "S/N" es un ingreso sin carro.
+    const datos = form.cc === SIN_NUMERO ? { ...form, cc: null } : form;
     try {
-      if (eraEdicion) await api.put(`/ingresos-sanpablo/${editando._id}`, form);
+      if (eraEdicion) await api.put(`/ingresos-sanpablo/${editando._id}`, datos);
       else
         await api.post("/ingresos-sanpablo", {
-          ...form,
+          ...datos,
           tipo: "escaleras",
           cosecha,
           ...(modo === "retiro" ? { retiro: true } : {}),
@@ -208,6 +245,7 @@ export default function IngresosEscaleras({ icono }) {
             : modo === "sinCarro"
               ? "Ingreso registrado"
               : "Escaleras nuevas registradas";
+      if (!eraEdicion) setSolapa(modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
       cerrar();
       cargar();
       Swal.fire({ icon: "success", title: titulo, timer: 1400, showConfirmButton: false });
@@ -223,7 +261,7 @@ export default function IngresosEscaleras({ icono }) {
         : i.retiro
           ? "¿Borrar el retiro?"
           : i.sinCarro
-            ? "¿Borrar el ingreso sin carro?"
+            ? "¿Borrar el ingreso?"
             : "¿Borrar las escaleras nuevas?",
       text: `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
       icon: "warning",
@@ -248,8 +286,13 @@ export default function IngresosEscaleras({ icono }) {
     }
   };
 
-  // Totales, arriba de la tabla.
+  // Los movimientos de la solapa abierta.
+  const movimientosSolapa = ingresos.filter((i) => (solapa === "egresos" ? sale(i) : !sale(i)));
+
+  // Totales, arriba de la tabla. Sanas, rotas y reparadas se cargan en los
+  // ingresos (y en lo que dejó la página vieja de los carros).
   const deCarros = ingresos.filter((i) => !i.nuevas && !i.sinCarro && !sale(i));
+  const clasificadas = ingresos.filter((i) => !i.nuevas && !sale(i));
   const nuevas = ingresos.filter((i) => i.nuevas);
   const sinCarro = ingresos.filter((i) => i.sinCarro);
   const retiros = ingresos.filter((i) => i.retiro);
@@ -261,16 +304,16 @@ export default function IngresosEscaleras({ icono }) {
     "cantidadEscaleras"
   );
   const enTaller = entraron - retiradas - bajas;
-  const rotas = suma(deCarros, "escalerasRotas");
-  const reparadas = suma(deCarros, "escalerasReparadas");
+  const rotas = suma(clasificadas, "escalerasRotas");
+  const reparadas = suma(clasificadas, "escalerasReparadas");
   const totales = [
     ["Entraron", entraron, COLOR],
     ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
-    ["Sin carro", suma(sinCarro, "cantidadEscaleras"), AZUL],
+    ["Ingresos", suma(sinCarro, "cantidadEscaleras"), AZUL],
     ["Retiradas", retiradas, NARANJA],
     ["Dadas de baja", bajas, ROJO],
     ["En taller", enTaller, COLOR],
-    ["Sanas", suma(deCarros, "escalerasSanas"), AZUL],
+    ["Sanas", suma(clasificadas, "escalerasSanas"), AZUL],
     ["Rotas", rotas, ROJO],
     ["Reparadas", reparadas, VERDE],
     ["Rotas sin reparar", rotas - reparadas, ROJO],
@@ -311,10 +354,18 @@ export default function IngresosEscaleras({ icono }) {
     (c) => !ingresos.some((i) => i.retiro && i.cc?._id === c._id && i._id !== editando?._id)
   );
 
-  // En el modal de un carro: las que falta clasificar como sanas o rotas.
-  const esCarro = modo === "carro" && Boolean(form);
+  // En un ingreso: los carros que todavía no entraron en la cosecha (el del
+  // ingreso que se edita sigue estando). Un carro entra una sola vez.
+  const carrosSinEntrar = carros.filter(
+    (c) => !ingresos.some((i) => !i.nuevas && !sale(i) && i.cc?._id === c._id && i._id !== editando?._id)
+  );
+
+  // En el modal de un ingreso o de un carro: las que falta clasificar como
+  // sanas o rotas.
+  const esCarro = (modo === "carro" || modo === "sinCarro") && Boolean(form);
+  const cantidadQueEntro = modo === "carro" ? editando?.cantidadEscaleras || 0 : Number(form?.cantidadEscaleras) || 0;
   const sinClasificar = esCarro
-    ? (editando.cantidadEscaleras || 0) - (Number(form.escalerasSanas) || 0) - (Number(form.escalerasRotas) || 0)
+    ? cantidadQueEntro - (Number(form.escalerasSanas) || 0) - (Number(form.escalerasRotas) || 0)
     : 0;
   const reparadasDeMas = esCarro && (Number(form.escalerasReparadas) || 0) > (Number(form.escalerasRotas) || 0);
   const hayError = esCarro && (sinClasificar < 0 || reparadasDeMas);
@@ -335,6 +386,29 @@ export default function IngresosEscaleras({ icono }) {
         placeholder="0"
       />
     </Col>
+  );
+
+  // Sanas, rotas y reparadas, con lo que falta clasificar abajo.
+  const camposClasificacion = esCarro && (
+    <>
+      {campoNumero("escalerasSanas", "Cant. sanas", AZUL)}
+      {campoNumero("escalerasRotas", "Cant. rotas", ROJO)}
+      {campoNumero("escalerasReparadas", "Reparadas", VERDE)}
+      <Col xs={12}>
+        <div
+          style={{ fontSize: "0.74rem", color: hayError ? ROJO : "#64748b" }}
+          className={hayError ? "fw-semibold" : ""}
+        >
+          {sinClasificar < 0
+            ? `Sanas y rotas suman más que las ${cantidadQueEntro} que entraron`
+            : reparadasDeMas
+              ? "Las reparadas no pueden ser más que las rotas"
+              : `Sin clasificar: ${sinClasificar} · Rotas sin reparar: ${
+                  (Number(form.escalerasRotas) || 0) - (Number(form.escalerasReparadas) || 0)
+                }`}
+        </div>
+      </Col>
+    </>
   );
 
   const campoFecha = (
@@ -413,16 +487,16 @@ export default function IngresosEscaleras({ icono }) {
           m === "nuevas"
             ? "Nuevas"
             : m === "sinCarro"
-              ? "Sin carro"
+              ? carro || "S/N"
               : m === "baja"
                 ? "Baja"
                 : m === "retiro"
                   ? `Retiro · ${carro}`
                   : carro,
           i.cantidadEscaleras == null ? "" : sale(i) ? -i.cantidadEscaleras : i.cantidadEscaleras,
-          m === "carro" ? numero(i.escalerasSanas) : "",
-          m === "carro" ? numero(i.escalerasRotas) : "",
-          m === "carro" ? numero(i.escalerasReparadas) : "",
+          m === "carro" || m === "sinCarro" ? numero(i.escalerasSanas) : "",
+          m === "carro" || m === "sinCarro" ? numero(i.escalerasRotas) : "",
+          m === "carro" || m === "sinCarro" ? numero(i.escalerasReparadas) : "",
           m === "baja"
             ? [i.motivo, i.avisadoA && `Avisado a ${i.avisadoA}`].filter(Boolean).join(" · ")
             : i.observaciones || "",
@@ -443,8 +517,8 @@ export default function IngresosEscaleras({ icono }) {
         : "Retiro de escaleras"
       : modo === "sinCarro"
       ? editando
-        ? "Editar ingreso sin carro"
-        : "Ingreso sin carro"
+        ? "Editar ingreso de escaleras"
+        : "Ingreso de escaleras"
       : modo === "nuevas"
         ? editando
           ? "Editar escaleras nuevas"
@@ -478,7 +552,7 @@ export default function IngresosEscaleras({ icono }) {
       }}
     >
       <NavbarSanPablo
-        titulo={`Cosecha ${cosecha} · Escaleras`}
+        titulo={`Cosecha ${cosecha} · Carros porta escaleras / Escaleras`}
         icono={icono}
         volverA={`/reparaciones/sanpablo/${cosecha}`}
       />
@@ -491,10 +565,6 @@ export default function IngresosEscaleras({ icono }) {
         <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
           <span className="fw-bold" style={{ color: COLOR, fontSize: "1.05rem" }}>
             Movimientos
-          </span>
-          <span className="text-muted" style={{ fontSize: "0.76rem" }}>
-            <i className="bi bi-info-circle me-1"></i>
-            Las de los carros entran solas con cada ingreso de Carros porta escaleras
           </span>
           <div className="d-flex align-items-center gap-2 ms-auto">
             <Button
@@ -511,16 +581,38 @@ export default function IngresosEscaleras({ icono }) {
             <Button
               size="sm"
               variant="outline-secondary"
+              onClick={() => setAltaFrente(true)}
+              disabled={sinEditar}
+              title={sinEditar ? "Sin permiso para editar" : "Dar de alta un frente"}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+            >
+              <i className="bi bi-geo-alt"></i>
+              <span>Alta de frente</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline-secondary"
               onClick={() => setVerHistorial(true)}
               className="rounded-3 px-3 d-flex align-items-center gap-2"
               style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
             >
               <i className="bi bi-clock-history"></i>
-              <span>Historial</span>
+              <span>Historial escaleras</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => setVerHistorialCarros(true)}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+            >
+              <i className="bi bi-clock-history"></i>
+              <span>Historial carros</span>
             </Button>
             {botonEncabezado("Baja de escaleras", "bi-trash3", abrirBaja, ROJO)}
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
-            {botonEncabezado("Ingreso sin carro", "bi-box-arrow-in-down", abrirSinCarro, AZUL)}
+            {botonEncabezado("Ingreso", "bi-box-arrow-in-down", abrirSinCarro, AZUL)}
             {botonEncabezado("Nuevas escaleras", "bi-plus-lg", abrirNuevas, COLOR)}
           </div>
         </div>
@@ -558,8 +650,49 @@ export default function IngresosEscaleras({ icono }) {
           </div>
         </Card>
 
+        {/* Las solapas, pegadas arriba de la tabla. */}
+        <div className="d-flex gap-1 flex-shrink-0" style={{ marginBottom: "-1px" }}>
+          {[
+            ["ingresos", "Ingresos", "bi-box-arrow-in-down", ingresos.filter((i) => !sale(i)).length],
+            ["egresos", "Egresos", "bi-box-arrow-right", ingresos.filter(sale).length],
+          ].map(([clave, rotulo, iconoSolapa, cantidad]) => {
+            const activa = solapa === clave;
+            return (
+              <button
+                key={clave}
+                type="button"
+                onClick={() => setSolapa(clave)}
+                className="d-flex align-items-center gap-2 px-3 py-1 fw-semibold"
+                style={{
+                  fontSize: "0.8rem",
+                  border: "1px solid #cbd5e1",
+                  borderBottom: activa ? `1px solid ${COLOR}` : "1px solid #cbd5e1",
+                  borderTopLeftRadius: "0.5rem",
+                  borderTopRightRadius: "0.5rem",
+                  backgroundColor: activa ? COLOR : "#fff",
+                  color: activa ? "#fff" : "#475569",
+                  cursor: "pointer",
+                }}
+              >
+                <i className={`bi ${iconoSolapa}`}></i>
+                <span>{rotulo}</span>
+                <span
+                  className="px-2 rounded-pill"
+                  style={{
+                    fontSize: "0.68rem",
+                    backgroundColor: activa ? "rgba(255,255,255,0.2)" : COLOR_SUAVE,
+                    color: activa ? "#fff" : COLOR,
+                  }}
+                >
+                  {cargando ? "—" : cantidad}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         <div
-          className="shadow-sm rounded-3 bg-white"
+          className="shadow-sm bg-white"
           style={{
             flex: "0 1 auto",
             minHeight: 0,
@@ -567,6 +700,7 @@ export default function IngresosEscaleras({ icono }) {
             overflowY: "auto",
             overflowX: "hidden",
             border: "1px solid #cbd5e1",
+            borderRadius: "0 0.5rem 0.5rem 0.5rem",
           }}
         >
           <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
@@ -574,25 +708,33 @@ export default function IngresosEscaleras({ icono }) {
               <tr>
                 <th style={thCentro}>Fecha</th>
                 <th style={th}>Frente</th>
-                <th style={th}>Ingresa/Retira</th>
+                <th style={th}>{solapa === "ingresos" ? "Quién ingresa" : "Quién retira / desecha"}</th>
                 <th style={thCentro}>Carro porta escaleras</th>
                 <th style={thCentro}>Cant.</th>
-                <th style={thCentro}>Cant. sanas</th>
-                <th style={thCentro}>Cant. rotas</th>
-                <th style={thCentro}>Reparadas</th>
-                <th style={th}>Observaciones</th>
+                {solapa === "ingresos" && (
+                  <>
+                    <th style={thCentro}>Cant. sanas</th>
+                    <th style={thCentro}>Cant. rotas</th>
+                    <th style={thCentro}>Reparadas</th>
+                  </>
+                )}
+                <th style={th}>{solapa === "ingresos" ? "Observaciones" : "Observaciones / motivo"}</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {ingresos.length === 0 ? (
+              {movimientosSolapa.length === 0 ? (
                 <tr>
-                  <td colSpan={COLUMNAS} className="text-center text-muted py-4" style={td}>
-                    {cargando ? "Cargando…" : "No hay movimientos de escaleras todavía"}
+                  <td colSpan={COLUMNAS[solapa]} className="text-center text-muted py-4" style={td}>
+                    {cargando
+                      ? "Cargando…"
+                      : solapa === "ingresos"
+                        ? "No hay ingresos de escaleras todavía"
+                        : "No hay retiros ni bajas todavía"}
                   </td>
                 </tr>
               ) : (
-                ingresos.map((i) => {
+                movimientosSolapa.map((i) => {
                   const m = modoDe(i);
                   return (
                     <tr key={i._id}>
@@ -611,14 +753,7 @@ export default function IngresosEscaleras({ icono }) {
                             Nuevas
                           </span>
                         )}
-                        {m === "sinCarro" && (
-                          <span
-                            className="px-2 rounded-pill"
-                            style={{ backgroundColor: "#dbeafe", color: AZUL, fontSize: "0.66rem" }}
-                          >
-                            Sin carro
-                          </span>
-                        )}
+                        {m === "sinCarro" && !i.cc && "S/N"}
                         {m === "retiro" && (
                           <span
                             className="px-2 me-1 rounded-pill"
@@ -635,7 +770,7 @@ export default function IngresosEscaleras({ icono }) {
                             Baja
                           </span>
                         )}
-                        {(m === "carro" || m === "retiro") && (
+                        {(m === "carro" || m === "retiro" || (m === "sinCarro" && i.cc)) && (
                           <>
                             {i.cc?.cc || <Raya />}
                             {i.cc?.descripcion && (
@@ -656,19 +791,20 @@ export default function IngresosEscaleras({ icono }) {
                       >
                         {i.cantidadEscaleras == null ? <Raya /> : sale(i) ? `−${i.cantidadEscaleras}` : i.cantidadEscaleras}
                       </td>
-                      {m === "carro" ? (
-                        <>
-                          <td style={{ ...tdCentro, color: AZUL }}>{i.escalerasSanas ?? <Raya />}</td>
-                          <td style={{ ...tdCentro, color: ROJO }}>{i.escalerasRotas ?? <Raya />}</td>
-                          <td style={{ ...tdCentro, color: VERDE }}>{i.escalerasReparadas ?? <Raya />}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td style={tdCentro}><Raya /></td>
-                          <td style={tdCentro}><Raya /></td>
-                          <td style={tdCentro}><Raya /></td>
-                        </>
-                      )}
+                      {solapa === "ingresos" &&
+                        (m === "carro" || m === "sinCarro" ? (
+                          <>
+                            <td style={{ ...tdCentro, color: AZUL }}>{i.escalerasSanas ?? <Raya />}</td>
+                            <td style={{ ...tdCentro, color: ROJO }}>{i.escalerasRotas ?? <Raya />}</td>
+                            <td style={{ ...tdCentro, color: VERDE }}>{i.escalerasReparadas ?? <Raya />}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td style={tdCentro}><Raya /></td>
+                            <td style={tdCentro}><Raya /></td>
+                            <td style={tdCentro}><Raya /></td>
+                          </>
+                        ))}
                       {/* En una baja: el motivo y a quién se avisó. */}
                       <td style={td}>
                         {m === "baja" ? (
@@ -811,6 +947,31 @@ export default function IngresosEscaleras({ icono }) {
                       onChange={(v) => setForm({ ...form, frente: v })}
                     />
                   </Col>
+                  {/* El carro en que vienen, o S/N si no vienen en ninguno. */}
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">
+                      Carro <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Select
+                      className="rounded-3"
+                      style={{ ...campo, maxWidth: "180px", color: form.cc ? TEXTO : GRIS_CLARO }}
+                      value={form.cc}
+                      onChange={(e) => setForm({ ...form, cc: e.target.value })}
+                      required
+                    >
+                      <option value="">Elegir carro…</option>
+                      <option value={SIN_NUMERO} style={{ color: TEXTO }}>
+                        S/N
+                      </option>
+                      {carrosSinEntrar.map((c) => (
+                        <option key={c._id} value={c._id} style={{ color: TEXTO }}>
+                          {c.cc}
+                          {c.descripcion ? ` · ${c.descripcion}` : ""}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
+                  {camposClasificacion}
                   {campoObservaciones("De dónde vienen, cómo llegaron…")}
                 </Row>
               )}
@@ -943,28 +1104,11 @@ export default function IngresosEscaleras({ icono }) {
                     Entraron el {fechaCorta(editando.fechaIngreso)}
                     {editando.ingresadoPor ? ` con ${editando.ingresadoPor}` : ""}:{" "}
                     <strong>{editando.cantidadEscaleras ?? 0} escaleras</strong>
-                    {editando.frente?.nombre ? ` del frente ${editando.frente.nombre}` : ""}. Eso se cambia en
-                    Carros porta escaleras.
+                    {editando.frente?.nombre ? ` del frente ${editando.frente.nombre}` : ""}.
                   </div>
 
                   <Row className="g-3 form-ingresos">
-                    {campoNumero("escalerasSanas", "Cant. sanas", AZUL)}
-                    {campoNumero("escalerasRotas", "Cant. rotas", ROJO)}
-                    {campoNumero("escalerasReparadas", "Reparadas", VERDE)}
-                    <Col xs={12}>
-                      <div
-                        style={{ fontSize: "0.74rem", color: hayError ? ROJO : "#64748b" }}
-                        className={hayError ? "fw-semibold" : ""}
-                      >
-                        {sinClasificar < 0
-                          ? `Sanas y rotas suman más que las ${editando.cantidadEscaleras ?? 0} que trajo el carro`
-                          : reparadasDeMas
-                            ? "Las reparadas no pueden ser más que las rotas"
-                            : `Sin clasificar: ${sinClasificar} · Rotas sin reparar: ${
-                                (Number(form.escalerasRotas) || 0) - (Number(form.escalerasReparadas) || 0)
-                              }`}
-                      </div>
-                    </Col>
+                    {camposClasificacion}
                     {campoObservaciones("Qué tienen las rotas…")}
                   </Row>
                 </>
@@ -1067,6 +1211,20 @@ export default function IngresosEscaleras({ icono }) {
           </div>
         </Modal.Body>
       </Modal>
+
+      <ModalAltaFrente
+        show={altaFrente}
+        onHide={() => setAltaFrente(false)}
+        frentes={frentes}
+        onGuardado={cargarFrentes}
+      />
+
+      <HistorialCarros
+        show={verHistorialCarros}
+        onHide={() => setVerHistorialCarros(false)}
+        cosecha={cosecha}
+        ingresos={ingresos}
+      />
     </div>
   );
 }

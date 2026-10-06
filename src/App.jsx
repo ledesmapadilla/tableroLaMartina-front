@@ -430,7 +430,7 @@ function LayoutDesktop() {
               {[
                 ["manitous", "Manitous", "Manitou", <TractorIcon size="1.25rem" color="#fff" />],
                 ["tolvas", "Tolvas", "Tolva", <i className="bi bi-minecart-loaded"></i>],
-                ["carros-porta-escaleras", "Carros porta escaleras", "Carro porta escaleras", <i className="bi bi-ladder"></i>],
+                ["carros-porta-bolsones", "Carros porta bolsones", "Carro porta bolsones", <i className="bi bi-bag-fill"></i>],
               ].map(([tipo, titulo, equipo, icono]) => (
                 <Route
                   key={tipo}
@@ -442,7 +442,8 @@ function LayoutDesktop() {
                   }
                 />
               ))}
-              {/* Escaleras no tiene alta: entran solas con cada carro porta escaleras. */}
+              {/* Carros porta escaleras / Escaleras: los carros se manejan desde acá
+                  (06/10/2026); /carros-porta-escaleras cae en el 404. */}
               <Route
                 path="/reparaciones/sanpablo/:cosecha/escaleras"
                 element={

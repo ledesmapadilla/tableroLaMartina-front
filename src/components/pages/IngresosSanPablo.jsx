@@ -9,7 +9,7 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import { useSupervisores, opcionesSupervisor } from "../../utils/supervisores";
 import { usePermisos } from "../../context/permisos";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
-import { CeldaFrente, SelectFrente } from "../shared/FrenteSanPablo";
+import { CeldaFrente, SelectFrente, ModalAltaFrente } from "../shared/FrenteSanPablo";
 import { textoFrente } from "../../utils/frentes";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
@@ -91,7 +91,8 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   const conEscaleras = tipo === "carros-porta-escaleras";
   // Los carros porta escaleras suman el frente, la cantidad de escaleras y la
   // fecha de egreso.
-  const columnas = conEscaleras ? 10 : 7;
+  // El # de fila va solo en los carros (06/10/2026).
+  const columnas = conEscaleras ? 11 : 7;
 
   const [ingresos, setIngresos] = useState([]);
   const [centros, setCentros] = useState([]);
@@ -100,12 +101,10 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   const [form, setForm] = useState(null);
   // El ingreso que se está editando, o null en uno nuevo.
   const [editando, setEditando] = useState(null);
-  // Historial (solo carros porta escaleras).
-  const [verHistorial, setVerHistorial] = useState(false);
   // Los frentes dados de alta y el formulario del alta de uno (solo carros
   // porta escaleras).
   const [frentes, setFrentes] = useState([]);
-  const [nuevoFrente, setNuevoFrente] = useState(null);
+  const [altaFrente, setAltaFrente] = useState(false);
 
   const cargarFrentes = () =>
     api
@@ -116,7 +115,13 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   const cargar = () =>
     api
       .get(`/ingresos-sanpablo?cosecha=${cosecha}&tipo=${tipo}`)
-      .then((data) => setIngresos(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const lista = Array.isArray(data) ? data : [];
+        // Los carros porta escaleras van por equipo (CC), de menor a mayor
+        // (06/10/2026). El orden es estable: los movimientos de un mismo
+        // carro quedan en el orden en que llegan.
+        setIngresos(conEscaleras ? [...lista].sort((a, b) => compararCC(a.cc?.cc, b.cc?.cc)) : lista);
+      })
       .catch(() => setIngresos([]))
       .finally(() => setCargando(false));
 
@@ -193,18 +198,6 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     }
   };
 
-  const guardarFrente = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post("/ingresos-sanpablo/frentes", nuevoFrente);
-      setNuevoFrente(null);
-      cargarFrentes();
-      Swal.fire({ icon: "success", title: "Frente dado de alta", timer: 1400, showConfirmButton: false });
-    } catch (err) {
-      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message });
-    }
-  };
-
   // Marcar o desmarcar un sí / no (revisada, planMantenimiento) desde la
   // tabla, sin abrir el modal.
   const alternar = async (i, campoSiNo) => {
@@ -248,6 +241,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     exportarPlanilla({
       titulo: `Reparaciones San Pablo — ${titulo} — Cosecha ${cosecha}`,
       columnas: [
+        ...(conEscaleras ? [{ titulo: "#", ancho: 6 }] : []),
         { titulo: "Equipo (CC)", ancho: 24 },
         // En los carros, quién lo ingresa va entre el frente y la cantidad.
         ...(conEscaleras
@@ -264,9 +258,10 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
         { titulo: "Plan de mantenimiento", ancho: 20 },
         { titulo: "Observaciones", ancho: 40 },
       ],
-      filas: ingresos.map((i) => {
+      filas: ingresos.map((i, idx) => {
         const cc = [i.cc?.cc, i.cc?.descripcion].filter(Boolean).join(" · ");
         return [
+          ...(conEscaleras ? [idx + 1] : []),
           i.salida ? `Salida · ${cc}` : cc,
           ...(conEscaleras ? [textoFrente(i.frente), i.ingresadoPor || ""] : []),
           ...(conEscaleras ? [i.cantidadEscaleras == null ? "" : i.salida ? -i.cantidadEscaleras : i.cantidadEscaleras] : []),
@@ -283,30 +278,6 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
     });
   const salidas = ingresos.length - entradas.length;
 
-  // Historial: una fila por carro con su entrada (el ingreso) y su salida (el
-  // retiro de escaleras que se lo lleva; si no tiene, la fecha de egreso).
-  const historial = (() => {
-    const porCarro = new Map();
-    const filaDe = (i) => {
-      const clave = i.cc?._id || "sin-carro";
-      if (!porCarro.has(clave)) {
-        porCarro.set(clave, { clave, cc: i.cc?.cc || "", descripcion: i.cc?.descripcion || "", entrada: null, salida: null });
-      }
-      return porCarro.get(clave);
-    };
-    for (const i of ingresos) {
-      const fila = filaDe(i);
-      if (i.salida) fila.salida = { fecha: i.fechaIngreso, quien: i.ingresadoPor };
-      else {
-        fila.entrada = { fecha: i.fechaIngreso, quien: i.ingresadoPor };
-        if (!fila.salida && i.fechaEgreso) fila.salida = { fecha: i.fechaEgreso, quien: "" };
-      }
-    }
-    return [...porCarro.values()].sort((a, b) => compararCC(a.cc, b.cc));
-  })();
-  // Los que entraron y todavía no salieron.
-  const carrosEnSanPablo = historial.filter((f) => f.entrada && !f.salida);
-  const enSanPablo = carrosEnSanPablo.length;
   const sinRevisar = entradas.filter((i) => !i.revisada).length;
 
   return (
@@ -364,7 +335,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
             <Button
               size="sm"
               variant="outline-secondary"
-              onClick={() => setNuevoFrente({ nombre: "", cliente: "" })}
+              onClick={() => setAltaFrente(true)}
               disabled={sinEditar}
               title={sinEditar ? "Sin permiso para editar" : "Dar de alta un frente"}
               className="rounded-3 px-3 d-flex align-items-center gap-2"
@@ -372,18 +343,6 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
             >
               <i className="bi bi-geo-alt"></i>
               <span>Alta de frente</span>
-            </Button>
-          )}
-          {conEscaleras && (
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              onClick={() => setVerHistorial(true)}
-              className="rounded-3 px-3 d-flex align-items-center gap-2"
-              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
-            >
-              <i className="bi bi-clock-history"></i>
-              <span>Historial</span>
             </Button>
           )}
           <Button
@@ -413,6 +372,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
           <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
               <tr>
+                {conEscaleras && <th style={{ ...thCentro, width: "44px" }}>#</th>}
                 <th style={thCentro}>Equipo (CC)</th>
                 {conEscaleras && <th style={th}>Frente</th>}
                 {/* En los carros va entre el frente y la cantidad. */}
@@ -435,9 +395,10 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                   </td>
                 </tr>
               ) : (
-                ingresos.map((i) =>
+                ingresos.map((i, idx) =>
                   i.salida ? (
                     <tr key={i._id}>
+                      {conEscaleras && <td style={{ ...tdCentro, color: "#94a3b8" }}>{idx + 1}</td>}
                       <td style={{ ...tdCentro, fontWeight: 700 }}>
                         <span
                           className="px-2 me-1 rounded-pill"
@@ -488,6 +449,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                     </tr>
                   ) : (
                     <tr key={i._id}>
+                      {conEscaleras && <td style={{ ...tdCentro, color: "#94a3b8" }}>{idx + 1}</td>}
                       <td style={{ ...tdCentro, fontWeight: 700 }}>
                         {i.cc?.cc || <Raya />}
                         {i.cc?.descripcion && (
@@ -757,189 +719,12 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
       </Modal>
 
       {/* Alta de un frente: nombre y cliente. */}
-      <Modal
-        show={Boolean(nuevoFrente)}
-        onHide={() => setNuevoFrente(null)}
-        centered
-        dialogClassName="modal-cc"
-        contentClassName="border-0 shadow-lg rounded-4"
-      >
-        <Modal.Header
-          closeButton
-          closeVariant="white"
-          style={{
-            backgroundColor: COLOR,
-            color: "#fff",
-            borderTopLeftRadius: "1rem",
-            borderTopRightRadius: "1rem",
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
-            <i className="bi bi-geo-alt"></i>
-            <span>Alta de frente</span>
-          </Modal.Title>
-        </Modal.Header>
-        {nuevoFrente && (
-          <Form onSubmit={guardarFrente}>
-            <Modal.Body className="p-4">
-              <Row className="g-3 form-ingresos">
-                <Col xs={12}>
-                  <Form.Label className="fw-semibold text-dark small mb-1">
-                    Nombre del frente <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    className="rounded-3"
-                    style={campo}
-                    value={nuevoFrente.nombre}
-                    onChange={(e) => setNuevoFrente({ ...nuevoFrente, nombre: e.target.value })}
-                    placeholder="Nombre del frente"
-                    maxLength={80}
-                    autoFocus
-                    required
-                  />
-                </Col>
-                <Col xs={12}>
-                  <Form.Label className="fw-semibold text-dark small mb-1">
-                    Cliente <span className="text-danger">*</span>
-                  </Form.Label>
-                  <Form.Control
-                    className="rounded-3"
-                    style={campo}
-                    value={nuevoFrente.cliente}
-                    onChange={(e) => setNuevoFrente({ ...nuevoFrente, cliente: e.target.value })}
-                    placeholder="Cliente"
-                    maxLength={80}
-                    required
-                  />
-                </Col>
-                {frentes.length > 0 && (
-                  <Col xs={12}>
-                    <div className="text-muted" style={{ fontSize: "0.72rem" }}>
-                      Ya dados de alta: {frentes.map((f) => f.nombre).join(", ")}
-                    </div>
-                  </Col>
-                )}
-              </Row>
-            </Modal.Body>
-            <Modal.Footer
-              className="bg-light border-0 py-2 px-4"
-              style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
-            >
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                onClick={() => setNuevoFrente(null)}
-                className="rounded-3 px-3 py-1"
-                style={{ fontSize: "0.84rem" }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                type="submit"
-                className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
-                style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
-              >
-                <i className="bi bi-check-lg"></i>
-                <span>Guardar</span>
-              </Button>
-            </Modal.Footer>
-          </Form>
-        )}
-      </Modal>
-
-      {/* Historial de escaleras por carro. */}
-      <Modal
-        show={verHistorial}
-        onHide={() => setVerHistorial(false)}
-        centered
-        scrollable
-        size="lg"
-        contentClassName="border-0 shadow-lg rounded-4"
-      >
-        <Modal.Header
-          closeButton
-          closeVariant="white"
-          style={{
-            backgroundColor: COLOR,
-            color: "#fff",
-            borderTopLeftRadius: "1rem",
-            borderTopRightRadius: "1rem",
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
-            <i className="bi bi-clock-history"></i>
-            <span>Historial de carros · Cosecha {cosecha}</span>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-3">
-          <div
-            className="mb-3 px-3 py-2 rounded-3 d-flex align-items-center gap-2 flex-wrap"
-            style={{ backgroundColor: COLOR_SUAVE, color: COLOR }}
-          >
-            <span className="fw-bold" style={{ fontSize: "1.3rem" }}>
-              {enSanPablo}
-            </span>
-            <span style={{ fontSize: "0.8rem" }}>
-              {enSanPablo === 1 ? "carro en San Pablo" : "carros en San Pablo"}
-              {enSanPablo > 0 && ":"}
-            </span>
-            {carrosEnSanPablo.map((f) => (
-              <span
-                key={f.clave}
-                className="px-2 rounded-pill bg-white fw-bold"
-                style={{ fontSize: "0.74rem", border: "1px solid #cbd5e1" }}
-              >
-                {f.cc}
-              </span>
-            ))}
-          </div>
-          <div className="rounded-3 bg-white" style={{ border: "1px solid #cbd5e1", overflowX: "auto" }}>
-            <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
-              <thead>
-                <tr>
-                  <th style={th}>Carro</th>
-                  <th style={thCentro}>Fecha entrada</th>
-                  <th style={th}>Quién entra</th>
-                  <th style={thCentro}>Fecha salida</th>
-                  <th style={th}>Quién sale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historial.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-muted py-3" style={td}>
-                      No hay movimientos todavía
-                    </td>
-                  </tr>
-                ) : (
-                  historial.map((f) => (
-                    <tr key={f.clave}>
-                      <td style={{ ...td, fontWeight: 700, whiteSpace: "nowrap" }}>
-                        {f.cc || <Raya />}
-                        {f.descripcion && (
-                          <span className="text-muted fw-normal" style={{ fontSize: "0.66rem" }}>
-                            {" "}
-                            · {f.descripcion}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(f.entrada?.fecha) || <Raya />}</td>
-                      <td style={td}>{f.entrada?.quien || <Raya />}</td>
-                      <td style={{ ...tdCentro, whiteSpace: "nowrap", color: NARANJA }}>
-                        {fechaCorta(f.salida?.fecha) || <Raya />}
-                      </td>
-                      <td style={td}>{f.salida?.quien || <Raya />}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </Table>
-          </div>
-        </Modal.Body>
-      </Modal>
+      <ModalAltaFrente
+        show={altaFrente}
+        onHide={() => setAltaFrente(false)}
+        frentes={frentes}
+        onGuardado={cargarFrentes}
+      />
     </div>
   );
 }

@@ -1680,6 +1680,24 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
                     </td>
                   </tr>
                 ))}
+                {/* Los totales de la tarea: la cantidad es la de la celda que
+                    se tocó, abierta en lo que fue a cada precio (06/10/2026). */}
+                {(detalleAlto?.dias || []).length > 0 && (
+                  <tr className="fila-total">
+                    <td style={{ ...td, textAlign: "center", fontWeight: 700, color: "#1b4332" }}>TOTAL</td>
+                    {detalleAlto.variosClientes && <td style={td}></td>}
+                    <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>
+                      {numero(redondear(detalleAlto.dias.reduce((acc, d) => acc + d.cantidad, 0)))}
+                    </td>
+                    <td style={td}></td>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>
+                      {numero(redondear(detalleAlto.dias.reduce((acc, d) => acc + d.normal, 0)))}
+                    </td>
+                    <td style={{ ...td, textAlign: "center", fontWeight: 700, color: "#b45309" }}>
+                      {numero(redondear(detalleAlto.dias.reduce((acc, d) => acc + d.alto, 0)))}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </Table>
           </div>
