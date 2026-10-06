@@ -21,8 +21,8 @@ import {
   CeldaOP,
 } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
+import { fmtNro } from './nroPedido'
 
-const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
 const ESTADOS        = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Retirado', 'Rechazado']
@@ -106,7 +106,7 @@ export default function AnalistaPedidos() {
   const lista = items.filter(item => {
     const normEstado = (item.estado === 'Pedido' || item.estado === 'En analisis' || item.estado === 'Para revision') ? 'Para analisis' : item.estado
     if (esComprador && normEstado === 'Para analisis') return false
-    if (filtros.nro && !fmtNro(item.nro_pedido, item._src).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro && !fmtNro(item.nro_pedido, item._src, item.origen).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -142,6 +142,7 @@ export default function AnalistaPedidos() {
     _key: `${items[0]._src}-${items[0].nro_pedido}`,
     _src: items[0]._src,
     nro_pedido: items[0].nro_pedido,
+    origen: items[0].origen,
     fecha: items[0].fecha,
     archivoPedido: items[0].archivoPedido,
     cc:              colapsar(uniq(items.map(i => i.cc))),
@@ -302,7 +303,7 @@ export default function AnalistaPedidos() {
       ],
       filas: lista.map((item) => [
         item._src === "berdina" ? "Berdina" : "San Pablo",
-        fmtNro(item.nro_pedido, item._src),
+        fmtNro(item.nro_pedido, item._src, item.origen),
         item.fecha?.slice(0, 10).split("-").reverse().join("/"),
         item.cc || "",
         item.nombre_repuesto,
@@ -385,7 +386,7 @@ export default function AnalistaPedidos() {
   }
 
   const verDetalle = (item) =>
-    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src)}`, items: item._items || [item] })
+    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src, item.origen)}`, items: item._items || [item] })
 
   const verMotivoRevision = async (item) => {
     try {
@@ -722,7 +723,7 @@ export default function AnalistaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            ↳ {fmtNro(item.nro_pedido, item._src)}
+                            ↳ {fmtNro(item.nro_pedido, item._src, item.origen)}
                           </button>
                         ) : (
                           <button
@@ -737,7 +738,7 @@ export default function AnalistaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(item.nro_pedido, item._src)}
+                            {fmtNro(item.nro_pedido, item._src, item.origen)}
                           </button>
                         )}
                         {item._agrupado && item._count > 1 && (

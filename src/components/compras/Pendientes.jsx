@@ -18,6 +18,7 @@ import {
   CeldaOP,
 } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
+import { fmtNro as fmtNroPedido } from './nroPedido'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 // Los grupos salen del catálogo de equipos (utils/equipos.js).
@@ -29,7 +30,7 @@ const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Par
 
 export default function Pendientes({ taller }) {
   const navigate = useNavigate()
-  const fmtNro = (n) => taller === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
+  const fmtNro = (n, origen) => fmtNroPedido(n, taller, origen)
   const apiBase = `/${taller}/pedidos`
   const titulo = taller === 'berdina' ? 'Berdina' : 'San Pablo'
 
@@ -56,7 +57,7 @@ export default function Pendientes({ taller }) {
   )
 
   const lista = items.filter(item => {
-    if (filtros.nro     && !fmtNro(item.nro_pedido).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro     && !fmtNro(item.nro_pedido, item.origen).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha   && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc      && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -82,6 +83,7 @@ export default function Pendientes({ taller }) {
     _items:          items,
     _key:            items[0].nro_pedido,
     nro_pedido:      items[0].nro_pedido,
+    origen:          items[0].origen,
     fecha:           items[0].fecha,
     cc:              colapsar(uniq(items.map(i => i.cc))),
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
@@ -141,7 +143,7 @@ export default function Pendientes({ taller }) {
 
   const verDetalle = (item) =>
     verDetallePedido({
-      titulo: `Pedido ${fmtNro(item.nro_pedido)}`,
+      titulo: `Pedido ${fmtNro(item.nro_pedido, item.origen)}`,
       items: item._items,
       conDescripcion: false,
     })
@@ -201,7 +203,7 @@ export default function Pendientes({ taller }) {
       { titulo: "O.P.", ancho: 12 },
     ],
       filas: lista.map((item) => [
-      fmtNro(item.nro_pedido),
+      fmtNro(item.nro_pedido, item.origen),
       item.fecha?.slice(0, 10).split("-").reverse().join("/"),
       item.cc || "",
       item.nombre_repuesto,
@@ -343,9 +345,9 @@ export default function Pendientes({ taller }) {
                         }}
                       >
                         {item._anidada ? (
-                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido)}</span>
+                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item.origen)}</span>
                         ) : (
-                          fmtNro(item.nro_pedido)
+                          fmtNro(item.nro_pedido, item.origen)
                         )}
                         {item._agrupado && item._count > 1 && (
                           <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />

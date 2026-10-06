@@ -7,8 +7,8 @@ import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion } from './estilos'
 import { opcionElegida } from './precioElegido'
 import { usePermisos } from '../../context/permisos'
+import { fmtNro } from './nroPedido'
 
-const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const fmtPrecio = (v) =>
   v === '' || v === null || v === undefined
@@ -100,7 +100,7 @@ export default function OrdenPago() {
   const itemsParaElegir = (p) =>
     (p.items || []).filter(i => i.estado === 'Para hacer OP' && !idsEnOrden.has(i._id))
   const pedidosFiltrados = pedidos.filter(p =>
-    fmtNro(p.nro_pedido, p._src).toLowerCase().includes(busqueda.toLowerCase()) &&
+    fmtNro(p.nro_pedido, p._src, p.origen).toLowerCase().includes(busqueda.toLowerCase()) &&
     // Un pedido sin ítems libres (rechazados, o todos ya en la orden) no se ofrece.
     itemsParaElegir(p).length > 0
   )
@@ -113,7 +113,7 @@ export default function OrdenPago() {
   // Buscar un pedido solo lo marca: "Elegir" lo pasa a la vista previa.
   const marcarPedido = (p) => {
     setSelectedKey(`${p._src}-${p.nro_pedido}`)
-    setBusqueda(fmtNro(p.nro_pedido, p._src))
+    setBusqueda(fmtNro(p.nro_pedido, p._src, p.origen))
     setShowDropdown(false)
   }
 
@@ -269,6 +269,7 @@ export default function OrdenPago() {
           itemId:          i._id,
           nro_pedido:      i.nro_pedido,
           _src:            i._src,
+          origen:          i.origen,
           nombre_repuesto: i.nombre_repuesto,
           cant:            Number(i.cant),
           // Compra parcial: qué hacer con lo que no se compra (el backend lo
@@ -345,7 +346,7 @@ export default function OrdenPago() {
                   setShowDropdown(true)
                 }}
                 onBlur={() => {
-                  if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src))
+                  if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen))
                 }}
                 placeholder="Buscar pedido…"
                 autoComplete="off"
@@ -389,7 +390,7 @@ export default function OrdenPago() {
                           e.currentTarget.style.backgroundColor = elegido ? BORDO_SUAVE : 'transparent'
                         }}
                       >
-                        {fmtNro(p.nro_pedido, p._src)}
+                        {fmtNro(p.nro_pedido, p._src, p.origen)}
                         {esMultiple(p) && (
                           <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
                             ({opItemCount(p)} ítems)
@@ -428,7 +429,7 @@ export default function OrdenPago() {
             <div className="d-flex align-items-center gap-2 mb-1">
               <span className="fw-bold" style={{ color: BORDO, fontSize: '0.82rem' }}>
                 Vista previa — pedido{' '}
-                {pedidoEnVista ? fmtNro(pedidoEnVista.nro_pedido, pedidoEnVista._src) : ''}
+                {pedidoEnVista ? fmtNro(pedidoEnVista.nro_pedido, pedidoEnVista._src, pedidoEnVista.origen) : ''}
               </span>
               <Button
                 size="sm"
@@ -661,7 +662,7 @@ export default function OrdenPago() {
                           : undefined
                       }
                     >
-                      <td style={tdCentro}>{fmtNro(item.nro_pedido, item._src)}</td>
+                      <td style={tdCentro}>{fmtNro(item.nro_pedido, item._src, item.origen)}</td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
                       <td style={tdCentro}>

@@ -14,6 +14,7 @@ import {
 import { Raya } from './estilos'
 import { opcionElegida } from './precioElegido'
 import { usePermisos } from '../../context/permisos'
+import { fmtNro } from './nroPedido'
 
 /** Un dato suelto de la ficha de la OP: rótulo chico arriba, valor abajo. */
 const Dato = ({ etiqueta, valor, destacado = false }) => (
@@ -34,8 +35,6 @@ const fmtPrecio = (v) =>
   v == null ? '—'
   : new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(v)
 
-const fmtNro = (n, src) =>
-  src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const fmtFecha = (d) =>
   d ? new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—'
@@ -65,6 +64,7 @@ const filaElegidaDeItem = (item) => {
   return {
     nro_pedido:      item.nro_pedido,
     _src:            item._src,
+    origen:          item.origen,
     fecha:           item.fecha,
     nombre_repuesto: item.nombre_repuesto,
     cant:            item.cant,
@@ -103,7 +103,7 @@ export default function VerOP() {
         const total = filas.reduce((sum, f) => sum + (f.precio_total ?? 0), 0)
         const ref = itemsArr[0]
         setOp({
-          nro_oc_display: fmtNro(ref.nro_pedido, ref._src),
+          nro_oc_display: fmtNro(ref.nro_pedido, ref._src, ref.origen),
           fecha:          ref.fecha,
           establecimiento: ref._src,
           items:          filas,

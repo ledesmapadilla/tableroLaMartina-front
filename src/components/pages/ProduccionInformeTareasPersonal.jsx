@@ -1938,6 +1938,28 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
                     <td style={{ ...td, textAlign: "center", fontWeight: 600 }}>{pesos(d.importe)}</td>
                   </tr>
                 ))}
+                {/* Los totales del renglón: cantidades y plata de cada precio,
+                    y el neto de todos los días (06/10/2026). */}
+                {(detalleAlto?.dias || []).length > 0 &&
+                  (() => {
+                    const dias = detalleAlto.dias;
+                    const suma = (fn) => redondear(dias.reduce((acc, d) => acc + fn(d), 0));
+                    const alto = suma((d) => d.alto);
+                    return (
+                      <tr className="fila-total">
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700, color: "#1b4332" }}>TOTAL</td>
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{numero(suma((d) => d.cantidad))}</td>
+                        <td style={td}></td>
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>
+                          {numero(suma((d) => d.normal))} · {pesos(suma((d) => d.normal * (d.neto || 0)))}
+                        </td>
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700, color: "#b45309" }}>
+                          {alto > 0 ? `${numero(alto)} · ${pesos(suma((d) => d.alto * (d.netoAlto || 0)))}` : raya}
+                        </td>
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{pesos(suma((d) => d.importe))}</td>
+                      </tr>
+                    );
+                  })()}
               </tbody>
             </Table>
           </div>

@@ -65,11 +65,13 @@ const ProduccionCampoMenu = lazy(() => import("./components/pages/ProduccionCamp
 const Error404 = lazy(() => import("./components/pages/Error404"));
 const Camionetas = lazy(() => import("./components/pages/Camionetas"));
 const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesSanPablo"));
+const ManitousSanPablo = lazy(() => import("./components/pages/ManitousSanPablo"));
+const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
+const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
 const IngresosSanPablo = lazy(() => import("./components/pages/IngresosSanPablo"));
 const IngresosEscaleras = lazy(() => import("./components/pages/IngresosEscaleras"));
 const CosechasSanPablo = lazy(() => import("./components/pages/CosechasSanPablo"));
 import RutaCosecha from "./components/shared/RutaCosecha";
-import TractorIcon from "./components/shared/TractorIcon";
 const Colectivo = lazy(() => import("./components/pages/Colectivo"));
 const ColectivosAltas = lazy(() => import("./components/pages/ColectivosAltas"));
 const ColectivosPreventivo = lazy(() => import("./components/pages/ColectivosPreventivo"));
@@ -425,10 +427,26 @@ function LayoutDesktop() {
                 path="/reparaciones/sanpablo/:cosecha"
                 element={<RutaCosecha><ReparacionesSanPablo /></RutaCosecha>}
               />
+              {/* Manitous: una tarjeta por unidad (al 404 por ahora) y la General
+                  (06/10/2026). La tabla de ingresos de Manitous
+                  quedó sin entrada. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/manitous"
+                element={<RutaCosecha><ManitousSanPablo /></RutaCosecha>}
+              />
+              <Route path="/reparaciones/sanpablo/:cosecha/manitous/:unidad" element={<Error404 />} />
+              {/* General: una tarjeta por sistema, cada una con su tabla de chequeo. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/manitous/general"
+                element={<RutaCosecha><ManitouGeneralSanPablo /></RutaCosecha>}
+              />
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/manitous/general/:sistema"
+                element={<RutaCosecha><ChequeosManitou /></RutaCosecha>}
+              />
               {/* La tabla de ingresos de cada tarjeta: qué equipos del padrón
                   de CC ofrece y con qué ícono. */}
               {[
-                ["manitous", "Manitous", "Manitou", <TractorIcon size="1.25rem" color="#fff" />],
                 ["tolvas", "Tolvas", "Tolva", <i className="bi bi-minecart-loaded"></i>],
                 ["carros-porta-bolsones", "Carros porta bolsones", "Carro porta bolsones", <i className="bi bi-bag-fill"></i>],
               ].map(([tipo, titulo, equipo, icono]) => (

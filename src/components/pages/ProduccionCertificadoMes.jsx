@@ -1425,8 +1425,9 @@ function ProduccionCertificadoMes({
   // Los clientes que se ofrecen al cargar un parte: los activos del padrón
   // (Altas › Clientes). El cliente define con qué precio se paga la tarea.
   const { activos: clientesActivos } = useClientes();
+  // Los Jacto (350 y 351) también trabajan de turbo (06/10/2026).
   const turbos = useMemo(
-    () => centros.filter((c) => (c.equipo || "").trim().toLowerCase() === "turbo"),
+    () => centros.filter((c) => ["turbo", "jacto"].includes((c.equipo || "").trim().toLowerCase())),
     [centros]
   );
 

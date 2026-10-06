@@ -22,8 +22,9 @@ import {
   CeldaOP,
 } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
+import { fmtNro as fmtNroPedido } from './nroPedido'
 
-const fmtNro = (n) => `SP-${String(n).padStart(3, '0')}`
+const fmtNro = (n, origen) => fmtNroPedido(n, 'sanpablo', origen)
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 const ESTADOS   = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Retirado', 'Rechazado']
@@ -67,7 +68,7 @@ export default function SanPabloPedidos() {
   )
 
   const lista = items.filter(item => {
-    if (filtros.nro && !fmtNro(item.nro_pedido).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro && !fmtNro(item.nro_pedido, item.origen).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -94,6 +95,7 @@ export default function SanPabloPedidos() {
     _items: items,
     _key: items[0].nro_pedido,
     nro_pedido: items[0].nro_pedido,
+    origen: items[0].origen,
     fecha: items[0].fecha,
     // El pedido y su adjunto, para la columna Adjunto de la fila en negrita.
     pedidoId: items[0].pedidoId,
@@ -319,7 +321,7 @@ export default function SanPabloPedidos() {
       { titulo: "O.P.", ancho: 12 },
     ],
       filas: lista.map((item) => [
-      fmtNro(item.nro_pedido),
+      fmtNro(item.nro_pedido, item.origen),
       item.fecha?.slice(0, 10).split("-").reverse().join("/"),
       item.cc || "",
       item.nombre_repuesto,
@@ -401,7 +403,7 @@ export default function SanPabloPedidos() {
   }
 
   const verDetalle = (item) =>
-    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido)}`, items: item._items || [item] })
+    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item.origen)}`, items: item._items || [item] })
 
   const verMotivoRetirado = async (item) => {
     try {
@@ -673,7 +675,7 @@ export default function SanPabloPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            ↳ {fmtNro(item.nro_pedido)}
+                            ↳ {fmtNro(item.nro_pedido, item.origen)}
                           </button>
                         ) : (
                           <button
@@ -688,7 +690,7 @@ export default function SanPabloPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(item.nro_pedido)}
+                            {fmtNro(item.nro_pedido, item.origen)}
                           </button>
                         )}
                         {item._agrupado && item._count > 1 && (

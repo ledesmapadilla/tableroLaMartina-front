@@ -12,14 +12,13 @@ import { api } from '../../services/api'
 import { usePermisos } from '../../context/permisos'
 import { useAuth } from '../../context/AuthContext'
 import { sePuedeApurarFila, sePuedeApurar, apuroDeLaFila, itemsDeLaFila, cuando } from './apuro'
+import { fmtNro } from './nroPedido'
 
 const fmtPrecio = (n) =>
   n != null && n !== '' && !isNaN(n)
     ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n)
     : '—'
 
-const fmtNro = (n, src) =>
-  src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 const URG_ORDER = { 'Crítica': 0, 'Alta': 1, 'Media': 2, 'Baja': 3 }
 
@@ -110,7 +109,7 @@ export default function Gerencia() {
       const agrupado = Object.values(
         todos.reduce((acc, item) => {
           const key = `${item._src}-${item.nro_pedido}`
-          if (!acc[key]) acc[key] = { _src: item._src, nro_pedido: item.nro_pedido, fecha: item.fecha, items: [] }
+          if (!acc[key]) acc[key] = { _src: item._src, nro_pedido: item.nro_pedido, origen: item.origen, fecha: item.fecha, items: [] }
           acc[key].items.push(item)
           return acc
         }, {})
@@ -200,7 +199,7 @@ export default function Gerencia() {
       .join('')
 
     Swal.fire({
-      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src)}`,
+      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}`,
       html: `<div style="max-height:65vh;overflow:auto">${fichas}</div>`,
       width: 360,
       padding: '0.9rem',
@@ -305,7 +304,7 @@ export default function Gerencia() {
       )
       // Una tabla por ítem; con varios, cada una lleva el nombre del repuesto.
       verHistorialPedido({
-        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src)}`,
+        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}`,
         secciones: historiales.map(({ item, hist }) => ({
           subtitulo: grupo.items.length > 1 ? item.nombre_repuesto : '',
           historial: conCreacion(hist, { fecha: grupo.fecha, solicita: item.solicita }),
@@ -329,7 +328,7 @@ export default function Gerencia() {
    */
   const decidir = async (grupo, accion) => {
     const a = ACCIONES[accion]
-    const nro = fmtNro(grupo.nro_pedido, grupo._src)
+    const nro = fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)
     const varios = grupo.items.length > 1
 
     const lista = grupo.items
@@ -581,7 +580,7 @@ export default function Gerencia() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(grupo.nro_pedido, grupo._src)}
+                            {fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}
                           </button>
                           {campana(grupo)}
                         </div>

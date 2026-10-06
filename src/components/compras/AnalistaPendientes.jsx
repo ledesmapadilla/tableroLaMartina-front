@@ -9,6 +9,7 @@ import { avisarSinOC, idsARetirar } from './avisos'
 import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedido'
 import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido, CeldaOP } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
+import { fmtNro } from './nroPedido'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 // Los grupos salen del catálogo de equipos (utils/equipos.js).
@@ -16,7 +17,6 @@ const GRUPOS = GRUPOS_PEDIDO
 
 const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Para revision', 'Para retirar'])
 
-const fmtNro = (n, src) => src === 'berdina' ? `B-${String(n).padStart(3, '0')}` : `SP-${String(n).padStart(3, '0')}`
 
 export default function AnalistaPendientes() {
   const navigate = useNavigate()
@@ -48,7 +48,7 @@ export default function AnalistaPendientes() {
   }, [])
 
   const lista = items.filter(item => {
-    if (filtros.nro      && !fmtNro(item.nro_pedido, item._src).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro      && !fmtNro(item.nro_pedido, item._src, item.origen).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha    && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc       && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -75,6 +75,7 @@ export default function AnalistaPendientes() {
     _key:            `${its[0]._src}-${its[0].nro_pedido}`,
     _src:            its[0]._src,
     nro_pedido:      its[0].nro_pedido,
+    origen:          its[0].origen,
     fecha:           its[0].fecha,
     pedidoId:        its[0].pedidoId,
     cc:              colapsar(uniq(its.map(i => i.cc))),
@@ -133,7 +134,7 @@ export default function AnalistaPendientes() {
 
   const verDetalle = (item) =>
     verDetallePedido({
-      titulo: `Pedido ${fmtNro(item.nro_pedido, item._src)}`,
+      titulo: `Pedido ${fmtNro(item.nro_pedido, item._src, item.origen)}`,
       items: item._items,
       conDescripcion: false,
     })
@@ -290,9 +291,9 @@ export default function AnalistaPendientes() {
                         }}
                       >
                         {item._anidada ? (
-                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src)}</span>
+                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src, item.origen)}</span>
                         ) : (
-                          fmtNro(item.nro_pedido, item._src)
+                          fmtNro(item.nro_pedido, item._src, item.origen)
                         )}
                         {item._agrupado && item._count > 1 && (
                           <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />

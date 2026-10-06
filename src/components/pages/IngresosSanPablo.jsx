@@ -8,6 +8,7 @@ import { compararCC } from "../../utils/ordenCC";
 import { cosechaDeParam } from "../../utils/cosechas";
 import { useSupervisores, opcionesSupervisor } from "../../utils/supervisores";
 import { usePermisos } from "../../context/permisos";
+import CirculoSiNo from "../shared/CirculoSiNo";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import { CeldaFrente, SelectFrente, ModalAltaFrente } from "../shared/FrenteSanPablo";
 import { textoFrente } from "../../utils/frentes";
@@ -43,40 +44,6 @@ const AZUL = "#1d4ed8";
 const ROJO = "#dc2626";
 // Las salidas de escaleras (retiros), como en Escaleras.
 const NARANJA = "#c2410c";
-
-/**
- * El círculo de sí / no, como el de "Camioneta parada" del check list: azul
- * con la tilde si es sí, rojo con la cruz si es no. Se usa para Revisada y
- * para Plan de mantenimiento.
- */
-function Circulo({ marcada, onClick, titulo, deshabilitado = false, tamano = 20 }) {
-  const color = marcada ? AZUL : ROJO;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={deshabilitado}
-      title={`${titulo}: ${marcada ? "sí" : "no"}`}
-      className="d-inline-flex align-items-center justify-content-center p-0"
-      style={{
-        width: `${tamano}px`,
-        height: `${tamano}px`,
-        borderRadius: "50%",
-        border: `2px solid ${color}`,
-        backgroundColor: color,
-        color: "#fff",
-        cursor: deshabilitado ? "default" : "pointer",
-        opacity: deshabilitado ? 0.6 : 1,
-        flexShrink: 0,
-      }}
-    >
-      <i
-        className={`bi ${marcada ? "bi-check-lg" : "bi-x-lg"}`}
-        style={{ fontSize: `${tamano * (marcada ? 0.65 : 0.5)}px`, lineHeight: 1 }}
-      ></i>
-    </button>
-  );
-}
 
 /**
  * Ingresos al taller de San Pablo de un tipo de equipo (Manitous, por ahora).
@@ -472,7 +439,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                       )}
                       {!conEscaleras && <td style={td}>{i.ingresadoPor || <Raya />}</td>}
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
-                        <Circulo
+                        <CirculoSiNo
                           marcada={i.revisada}
                           titulo="Revisada"
                           onClick={() => alternar(i, "revisada")}
@@ -481,7 +448,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                         />
                       </td>
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
-                        <Circulo
+                        <CirculoSiNo
                           marcada={i.planMantenimiento}
                           titulo="Plan de mantenimiento"
                           onClick={() => alternar(i, "planMantenimiento")}
@@ -664,7 +631,7 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
                   <Col xs={6} key={campoSiNo} className="d-flex flex-column">
                     <Form.Label className="fw-semibold text-dark small mb-1">{rotulo}</Form.Label>
                     <div className="d-flex align-items-center gap-2 flex-grow-1">
-                      <Circulo
+                      <CirculoSiNo
                         marcada={form[campoSiNo]}
                         titulo={rotulo}
                         onClick={() => setForm({ ...form, [campoSiNo]: !form[campoSiNo] })}
