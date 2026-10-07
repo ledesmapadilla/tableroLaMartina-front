@@ -39,6 +39,9 @@ const FORM_VACIO = {
   lote: "",
   // Si el trabajo quedó terminado; arranca en proceso.
   terminado: false,
+  // Los lotes que se suman al primero cuando en el día se hizo más de uno
+  // (07/10/2026), cada uno con su estado: [{ lote, terminado }].
+  otrosLotes: [],
   observacion: "",
   tarea: "",
   cantidad: "",
@@ -277,6 +280,36 @@ const DIAS_DE_AVISO = 3;
  * Se avisa en vez de no dejar guardar porque incluso al día siguiente puede ser
  * un remate legítimo del lote.
  */
+/**
+ * Los lotes de un parte, cada uno con su estado. Un parte de varios lotes
+ * (07/10/2026) los trae en `lotes`; uno común tiene el suyo en `lote`. Es la
+ * misma regla de `lotesDelParte` en el backend.
+ */
+const lotesDelParte = (p) => {
+  if (Array.isArray(p?.lotes) && p.lotes.length) return p.lotes;
+  return (p?.lote || "").trim() ? [{ lote: p.lote, terminado: Boolean(p.terminado) }] : [];
+};
+
+// Los lotes del formulario: el primero y los que se sumaron, sin los vacíos.
+const lotesDelForm = (form) =>
+  [{ lote: form.lote, terminado: form.terminado }, ...(form.otrosLotes || [])].filter((l) =>
+    String(l.lote || "").trim()
+  );
+
+/**
+ * Si el lote de una jornada ya está completo (07/10/2026): hay un cierre de ese
+ * lote con esa tarea el mismo día o después. `cierres` trae el último cierre de
+ * cada lote, y toda jornada hasta ese día cae en un grupo ya terminado.
+ */
+const loteCompleto = (lote, tarea, fecha, cierres) => {
+  const buscado = comparable(lote);
+  if (!buscado || !tarea || !fecha) return false;
+  const dia = String(fecha).slice(0, 10);
+  return cierres.some(
+    (c) => comparable(c.lote) === buscado && String(c.tarea) === String(tarea) && c.fecha >= dia
+  );
+};
+
 const cierreDelLote = ({ lote, tarea, fecha }, cierres) => {
   const buscado = comparable(lote);
   if (!buscado || !tarea || !fecha) return null;
@@ -393,20 +426,27 @@ function CirculoEstado({
   // editando el parte (18/09/2026). Va como span y no como botón apagado para
   // que se lea igual de bien que el resto de la fila.
   soloLectura = false,
+  // El lote ya se completó en otra jornada (07/10/2026): esta quedó en proceso
+  // pero el lote está terminado, así que va en gris y no en rojo.
+  completo = false,
 }) {
-  const color = inactivo ? "#cbd5e1" : terminado ? "#15803d" : "#dc2626";
+  const color = inactivo ? "#cbd5e1" : terminado ? "#15803d" : completo ? "#94a3b8" : "#dc2626";
   const estado = inactivo
     ? "Esta tarea no lleva estado"
     : terminado
       ? "Terminado"
-      : "En proceso";
+      : completo
+        ? "Lote completo: lo terminó otra jornada"
+        : "En proceso";
+  // El lote completo va sin relleno: solo el borde y la cruz en gris.
+  const hueco = completo && !terminado && !inactivo;
   const estilo = {
     width: `${tamano}px`,
     height: `${tamano}px`,
     borderRadius: "50%",
     border: `2px solid ${color}`,
-    backgroundColor: color,
-    color: "#fff",
+    backgroundColor: hueco ? "transparent" : color,
+    color: hueco ? color : "#fff",
     cursor: deshabilitado || inactivo || soloLectura ? "default" : "pointer",
     opacity: deshabilitado && !inactivo ? 0.6 : 1,
     flexShrink: 0,
@@ -1044,6 +1084,31 @@ function ProduccionCertificadoMes({
   // ── alta / edición de partes ──────────────────────────────────────
   const cambiar = (campo, valor) => setForm((f) => ({ ...f, [campo]: valor }));
 
+  // Los lotes que se sumaron en el mismo día (07/10/2026).
+  const cambiarOtroLote = (indice, cambios) =>
+    setForm((f) => ({
+      ...f,
+      otrosLotes: f.otrosLotes.map((l, j) => (j === indice ? { ...l, ...cambios } : l)),
+    }));
+
+  // El círculo de un lote del formulario: -1 es el primero, el de Lote; los
+  // demás son los que se sumaron. Terminado es el lote terminado: sin lote no
+  // hay qué dar por terminado (24/09/2026). Desmarcar sí se puede.
+  const alternarTerminado = (indice) => {
+    if (!estadoEnForm) return;
+    const actual = indice < 0 ? { lote: form.lote, terminado: form.terminado } : form.otrosLotes[indice];
+    if (!actual.terminado && !String(actual.lote || "").trim()) {
+      avisar({
+        icon: "warning",
+        title: "Falta el lote",
+        text: "Elija el lote antes de marcarlo como terminado",
+      });
+      return;
+    }
+    if (indice < 0) cambiar("terminado", !form.terminado);
+    else cambiarOtroLote(indice, { terminado: !actual.terminado });
+  };
+
   const limpiarForm = () => {
     // La fecha arranca vacía también después de guardar: se completa en cada parte.
     setForm(FORM_VACIO);
@@ -1126,7 +1191,10 @@ function ProduccionCertificadoMes({
     }
 
     // Marcado terminado y después se borró el lote: no se guarda así.
-    if (!form.provisorio && estadoEnForm && form.terminado && !String(form.lote || "").trim()) {
+    const terminadoSinLote =
+      (form.terminado && !String(form.lote || "").trim()) ||
+      form.otrosLotes.some((l) => l.terminado && !String(l.lote || "").trim());
+    if (!form.provisorio && estadoEnForm && terminadoSinLote) {
       avisar({
         icon: "warning",
         title: "Falta el lote",
@@ -1134,6 +1202,11 @@ function ProduccionCertificadoMes({
       });
       return;
     }
+
+    // Varios lotes en el día van solo en las tareas que se pagan por lote
+    // (07/10/2026): ahí las horas del día se dividen entre los lotes. Si se
+    // cambió a otra tarea, los que se sumaron no se ven y no se guardan.
+    const lotesElegidos = lotesDelForm(estadoEnForm ? form : { ...form, otrosLotes: [] });
 
     // Los dos tramos del día no se pueden pisar.
     if (!form.provisorio && dosTurnos && tramosSeSolapan(form)) {
@@ -1152,7 +1225,10 @@ function ProduccionCertificadoMes({
     }
 
     // El desmalezado tiene que coincidir con la medida del lote: no se guarda.
-    const unidadMal = form.provisorio ? null : desmalezadoFueraDeUnidad(form, lotes, tareas);
+    // Con varios lotes, cada uno.
+    const unidadMal = form.provisorio
+      ? null
+      : lotesElegidos.map((l) => desmalezadoFueraDeUnidad({ ...form, lote: l.lote }, lotes, tareas)).find(Boolean);
     if (unidadMal) {
       avisar({
         icon: "error",
@@ -1174,7 +1250,9 @@ function ProduccionCertificadoMes({
       ? soloFecha(partes.find((p) => p._id === editando)?.fecha)
       : null;
     if (!form.provisorio && (!editando || fechaAnterior !== soloFecha(form.fecha))) {
-      const cierre = cierreDelLote(form, cierresDeLotes);
+      const cierre = lotesElegidos
+        .map((l) => cierreDelLote({ ...form, lote: l.lote }, cierresDeLotes))
+        .find(Boolean);
       if (cierre) {
         const nombreTarea = tareas.find((t) => t._id === form.tarea)?.tarea || "esa tarea";
         const res = await avisar({
@@ -1243,10 +1321,25 @@ function ProduccionCertificadoMes({
     // Terminado solo en las tareas con círculo: si se marcó con herbicida y
     // después se cambió a pulverizado, no queda guardado (25/09/2026). Un
     // provisorio tampoco da un lote por terminado: eso dispara el pago.
+    const conEstadoDelLote = (terminado) => !form.provisorio && estadoEnForm && Boolean(terminado);
+    // `otrosLotes` es del formulario: al backend van todos juntos en `lotes`.
+    const delForm = { ...form };
+    delete delForm.otrosLotes;
     const datos = {
-      ...form,
+      ...delForm,
       ...segunFecha,
-      terminado: !form.provisorio && estadoEnForm && Boolean(form.terminado),
+      terminado: conEstadoDelLote(form.terminado),
+      // Con un solo lote va por `lote` como siempre; con varios, la lista.
+      lotes:
+        lotesElegidos.length > 1
+          ? lotesElegidos.map((l) => ({ lote: l.lote.trim(), terminado: conEstadoDelLote(l.terminado) }))
+          : [],
+      // Si quedó un solo lote y es uno de los que se sumaron, ese es el lote.
+      ...(lotesElegidos.length === 1
+        ? { lote: lotesElegidos[0].lote, terminado: conEstadoDelLote(lotesElegidos[0].terminado) }
+        : {}),
+      // Con varios lotes la cantidad la arma el reparto de cada uno.
+      ...(lotesElegidos.length > 1 ? { cantidad: "" } : {}),
     };
 
     setGuardando(true);
@@ -1279,7 +1372,8 @@ function ProduccionCertificadoMes({
         }
         // Un parte que se guarda terminado (o que deja de estarlo) cambia el
         // listado de cierres. No se espera: no tiene que frenar la carga.
-        const cambioElEstado = guardado?.terminado || form.terminado;
+        const cambioElEstado =
+          guardado?.terminado || form.terminado || form.otrosLotes.some((l) => l.terminado);
         if (cambioElEstado) cargarCierres();
         limpiarForm();
 
@@ -1363,8 +1457,13 @@ function ProduccionCertificadoMes({
       horaEgreso2: p.horaEgreso2 || "",
       horomIngreso: p.horomIngreso ?? "",
       horomSalida: p.horomSalida ?? "",
-      lote: p.lote || "",
-      terminado: Boolean(p.terminado),
+      // Un parte de varios lotes vuelve al formulario con el primero en Lote y
+      // los demás debajo, cada uno con su estado.
+      lote: lotesDelParte(p)[0]?.lote || "",
+      terminado: Boolean(lotesDelParte(p)[0]?.terminado),
+      otrosLotes: lotesDelParte(p)
+        .slice(1)
+        .map((l) => ({ lote: l.lote, terminado: Boolean(l.terminado) })),
       observacion: p.observacion || "",
       tarea: p.tarea?._id || "",
       cantidad: p.cantidad ?? "",
@@ -1419,7 +1518,8 @@ function ProduccionCertificadoMes({
 
   // ── datos derivados ───────────────────────────────────────────────
   const lotesUsados = useMemo(
-    () => [...new Set(partes.map((p) => (p.lote || "").trim()).filter(Boolean))].sort(),
+    () =>
+      [...new Set(partes.flatMap((p) => lotesDelParte(p).map((l) => l.lote.trim())).filter(Boolean))].sort(),
     [partes]
   );
   // Los clientes que se ofrecen al cargar un parte: los activos del padrón
@@ -1679,7 +1779,7 @@ function ProduccionCertificadoMes({
   );
 
   // Qué tareas llevan el círculo de estado: las que tengan alguno de esos
-  // nombres (herbicida y desmalezado en San Pablo).
+  // nombres (herbicida, desmalezado y fertilización en San Pablo).
   const llevaEstado = (nombreTarea) => {
     if (!conEstado) return false;
     if (tareasConEstado.length === 0) return true;
@@ -1687,7 +1787,32 @@ function ProduccionCertificadoMes({
       (t || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
     return tareasConEstado.some((s) => limpio(nombreTarea).includes(limpio(s)));
   };
+  // El estado en el Excel. Con varios lotes, el de cada uno ("11: Terminado,
+  // 12: En proceso").
+  const estadoParaExcel = (p) => {
+    if (!llevaEstado(p.tarea?.tarea)) return "-";
+    const tarea = p.tarea?._id || p.tarea;
+    const texto = (l) =>
+      l.terminado ? "Terminado" : loteCompleto(l.lote, tarea, p.fecha, cierresDeLotes) ? "Lote completo" : "En proceso";
+    const delParte = lotesDelParte(p);
+    if (delParte.length > 1) return delParte.map((l) => `${l.lote}: ${texto(l)}`).join(", ");
+    return texto(delParte[0] || { terminado: p.terminado });
+  };
+
+  // La jornada quedó en proceso pero sus lotes ya están terminados: los
+  // completó otra jornada (07/10/2026). Con varios lotes, cuando ninguno sigue
+  // abierto.
+  const estaCompleto = (p) => {
+    const delParte = lotesDelParte(p);
+    const tarea = p.tarea?._id || p.tarea;
+    return (
+      delParte.length > 0 &&
+      delParte.some((l) => !l.terminado) &&
+      delParte.every((l) => l.terminado || loteCompleto(l.lote, tarea, p.fecha, cierresDeLotes))
+    );
+  };
   const estadoEnForm = llevaEstado(tareas.find((t) => t._id === form.tarea)?.tarea);
+  const variosLotesEnForm = estadoEnForm && form.otrosLotes.length > 0;
 
   // La cantidad es obligatoria salvo en las tareas exentas (desmalezado y
   // herbicida en San Pablo).
@@ -1804,7 +1929,7 @@ function ProduccionCertificadoMes({
         p.combTurbo ?? "-",
         p.cliente || "-",
         p.lote || "-",
-        ...(conEstado ? [llevaEstado(p.tarea?.tarea) ? (p.terminado ? "Terminado" : "En proceso") : "-"] : []),
+        ...(conEstado ? [estadoParaExcel(p)] : []),
         p.observacion || "-",
         p.tarea?.tarea || "-",
         p.cantidad ?? "-",
@@ -2248,25 +2373,68 @@ function ProduccionCertificadoMes({
                     <CirculoEstado
                       terminado={form.terminado}
                       inactivo={!estadoEnForm}
-                      onClick={() => {
-                        if (!estadoEnForm) return;
-                        // Terminado es el lote terminado: sin lote no hay qué
-                        // dar por terminado (24/09/2026). Desmarcar sí se puede.
-                        if (!form.terminado && !String(form.lote || "").trim()) {
-                          avisar({
-                            icon: "warning",
-                            title: "Falta el lote",
-                            text: "Elija el lote antes de marcarlo como terminado",
-                          });
-                          return;
-                        }
-                        cambiar("terminado", !form.terminado);
-                      }}
+                      onClick={() => alternarTerminado(-1)}
                       deshabilitado={!estadoEnForm}
                       tamano={20}
                     />
                   </div>
                 </div>
+              )}
+
+              {/* Los lotes que se suman en el mismo día (07/10/2026), cada uno
+                  con su estado. Las horas del día se dividen entre ellos según
+                  las plantas de cada lote. */}
+              {estadoEnForm &&
+                form.otrosLotes.map((l, i) => (
+                  <div key={i} className="d-flex align-items-end gap-1">
+                    <div style={{ width: "110px" }}>
+                      <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Lote {i + 2}</label>
+                      <SelectBuscador
+                        libre
+                        opciones={opcionesLote}
+                        valor={l.lote}
+                        onChange={(v) => cambiarOtroLote(i, { lote: v })}
+                        placeholder="Lote"
+                        style={estiloCelda}
+                      />
+                    </div>
+                    <div style={{ width: "62px" }}>
+                      <label
+                        className="d-block fw-semibold text-center"
+                        style={{ fontSize: "0.7rem", color: l.terminado ? "#15803d" : "#dc2626" }}
+                      >
+                        {l.terminado ? "Terminado" : "En proceso"}
+                      </label>
+                      <div className="d-flex align-items-center justify-content-center" style={{ height: "30px" }}>
+                        <CirculoEstado terminado={l.terminado} onClick={() => alternarTerminado(i)} tamano={20} />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link text-danger p-0 mb-1"
+                      title="Sacar este lote"
+                      onClick={() => setForm((f) => ({ ...f, otrosLotes: f.otrosLotes.filter((_, j) => j !== i) }))}
+                    >
+                      <i className="bi bi-x-circle"></i>
+                    </button>
+                  </div>
+                ))}
+              {estadoEnForm && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-success mb-1"
+                  style={{ fontSize: "0.72rem", padding: "2px 8px" }}
+                  title="Otro lote hecho el mismo día: las horas se dividen según las plantas de cada lote"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      cantidad: "",
+                      otrosLotes: [...f.otrosLotes, { lote: "", terminado: false }],
+                    }))
+                  }
+                >
+                  <i className="bi bi-plus-lg"></i> Lote
+                </button>
               )}
 
               <div style={{ width: "150px" }}>
@@ -2294,7 +2462,16 @@ function ProduccionCertificadoMes({
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
                   Cantidad {pideCantidad && <span className="text-danger">*</span>}
                 </label>
-                <Form.Control type="number" value={form.cantidad} onChange={(e) => cambiar("cantidad", e.target.value)} style={estiloCelda} />
+                {/* Con varios lotes la cantidad la arma el reparto de cada uno. */}
+                <Form.Control
+                  type="number"
+                  value={variosLotesEnForm ? "" : form.cantidad}
+                  onChange={(e) => cambiar("cantidad", e.target.value)}
+                  disabled={variosLotesEnForm}
+                  placeholder={variosLotesEnForm ? "Reparto" : undefined}
+                  title={variosLotesEnForm ? "Con varios lotes la cantidad sale del reparto de cada lote" : undefined}
+                  style={estiloCelda}
+                />
               </div>
 
               <div style={{ width: "140px" }}>
@@ -2718,28 +2895,40 @@ function ProduccionCertificadoMes({
                     <td className="text-start ps-2 text-secondary" style={AJUSTA}>{p.cliente || "—"}</td>
                     {/* El lote terminado se marca: número blanco sobre verde.
                         En proceso va como cualquier otro dato. */}
+                    {/* Con varios lotes en el día van todos, cada uno con su
+                        estado (07/10/2026). */}
                     <td className="text-secondary" style={AJUSTA}>
-                      {p.lote ? (
-                        llevaEstado(p.tarea?.tarea) && p.terminado ? (
-                          <span
-                            className="px-2 rounded-pill fw-semibold"
-                            style={{ backgroundColor: "#15803d", color: "#fff" }}
-                          >
-                            {p.lote}
-                          </span>
-                        ) : (
-                          p.lote
-                        )
-                      ) : (
-                        "—"
-                      )}
+                      {lotesDelParte(p).length
+                        ? lotesDelParte(p).map((l, i) => (
+                            <span key={i}>
+                              {i > 0 && ", "}
+                              {llevaEstado(p.tarea?.tarea) && l.terminado ? (
+                                <span
+                                  className="px-2 rounded-pill fw-semibold"
+                                  style={{ backgroundColor: "#15803d", color: "#fff" }}
+                                >
+                                  {l.lote}
+                                </span>
+                              ) : (
+                                l.lote
+                              )}
+                            </span>
+                          ))
+                        : "—"}
                     </td>
                     {/* Solo muestra cómo está: para cambiarlo hay que editar
-                        el parte. */}
+                        el parte. Con varios lotes, verde recién cuando están
+                        todos terminados. Gris si el lote ya lo completó otra
+                        jornada (07/10/2026). */}
                     {conEstado && (
                       <td style={{ padding: "3px 5px" }}>
                         {llevaEstado(p.tarea?.tarea) ? (
-                          <CirculoEstado terminado={p.terminado} tamano={18} soloLectura />
+                          <CirculoEstado
+                            terminado={lotesDelParte(p).length > 0 && lotesDelParte(p).every((l) => l.terminado)}
+                            completo={estaCompleto(p)}
+                            tamano={18}
+                            soloLectura
+                          />
                         ) : (
                           <span className="text-secondary">—</span>
                         )}

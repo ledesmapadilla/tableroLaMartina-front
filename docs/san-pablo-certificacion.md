@@ -40,17 +40,24 @@ Todo sale de props de `ProduccionCertificadoMes`, con las listas en `App.jsx`:
   (22:00 → 02:00 y después 03:00 → 06:00 es válido). Está en los dos lados:
   `tramosSeSolapan` en `partes.controller.js` y en `ProduccionCertificadoMes.jsx`.
   Prueba: `node scripts/_pruebaTramos.mjs` (back, 16 casos, no toca la base).
-- **`conEstado` + `tareasConEstado`** (`herbicida`, `desmalezado`; el
+- **`conEstado` + `tareasConEstado`** (`herbicida`, `desmalezado`, `fertilizacion` desde el 07/10/2026; el
   `pulverizado` salió el 25/09/2026) — el círculo verde / rojo del parte (`terminado`). En las
   demás tareas se ve gris y no se puede tocar. El lote terminado se muestra en
   blanco sobre verde.
+
+  **Lote completo** (07/10/2026): en la tabla, una jornada que quedó en proceso
+  pero cuyo lote ya se terminó en otra jornada (hay un cierre de ese lote y esa
+  tarea el mismo día o después, según `cierres-lotes`) muestra el círculo
+  **gris, sin relleno y con la cruz** en vez de rojo. Con varios lotes, cuando ninguno sigue
+  abierto. En el Excel dice "Lote completo". Es solo cómo se ve: no cambia
+  `terminado` ni el reparto (`loteCompleto` y `estaCompleto`).
 
   El estado **se cambia solo editando el parte** (18/09/2026): en la tabla el
   círculo es un indicador y no se puede clickear. Va como `<span>` y no como
   botón apagado (`soloLectura` en `CirculoEstado`) para que se lea igual que el
   resto de la fila. Por eso ya no existe `PUT /api/partes/:id/terminado`:
   `terminado` viaja en el parte, como cualquier otro campo.
-- **`tareasSinCantidad`** (`desmalezado`, `herbicida`) — la cantidad no es
+- **`tareasSinCantidad`** (`desmalezado`, `herbicida`, `fertilizacion`) — la cantidad no es
   obligatoria en esas tareas; en el resto sí. El backend controla lo mismo
   (`faltaLaCantidad`).
 - **El desmalezado va con la medida del lote** (23/09/2026, regla del
@@ -80,7 +87,8 @@ buscar el lote por nombre normalizado.
 
 ## El pago por lote terminado
 
-Hecho el 18/09/2026. El herbicida y el desmalezado no se pagan
+Hecho el 18/09/2026. El herbicida, el desmalezado y (desde el 07/10/2026) la
+fertilización no se pagan
 por jornada: se pagan cuando el lote queda terminado. El círculo verde de la
 parte marca ese momento y dispara el reparto al guardarlo.
 
@@ -200,6 +208,44 @@ idas y vueltas a la base de cada operación. Contra el cluster cada una son
 ~100/200 ms, y el número no depende de cómo esté la red, así que es la medida
 que sirve. Hoy un alta son 4 tandas: las lecturas previas (juntas), el insert,
 las dos cosas de después (juntas) y el populate de la respuesta.
+
+## Varios lotes en el mismo día
+
+Hecho el 07/10/2026. En herbicida, desmalezado y fertilización la gente dice
+"hice el 11, el 12 y el 13" sin saber cuántas horas fueron de cada uno. Se
+carga **un solo parte con el horario real del día** y varios lotes:
+
+- En la planilla, con una tarea por lote aparece el botón **+ Lote** al lado
+  del círculo. Cada lote que se suma tiene su propio círculo en proceso /
+  terminado y una ✕ para sacarlo. La cantidad queda deshabilitada: la arma el
+  reparto de cada lote. Con otra tarea los lotes de más no se ven ni se
+  guardan, y el backend rechaza varios lotes fuera de esas tres tareas.
+- Las horas de la persona cuentan una sola vez (9 h son 9 h, no 27).
+- **Para el reparto, las horas del día se dividen entre los lotes según su
+  medida** (plantas u hectáreas, la unidad de la tarea): un lote del doble de
+  plantas se lleva el doble de horas. Si a alguno le falta la medida, en
+  partes iguales. Lo decidió el usuario porque a veces un lote se reparte entre
+  varias personas y así es lo más justo (`fraccionDelLote` en
+  `repartoLotes.service.js`).
+- Cada lote se termina por su lado. Un lote terminado cierra su grupo y deja el
+  de los otros lotes del parte como estaba.
+
+Cómo se guarda (`ParteDiario.lotes`, solo con dos lotes o más): cada lote con
+`{ lote, terminado, cantidad }`, donde `cantidad` es lo que le tocó del
+reparto. `lote` queda como la lista escrita ("11, 12, 13") para mostrar y
+buscar, `terminado` dice si hay alguno terminado y `cantidad` es la suma de lo
+repartido. Con un solo lote `lotes` va vacío y todo sigue como antes. Lo que
+lee los lotes de un parte pasa siempre por `lotesDelParte` (back y front). Lo
+que el reparto escribe en un lote va con un update de pipeline por el driver
+(`escribirEnLote`): así dos lotes del mismo parte no se pisan y la suma queda
+bien. Un renglón de pago de una jornada de varios lotes lleva el lote solo.
+
+En la tabla del mes cada lote terminado va en verde, y el círculo de la fila se
+pone verde recién con todos terminados. En el Excel el estado sale por lote. En
+el rendimiento, un parte de varios lotes cuenta recién cuando todos tienen lo
+suyo (`cuentaParaProduccion`).
+
+Prueba: `node --env-file .env scripts/_pruebaVariosLotes.mjs` (back).
 
 ## Pendiente
 

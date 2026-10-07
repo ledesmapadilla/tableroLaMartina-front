@@ -125,12 +125,13 @@ function CargandoPantalla() {
 }
 
 // Las tareas de San Pablo que se marcan como en proceso o terminadas. El
-// pulverizado salió el 25/09/2026: lleva la cantidad a mano.
-const TAREAS_CON_ESTADO = ["herbicida", "desmalezado"];
+// pulverizado salió el 25/09/2026: lleva la cantidad a mano. La fertilización
+// entró el 07/10/2026.
+const TAREAS_CON_ESTADO = ["herbicida", "desmalezado", "fertilizacion"];
 
-// El desmalezado y el herbicida de San Pablo se cargan sin cantidad; el resto
-// de las tareas la lleva.
-const TAREAS_SIN_CANTIDAD = ["desmalezado", "herbicida"];
+// El desmalezado, el herbicida y la fertilización de San Pablo se cargan sin
+// cantidad; el resto de las tareas la lleva.
+const TAREAS_SIN_CANTIDAD = ["desmalezado", "herbicida", "fertilizacion"];
 
 // Las tareas que más se cargan en San Pablo: van primero y en negrita en el
 // desplegable de la planilla (17/09/2026).
@@ -138,6 +139,7 @@ const TAREAS_SAN_PABLO = [
   "Herbicida",
   "Desmalezado mecánico",
   "Desmalezado x Ha",
+  "Fertilización",
   "Horas tractor",
   "Horas la martina",
   "Horas máquina",

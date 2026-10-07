@@ -39,13 +39,13 @@ const sinAcentos = (t) =>
   (t || "").toString().normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
 
 /**
- * Herbicida y desmalezado de San Pablo se pagan por lote terminado: la
- * cantidad no se carga día a día, la escribe el reparto cuando se termina el
- * lote (`repartido`), en proporción a las horas de cada jornada.
+ * Herbicida, desmalezado y fertilización (07/10/2026) de San Pablo se pagan
+ * por lote terminado: la cantidad no se carga día a día, la escribe el
+ * reparto cuando se termina el lote (`repartido`), en proporción a las horas de cada jornada.
  */
 export const esTareaPorLote = (p) =>
   p?.establecimiento === "san-pablo" &&
-  ["herbicida", "desmalezado"].some((t) => sinAcentos(p.tarea?.tarea).includes(t));
+  ["herbicida", "desmalezado", "fertilizacion"].some((t) => sinAcentos(p.tarea?.tarea).includes(t));
 
 /**
  * Si el parte cuenta para medir producción (rendimiento y litros por unidad).
@@ -54,8 +54,16 @@ export const esTareaPorLote = (p) =>
  * cierre, sus horas no tienen cantidad y hundirían el rendimiento
  * (27/09/2026). Como el reparto es proporcional a las horas, esas jornadas
  * dan el rendimiento del lote entero.
+ *
+ * Un parte de varios lotes (07/10/2026) cuenta recién cuando todos sus lotes
+ * tienen lo suyo: con uno solo repartido, las horas del día serían todas y la
+ * cantidad una parte.
  */
-export const cuentaParaProduccion = (p) => !esTareaPorLote(p) || Boolean(p.repartido);
+export const cuentaParaProduccion = (p) => {
+  if (!esTareaPorLote(p)) return true;
+  if (Array.isArray(p.lotes) && p.lotes.length) return p.lotes.every((l) => l.cantidad != null);
+  return Boolean(p.repartido);
+};
 
 // Las tareas vienen como id o poblada; los admisibles se buscan por id.
 export const mapaDeAdmisibles = (lista) =>
@@ -135,7 +143,8 @@ export const desviosDelParte = (p, admisibles, consumo = null) => {
   const horasCC = Number(p.horasCC) || 0;
   const horas = horasCC > 0 ? horasCC : Number(p.totalHoras) || 0;
   if (horas > 0 && cuentaParaProduccion(p)) {
-    const nombre = porLote ? `Rendimiento del lote ${(p.lote || "").trim() || "—"} (terminado)` : "Rendimiento";
+    const deLotes = p.lotes?.length > 1 ? `de los lotes ${p.lote} (terminados)` : `del lote ${(p.lote || "").trim() || "—"} (terminado)`;
+    const nombre = porLote ? `Rendimiento ${deLotes}` : "Rendimiento";
     const nota = porLote
       ? `Las plantas o hectáreas del lote se reparten entre sus jornadas según las horas de turno; esta jornada: ${Number(p.cantidad) || 0} ${unidad} en ${horas} hs de ${horasCC > 0 ? "CC" : "turno"}.`
       : horasCC > 0

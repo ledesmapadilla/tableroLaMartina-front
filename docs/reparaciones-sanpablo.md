@@ -5,9 +5,10 @@ Mantenimiento.
 
 ## Navegación
 
-1. `/reparaciones/sanpablo` — `CosechasSanPablo`: select "Para cosecha" (de 2027
+1. `/reparaciones/sanpablo` — `CosechasSanPablo`: select "Para cosecha" (de 2026
    a cinco años después del actual, `utils/cosechas.js`). Viene marcado el año
-   actual; elegir otro entra directo y tocar la tarjeta entra al marcado.
+   actual, pero nunca antes de la 2027 (la 2026 se agregó el 07/10/2026 y hay
+   que elegirla a mano); elegir otro entra directo y tocar la tarjeta entra al marcado.
 2. `/reparaciones/sanpablo/:cosecha` — `ReparacionesSanPablo`: 7 tarjetas.
 3. `/reparaciones/sanpablo/:cosecha/<tipo>` — la tabla de cada tarjeta.
    `RutaCosecha` manda al 404 si la cosecha no es válida. Colectivos, Carros
