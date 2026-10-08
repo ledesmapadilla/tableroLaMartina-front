@@ -286,8 +286,18 @@ export default function IngresosEscaleras({ icono }) {
     }
   };
 
+  // Por número de CC del carro (08/10/2026); los que no tienen carro (nuevas,
+  // bajas, S/N) al final. El sort es estable: a igual CC queda el orden por fecha.
+  const porCC = (lista) =>
+    [...lista].sort((a, b) => {
+      if (!a.cc?.cc || !b.cc?.cc) return (a.cc?.cc ? 0 : 1) - (b.cc?.cc ? 0 : 1);
+      return compararCC(a.cc.cc, b.cc.cc);
+    });
+
   // Los movimientos de la solapa abierta.
-  const movimientosSolapa = ingresos.filter((i) => (solapa === "egresos" ? sale(i) : !sale(i)));
+  const movimientosSolapa = porCC(
+    ingresos.filter((i) => (solapa === "egresos" ? sale(i) : !sale(i)))
+  );
 
   // Totales, arriba de la tabla. Sanas, rotas y reparadas se cargan en los
   // ingresos (y en lo que dejó la página vieja de los carros).
@@ -476,7 +486,7 @@ export default function IngresosEscaleras({ icono }) {
         { titulo: "Reparadas", ancho: 12 },
         { titulo: "Observaciones", ancho: 44 },
       ],
-      filas: ingresos.map((i) => {
+      filas: porCC(ingresos).map((i) => {
         const m = modoDe(i);
         const carro = [i.cc?.cc, i.cc?.descripcion].filter(Boolean).join(" · ");
         const numero = (v) => (v == null ? "" : v);
