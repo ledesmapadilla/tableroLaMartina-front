@@ -24,14 +24,26 @@ const ROJO = "#dc2626";
 const VERDE = "#15803d";
 const NARANJA = "#c2410c";
 // El control con el año pasado: un color que no usa ninguna acción.
-const VIOLETA = "#7c3aed";
+const TURQUESA = "#0f766e";
 const GRIS_CLARO = "#a0aec0";
 const TEXTO = "#1e293b";
 const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
 // Las columnas de cada solapa: los egresos no llevan sanas, rotas ni
 // reparadas.
-const COLUMNAS = { ingresos: 10, egresos: 7 };
+const COLUMNAS = { ingresos: 11, egresos: 8 };
+
+// Los encargados del ingreso y el retiro (08/10/2026), obligatorio en los dos.
+// El back controla la misma lista.
+const ENCARGADOS = ["Germán Diaz", "Luis Paredes", "Daniel Perea", "Carlos Chumiento", "Nicolás Galvan"];
+// La zona de cada uno, como referencia debajo de la tabla.
+const ZONA_ENCARGADO = {
+  "Germán Diaz": "Citrusvil Sur",
+  "Luis Paredes": "Citrusvil Norte",
+  "Daniel Perea": "Citromax Sur",
+  "Carlos Chumiento": "Citromax Norte",
+  "Nicolás Galvan": "Early Crop",
+};
 
 // El equipo del padrón de CC que se ofrece en el retiro.
 const EQUIPO_CARRO = "Carro porta escaleras";
@@ -159,6 +171,7 @@ export default function IngresosEscaleras({ icono }) {
       cantidadEscaleras: "",
       ingresadoPor: "",
       frente: "",
+      encargado: "",
       cc: "",
       escalerasSanas: "",
       escalerasRotas: "",
@@ -170,7 +183,15 @@ export default function IngresosEscaleras({ icono }) {
   const abrirRetiro = () => {
     setModo("retiro");
     setEditando(null);
-    setForm({ fechaIngreso: hoy(), ingresadoPor: "", cc: "", frente: "", cantidadEscaleras: "", observaciones: "" });
+    setForm({
+      fechaIngreso: hoy(),
+      ingresadoPor: "",
+      cc: "",
+      frente: "",
+      encargado: "",
+      cantidadEscaleras: "",
+      observaciones: "",
+    });
   };
 
   const abrirBaja = () => {
@@ -216,7 +237,7 @@ export default function IngresosEscaleras({ icono }) {
             escalerasReparadas: numeroOVacio(i.escalerasReparadas),
           }
         : {}),
-      ...(m === "retiro" || m === "sinCarro" ? { frente: i.frente?._id || "" } : {}),
+      ...(m === "retiro" || m === "sinCarro" ? { frente: i.frente?._id || "", encargado: i.encargado || "" } : {}),
     });
   };
 
@@ -323,9 +344,9 @@ export default function IngresosEscaleras({ icono }) {
   const rotas = suma(clasificadas, "escalerasRotas");
   const reparadas = suma(clasificadas, "escalerasReparadas");
   const totales = [
-    ["Entraron", entraron, COLOR],
-    ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
     ["Ingresos", suma(sinCarro, "cantidadEscaleras"), AZUL],
+    ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
+    ["Total", suma(sinCarro, "cantidadEscaleras") + suma(nuevas, "cantidadEscaleras"), COLOR],
     ["Retiradas", retiradas, NARANJA],
     ["Dadas de baja", bajas, ROJO],
     ["En taller", enTaller, COLOR],
@@ -462,12 +483,12 @@ export default function IngresosEscaleras({ icono }) {
     </Col>
   );
 
-  const campoObservaciones = (placeholder) => (
+  const campoObservaciones = (placeholder, filas = 2) => (
     <Col xs={12}>
       <Form.Label className="fw-semibold text-dark small mb-1">Observaciones</Form.Label>
       <Form.Control
         as="textarea"
-        rows={2}
+        rows={filas}
         className="rounded-3"
         style={campo}
         value={form?.observaciones || ""}
@@ -484,6 +505,7 @@ export default function IngresosEscaleras({ icono }) {
       columnas: [
         { titulo: "Fecha", ancho: 12 },
         { titulo: "Frente", ancho: 22 },
+        { titulo: "Encargado", ancho: 20 },
         { titulo: "Ingresa/Retira", ancho: 24 },
         { titulo: "Carro porta escaleras", ancho: 26 },
         { titulo: "Cant.", ancho: 10 },
@@ -499,6 +521,7 @@ export default function IngresosEscaleras({ icono }) {
         return [
           fechaCorta(i.fechaIngreso),
           textoFrente(i.frente),
+          i.encargado || "",
           i.ingresadoPor || "",
           m === "nuevas"
             ? "Nuevas"
@@ -573,7 +596,8 @@ export default function IngresosEscaleras({ icono }) {
       }}
     >
       <NavbarSanPablo
-        titulo={`Cosecha ${cosecha} · Carros porta escaleras / Escaleras`}
+        titulo="Carros porta escaleras / Escaleras"
+        cosecha={cosecha}
         icono={icono}
         volverA={`/reparaciones/sanpablo/${cosecha}`}
       />
@@ -671,9 +695,12 @@ export default function IngresosEscaleras({ icono }) {
           </div>
         </Card>
 
-        {/* Las solapas, pegadas arriba de la tabla, y a la derecha el control
+        {/* Las solapas, pegadas arriba de la tabla, y al centro el control
             con el año pasado. */}
-        <div className="d-flex align-items-end gap-1 flex-shrink-0" style={{ marginBottom: "-1px" }}>
+        <div
+          className="d-flex align-items-end gap-1 flex-shrink-0"
+          style={{ marginBottom: "-1px", position: "relative" }}
+        >
           {[
             ["ingresos", "Ingresos", "bi-box-arrow-in-down", ingresos.filter((i) => !sale(i)).length],
             ["egresos", "Egresos", "bi-box-arrow-right", ingresos.filter(sale).length],
@@ -714,8 +741,16 @@ export default function IngresosEscaleras({ icono }) {
           <Button
             size="sm"
             onClick={() => setVerControl(true)}
-            className={`${claseBoton} ms-auto mb-1`}
-            style={{ ...estiloBoton, backgroundColor: VIOLETA, borderColor: VIOLETA }}
+            className={`${claseBoton} mb-1`}
+            style={{
+              ...estiloBoton,
+              backgroundColor: TURQUESA,
+              borderColor: TURQUESA,
+              position: "absolute",
+              left: "50%",
+              bottom: 0,
+              transform: "translateX(-50%)",
+            }}
             title={`Lo que salió en la cosecha ${cosechaAnterior} contra lo que ingresó en esta`}
           >
             <i className="bi bi-arrow-left-right"></i>
@@ -740,6 +775,7 @@ export default function IngresosEscaleras({ icono }) {
               <tr>
                 <th style={thCentro}>Fecha</th>
                 <th style={th}>Frente</th>
+                <th style={th}>Encargado</th>
                 <th style={th}>{solapa === "ingresos" ? "Quién ingresa" : "Quién retira / desecha"}</th>
                 <th style={thCentro}>Carro porta escaleras</th>
                 <th style={thCentro}>Cant.</th>
@@ -775,6 +811,7 @@ export default function IngresosEscaleras({ icono }) {
                       <td style={td}>
                         <CeldaFrente frente={i.frente} />
                       </td>
+                      <td style={td}>{i.encargado || <Raya />}</td>
                       <td style={td}>{i.ingresadoPor || <Raya />}</td>
                       <td style={{ ...tdCentro, fontWeight: 700 }}>
                         {m === "nuevas" && (
@@ -887,6 +924,24 @@ export default function IngresosEscaleras({ icono }) {
             </tbody>
           </Table>
         </div>
+
+        {/* Referencia: la zona de cada encargado. */}
+        <div
+          className="d-flex flex-wrap justify-content-center align-items-center gap-2 mt-2 flex-shrink-0"
+          style={{ fontSize: "0.72rem" }}
+        >
+          <span className="fw-semibold text-muted">Encargados:</span>
+          {ENCARGADOS.map((e) => (
+            <span
+              key={e}
+              className="px-2 py-1 rounded-pill"
+              style={{ backgroundColor: COLOR_SUAVE, border: "1px solid #cbd5e1", color: TEXTO }}
+            >
+              <span className="fw-semibold">{e}</span>
+              <span className="text-muted"> · {ZONA_ENCARGADO[e]}</span>
+            </span>
+          ))}
+        </div>
       </Container>
 
       <Modal
@@ -925,7 +980,7 @@ export default function IngresosEscaleras({ icono }) {
         </Modal.Header>
         {form && (
           <Form onSubmit={guardar}>
-            <Modal.Body className="p-4">
+            <Modal.Body className={modo === "sinCarro" ? "px-4 py-3" : "p-4"}>
               {modo === "nuevas" && (
                 <Row className="g-3 form-ingresos">
                   {campoFecha}
@@ -949,10 +1004,10 @@ export default function IngresosEscaleras({ icono }) {
               )}
 
               {modo === "sinCarro" && (
-                <Row className="g-3 form-ingresos">
+                <Row className="g-2 form-ingresos">
                   {campoFecha}
                   {campoCantidad}
-                  <Col xs={12}>
+                  <Col xs={6}>
                     <Form.Label className="fw-semibold text-dark small mb-1">
                       Quién las trae <span className="text-danger">*</span>
                     </Form.Label>
@@ -971,7 +1026,26 @@ export default function IngresosEscaleras({ icono }) {
                       ))}
                     </Form.Select>
                   </Col>
-                  <Col xs={12}>
+                  <Col xs={6}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">
+                      Encargado <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Select
+                      className="rounded-3"
+                      style={{ ...campo, color: form.encargado ? TEXTO : GRIS_CLARO }}
+                      value={form.encargado}
+                      onChange={(e) => setForm({ ...form, encargado: e.target.value })}
+                      required
+                    >
+                      <option value="">Elegir encargado…</option>
+                      {ENCARGADOS.map((e) => (
+                        <option key={e} value={e} style={{ color: TEXTO }}>
+                          {e}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
+                  <Col xs={6}>
                     <Form.Label className="fw-semibold text-dark small mb-1">Frente</Form.Label>
                     <SelectFrente
                       frentes={frentes}
@@ -980,13 +1054,13 @@ export default function IngresosEscaleras({ icono }) {
                     />
                   </Col>
                   {/* El carro en que vienen, o S/N si no vienen en ninguno. */}
-                  <Col xs={12}>
+                  <Col xs={6}>
                     <Form.Label className="fw-semibold text-dark small mb-1">
                       Carro <span className="text-danger">*</span>
                     </Form.Label>
                     <Form.Select
                       className="rounded-3"
-                      style={{ ...campo, maxWidth: "180px", color: form.cc ? TEXTO : GRIS_CLARO }}
+                      style={{ ...campo, color: form.cc ? TEXTO : GRIS_CLARO }}
                       value={form.cc}
                       onChange={(e) => setForm({ ...form, cc: e.target.value })}
                       required
@@ -1004,7 +1078,7 @@ export default function IngresosEscaleras({ icono }) {
                     </Form.Select>
                   </Col>
                   {camposClasificacion}
-                  {campoObservaciones("De dónde vienen, cómo llegaron…")}
+                  {campoObservaciones("De dónde vienen, cómo llegaron…", 1)}
                 </Row>
               )}
 
@@ -1026,7 +1100,26 @@ export default function IngresosEscaleras({ icono }) {
                   </Col>
                   <Col xs={12}>
                     <Form.Label className="fw-semibold text-dark small mb-1">
-                      Supervisor <span className="text-danger">*</span>
+                      Encargado <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Select
+                      className="rounded-3"
+                      style={{ ...campo, color: form.encargado ? TEXTO : GRIS_CLARO }}
+                      value={form.encargado}
+                      onChange={(e) => setForm({ ...form, encargado: e.target.value })}
+                      required
+                    >
+                      <option value="">Elegir encargado…</option>
+                      {ENCARGADOS.map((e) => (
+                        <option key={e} value={e} style={{ color: TEXTO }}>
+                          {e}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  </Col>
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">
+                      Quién retira <span className="text-danger">*</span>
                     </Form.Label>
                     <Form.Select
                       className="rounded-3"

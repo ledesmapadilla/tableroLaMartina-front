@@ -8,9 +8,10 @@ import SesionUsuario from "./SesionUsuario";
  * cosecha o la tabla de una tarjeta).
  *
  * `titulo` va después de "Reparaciones San Pablo" (por ejemplo "Cosecha 2027
- * · Manitous"); sin título queda solo el nombre de la sección.
+ * · Manitous"); sin título queda solo el nombre de la sección. Con `cosecha`
+ * el año va aparte, en una pastilla ámbar.
  */
-export default function NavbarSanPablo({ titulo, icono, volverA = "/reparaciones/sanpablo" }) {
+export default function NavbarSanPablo({ titulo, icono, cosecha, volverA = "/reparaciones/sanpablo" }) {
   const navigate = useNavigate();
   return (
     <div
@@ -35,6 +36,22 @@ export default function NavbarSanPablo({ titulo, icono, volverA = "/reparaciones
         <span className="text-white fs-6 fw-semibold">
           Reparaciones San Pablo{titulo ? ` · ${titulo}` : ""}
         </span>
+        {/* La cosecha destacada, para no confundir un año con otro. */}
+        {cosecha != null && (
+          <span
+            className="rounded-pill fw-bold d-flex align-items-center gap-1"
+            style={{
+              backgroundColor: "#f59e0b",
+              color: "#1e293b",
+              fontSize: "0.85rem",
+              padding: "3px 12px",
+              boxShadow: "0 2px 8px rgba(245, 158, 11, 0.35)",
+            }}
+          >
+            <i className="bi bi-calendar3"></i>
+            Cosecha {cosecha}
+          </span>
+        )}
       </div>
       <div className="d-flex align-items-center gap-2">
         <button
