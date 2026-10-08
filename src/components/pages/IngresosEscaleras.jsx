@@ -11,6 +11,7 @@ import { useSupervisores, opcionesSupervisor } from "../../utils/supervisores";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import { CeldaFrente, SelectFrente, ModalAltaFrente } from "../shared/FrenteSanPablo";
 import HistorialCarros from "../shared/HistorialCarros";
+import ControlAnioPasado from "../shared/ControlAnioPasado";
 import { textoFrente } from "../../utils/frentes";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
@@ -22,6 +23,8 @@ const AZUL = "#1d4ed8";
 const ROJO = "#dc2626";
 const VERDE = "#15803d";
 const NARANJA = "#c2410c";
+// El control con el año pasado: un color que no usa ninguna acción.
+const VIOLETA = "#7c3aed";
 const GRIS_CLARO = "#a0aec0";
 const TEXTO = "#1e293b";
 const th = { ...thBase, backgroundColor: COLOR };
@@ -100,15 +103,18 @@ export default function IngresosEscaleras({ icono }) {
   // El historial de los carros porta escaleras (06/10/2026): sale de estos
   // mismos movimientos.
   const [verHistorialCarros, setVerHistorialCarros] = useState(false);
+  // El control con el año pasado (08/10/2026): por carro, lo que salió en la
+  // cosecha anterior contra lo que ingresó en esta.
+  const [verControl, setVerControl] = useState(false);
   const cosechaAnterior = cosecha - 1;
 
   useEffect(() => {
-    if (!verHistorial) return;
+    if (!verHistorial && !verControl) return;
     api
       .get(`/ingresos-sanpablo?cosecha=${cosechaAnterior}&tipo=escaleras`)
       .then((data) => setAnterior(Array.isArray(data) ? data : []))
       .catch(() => setAnterior([]));
-  }, [verHistorial, cosechaAnterior]);
+  }, [verHistorial, verControl, cosechaAnterior]);
 
   const cargarFrentes = () =>
     api
@@ -535,14 +541,19 @@ export default function IngresosEscaleras({ icono }) {
           : "Nuevas escaleras"
         : `Escaleras del carro ${editando?.cc?.cc || ""}`;
 
+  // Los botones del encabezado son nueve (08/10/2026): letra chica, el texto en
+  // un renglón y, si no entran, bajan enteros a otra fila.
+  const claseBoton = "rounded-3 px-2 d-flex align-items-center gap-1 text-nowrap flex-shrink-0";
+  const estiloBoton = { fontSize: "0.7rem", height: "28px", fontWeight: 600 };
+
   const botonEncabezado = (texto, iconoBoton, onClick, color) => (
     <Button
       size="sm"
       onClick={onClick}
       disabled={sinEditar}
       title={sinEditar ? "Sin permiso para editar" : undefined}
-      className="rounded-3 px-3 d-flex align-items-center gap-2"
-      style={{ backgroundColor: color, borderColor: color, fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+      className={claseBoton}
+      style={{ ...estiloBoton, backgroundColor: color, borderColor: color }}
     >
       <i className={`bi ${iconoBoton}`}></i>
       <span>{texto}</span>
@@ -576,13 +587,13 @@ export default function IngresosEscaleras({ icono }) {
           <span className="fw-bold" style={{ color: COLOR, fontSize: "1.05rem" }}>
             Movimientos
           </span>
-          <div className="d-flex align-items-center gap-2 ms-auto">
+          <div className="d-flex align-items-center gap-1 ms-auto flex-wrap justify-content-end">
             <Button
               size="sm"
               onClick={exportarExcel}
               disabled={ingresos.length === 0}
-              className="rounded-3 px-3 d-flex align-items-center gap-2"
-              style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+              className={claseBoton}
+              style={{ ...estiloBoton, backgroundColor: "#15803d", borderColor: "#15803d" }}
               title="Exportar a Excel"
             >
               <i className="bi bi-file-earmark-excel-fill"></i>
@@ -594,8 +605,8 @@ export default function IngresosEscaleras({ icono }) {
               onClick={() => setAltaFrente(true)}
               disabled={sinEditar}
               title={sinEditar ? "Sin permiso para editar" : "Dar de alta un frente"}
-              className="rounded-3 px-3 d-flex align-items-center gap-2"
-              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+              className={claseBoton}
+              style={estiloBoton}
             >
               <i className="bi bi-geo-alt"></i>
               <span>Alta de frente</span>
@@ -604,8 +615,8 @@ export default function IngresosEscaleras({ icono }) {
               size="sm"
               variant="outline-secondary"
               onClick={() => setVerHistorial(true)}
-              className="rounded-3 px-3 d-flex align-items-center gap-2"
-              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+              className={claseBoton}
+              style={estiloBoton}
             >
               <i className="bi bi-clock-history"></i>
               <span>Historial escaleras</span>
@@ -614,8 +625,8 @@ export default function IngresosEscaleras({ icono }) {
               size="sm"
               variant="outline-secondary"
               onClick={() => setVerHistorialCarros(true)}
-              className="rounded-3 px-3 d-flex align-items-center gap-2"
-              style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+              className={claseBoton}
+              style={estiloBoton}
             >
               <i className="bi bi-clock-history"></i>
               <span>Historial carros</span>
@@ -660,8 +671,9 @@ export default function IngresosEscaleras({ icono }) {
           </div>
         </Card>
 
-        {/* Las solapas, pegadas arriba de la tabla. */}
-        <div className="d-flex gap-1 flex-shrink-0" style={{ marginBottom: "-1px" }}>
+        {/* Las solapas, pegadas arriba de la tabla, y a la derecha el control
+            con el año pasado. */}
+        <div className="d-flex align-items-end gap-1 flex-shrink-0" style={{ marginBottom: "-1px" }}>
           {[
             ["ingresos", "Ingresos", "bi-box-arrow-in-down", ingresos.filter((i) => !sale(i)).length],
             ["egresos", "Egresos", "bi-box-arrow-right", ingresos.filter(sale).length],
@@ -699,6 +711,16 @@ export default function IngresosEscaleras({ icono }) {
               </button>
             );
           })}
+          <Button
+            size="sm"
+            onClick={() => setVerControl(true)}
+            className={`${claseBoton} ms-auto mb-1`}
+            style={{ ...estiloBoton, backgroundColor: VIOLETA, borderColor: VIOLETA }}
+            title={`Lo que salió en la cosecha ${cosechaAnterior} contra lo que ingresó en esta`}
+          >
+            <i className="bi bi-arrow-left-right"></i>
+            <span>Control con año pasado</span>
+          </Button>
         </div>
 
         <div
@@ -1233,6 +1255,15 @@ export default function IngresosEscaleras({ icono }) {
         show={verHistorialCarros}
         onHide={() => setVerHistorialCarros(false)}
         cosecha={cosecha}
+        ingresos={ingresos}
+      />
+
+      <ControlAnioPasado
+        show={verControl}
+        onHide={() => setVerControl(false)}
+        cosecha={cosecha}
+        cosechaAnterior={cosechaAnterior}
+        anterior={anterior}
         ingresos={ingresos}
       />
     </div>
