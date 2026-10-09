@@ -509,13 +509,16 @@ export default function AnalistaPedidos() {
     return <span className={`badge bg-${color[norm] || 'secondary'}`}>{norm}</span>
   }
 
-  const badgeEstablecimiento = (src) => {
+  // Lo que viene de Reparaciones San Pablo (SP-R…) va en un verde más claro
+  // que el de San Pablo, para distinguirlo de un vistazo.
+  const badgeEstablecimiento = (src, origen) => {
     if (src === 'Varios') return varios()
     return (
       <span
         className="badge"
         style={{
-          backgroundColor: src === 'berdina' ? BORDO : '#166534',
+          backgroundColor: src === 'berdina' ? BORDO : origen === 'reparaciones' ? '#16a34a' : '#166534',
+          color: origen === 'reparaciones' && src !== 'berdina' ? '#052e16' : undefined,
           fontSize: '0.62rem',
           letterSpacing: 0.3,
         }}
@@ -696,7 +699,7 @@ export default function AnalistaPedidos() {
                         if (porItem) setSelectedId(elegida ? null : unItem._id)
                       }}
                     >
-                      <td style={tdCentro}>{badgeEstablecimiento(item._src)}</td>
+                      <td style={tdCentro}>{badgeEstablecimiento(item._src, item.origen)}</td>
                       {/* El pedido múltiple y sus ítems abiertos comparten la
                           línea bordó de la izquierda: se leen como un bloque. */}
                       <td

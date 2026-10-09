@@ -567,7 +567,7 @@ export default function IngresosEscaleras({ icono }) {
   // Los botones del encabezado son nueve (08/10/2026): letra chica, el texto en
   // un renglón y, si no entran, bajan enteros a otra fila.
   const claseBoton = "rounded-3 px-2 d-flex align-items-center gap-1 text-nowrap flex-shrink-0";
-  const estiloBoton = { fontSize: "0.7rem", height: "28px", fontWeight: 600 };
+  const estiloBoton = { fontSize: "0.66rem", height: "25px", fontWeight: 600 };
 
   const botonEncabezado = (texto, iconoBoton, onClick, color) => (
     <Button
@@ -611,18 +611,7 @@ export default function IngresosEscaleras({ icono }) {
           <span className="fw-bold" style={{ color: COLOR, fontSize: "1.05rem" }}>
             Movimientos
           </span>
-          <div className="d-flex align-items-center gap-1 ms-auto flex-wrap justify-content-end">
-            <Button
-              size="sm"
-              onClick={exportarExcel}
-              disabled={ingresos.length === 0}
-              className={claseBoton}
-              style={{ ...estiloBoton, backgroundColor: "#15803d", borderColor: "#15803d" }}
-              title="Exportar a Excel"
-            >
-              <i className="bi bi-file-earmark-excel-fill"></i>
-              <span>Excel</span>
-            </Button>
+          <div className="d-flex align-items-center gap-3 ms-auto flex-wrap justify-content-end">
             <Button
               size="sm"
               variant="outline-secondary"
@@ -659,11 +648,25 @@ export default function IngresosEscaleras({ icono }) {
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
             {botonEncabezado("Ingreso", "bi-box-arrow-in-down", abrirSinCarro, AZUL)}
             {botonEncabezado("Nuevas escaleras", "bi-plus-lg", abrirNuevas, COLOR)}
+            <Button
+              size="sm"
+              onClick={exportarExcel}
+              disabled={ingresos.length === 0}
+              className={claseBoton}
+              style={{ ...estiloBoton, backgroundColor: "#15803d", borderColor: "#15803d" }}
+              title="Exportar a Excel"
+            >
+              <i className="bi bi-file-earmark-excel-fill"></i>
+              <span>Excel</span>
+            </Button>
           </div>
         </div>
 
         {/* Totales, fuera de la tabla. */}
-        <Card className="mb-3 px-3 py-2 shadow-sm border-0 rounded-3 flex-shrink-0">
+        <Card
+          className="mb-3 px-3 py-2 shadow-sm rounded-3 flex-shrink-0"
+          style={{ border: "1px solid #000" }}
+        >
           <div className="d-flex justify-content-around align-items-center flex-wrap gap-3">
             {totales.map(([rotulo, valor, color]) =>
               rotulo === "En taller" ? (

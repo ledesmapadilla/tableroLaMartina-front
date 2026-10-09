@@ -51,8 +51,8 @@ export default function Almacen() {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        // El mismo fondo oscuro que el menú de los rubros, que es lo que sigue.
-        backgroundColor: '#0f172a',
+        // El gris claro de todo el Tablero, como el menú de los rubros que sigue.
+        backgroundColor: '#f8f9fa',
         height: '100%',
         overflow: 'hidden',
       }}

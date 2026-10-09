@@ -144,9 +144,8 @@ export default function Stock() {
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        // Fondo oscuro, la única pantalla del Tablero que no va en gris claro:
-        // así los colores de las tarjetas se ven de un vistazo.
-        backgroundColor: '#0f172a',
+        // El gris claro de todo el Tablero (08/10/2026: antes iba en oscuro).
+        backgroundColor: '#f8f9fa',
         height: '100%',
         overflow: 'hidden',
       }}

@@ -112,8 +112,9 @@ export default function AnalistaPendientes() {
 
   const varios = () => <span className="text-muted fst-italic" style={{ fontSize: 12 }}>Varios</span>
 
-  const badgeTaller = (src) => (
-    <span className="badge" style={{ backgroundColor: src === 'berdina' ? '#7a1828' : '#166534', fontSize: 11, letterSpacing: 0.5, minWidth: 24 }}>
+  // Reparaciones San Pablo (SP-R…) en un verde más claro que San Pablo.
+  const badgeTaller = (src, origen) => (
+    <span className="badge" style={{ backgroundColor: src === 'berdina' ? '#7a1828' : origen === 'reparaciones' ? '#16a34a' : '#166534', color: origen === 'reparaciones' && src !== 'berdina' ? '#052e16' : undefined, fontSize: 11, letterSpacing: 0.5, minWidth: 24 }}>
       {src === 'berdina' ? 'B' : 'SP'}
     </span>
   )
@@ -278,7 +279,7 @@ export default function AnalistaPendientes() {
                       key={item._agrupado ? item._key : `${item._anidada ? 'sub-' : ''}${item._id}`}
                       className={`${item.urgencia === 'Crítica' ? 'fila-critica' : ''}${item._anidada ? ' fila-anidada' : ' inicio-pedido'}`}
                     >
-                      <td style={tdCentro}>{badgeTaller(item._src)}</td>
+                      <td style={tdCentro}>{badgeTaller(item._src, item.origen)}</td>
                       {/* El pedido múltiple y sus ítems abiertos comparten la
                           línea bordó de la izquierda: se leen como un bloque. */}
                       <td

@@ -24,6 +24,8 @@ const SanPabloNuevoPedido = lazy(() => import("./components/compras/SanPabloNuev
 const Analista = lazy(() => import("./components/compras/Analista"));
 const AnalistaPedidos = lazy(() => import("./components/compras/AnalistaPedidos"));
 const AnalistaPendientes = lazy(() => import("./components/compras/AnalistaPendientes"));
+const AnalistaPresupuestos = lazy(() => import("./components/compras/AnalistaPresupuestos"));
+const CotizarPresupuesto = lazy(() => import("./components/compras/CotizarPresupuesto"));
 // El stock del almacén: los artículos y los movimientos viven en la base.
 const Stock = lazy(() => import("./components/compras/Stock"));
 const StockRubro = lazy(() => import("./components/compras/StockRubro"));
@@ -68,6 +70,7 @@ const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesS
 const ManitousSanPablo = lazy(() => import("./components/pages/ManitousSanPablo"));
 const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
 const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
+const RepuestosChequeoManitou = lazy(() => import("./components/pages/RepuestosChequeoManitou"));
 const IngresosSanPablo = lazy(() => import("./components/pages/IngresosSanPablo"));
 const IngresosEscaleras = lazy(() => import("./components/pages/IngresosEscaleras"));
 const CosechasSanPablo = lazy(() => import("./components/pages/CosechasSanPablo"));
@@ -259,6 +262,8 @@ function LayoutDesktop() {
               <Route path="/compras/analista" element={<RutaProtegida><Analista /></RutaProtegida>} />
               <Route path="/compras/analista/pedidos" element={<RutaProtegida><AnalistaPedidos key="analista" /></RutaProtegida>} />
               <Route path="/compras/analista/pendientes" element={<RutaProtegida><AnalistaPendientes /></RutaProtegida>} />
+              <Route path="/compras/analista/presupuestos-reparaciones" element={<RutaProtegida><AnalistaPresupuestos /></RutaProtegida>} />
+              <Route path="/compras/analista/presupuestos-reparaciones/:id" element={<RutaProtegida><CotizarPresupuesto /></RutaProtegida>} />
               <Route path="/compras/analista/almacen" element={<RutaProtegida><Almacen /></RutaProtegida>} />
               <Route path="/compras/analista/aceites" element={<RutaProtegida><StockAceites /></RutaProtegida>} />
               <Route path="/compras/analista/aceites/alta" element={<RutaProtegida><StockAceitesAlta /></RutaProtegida>} />
@@ -445,6 +450,11 @@ function LayoutDesktop() {
               <Route
                 path="/reparaciones/sanpablo/:cosecha/manitous/general/:sistema"
                 element={<RutaCosecha><ChequeosManitou /></RutaCosecha>}
+              />
+              {/* Los repuestos de un ítem del sistema, en su propia hoja. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/manitous/general/:sistema/:fila"
+                element={<RutaCosecha><RepuestosChequeoManitou /></RutaCosecha>}
               />
               {/* La tabla de ingresos de cada tarjeta: qué equipos del padrón
                   de CC ofrece y con qué ícono. */}
