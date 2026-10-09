@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
+import { UNIDADES_MANITOU } from "../../utils/sistemasManitou";
 
 // El verde de la tarjeta Manitous de ReparacionesSanPablo.
 const verde = {
@@ -10,10 +11,11 @@ const verde = {
   accentColor: "#34d399",
 };
 
-// Una tarjeta por Manitou y la General (06/10/2026). Las de cada unidad
-// todavía caen en el 404 (App.jsx); General abre ManitouGeneralSanPablo.
+// Una tarjeta por Manitou y la General (06/10/2026). Todas abren
+// ManitouGeneralSanPablo: General es la plantilla y cada Manitou trabaja con
+// la copia (09/10/2026).
 const tarjetas = [
-  ...["1101", "1102", "1103", "1104"].map((nro) => ({
+  ...UNIDADES_MANITOU.map((nro) => ({
     id: nro,
     titulo: `Manitou ${nro}`,
     ...verde,
@@ -50,7 +52,7 @@ function ManitousSanPablo() {
         volverA={`/reparaciones/sanpablo/${cosecha}`}
       />
 
-      {/* Las 5 tarjetas en dos filas (3 y 2, centradas), sin scroll. */}
+      {/* Las 6 tarjetas en dos filas de 3, sin scroll. */}
       <TarjetasSanPablo
         tarjetas={tarjetas}
         base={`/reparaciones/sanpablo/${cosecha}/manitous`}

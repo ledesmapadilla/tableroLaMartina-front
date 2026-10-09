@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Container, Card, Table, Button } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { verHistorialPedido } from './detallePedido'
 import { exportarPlanilla } from '../../helpers/excel'
 import { api } from '../../services/api'
+import { subirArchivo, borrarArchivo } from '../../services/archivos'
 import { BORDO, th, thCentro, td, tdCentro, COLOR_NRO_SIMPLE } from './formato'
 import { Raya, BotonAccion, FiltroTexto, FiltroSelect } from './estilos'
 import { ESTADOS_PRESUPUESTO, fmtPresupuesto } from './presupuestos'
@@ -112,6 +113,83 @@ export default function AnalistaPresupuestos() {
 
   const reemplazar = (nuevo) => setPresupuestos((prev) => prev.map((p) => (p._id === nuevo._id ? nuevo : p)))
   const error = (titulo, err) => Swal.fire({ icon: 'error', title: titulo, text: err.message, width: '300px' })
+
+  // Adjuntar (09/10/2026) desde la fila, sin abrir la cotización: un solo
+  // input escondido para toda la tabla, apuntado al presupuesto del botón.
+  // Si ya tenía un archivo, el nuevo lo reemplaza.
+  const inputArchivo = useRef(null)
+  const [adjuntandoA, setAdjuntandoA] = useState(null)
+  const [subiendo, setSubiendo] = useState(null) // id del que se está subiendo
+
+  const elegirArchivo = (p) => {
+    setAdjuntandoA(p)
+    inputArchivo.current?.click()
+  }
+
+  const adjuntar = async (file) => {
+    const p = adjuntandoA
+    if (!p) return
+    setSubiendo(p._id)
+    try {
+      const archivo = await subirArchivo(file)
+      reemplazar(await api.put(`/presupuestos-reparaciones/${p._id}`, { archivo }))
+      if (p.archivo?.publicId) await borrarArchivo(p.archivo).catch(() => {})
+      Swal.fire({ icon: 'success', title: 'Archivo adjuntado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (err) {
+      error('No se pudo adjuntar', err)
+    } finally {
+      setSubiendo(null)
+      setAdjuntandoA(null)
+    }
+  }
+
+  // Quitar el adjunto desde la tabla, como en la cotización: se saca del
+  // presupuesto y se borra de Cloudinary. Confirma porque no se deshace.
+  const quitarArchivo = async (p) => {
+    const { isConfirmed } = await Swal.fire({
+      icon: 'warning',
+      title: '¿Quitar el archivo?',
+      text: p.archivo?.nombre || fmtPresupuesto(p.nro),
+      width: '320px',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, quitar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
+    try {
+      reemplazar(await api.put(`/presupuestos-reparaciones/${p._id}`, { archivo: null }))
+      await borrarArchivo(p.archivo || {}).catch(() => {})
+      Swal.fire({ icon: 'success', title: 'Archivo quitado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (err) {
+      error('No se pudo quitar el archivo', err)
+    }
+  }
+
+  // Borrar (09/10/2026): el repuesto sigue en su fila de la Manitou, que lo
+  // puede volver a mandar a cotizar.
+  const borrar = async (p) => {
+    const { isConfirmed } = await Swal.fire({
+      icon: 'warning',
+      title: '¿Borrar el presupuesto?',
+      text: `${fmtPresupuesto(p.nro)} · ${p.nombre_repuesto}`,
+      width: '320px',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, borrar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.delete(`/presupuestos-reparaciones/${p._id}`)
+      setPresupuestos((prev) => prev.filter((x) => x._id !== p._id))
+      Swal.fire({ icon: 'success', title: 'Presupuesto borrado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (err) {
+      error('No se pudo borrar', err)
+    }
+  }
 
   // El precio escrito en la tabla queda como el presupuesto 1 elegido y lo
   // deja cotizado. Borrarlo saca los tres precios: sin precio ni observación
@@ -351,17 +429,30 @@ export default function AnalistaPresupuestos() {
                       </td>
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
                         {p.archivo?.url ? (
-                          <a
-                            href={p.archivo.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={p.archivo.nombre || 'Ver el adjunto'}
-                            className="d-inline-flex align-items-center gap-1 text-decoration-none"
-                            style={{ color: BORDO, fontWeight: 600, fontSize: '0.7rem' }}
-                          >
-                            <i className="bi bi-paperclip"></i>
-                            <span>Ver</span>
-                          </a>
+                          <div className="d-inline-flex align-items-center gap-1">
+                            <a
+                              href={p.archivo.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={p.archivo.nombre || 'Ver el adjunto'}
+                              className="d-inline-flex align-items-center gap-1 text-decoration-none"
+                              style={{ color: BORDO, fontWeight: 600, fontSize: '0.7rem' }}
+                            >
+                              <i className="bi bi-paperclip"></i>
+                              <span>Ver</span>
+                            </a>
+                            {!sinEditar && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-link text-danger p-0"
+                                style={{ lineHeight: 1, fontSize: '0.75rem' }}
+                                title="Quitar el archivo"
+                                onClick={() => quitarArchivo(p)}
+                              >
+                                <i className="bi bi-x-lg"></i>
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <Raya />
                         )}
@@ -369,6 +460,26 @@ export default function AnalistaPresupuestos() {
                       <td style={tdCentro} onClick={(e) => e.stopPropagation()}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: '6px' }}>
                           <BotonAccion icono="bi-clock-history" titulo="Historial" onClick={() => verHistorial(p)} />
+                          <BotonAccion
+                            icono={subiendo === p._id ? 'bi-hourglass-split' : 'bi-paperclip'}
+                            titulo={
+                              sinEditar
+                                ? 'Sin permiso para editar'
+                                : p.archivo?.url
+                                  ? 'Reemplazar el archivo adjunto'
+                                  : 'Adjuntar un archivo (PDF, foto, Excel…)'
+                            }
+                            variante="success"
+                            onClick={() => elegirArchivo(p)}
+                            deshabilitado={sinEditar || Boolean(subiendo)}
+                          />
+                          <BotonAccion
+                            icono="bi-trash"
+                            titulo={sinEditar ? 'Sin permiso para editar' : 'Borrar'}
+                            variante="danger"
+                            onClick={() => borrar(p)}
+                            deshabilitado={sinEditar}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -378,6 +489,17 @@ export default function AnalistaPresupuestos() {
             </tbody>
           </Table>
         </div>
+        <input
+          ref={inputArchivo}
+          type="file"
+          accept=".pdf,image/*,.xlsx,.xls,.csv,.doc,.docx"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) adjuntar(file)
+            e.target.value = ''
+          }}
+        />
       </Container>
     </div>
   )

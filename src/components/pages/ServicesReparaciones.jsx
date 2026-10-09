@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import LogoNavbar from "../shared/LogoNavbar";
 import { usePermisos } from "../../context/permisos";
 import SesionUsuario from "../shared/SesionUsuario";
+import { compararCC } from "../../utils/ordenCC";
 
 function ServicesReparaciones() {
   const { puede } = usePermisos();
@@ -19,7 +20,12 @@ function ServicesReparaciones() {
       .catch(() => null)
       .then((data) => {
         if (!data) return;
-        setCamionetas(Array.isArray(data.camionetas) ? data.camionetas : []);
+        // La patente es el CC de la camioneta: las tarjetas van por CC.
+        setCamionetas(
+          Array.isArray(data.camionetas)
+            ? [...data.camionetas].sort((a, b) => compararCC(a.patente, b.patente))
+            : []
+        );
         setConTareaPendiente(new Set(Array.isArray(data.pendientes) ? data.pendientes : []));
         setParadasIds(new Set(Array.isArray(data.paradas) ? data.paradas : []));
       });

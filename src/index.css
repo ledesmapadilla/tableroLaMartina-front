@@ -72,6 +72,12 @@ main {
   border-left: 2px solid #475569 !important;
   border-right: 2px solid #475569 !important;
 }
+/* La línea negra que corta antes de los totales (el presupuesto de las
+   Manitous: antes de Total o de Presupuestado). */
+.tabla-informe th.col-corte,
+.tabla-informe td.col-corte {
+  border-left: 2px solid #000 !important;
+}
 .tabla-informe tbody tr:nth-of-type(even) > td {
   background-color: #f1f5f4;
 }
@@ -366,6 +372,13 @@ select.form-select.filtro-destacado:focus {
    pocos y cortos, y de otro modo los inputs quedan desproporcionados. */
 .modal-cc {
   max-width: 420px;
+}
+
+/* ── Modal de problemas de una fila (Manitou › General) ── */
+/* Un poco más ancho que el de Bootstrap (500px): el texto de cada problema
+   entra sin partirse tanto. */
+.modal-problemas {
+  max-width: 650px;
 }
 
 /* Placeholders en gris claro en el modal de ingresos de San Pablo. */

@@ -8,6 +8,9 @@ import TractorIcon from "./TractorIcon";
  * y navega a `${base}/${id}`. `porFila` fija cuántas entran por fila;
  * `chicas` achica ícono, título y redondeo para tarjetas de la mitad.
  * `children` va arriba de la grilla, centrado con ella (un encabezado).
+ * Una tarjeta puede ocupar `ancho` columnas y tener `alto` veces la altura
+ * (09/10/2026, la de Presupuesto: ancho 2, alto 0.5); así el ícono va al
+ * costado del título.
  */
 export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, children }) {
   const navigate = useNavigate();
@@ -28,16 +31,19 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
       >
         {tarjetas.map((t) => {
           const isHovered = hoveredCard === t.id;
+          const ancho = t.ancho ?? 1;
+          const alto = t.alto ?? 1;
+          const apaisada = ancho > alto;
           const ruta = `${base}/${t.id}`;
           return (
             <div
               key={t.id}
-              className="d-flex flex-column align-items-center justify-content-center p-3 text-center"
+              className={`d-flex ${apaisada ? "flex-row gap-3 p-2" : "flex-column p-3"} align-items-center justify-content-center text-center`}
               style={{
                 background: isHovered ? t.hoverBg : t.bg,
                 borderRadius: chicas ? "14px" : "20px",
-                width: `calc((100% - ${porFila - 1} * ${gap}) / ${porFila})`,
-                aspectRatio: "1 / 1",
+                width: `calc((100% - ${porFila - 1} * ${gap}) / ${porFila} * ${ancho} + ${ancho - 1} * ${gap})`,
+                aspectRatio: `${ancho} / ${alto}`,
                 boxShadow: isHovered
                   ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
                   : "0 10px 25px -4px rgba(0, 0, 0, 0.25)",
@@ -56,7 +62,7 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
               onMouseLeave={() => setHoveredCard(null)}
             >
               <div
-                className={`${chicas ? "mb-2" : "mb-3"} d-flex align-items-center justify-content-center`}
+                className={`${apaisada ? "" : chicas ? "mb-2" : "mb-3"} d-flex align-items-center justify-content-center`}
                 style={{
                   width: caja,
                   height: caja,

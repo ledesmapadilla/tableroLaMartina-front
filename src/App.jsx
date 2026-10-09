@@ -70,6 +70,7 @@ const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesS
 const ManitousSanPablo = lazy(() => import("./components/pages/ManitousSanPablo"));
 const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
 const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
+const PresupuestoManitous = lazy(() => import("./components/pages/PresupuestoManitous"));
 const RepuestosChequeoManitou = lazy(() => import("./components/pages/RepuestosChequeoManitou"));
 const IngresosSanPablo = lazy(() => import("./components/pages/IngresosSanPablo"));
 const IngresosEscaleras = lazy(() => import("./components/pages/IngresosEscaleras"));
@@ -434,26 +435,30 @@ function LayoutDesktop() {
                 path="/reparaciones/sanpablo/:cosecha"
                 element={<RutaCosecha><ReparacionesSanPablo /></RutaCosecha>}
               />
-              {/* Manitous: una tarjeta por unidad (al 404 por ahora) y la General
-                  (06/10/2026). La tabla de ingresos de Manitous
-                  quedó sin entrada. */}
+              {/* Manitous: una tarjeta por unidad y la General (06/10/2026).
+                  La tabla de ingresos de Manitous quedó sin entrada. */}
               <Route
                 path="/reparaciones/sanpablo/:cosecha/manitous"
                 element={<RutaCosecha><ManitousSanPablo /></RutaCosecha>}
               />
-              <Route path="/reparaciones/sanpablo/:cosecha/manitous/:unidad" element={<Error404 />} />
-              {/* General: una tarjeta por sistema, cada una con su tabla de chequeo. */}
+              {/* El presupuesto de las Manitous, desde General (09/10/2026). */}
               <Route
-                path="/reparaciones/sanpablo/:cosecha/manitous/general"
+                path="/reparaciones/sanpablo/:cosecha/manitous/general/presupuesto"
+                element={<RutaCosecha><PresupuestoManitous /></RutaCosecha>}
+              />
+              {/* General (la plantilla) y cada Manitou (09/10/2026): una tarjeta
+                  por sistema, cada una con su tabla de chequeo. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/manitous/:unidad"
                 element={<RutaCosecha><ManitouGeneralSanPablo /></RutaCosecha>}
               />
               <Route
-                path="/reparaciones/sanpablo/:cosecha/manitous/general/:sistema"
+                path="/reparaciones/sanpablo/:cosecha/manitous/:unidad/:sistema"
                 element={<RutaCosecha><ChequeosManitou /></RutaCosecha>}
               />
               {/* Los repuestos de un ítem del sistema, en su propia hoja. */}
               <Route
-                path="/reparaciones/sanpablo/:cosecha/manitous/general/:sistema/:fila"
+                path="/reparaciones/sanpablo/:cosecha/manitous/:unidad/:sistema/:fila"
                 element={<RutaCosecha><RepuestosChequeoManitou /></RutaCosecha>}
               />
               {/* La tabla de ingresos de cada tarjeta: qué equipos del padrón
