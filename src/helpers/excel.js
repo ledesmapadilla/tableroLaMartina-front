@@ -35,8 +35,12 @@ async function descargar(wb, archivo) {
  * con totales, cortes y colores siguen usando `nuevoWorkbook` directo: eso no
  * entra en un formato generico.
  *
- *   columnas: [{ titulo, ancho }]
+ *   columnas: [{ titulo, ancho, moneda? }]
  *   filas:    [[valor, valor, ...]]
+ *
+ * `moneda: true` le pone a esa columna el formato de importe de todo el
+ * proyecto ("$"#,##0.00) en las celdas con número (08/10/2026). Una fila que
+ * empieza con "TOTAL" va en negrita, como la fila de total de la pantalla.
  */
 export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos", archivo }) {
   const wb = await nuevoWorkbook();
@@ -69,7 +73,10 @@ export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos"
 
   for (const datos of filas) {
     const fila = ws.addRow(datos);
-    fila.eachCell({ includeEmpty: true }, (cell) => {
+    const esTotal = datos[0] === "TOTAL";
+    fila.eachCell({ includeEmpty: true }, (cell, nro) => {
+      if (columnas[nro - 1]?.moneda && typeof cell.value === "number") cell.numFmt = '"$"#,##0.00';
+      if (esTotal) cell.font = { bold: true };
       cell.alignment = { horizontal: "center", vertical: "middle" };
       cell.border = {
         top: { style: "thin", color: { argb: "FFE2E8F0" } },

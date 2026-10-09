@@ -175,7 +175,7 @@ export default function AnalistaPresupuestos() {
         { titulo: 'Grupo', ancho: 14 },
         { titulo: 'Origen', ancho: 34 },
         { titulo: 'Solicita', ancho: 18 },
-        { titulo: 'Precio unit. sin IVA', ancho: 18 },
+        { titulo: 'Precio unit. sin IVA', ancho: 18, moneda: true },
         { titulo: 'Observaciones', ancho: 40 },
         { titulo: 'Estado', ancho: 14 },
       ],

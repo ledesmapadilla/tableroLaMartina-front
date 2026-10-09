@@ -355,8 +355,8 @@ export default function RepuestosChequeoManitou() {
         { titulo: "Urgencia", ancho: 11 },
         { titulo: "Descripción", ancho: 40 },
         { titulo: "Estado", ancho: 16 },
-        { titulo: "Precio unit. sin IVA", ancho: 18 },
-        { titulo: "Total sin IVA", ancho: 16 },
+        { titulo: "Precio unit. sin IVA", ancho: 18, moneda: true },
+        { titulo: "Total sin IVA", ancho: 16, moneda: true },
       ],
       filas: repuestos.map((r, idx) => [
         idx + 1,

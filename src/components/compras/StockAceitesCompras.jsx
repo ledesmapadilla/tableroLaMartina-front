@@ -88,8 +88,8 @@ export default function StockAceitesCompras() {
       { titulo: 'Tipo de aceite', ancho: 36, valor: (m) => nombreAceite(m.aceite) },
       { titulo: 'Marca', ancho: 16, valor: (m) => m.marca },
       { titulo: 'Cantidad (L)', ancho: 12, valor: (m) => m.litros },
-      { titulo: 'Precio ($)', ancho: 14, valor: (m) => m.precio ?? '' },
-      { titulo: '$/L', ancho: 12, valor: (m) => (m.precio && m.litros ? Math.round(m.precio / m.litros) : '') },
+      { titulo: 'Precio ($)', ancho: 14, moneda: true, valor: (m) => m.precio ?? '' },
+      { titulo: '$/L', ancho: 12, moneda: true, valor: (m) => (m.precio && m.litros ? Math.round(m.precio / m.litros) : '') },
       { titulo: 'Observaciones', ancho: 36, valor: (m) => m.observaciones },
     ]
     exportarPlanilla({
