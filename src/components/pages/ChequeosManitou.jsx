@@ -37,7 +37,6 @@ const ESTADOS_FILA = {
   Pedido: { fondo: "#dcfce7", color: "#15803d" },
 };
 const ROJO = "#dc2626";
-const GRIS = "#9ca3af";
 const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
 
@@ -69,50 +68,6 @@ function CirculoOk({ marcado, onClick, deshabilitado, titulo, tamano = 18 }) {
       }}
     >
       {marcado && <i className="bi bi-check-lg" style={{ fontSize: `${tamano * 0.7}px`, lineHeight: 1 }}></i>}
-    </button>
-  );
-}
-
-/**
- * El círculo de "Con problema" (08/10/2026): una fila puede tener varios
- * problemas. Sin ninguno es la x roja, que abre la lista para cargar el
- * primero. Con alguno sin resolver es el signo de pregunta lleno de rojo; con
- * todos resueltos, el signo de pregunta sin relleno (gris, porque la fila
- * queda OK).
- */
-function CirculoProblema({ total, pendientes, apagado, onClick, deshabilitado, tamano = 18 }) {
-  const color = apagado && !pendientes ? GRIS : ROJO;
-  const lleno = pendientes > 0;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={deshabilitado}
-      title={
-        total === 0
-          ? "Cargar una tarea"
-          : pendientes > 0
-            ? `${pendientes} sin resolver de ${total}`
-            : `${total === 1 ? "La tarea está resuelta" : `Las ${total} tareas están resueltas`}`
-      }
-      className="d-inline-flex align-items-center justify-content-center p-0"
-      style={{
-        width: `${tamano}px`,
-        height: `${tamano}px`,
-        borderRadius: "50%",
-        border: `2px solid ${color}`,
-        backgroundColor: lleno ? color : "#fff",
-        color: lleno ? "#fff" : color,
-        transition: "background-color 0.15s, border-color 0.15s, color 0.15s",
-        cursor: deshabilitado ? "default" : "pointer",
-        opacity: deshabilitado ? 0.6 : 1,
-        flexShrink: 0,
-      }}
-    >
-      <i
-        className={`bi ${total > 0 ? "bi-question-lg" : "bi-x-lg"}`}
-        style={{ fontSize: `${tamano * (total > 0 ? 0.6 : 0.5)}px`, lineHeight: 1 }}
-      ></i>
     </button>
   );
 }
@@ -155,15 +110,8 @@ export default function ChequeosManitou({
 
   const [filas, setFilas] = useState(filasIniciales ?? []);
   const [cargando, setCargando] = useState(!filasIniciales);
-  // Los modales: el ítem (alta o edición) y los problemas de una fila.
+  // El modal del ítem (alta o edición).
   const [modalItem, setModalItem] = useState(null); // { fila?, item, descripcion }
-  // La lista de problemas de una fila: se guarda el id, así la lista se ve
-  // al día con cada cambio.
-  const [filaProblemas, setFilaProblemas] = useState(null);
-  const [nuevoProblema, setNuevoProblema] = useState("");
-  const [nuevaDuracion, setNuevaDuracion] = useState("");
-  // La tarea que se corrige en su renglón: { id, texto, duracion }.
-  const [editandoTarea, setEditandoTarea] = useState(null);
   const [guardando, setGuardando] = useState(false);
   // Lo mandado a cotizar, por repuesto: { [repuestoId]: estado }.
   const [cotizaciones, setCotizaciones] = useState(cotizacionesIniciales ?? {});
@@ -199,7 +147,6 @@ export default function ChequeosManitou({
 
   const pasa = (f) => pasaFiltro(f, filtroActivo, cotizaciones);
   const visibles = filas.filter(pasa);
-  const conPendientes = filas.filter((f) => (f.problemas || []).some((p) => !p.resuelto)).length;
   if (embebido && hayFiltro(filtroActivo) && !cargando && visibles.length === 0) return null;
 
   const reemplazar = (fila) => setFilas((prev) => prev.map((f) => (f._id === fila._id ? fila : f)));
@@ -262,101 +209,9 @@ export default function ChequeosManitou({
       error("No se pudo borrar", err);
     }
   };
-
-  // ── Con problema ──
-  // Una fila tiene una lista de problemas. Cada uno se marca resuelto con su
-  // círculo; con problemas, la fila es OK solo cuando están todos resueltos
-  // (lo calcula el back). Sin problemas, el OK se marca a mano.
-  const pendientesDe = (f) => (f.problemas || []).filter((p) => !p.resuelto).length;
-  const filaAbierta = filaProblemas ? filas.find((f) => f._id === filaProblemas) : null;
-  const rutaProblemas = (f) => `/ingresos-sanpablo/chequeos/${f._id}/problemas`;
-
-  const abrirProblemas = (f) => {
-    setNuevoProblema("");
-    setNuevaDuracion("");
-    setEditandoTarea(null);
-    setFilaProblemas(f._id);
-  };
-
-  // Agrega lo escrito en el renglón de abajo. Devuelve si quedó guardado.
-  const agregarProblema = async (e) => {
-    e?.preventDefault();
-    if (!nuevoProblema.trim()) return true;
-    setGuardando(true);
-    try {
-      reemplazar(await api.post(rutaProblemas(filaAbierta), { texto: nuevoProblema, duracion: nuevaDuracion }));
-      setNuevoProblema("");
-      setNuevaDuracion("");
-      return true;
-    } catch (err) {
-      error("No se pudo guardar", err);
-      return false;
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  // Guardar: los círculos y los borrados ya se guardaron al tocarlos; acá se
-  // suma lo que haya quedado escrito sin Agregar, y se cierra.
-  const guardarProblemas = async () => {
-    if (!sinEditar && !(await agregarProblema())) return;
-    setFilaProblemas(null);
-    if (!sinEditar) {
-      Swal.fire({ icon: "success", title: "Tareas guardadas", timer: 1500, showConfirmButton: false, width: "300px" });
-    }
-  };
-
-  const alternarResuelto = async (p) => {
-    try {
-      reemplazar(await api.put(`${rutaProblemas(filaAbierta)}/${p._id}`, { resuelto: !p.resuelto }));
-    } catch (err) {
-      error("No se pudo guardar", err);
-    }
-  };
-
-  // Corregir una tarea: el texto y la duración, en su renglón.
-  const guardarTarea = async (e) => {
-    e?.preventDefault();
-    if (!editandoTarea.texto.trim()) return;
-    setGuardando(true);
-    try {
-      reemplazar(
-        await api.put(`${rutaProblemas(filaAbierta)}/${editandoTarea.id}`, {
-          texto: editandoTarea.texto,
-          duracion: editandoTarea.duracion,
-        })
-      );
-      setEditandoTarea(null);
-    } catch (err) {
-      error("No se pudo guardar", err);
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const borrarProblema = async (p) => {
-    const { isConfirmed } = await Swal.fire({
-      icon: "warning",
-      title: "¿Borrar la tarea?",
-      text: p.texto,
-      width: "320px",
-      showCancelButton: true,
-      confirmButtonText: "Sí, borrar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#64748b",
-    });
-    if (!isConfirmed) return;
-    try {
-      reemplazar(await api.delete(`${rutaProblemas(filaAbierta)}/${p._id}`));
-    } catch (err) {
-      error("No se pudo borrar", err);
-    }
-  };
-
-  // General no lleva OK, Con problema ni Estado. La descripción del ítem va en
+  // General no lleva OK ni Estado. La descripción del ítem va en
 // las dos (en las Manitou, la copiada de General).
-  const columnas = esGeneral ? 5 : 8;
+  const columnas = esGeneral ? 5 : 7;
   const nombreUnidad = esGeneral ? "Manitous General" : `Manitou ${unidad}`;
 
   // El OK a mano, solo sin problemas: con problemas se marca resolviéndolos.
@@ -499,11 +354,9 @@ export default function ChequeosManitou({
             </div>
           )}
           <div className="ms-auto" />
-          {/* Embebida: cuántos ítems tienen tareas sin resolver y la flecha de
-              agrupar/desplegar. */}
+          {/* Embebida: la flecha de agrupar/desplegar. */}
           {embebido && (
             <span className="d-flex align-items-center gap-2 text-secondary fw-semibold" style={{ fontSize: "0.74rem" }}>
-              {conPendientes} con tareas pendientes
               <i className={`bi ${plegado ? "bi-chevron-down" : "bi-chevron-up"}`} style={{ fontSize: "0.9rem", color: COLOR }}></i>
             </span>
           )}
@@ -559,11 +412,12 @@ export default function ChequeosManitou({
               <tr>
                 <th style={{ ...thCentro, width: "36px" }}>#</th>
                 {/* La descripción se lleva el resto del ancho. */}
-                <th style={{ ...th, width: "24%" }}>Ítem</th>
+                <th style={{ ...th, width: "24%" }}>Tarea</th>
                 <th style={th}>Descripción</th>
-                {/* En General (la plantilla) no se chequea: solo ítem y repuestos. */}
+                {/* En General (la plantilla) no se chequea: solo ítem y repuestos.
+                    La columna Tareas (la lista de problemas) se sacó el
+                    10/10/2026. */}
                 {!esGeneral && <th style={{ ...thCentro, width: "44px" }}>OK</th>}
-                {!esGeneral && <th style={{ ...thCentro, width: "64px" }}>Tareas</th>}
                 <th style={{ ...thCentro, width: "72px" }}>Repuestos</th>
                 {!esGeneral && <th style={{ ...thCentro, width: "108px" }}>Estado</th>}
                 <th style={{ ...thCentro, width: "64px" }}></th>
@@ -594,10 +448,13 @@ export default function ChequeosManitou({
                   <tr key={f._id}>
                     <td style={{ ...tdCentro, color: "#94a3b8" }}>{idx + 1}</td>
                     <td style={{ ...td, fontWeight: 600 }}>{f.item}</td>
-                    <td style={{ ...td, color: "#475569" }}>{f.descripcion || <Raya />}</td>
+                    <td style={{ ...td, color: "#475569" }}>
+                      {f.no_aplica ? <span style={{ fontWeight: 700 }}>NO APLICA</span> : f.descripcion || <Raya />}
+                    </td>
                     {!esGeneral && (
-                      <>
-                        <td style={{ ...tdCentro, padding: "3px 5px" }}>
+                      <td style={{ ...tdCentro, padding: "3px 5px" }}>
+                        {/* Lo que no aplica a esta Manitou no se chequea. */}
+                        {!f.no_aplica && (
                           <CirculoOk
                             marcado={f.chequeado}
                             onClick={() => marcarOk(f)}
@@ -610,20 +467,8 @@ export default function ChequeosManitou({
                                 : undefined
                             }
                           />
-                        </td>
-                        <td style={{ ...tdCentro, padding: "3px 5px" }}>
-                          <div className="d-flex justify-content-center align-items-center">
-                            {/* Con problemas se puede abrir para leer aun sin permiso. */}
-                            <CirculoProblema
-                              total={(f.problemas || []).length}
-                              pendientes={pendientesDe(f)}
-                              apagado={f.chequeado}
-                              onClick={() => abrirProblemas(f)}
-                              deshabilitado={sinEditar && !(f.problemas || []).length}
-                            />
-                          </div>
-                        </td>
-                      </>
+                        )}
+                      </td>
                     )}
                     <td style={{ ...tdCentro, padding: "3px 5px" }}>
                       {/* Solo el botón: los repuestos tienen su hoja. Con
@@ -740,179 +585,6 @@ export default function ChequeosManitou({
             </Modal.Body>
             {pieModal(() => setModalItem(null), "Guardar", "bi-check-lg", guardando)}
           </Form>
-        )}
-      </Modal>
-
-      {/* Modal Tareas (antes "problemas"; en el código siguen llamándose así):
-          la lista de la fila, cada una con su círculo de resuelta, su
-          duración y su borrar, y el renglón para sumar otra. */}
-      <Modal
-        show={Boolean(filaAbierta)}
-        onHide={() => setFilaProblemas(null)}
-        centered
-        dialogClassName="modal-problemas"
-        contentClassName="border-0 shadow-lg rounded-4"
-      >
-        {encabezadoModal("bi-exclamation-triangle-fill", `Tareas · ${filaAbierta?.item ?? ""}`)}
-        {filaAbierta && (
-          <>
-            <Modal.Body className="p-3">
-              <div className="rounded-3 bg-white" style={{ border: "1px solid #cbd5e1", overflow: "hidden" }}>
-                <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ ...thCentro, width: "70px" }}>Resuelto</th>
-                      <th style={th}>Tarea</th>
-                      <th style={{ ...thCentro, width: "100px" }}>Duración (días)</th>
-                      <th style={{ ...thCentro, width: "70px" }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(filaAbierta.problemas || []).length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="text-center text-muted py-3" style={td}>
-                          Sin tareas.
-                        </td>
-                      </tr>
-                    ) : (
-                      filaAbierta.problemas.map((p) => (
-                        <tr key={p._id}>
-                          <td style={{ ...tdCentro, padding: "3px 5px" }}>
-                            <div className="d-flex justify-content-center">
-                              <CirculoOk
-                                marcado={p.resuelto}
-                                onClick={() => alternarResuelto(p)}
-                                deshabilitado={sinEditar}
-                                titulo={p.resuelto ? "Resuelto" : "Marcar resuelto"}
-                              />
-                            </div>
-                          </td>
-                          <td
-                            style={{
-                              ...td,
-                              whiteSpace: "pre-wrap",
-                              color: p.resuelto ? "#94a3b8" : undefined,
-                              textDecoration: p.resuelto ? "line-through" : undefined,
-                            }}
-                          >
-                            {editandoTarea?.id === p._id ? (
-                              <Form.Control
-                                size="sm"
-                                className="rounded-3"
-                                style={campo}
-                                value={editandoTarea.texto}
-                                onChange={(e) => setEditandoTarea({ ...editandoTarea, texto: e.target.value })}
-                                onKeyDown={(e) => e.key === "Enter" && guardarTarea(e)}
-                                autoFocus
-                              />
-                            ) : (
-                              p.texto
-                            )}
-                          </td>
-                          <td style={{ ...tdCentro, color: p.resuelto ? "#94a3b8" : undefined }}>
-                            {editandoTarea?.id === p._id ? (
-                              <Form.Control
-                                size="sm"
-                                className="rounded-3"
-                                style={campo}
-                                value={editandoTarea.duracion}
-                                placeholder="Días"
-                                onChange={(e) => setEditandoTarea({ ...editandoTarea, duracion: e.target.value })}
-                                onKeyDown={(e) => e.key === "Enter" && guardarTarea(e)}
-                              />
-                            ) : (
-                              p.duracion || <Raya />
-                            )}
-                          </td>
-                          <td style={tdCentro}>
-                            <div className="d-flex justify-content-center" style={{ gap: "6px" }}>
-                              {editandoTarea?.id === p._id ? (
-                                <>
-                                  <BotonAccion
-                                    icono="bi-check-lg"
-                                    titulo="Guardar"
-                                    variante="success"
-                                    onClick={() => guardarTarea()}
-                                    deshabilitado={guardando || !editandoTarea.texto.trim()}
-                                  />
-                                  <BotonAccion icono="bi-x-lg" titulo="Cancelar" onClick={() => setEditandoTarea(null)} />
-                                </>
-                              ) : (
-                                <>
-                                  <BotonAccion
-                                    icono="bi-pencil"
-                                    titulo={sinEditar ? "Sin permiso para editar" : "Editar"}
-                                    variante="primary"
-                                    onClick={() => setEditandoTarea({ id: p._id, texto: p.texto, duracion: p.duracion || "" })}
-                                    deshabilitado={sinEditar}
-                                  />
-                                  <BotonAccion
-                                    icono="bi-trash"
-                                    titulo={sinEditar ? "Sin permiso para editar" : "Borrar"}
-                                    variante="danger"
-                                    onClick={() => borrarProblema(p)}
-                                    deshabilitado={sinEditar}
-                                  />
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </Table>
-              </div>
-
-              {!sinEditar && (
-                <Form onSubmit={agregarProblema} className="d-flex gap-2 mt-3">
-                  <Form.Control
-                    size="sm"
-                    className="rounded-3"
-                    style={campo}
-                    value={nuevoProblema}
-                    placeholder="Tarea"
-                    onChange={(e) => setNuevoProblema(e.target.value)}
-                    autoFocus
-                  />
-                  <Form.Control
-                    size="sm"
-                    className="rounded-3 flex-shrink-0"
-                    style={{ ...campo, width: "110px" }}
-                    value={nuevaDuracion}
-                    placeholder="Días"
-                    title="Cuánto lleva, en días"
-                    onChange={(e) => setNuevaDuracion(e.target.value)}
-                  />
-                  <Button
-                    size="sm"
-                    type="submit"
-                    disabled={guardando || !nuevoProblema.trim()}
-                    className="rounded-3 px-3 d-flex align-items-center gap-1 flex-shrink-0"
-                    style={{ backgroundColor: COLOR, borderColor: COLOR, fontSize: "0.8rem", fontWeight: 600 }}
-                  >
-                    <i className="bi bi-plus-lg"></i>
-                    <span>Agregar</span>
-                  </Button>
-                </Form>
-              )}
-            </Modal.Body>
-            <Modal.Footer
-              className="bg-light border-0 py-2 px-4"
-              style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
-            >
-              <Button
-                size="sm"
-                onClick={guardarProblemas}
-                disabled={guardando}
-                className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
-                style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
-              >
-                <i className="bi bi-check-lg"></i>
-                <span>Guardar</span>
-              </Button>
-            </Modal.Footer>
-          </>
         )}
       </Modal>
     </div>
