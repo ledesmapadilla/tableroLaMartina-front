@@ -381,6 +381,23 @@ select.form-select.filtro-destacado:focus {
   max-width: 650px;
 }
 
+/* Placeholders más chicos y en gris claro (11/10/2026, el modal de Cargar
+   Service): que no se confundan con los títulos de los campos. El select
+   vacío va igual, con .select-vacio; sus opciones, en el color normal. */
+.form-placeholder-suave .form-control::placeholder {
+  color: #a0aec0;
+  font-size: 0.78rem;
+  opacity: 1;
+}
+.form-placeholder-suave .form-select.select-vacio {
+  color: #a0aec0;
+  font-size: 0.78rem;
+}
+.form-placeholder-suave .form-select.select-vacio option {
+  color: #212529;
+  font-size: 0.875rem;
+}
+
 /* Placeholders en gris claro en el modal de ingresos de San Pablo. */
 .form-ingresos .form-control::placeholder {
   color: #a0aec0;

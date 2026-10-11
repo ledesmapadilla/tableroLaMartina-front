@@ -1,14 +1,23 @@
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { api } from "../../services/api";
+import { cosechaDeParam } from "../../utils/cosechas";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
-import { UNIDADES_MANITOU } from "../../utils/sistemasManitou";
+import { UNIDADES_MANITOU, seccionManitou } from "../../utils/sistemasManitou";
 
 // El verde de la tarjeta Manitous de ReparacionesSanPablo.
 const verde = {
   bg: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
   hoverBg: "linear-gradient(135deg, #022c22 0%, #064e3b 100%)",
   accentColor: "#34d399",
+};
+
+// Los colores de los círculos de la página de cada Manitou.
+const ESTADOS = {
+  reparacion: { texto: "En reparación", color: "#ea580c" },
+  espera: { texto: "En espera", color: "#2563eb" },
 };
 
 // Una tarjeta por Manitou y la General (06/10/2026). Todas abren
@@ -33,6 +42,45 @@ const tarjetas = [
 
 function ManitousSanPablo() {
   const { cosecha } = useParams();
+  // Los responsables de cada Manitou, debajo del nombre (10/10/2026):
+  // { [unidad]: ["Juan", …] }.
+  const [responsables, setResponsables] = useState({});
+  // En reparación o en espera, por unidad (11/10/2026): { [unidad]: estado }.
+  const [estados, setEstados] = useState({});
+
+  useEffect(() => {
+    const nro = cosechaDeParam(cosecha);
+    Promise.all(
+      UNIDADES_MANITOU.map((u) =>
+        api
+          .get(`/ingresos-sanpablo/responsables?cosecha=${nro}&seccion=${seccionManitou(u)}`)
+          .then((r) => [u, r.nombres ?? []])
+          .catch(() => [u, []])
+      )
+    ).then((pares) => setResponsables(Object.fromEntries(pares)));
+    api
+      .get(`/ingresos-sanpablo/estado-manitou?cosecha=${nro}`)
+      .then((lista) =>
+        setEstados(
+          Object.fromEntries(
+            (Array.isArray(lista) ? lista : [])
+              .filter((d) => d.estado)
+              .map((d) => [UNIDADES_MANITOU.find((u) => seccionManitou(u) === d.seccion), d.estado])
+          )
+        )
+      )
+      .catch(() => setEstados({}));
+  }, [cosecha]);
+
+  const conResponsables = tarjetas.map((t) => {
+    const nombres = responsables[t.id] ?? [];
+    const estado = ESTADOS[estados[t.id]];
+    return {
+      ...t,
+      ...(nombres.length && { subtitulo: nombres.join(" · ") }),
+      ...(estado && { etiqueta: estado }),
+    };
+  });
 
   return (
     <div
@@ -54,7 +102,7 @@ function ManitousSanPablo() {
 
       {/* Las 6 tarjetas en dos filas de 3, sin scroll. */}
       <TarjetasSanPablo
-        tarjetas={tarjetas}
+        tarjetas={conResponsables}
         base={`/reparaciones/sanpablo/${cosecha}/manitous`}
         porFila={3}
         maxWidth="min(780px, calc((100vh - 200px) * 1.5))"

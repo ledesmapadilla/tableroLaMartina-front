@@ -107,7 +107,12 @@ function TractoresGrupo() {
       fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([tracs, pendientesIds, stopIds]) => {
       const safeTracs = Array.isArray(tracs) ? tracs : [];
-      const filtrados = safeTracs.filter((t) => Number(t.gruppo) === Number(grupoId));
+      // Ordenadas por número de CC (11/10/2026), sin el "CC" delante y en
+      // orden numérico: 99 antes que 100.
+      const numeroCC = (t) => String(t.cc || "").replace(/^cc\s*/i, "").trim();
+      const filtrados = safeTracs
+        .filter((t) => Number(t.gruppo) === Number(grupoId))
+        .sort((a, b) => numeroCC(a).localeCompare(numeroCC(b), "es", { numeric: true }));
       setTractores(filtrados);
       setConTareaPendiente(new Set(Array.isArray(pendientesIds) ? pendientesIds : []));
       setParadosIds(new Set(Array.isArray(stopIds) ? stopIds : []));

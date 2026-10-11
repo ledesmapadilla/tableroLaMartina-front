@@ -8,8 +8,7 @@ export const SISTEMAS_MANITOU = [
   { id: "torre", titulo: "Torre", icono: "bi bi-arrows-angle-expand" },
   { id: "sistema-hidraulico", titulo: "Sistema hidráulico", icono: "bi bi-droplet-fill" },
   { id: "sistema-electrico", titulo: "Sistema eléctrico", icono: "bi bi-lightning-charge-fill" },
-  { id: "cabina", titulo: "Cabina", icono: "bi bi-person-workspace" },
-  { id: "otros", titulo: "Otros", icono: "bi bi-three-dots" },
+  { id: "cabina", titulo: "Cabina y otros", icono: "bi bi-person-workspace" },
 ];
 
 // Las Manitous (09/10/2026). General es la plantilla: los ítems y los

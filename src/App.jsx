@@ -39,6 +39,8 @@ const StockAceitesCompras = lazy(() => import("./components/compras/StockAceites
 const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
 const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
 const Gerencia = lazy(() => import("./components/compras/Gerencia"));
+const Resultados = lazy(() => import("./components/compras/Resultados"));
+const ResultadosDetalle = lazy(() => import("./components/compras/ResultadosDetalle"));
 const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistorial"));
 const VerOP = lazy(() => import("./components/compras/VerOP"));
 const Usuarios = lazy(() => import("./components/compras/Usuarios"));
@@ -285,6 +287,10 @@ function LayoutDesktop() {
               <Route path="/compras/gerencia" element={<RutaProtegida><Gerencia /></RutaProtegida>} />
               <Route path="/compras/gerencia/historial" element={<RutaProtegida><GerenciaHistorial /></RutaProtegida>} />
 
+              {/* Resultados (11/10/2026): por ahora solo nacho, lo controla la pantalla. */}
+              <Route path="/compras/resultados" element={<RutaProtegida><Resultados /></RutaProtegida>} />
+              <Route path="/compras/resultados/detalle" element={<RutaProtegida><ResultadosDetalle /></RutaProtegida>} />
+
               <Route path="/compras/op/ver" element={<RutaProtegida><VerOP /></RutaProtegida>} />
               <Route path="/compras/op/:nro" element={<RutaProtegida><VerOP /></RutaProtegida>} />
 
@@ -446,6 +452,9 @@ function LayoutDesktop() {
                 path="/reparaciones/sanpablo/:cosecha/manitous/general/presupuesto"
                 element={<RutaCosecha><PresupuestoManitous /></RutaCosecha>}
               />
+              {/* La 1100 va al 404 por ahora (10/10/2026); sus datos siguen en
+                  la base. */}
+              <Route path="/reparaciones/sanpablo/:cosecha/manitous/1100/*" element={<Error404 />} />
               {/* General (la plantilla) y cada Manitou (09/10/2026): una tarjeta
                   por sistema, cada una con su tabla de chequeo. */}
               <Route

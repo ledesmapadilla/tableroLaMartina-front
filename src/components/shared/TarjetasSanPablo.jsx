@@ -10,7 +10,10 @@ import TractorIcon from "./TractorIcon";
  * `children` va arriba de la grilla, centrado con ella (un encabezado).
  * Una tarjeta puede ocupar `ancho` columnas y tener `alto` veces la altura
  * (09/10/2026, la de Presupuesto: ancho 2, alto 0.5); así el ícono va al
- * costado del título.
+ * costado del título. Con `subtitulo` (10/10/2026, los responsables de cada
+ * Manitou) va un renglón chico debajo del título. Con `etiqueta` ({ texto,
+ * color }, 11/10/2026, el estado de cada Manitou) va una pastilla de color
+ * al pie de la tarjeta.
  */
 export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, children }) {
   const navigate = useNavigate();
@@ -53,6 +56,8 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
                 transform: isHovered ? "translateY(-4px)" : "translateY(0)",
                 color: "#ffffff",
                 userSelect: "none",
+                // Para la etiqueta, que va al pie.
+                position: "relative",
               }}
               onClick={() => navigate(ruta)}
               role="button"
@@ -84,6 +89,34 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
               >
                 {t.titulo}
               </h3>
+              {t.subtitulo && (
+                <div
+                  className="fw-semibold mt-1"
+                  style={{ fontSize: chicas ? "0.7rem" : "0.8rem", lineHeight: 1.2, color: t.accentColor }}
+                >
+                  {t.subtitulo}
+                </div>
+              )}
+              {t.etiqueta && (
+                <span
+                  className="fw-bold px-2 py-1 rounded-pill d-inline-flex align-items-center gap-1"
+                  style={{
+                    // Al pie de la tarjeta, sin correr el nombre del centro.
+                    position: "absolute",
+                    bottom: chicas ? "8px" : "14px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    whiteSpace: "nowrap",
+                    backgroundColor: t.etiqueta.color,
+                    color: "#fff",
+                    fontSize: chicas ? "0.66rem" : "0.74rem",
+                    lineHeight: 1,
+                  }}
+                >
+                  <i className="bi bi-circle-fill" style={{ fontSize: "0.45rem" }}></i>
+                  {t.etiqueta.texto}
+                </span>
+              )}
             </div>
           );
         })}

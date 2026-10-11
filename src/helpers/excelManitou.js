@@ -20,9 +20,16 @@ export const estadoDeFila = (f, cotizaciones) => {
  * La planilla del chequeo de una Manitou: replica la tabla, un renglón por
  * ítem y sin los repuestos (09/10/2026). `secciones` es [{ sistema, filas }]:
  * con más de una (la Manitou desplegada, toda la página en una hoja) suma la
- * columna Sistema. General no lleva OK ni Estado, como su tabla. Con
+ * columna Sistema. General no lleva Detalle reparación, OK ni Estado, como su tabla. Con
  * `filtro` sale solo lo que se ve, con el número de la tabla completa.
  */
+// Las reparaciones de una fila en una celda (11/10/2026): una por renglón,
+// "problema: detalle" y si se realizó.
+const reparacionesTexto = (f) =>
+  (f.reparaciones || [])
+    .map((r) => `${r.problema}${r.detalle ? `: ${r.detalle}` : ""}${r.realizado ? " (realizado)" : ""}`)
+    .join("\n");
+
 export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizaciones, general = false, filtro }) => {
   const conSistema = secciones.length > 1;
   return exportarPlanilla({
@@ -35,6 +42,7 @@ export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizacione
       ...(general
         ? []
         : [
+            { titulo: "Detalle reparación", ancho: 45 },
             { titulo: "OK", ancho: 8 },
             { titulo: "Estado", ancho: 16 },
           ]),
@@ -48,7 +56,7 @@ export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizacione
             ...(conSistema ? [sistema.titulo] : []),
             f.item,
             f.no_aplica ? "NO APLICA" : f.descripcion || "",
-            ...(general ? [] : [f.chequeado ? "Sí" : "", estadoDeFila(f, cotizaciones) || ""]),
+            ...(general ? [] : [reparacionesTexto(f), f.chequeado ? "Sí" : "", (f.no_aplica ? "" : estadoDeFila(f, cotizaciones) || "")]),
           ],
         ];
       })
@@ -70,6 +78,7 @@ export const hayFiltro = (filtro) => Boolean(filtro.chequeo || filtro.estado);
 export const pasaFiltro = (f, filtro, cotizaciones) => {
   if (filtro.chequeo === "OK" && !f.chequeado) return false;
   if (filtro.chequeo === "Con problemas" && !(f.problemas || []).some((p) => !p.resuelto)) return false;
-  if (filtro.estado && estadoDeFila(f, cotizaciones) !== filtro.estado) return false;
+  // Lo que no aplica no tiene estado (10/10/2026).
+  if (filtro.estado && (f.no_aplica || estadoDeFila(f, cotizaciones) !== filtro.estado)) return false;
   return true;
 };

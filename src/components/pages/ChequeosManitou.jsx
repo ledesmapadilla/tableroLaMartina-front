@@ -73,6 +73,227 @@ function CirculoOk({ marcado, onClick, deshabilitado, titulo, tamano = 18 }) {
 }
 
 /**
+ * El modal de las reparaciones de una fila de una Manitou (11/10/2026): una
+ * tabla con el problema, el trabajo realizado (`detalle`), el círculo de
+ * realizado y el editar y borrar, y abajo el renglón para sumar otra. Los
+ * círculos, las ediciones y los borrados se guardan al tocarlos; Guardar
+ * suma lo que haya quedado escrito y cierra. `onGuardar(lista)` manda la
+ * lista entera y devuelve si quedó guardada.
+ */
+function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
+  const [nuevo, setNuevo] = useState({ problema: "", detalle: "" });
+  // La que se corrige en su renglón: { id, problema, detalle }.
+  const [editando, setEditando] = useState(null);
+  const [guardando, setGuardando] = useState(false);
+  const lista = fila?.reparaciones ?? [];
+
+  const guardar = async (nuevaLista) => {
+    setGuardando(true);
+    try {
+      return await onGuardar(nuevaLista);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const conEdicion = (l) =>
+    editando?.problema.trim()
+      ? l.map((r) => (r._id === editando.id ? { ...r, problema: editando.problema, detalle: editando.detalle } : r))
+      : l;
+  const conNuevo = (l) => (nuevo.problema.trim() ? [...l, { ...nuevo, realizado: false }] : l);
+
+  const agregar = async (e) => {
+    e?.preventDefault();
+    if (!nuevo.problema.trim()) return;
+    if (await guardar(conNuevo(lista))) setNuevo({ problema: "", detalle: "" });
+  };
+
+  const guardarEdicion = async (e) => {
+    e?.preventDefault();
+    if (!editando.problema.trim()) return;
+    if (await guardar(conEdicion(lista))) setEditando(null);
+  };
+
+  const alternar = (r) => guardar(lista.map((x) => (x._id === r._id ? { ...x, realizado: !x.realizado } : x)));
+
+  const borrar = async (r) => {
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: "¿Borrar la reparación?",
+      text: r.problema,
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+    });
+    if (!isConfirmed) return;
+    guardar(lista.filter((x) => x._id !== r._id));
+  };
+
+  const cerrar = () => {
+    setNuevo({ problema: "", detalle: "" });
+    setEditando(null);
+    onHide();
+  };
+
+  // Guardar: lo que quedó a medio editar o escrito sin Agregar, y se cierra.
+  const guardarYCerrar = async () => {
+    const final = conNuevo(conEdicion(lista));
+    if (!sinEditar && final !== lista && !(await guardar(final))) return;
+    cerrar();
+    if (!sinEditar) {
+      Swal.fire({ icon: "success", title: "Guardado", timer: 1500, showConfirmButton: false, width: "300px" });
+    }
+  };
+
+  const campoRenglon = (valor, onChange, placeholder, autoFocus) => (
+    <Form.Control
+      className="rounded-3"
+      size="sm"
+      style={campo}
+      value={valor}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && guardarEdicion(e)}
+      autoFocus={autoFocus}
+    />
+  );
+
+  return (
+    <Modal show={Boolean(fila)} onHide={cerrar} centered size="lg" contentClassName="border-0 shadow-lg rounded-4">
+      {encabezado}
+      <Modal.Body className="p-4">
+        <Table className="mb-0 tabla-informe" style={{ width: "100%", border: "1px solid #cbd5e1" }}>
+          <thead>
+            <tr>
+              <th style={{ ...thCentro, width: "36px" }}>#</th>
+              <th style={{ ...th, width: "36%" }}>Problema</th>
+              {/* La línea fuerte separa el problema de lo que se hizo. */}
+              <th className="col-corte" style={th}>Trabajo realizado</th>
+              <th style={{ ...thCentro, width: "84px" }}>Realizado</th>
+              {!sinEditar && <th style={{ ...thCentro, width: "72px" }}></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {lista.length === 0 ? (
+              <tr>
+                <td colSpan={sinEditar ? 4 : 5} className="text-center text-muted py-3" style={td}>
+                  Sin reparaciones.
+                </td>
+              </tr>
+            ) : (
+              lista.map((r, i) => {
+                const enEdicion = editando?.id === r._id;
+                return (
+                  <tr key={r._id}>
+                    <td style={{ ...tdCentro, color: "#94a3b8" }}>{i + 1}</td>
+                    <td style={{ ...td, whiteSpace: "pre-wrap" }}>
+                      {enEdicion
+                        ? campoRenglon(editando.problema, (v) => setEditando({ ...editando, problema: v }), "Problema", true)
+                        : r.problema}
+                    </td>
+                    <td className="col-corte" style={{ ...td, whiteSpace: "pre-wrap", color: "#475569" }}>
+                      {enEdicion
+                        ? campoRenglon(editando.detalle, (v) => setEditando({ ...editando, detalle: v }), "Trabajo realizado")
+                        : r.detalle || <Raya />}
+                    </td>
+                    <td style={{ ...tdCentro, padding: "3px 5px" }}>
+                      <CirculoOk
+                        marcado={r.realizado}
+                        onClick={() => alternar(r)}
+                        deshabilitado={sinEditar || guardando}
+                        titulo={r.realizado ? "Realizado" : "Marcar como realizado"}
+                      />
+                    </td>
+                    {!sinEditar && (
+                      <td style={tdCentro}>
+                        {/* Lápiz y borrar; editando, guardar y cancelar. */}
+                        <div className="d-flex justify-content-center" style={{ gap: "6px" }}>
+                          {enEdicion ? (
+                            <>
+                              <BotonAccion
+                                icono="bi-check-lg"
+                                titulo="Guardar"
+                                variante="success"
+                                onClick={() => guardarEdicion()}
+                                deshabilitado={guardando || !editando.problema.trim()}
+                              />
+                              <BotonAccion icono="bi-x-lg" titulo="Cancelar" onClick={() => setEditando(null)} />
+                            </>
+                          ) : (
+                            <>
+                              <BotonAccion
+                                icono="bi-pencil"
+                                titulo="Editar"
+                                variante="primary"
+                                onClick={() => setEditando({ id: r._id, problema: r.problema, detalle: r.detalle || "" })}
+                              />
+                              <BotonAccion icono="bi-trash" titulo="Borrar" variante="danger" onClick={() => borrar(r)} />
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </Table>
+        {!sinEditar && (
+          <Form onSubmit={agregar} className="d-flex gap-2 mt-3">
+            <Form.Control
+              className="rounded-3"
+              size="sm"
+              style={{ ...campo, flex: "0 0 36%" }}
+              value={nuevo.problema}
+              placeholder="Problema"
+              onChange={(e) => setNuevo({ ...nuevo, problema: e.target.value })}
+              autoFocus
+            />
+            <Form.Control
+              className="rounded-3"
+              size="sm"
+              style={campo}
+              value={nuevo.detalle}
+              placeholder="Trabajo realizado"
+              onChange={(e) => setNuevo({ ...nuevo, detalle: e.target.value })}
+            />
+            <Button
+              size="sm"
+              type="submit"
+              disabled={guardando || !nuevo.problema.trim()}
+              className="rounded-3 px-3 d-flex align-items-center gap-1"
+              style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600, whiteSpace: "nowrap" }}
+            >
+              <i className="bi bi-plus-lg"></i>
+              <span>Agregar</span>
+            </Button>
+          </Form>
+        )}
+      </Modal.Body>
+      <Modal.Footer
+        className="bg-light border-0 py-2 px-4"
+        style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
+      >
+        <Button
+          size="sm"
+          onClick={guardarYCerrar}
+          disabled={guardando}
+          className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+          style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
+        >
+          <i className="bi bi-check-lg"></i>
+          <span>Guardar</span>
+        </Button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
+
+/**
  * La tabla de chequeo de un sistema de Manitous › General (Motor, Torre…) en
  * una cosecha (06/10/2026): ítem, OK, con problema y los repuestos,
  * que se piden a Compras desde la fila.
@@ -84,6 +305,12 @@ function CirculoOk({ marcado, onClick, deshabilitado, titulo, tamano = 18 }) {
  * el Excel único de la página. El filtro también es de la página (`filtro`):
  * con uno puesto, un sistema sin filas que pasen no se muestra. Con `plegado`
  * se ve solo el título; tocarlo (o la flecha) llama a `onPlegar`.
+ *
+ * Con `onEstadoIngreso` (10/10/2026, solo en las Manitou) el título lleva
+ * "(estado ingreso)": un modal con las tareas de los problemas con que llegó
+ * la máquina en ese sistema, cada una con su círculo de solucionado.
+ * `estadoIngreso` es lo guardado ({ tareas }) y cada cambio se le pasa a
+ * `onEstadoIngreso`.
  */
 export default function ChequeosManitou({
   embebido = false,
@@ -94,6 +321,8 @@ export default function ChequeosManitou({
   filtro,
   plegado = false,
   onPlegar,
+  estadoIngreso,
+  onEstadoIngreso,
 }) {
   const { cosecha: param, unidad, sistema: sistemaParam } = useParams();
   const idSistema = sistemaProp ?? sistemaParam;
@@ -113,6 +342,13 @@ export default function ChequeosManitou({
   // El modal del ítem (alta o edición).
   const [modalItem, setModalItem] = useState(null); // { fila?, item, descripcion }
   const [guardando, setGuardando] = useState(false);
+  // La fila con el modal de reparaciones abierto (su id).
+  const [filaReparaciones, setFilaReparaciones] = useState(null);
+  // El modal del estado de ingreso y la tarea que se está escribiendo.
+  const [modalIngreso, setModalIngreso] = useState(false);
+  const [nuevaTareaIngreso, setNuevaTareaIngreso] = useState("");
+  // La tarea de ingreso que se corrige en su renglón: { id, texto }.
+  const [editandoIngreso, setEditandoIngreso] = useState(null);
   // Lo mandado a cotizar, por repuesto: { [repuestoId]: estado }.
   const [cotizaciones, setCotizaciones] = useState(cotizacionesIniciales ?? {});
   // El filtro de arriba (en General no hay: no se chequea).
@@ -211,8 +447,88 @@ export default function ChequeosManitou({
   };
   // General no lleva OK ni Estado. La descripción del ítem va en
 // las dos (en las Manitou, la copiada de General).
-  const columnas = esGeneral ? 5 : 7;
+  const columnas = esGeneral ? 5 : 8;
   const nombreUnidad = esGeneral ? "Manitous General" : `Manitou ${unidad}`;
+
+  // Las reparaciones de una fila (11/10/2026), solo en las Manitou: el +
+  // abre el modal y, con alguna cargada, el ojo (que se abre aun sin
+  // permiso). Se guarda el id, así el modal se ve al día con cada cambio.
+  const filaConReparaciones = filaReparaciones ? filas.find((f) => f._id === filaReparaciones) : null;
+  const guardarReparaciones = (lista) => cambiar(filaConReparaciones, { reparaciones: lista });
+
+  // ── Estado de ingreso ──
+  // Las tareas con los problemas que trajo la máquina, cada una con su
+  // círculo de solucionado. Cada cambio guarda la lista entera.
+  const tareasIngreso = estadoIngreso?.tareas ?? [];
+  const pendientesIngreso = tareasIngreso.filter((t) => !t.solucionado).length;
+
+  const guardarTareasIngreso = async (tareas) => {
+    setGuardando(true);
+    try {
+      const doc = await api.put("/ingresos-sanpablo/estado-ingreso", { cosecha, seccion, sistema: idSistema, tareas });
+      onEstadoIngreso(doc);
+      return true;
+    } catch (err) {
+      error("No se pudo guardar", err);
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const agregarTareaIngreso = async (e) => {
+    e?.preventDefault();
+    if (!nuevaTareaIngreso.trim()) return;
+    if (await guardarTareasIngreso([...tareasIngreso, { texto: nuevaTareaIngreso, solucionado: false }])) {
+      setNuevaTareaIngreso("");
+    }
+  };
+
+  // Guardar: las tareas, los círculos y los borrados ya se guardaron al
+  // tocarlos; acá se guarda lo que haya quedado pendiente, y se cierra.
+  const guardarIngreso = async () => {
+    // Lo que quedó a medio editar o escrito sin Agregar, en un solo guardado.
+    let tareas = tareasIngreso;
+    if (editandoIngreso?.texto.trim()) {
+      tareas = tareas.map((x) => (x._id === editandoIngreso.id ? { ...x, texto: editandoIngreso.texto } : x));
+    }
+    if (nuevaTareaIngreso.trim()) tareas = [...tareas, { texto: nuevaTareaIngreso, solucionado: false }];
+    if (!sinEditar && tareas !== tareasIngreso) {
+      if (!(await guardarTareasIngreso(tareas))) return;
+      setNuevaTareaIngreso("");
+    }
+    setEditandoIngreso(null);
+    setModalIngreso(false);
+    if (!sinEditar) {
+      Swal.fire({ icon: "success", title: "Guardado", timer: 1500, showConfirmButton: false, width: "300px" });
+    }
+  };
+
+  const guardarEdicionIngreso = async (e) => {
+    e?.preventDefault();
+    if (!editandoIngreso.texto.trim()) return;
+    const tareas = tareasIngreso.map((x) => (x._id === editandoIngreso.id ? { ...x, texto: editandoIngreso.texto } : x));
+    if (await guardarTareasIngreso(tareas)) setEditandoIngreso(null);
+  };
+
+  const alternarTareaIngreso = (t) =>
+    guardarTareasIngreso(tareasIngreso.map((x) => (x._id === t._id ? { ...x, solucionado: !x.solucionado } : x)));
+
+  const borrarTareaIngreso = async (t) => {
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: "¿Borrar la tarea?",
+      text: t.texto,
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+    });
+    if (!isConfirmed) return;
+    guardarTareasIngreso(tareasIngreso.filter((x) => x._id !== t._id));
+  };
 
   // El OK a mano, solo sin problemas: con problemas se marca resolviéndolos.
   const marcarOk = (f) => cambiar(f, { chequeado: !f.chequeado });
@@ -353,6 +669,34 @@ export default function ChequeosManitou({
               </div>
             </div>
           )}
+          {/* El estado de ingreso: rojo con tareas sin solucionar, verde con
+              todas solucionadas, gris sin cargar. No pliega el sistema. */}
+          {embebido && onEstadoIngreso && (
+            <button
+              type="button"
+              className="btn btn-link p-0 text-decoration-none fw-semibold"
+              onClick={(e) => {
+                e.stopPropagation();
+                setNuevaTareaIngreso("");
+                setEditandoIngreso(null);
+                setModalIngreso(true);
+              }}
+              title={
+                tareasIngreso.length === 0
+                  ? "Cargar los problemas con que ingresó"
+                  : pendientesIngreso
+                    ? `${pendientesIngreso} sin solucionar de ${tareasIngreso.length}`
+                    : "Todo solucionado"
+              }
+              style={{
+                fontSize: "0.74rem",
+                lineHeight: 1,
+                color: tareasIngreso.length === 0 ? "#64748b" : pendientesIngreso ? "#b91c1c" : VERDE_OK,
+              }}
+            >
+              (estado ingreso)
+            </button>
+          )}
           <div className="ms-auto" />
           {/* Embebida: la flecha de agrupar/desplegar. */}
           {embebido && (
@@ -417,10 +761,12 @@ export default function ChequeosManitou({
                 {/* En General (la plantilla) no se chequea: solo ítem y repuestos.
                     La columna Tareas (la lista de problemas) se sacó el
                     10/10/2026. */}
+                {!esGeneral && <th style={{ ...thCentro, width: "96px" }}>Detalle reparación</th>}
                 {!esGeneral && <th style={{ ...thCentro, width: "44px" }}>OK</th>}
-                <th style={{ ...thCentro, width: "72px" }}>Repuestos</th>
+                {/* La línea fuerte separa lo del chequeo de lo de los repuestos. */}
+                <th className="col-corte" style={{ ...thCentro, width: "72px" }}>Repuestos</th>
                 {!esGeneral && <th style={{ ...thCentro, width: "108px" }}>Estado</th>}
-                <th style={{ ...thCentro, width: "64px" }}></th>
+                <th style={{ ...thCentro, width: esGeneral ? "64px" : "76px" }}></th>
               </tr>
             </thead>
             <tbody>
@@ -453,6 +799,31 @@ export default function ChequeosManitou({
                     </td>
                     {!esGeneral && (
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
+                        {/* Escrita, el ojo se abre aun sin permiso. */}
+                        <div className="d-flex justify-content-center align-items-center">
+                          {f.no_aplica ? (
+                            <Raya />
+                          ) : f.reparaciones?.length ? (
+                            <BotonAccion
+                              icono="bi-eye"
+                              titulo="Ver el detalle de la reparación"
+                              variante="primary"
+                              onClick={() => setFilaReparaciones(f._id)}
+                            />
+                          ) : (
+                            <BotonAccion
+                              icono="bi-plus-lg"
+                              titulo={sinEditar ? "Sin permiso para editar" : "Escribir el detalle de la reparación"}
+                              variante="success"
+                              onClick={() => setFilaReparaciones(f._id)}
+                              deshabilitado={sinEditar}
+                            />
+                          )}
+                        </div>
+                      </td>
+                    )}
+                    {!esGeneral && (
+                      <td style={{ ...tdCentro, padding: "3px 5px" }}>
                         {/* Lo que no aplica a esta Manitou no se chequea. */}
                         {!f.no_aplica && (
                           <CirculoOk
@@ -470,12 +841,15 @@ export default function ChequeosManitou({
                         )}
                       </td>
                     )}
-                    <td style={{ ...tdCentro, padding: "3px 5px" }}>
+                    <td className="col-corte" style={{ ...tdCentro, padding: "3px 5px" }}>
                       {/* Solo el botón: los repuestos tienen su hoja. Con
                           repuestos, el + pasa a ser el ojo, que se puede abrir
                           aun sin permiso. */}
                       <div className="d-flex justify-content-center align-items-center">
-                        {f.repuestos?.length ? (
+                        {/* Lo que no aplica no lleva repuestos ni estado. */}
+                        {f.no_aplica ? (
+                          <Raya />
+                        ) : f.repuestos?.length ? (
                           <BotonAccion
                             icono="bi-eye"
                             titulo="Ver los repuestos"
@@ -497,7 +871,7 @@ export default function ChequeosManitou({
                     </td>
                     {!esGeneral && (
                       <td style={tdCentro}>
-                        {estadoDe(f) ? (
+                        {!f.no_aplica && estadoDe(f) ? (
                           <span
                             className="px-2 rounded-1"
                             style={{
@@ -517,8 +891,9 @@ export default function ChequeosManitou({
                     )}
                     <td style={tdCentro}>
                       {/* En General se edita y se borra (y se copia a las
-                          Manitou); en una Manitou solo se borra una fila que
-                          quedó suelta al borrarse la de General. */}
+                          Manitou); en una Manitou se marca "no aplica" (10/10/2026) y solo
+                          se borra una fila que quedó suelta al borrarse la de
+                          General. */}
                       <div className="d-flex justify-content-center align-items-center" style={{ gap: "6px" }}>
                         {esGeneral && (
                           <BotonAccion
@@ -528,6 +903,26 @@ export default function ChequeosManitou({
                             onClick={() => setModalItem({ fila: f, item: f.item, descripcion: f.descripcion || "" })}
                             deshabilitado={sinEditar}
                           />
+                        )}
+                        {!esGeneral && (
+                          // "N/A" escrito, más claro que un ícono: lleno
+                          // cuando la tarea no aplica.
+                          <button
+                            type="button"
+                            onClick={() => cambiar(f, { no_aplica: !f.no_aplica })}
+                            disabled={sinEditar}
+                            className={`btn btn-sm ${f.no_aplica ? "btn-warning" : "btn-outline-secondary"} rounded-2 p-0`}
+                            style={{ width: "34px", height: "24px", fontSize: "0.66rem", fontWeight: 700, lineHeight: 1 }}
+                            title={
+                              sinEditar
+                                ? "Sin permiso para editar"
+                                : f.no_aplica
+                                  ? "No aplica a esta Manitou. Tocá para que vuelva a aplicar"
+                                  : "Marcar que no aplica a esta Manitou"
+                            }
+                          >
+                            N/A
+                          </button>
                         )}
                         {(esGeneral || !f.origen) && (
                           <BotonAccion
@@ -547,6 +942,144 @@ export default function ChequeosManitou({
           </Table>
         </div>
       </Container>
+
+      <ModalReparaciones
+        fila={filaConReparaciones}
+        onHide={() => setFilaReparaciones(null)}
+        onGuardar={guardarReparaciones}
+        sinEditar={sinEditar}
+        encabezado={encabezadoModal("bi-tools", `Detalle reparación · ${filaConReparaciones?.item ?? ""}`)}
+      />
+
+      {/* Modal Estado de ingreso: las tareas, cada una con su círculo de
+          solucionado y su borrar, y el renglón para sumar otra. */}
+      <Modal
+        show={modalIngreso}
+        onHide={() => setModalIngreso(false)}
+        centered
+        size="lg"
+        contentClassName="border-0 shadow-lg rounded-4"
+      >
+        {encabezadoModal("bi-clipboard2-pulse", `Estado de ingreso · ${sistema.titulo}`)}
+        <Modal.Body className="p-4">
+          <div className="text-secondary small mb-2">Problemas que trajo la máquina cuando se la ingresó.</div>
+          <Table className="mb-0 tabla-informe" style={{ width: "100%", border: "1px solid #cbd5e1" }}>
+            <thead>
+              <tr>
+                <th style={{ ...thCentro, width: "36px" }}>#</th>
+                <th style={th}>Tarea</th>
+                <th style={{ ...thCentro, width: "96px" }}>Solucionado</th>
+                {!sinEditar && <th style={{ ...thCentro, width: "72px" }}></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {tareasIngreso.length === 0 ? (
+                <tr>
+                  <td colSpan={sinEditar ? 3 : 4} className="text-center text-muted py-3" style={td}>
+                    Sin tareas.
+                  </td>
+                </tr>
+              ) : (
+                tareasIngreso.map((t, i) => (
+                  <tr key={t._id}>
+                    <td style={{ ...tdCentro, color: "#94a3b8" }}>{i + 1}</td>
+                    <td style={{ ...td, whiteSpace: "pre-wrap" }}>
+                      {editandoIngreso?.id === t._id ? (
+                        <Form.Control
+                          className="rounded-3"
+                          size="sm"
+                          style={campo}
+                          value={editandoIngreso.texto}
+                          onChange={(e) => setEditandoIngreso({ ...editandoIngreso, texto: e.target.value })}
+                          onKeyDown={(e) => e.key === "Enter" && guardarEdicionIngreso(e)}
+                          autoFocus
+                        />
+                      ) : (
+                        t.texto
+                      )}
+                    </td>
+                    <td style={{ ...tdCentro, padding: "3px 5px" }}>
+                      <CirculoOk
+                        marcado={t.solucionado}
+                        onClick={() => alternarTareaIngreso(t)}
+                        deshabilitado={sinEditar || guardando}
+                        titulo={t.solucionado ? "Solucionado" : "Marcar como solucionado"}
+                      />
+                    </td>
+                    {!sinEditar && (
+                      <td style={tdCentro}>
+                        {/* Lápiz y borrar; editando, guardar y cancelar. */}
+                        <div className="d-flex justify-content-center" style={{ gap: "6px" }}>
+                          {editandoIngreso?.id === t._id ? (
+                            <>
+                              <BotonAccion
+                                icono="bi-check-lg"
+                                titulo="Guardar"
+                                variante="success"
+                                onClick={() => guardarEdicionIngreso()}
+                                deshabilitado={guardando || !editandoIngreso.texto.trim()}
+                              />
+                              <BotonAccion icono="bi-x-lg" titulo="Cancelar" onClick={() => setEditandoIngreso(null)} />
+                            </>
+                          ) : (
+                            <>
+                              <BotonAccion
+                                icono="bi-pencil"
+                                titulo="Editar la tarea"
+                                variante="primary"
+                                onClick={() => setEditandoIngreso({ id: t._id, texto: t.texto })}
+                              />
+                              <BotonAccion icono="bi-trash" titulo="Borrar" variante="danger" onClick={() => borrarTareaIngreso(t)} />
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
+          {!sinEditar && (
+            <Form onSubmit={agregarTareaIngreso} className="d-flex gap-2 mt-3">
+              <Form.Control
+                className="rounded-3"
+                size="sm"
+                style={campo}
+                value={nuevaTareaIngreso}
+                placeholder="Tarea"
+                onChange={(e) => setNuevaTareaIngreso(e.target.value)}
+                autoFocus
+              />
+              <Button
+                size="sm"
+                type="submit"
+                disabled={guardando || !nuevaTareaIngreso.trim()}
+                className="rounded-3 px-3 d-flex align-items-center gap-1"
+                style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600, whiteSpace: "nowrap" }}
+              >
+                <i className="bi bi-plus-lg"></i>
+                <span>Agregar</span>
+              </Button>
+            </Form>
+          )}
+        </Modal.Body>
+        <Modal.Footer
+          className="bg-light border-0 py-2 px-4"
+          style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
+        >
+          <Button
+            size="sm"
+            onClick={guardarIngreso}
+            disabled={guardando}
+            className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+            style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
+          >
+            <i className="bi bi-check-lg"></i>
+            <span>Guardar</span>
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Modal Ítem (nuevo o editar) */}
       <Modal

@@ -287,20 +287,24 @@ export default function RepuestosChequeoManitou() {
         </td>
         {/* El C.C. es el de la Manitou; General no lleva. */}
         {!esGeneral && <td style={tdCentro}>{unidad}</td>}
-        <td style={soloCant ? tdCentro : { ...td, padding: "3px 4px" }}>
-          {soloCant ? (
-            form.urgencia
-          ) : (
-            <Form.Select {...control} value={form.urgencia} onChange={(e) => cambiar("urgencia", e.target.value)} required>
-              <option value="">Urgencia</option>
-              {URGENCIAS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
-                </option>
-              ))}
-            </Form.Select>
-          )}
-        </td>
+        {/* General no muestra la urgencia (11/10/2026): sale Baja, la de
+            REPUESTO_INIT, o la que ya tenía. */}
+        {!esGeneral && (
+          <td style={soloCant ? tdCentro : { ...td, padding: "3px 4px" }}>
+            {soloCant ? (
+              form.urgencia
+            ) : (
+              <Form.Select {...control} value={form.urgencia} onChange={(e) => cambiar("urgencia", e.target.value)} required>
+                <option value="">Urgencia</option>
+                {URGENCIAS.map((u) => (
+                  <option key={u} value={u}>
+                    {u}
+                  </option>
+                ))}
+              </Form.Select>
+            )}
+          </td>
+        )}
         <td style={soloCant ? td : { ...td, padding: "3px 4px" }}>
           {soloCant ? (
             form.descripcion || <Raya />
@@ -359,7 +363,7 @@ export default function RepuestosChequeoManitou() {
   const sinPrecio = repuestos.filter((r) => totalDe(r) === null).length;
 
   // General no lleva C.C., estado, precios ni total: es la plantilla.
-  const columnas = esGeneral ? 7 : 11;
+  const columnas = esGeneral ? 6 : 11;
   const nombreUnidad = esGeneral ? "Manitous General" : `Manitou ${unidad}`;
 
   // La planilla sigue la tabla: mismas columnas y mismo orden.
@@ -372,7 +376,6 @@ export default function RepuestosChequeoManitou() {
             { titulo: "Repuesto", ancho: 32 },
             { titulo: "Cant.", ancho: 8 },
             { titulo: "Un.", ancho: 8 },
-            { titulo: "Urgencia", ancho: 11 },
             { titulo: "Descripción", ancho: 40 },
           ]
         : [
@@ -388,7 +391,7 @@ export default function RepuestosChequeoManitou() {
             { titulo: "Total sin IVA", ancho: 16, moneda: true },
           ],
       filas: esGeneral
-        ? repuestos.map((r, idx) => [idx + 1, r.nombre_repuesto, r.cant, r.unidad, r.urgencia, r.descripcion || ""])
+        ? repuestos.map((r, idx) => [idx + 1, r.nombre_repuesto, r.cant, r.unidad, r.descripcion || ""])
         : repuestos
             .map((r, idx) => [
               idx + 1,
@@ -512,7 +515,7 @@ export default function RepuestosChequeoManitou() {
                 <th style={{ ...thCentro, width: "56px" }}>Cant.</th>
                 <th style={{ ...thCentro, width: "56px" }}>Un.</th>
                 {!esGeneral && <th style={{ ...thCentro, width: "72px" }}>C.C.</th>}
-                <th style={{ ...thCentro, width: "86px" }}>Urgencia</th>
+                {!esGeneral && <th style={{ ...thCentro, width: "86px" }}>Urgencia</th>}
                 <th style={{ ...th, minWidth: "220px" }}>Descripción</th>
                 {!esGeneral && (
                   <>
@@ -543,7 +546,7 @@ export default function RepuestosChequeoManitou() {
                         <td style={tdCentro}>{r.cant}</td>
                         <td style={tdCentro}>{r.unidad}</td>
                         {!esGeneral && <td style={tdCentro}>{r.cc}</td>}
-                        <td style={tdCentro}>{r.urgencia}</td>
+                        {!esGeneral && <td style={tdCentro}>{r.urgencia}</td>}
                         <td style={td}>{r.descripcion || <Raya />}</td>
                         {!esGeneral && (
                           <>

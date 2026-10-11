@@ -973,7 +973,7 @@ function ServicesUltimoService() {
           <Modal.Title className="fs-6 fw-bold mb-0">Cargar Service</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4 bg-white">
-          <Form onSubmit={handleSubmit(onSubmit)} className="d-flex flex-column align-items-center">
+          <Form onSubmit={handleSubmit(onSubmit)} className="d-flex flex-column align-items-center form-placeholder-suave">
             <div style={{ width: "100%", maxWidth: "280px" }}>
               <Form.Group className="mb-2.5">
                 <Form.Label className="fw-semibold small text-dark mb-1">Fecha</Form.Label>
@@ -991,7 +991,7 @@ function ServicesUltimoService() {
                 <Form.Label className="fw-semibold small text-dark mb-1">Camioneta</Form.Label>
                 <Form.Select
                   size="sm"
-                  className="rounded-3"
+                  className={`rounded-3 ${camionetaId ? "" : "select-vacio"}`}
                   {...register("camioneta", { required: "Seleccioná una camioneta" })}
                   isInvalid={!!errors.camioneta}
                 >

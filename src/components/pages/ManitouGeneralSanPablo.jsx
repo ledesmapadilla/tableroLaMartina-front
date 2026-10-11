@@ -48,6 +48,13 @@ const tarjetaPresupuesto = {
 // para que siga entrando sin scroll.
 const ANCHO_GENERAL = "min(500px, calc((100vh - 200px) * 0.8))";
 
+// En qué está la Manitou (11/10/2026): un círculo por estado, se marca uno
+// solo y tocar el marcado lo desmarca.
+const ESTADOS_MANITOU = [
+  { id: "reparacion", titulo: "En reparación", color: "#ea580c" },
+  { id: "espera", titulo: "En espera", color: "#2563eb" },
+];
+
 function ManitouGeneralSanPablo() {
   const { cosecha: param, unidad } = useParams();
   // General (la plantilla) o una Manitou: cada una con sus responsables.
@@ -71,6 +78,26 @@ function ManitouGeneralSanPablo() {
       .catch(() => setResponsables([]));
   }, [cosecha, seccion, unidad]);
 
+  // El estado de la Manitou en la cosecha (no en General).
+  const [estadoManitou, setEstadoManitou] = useState(null);
+  useEffect(() => {
+    if (esGeneral || !unidadManitouValida(unidad)) return;
+    api
+      .get(`/ingresos-sanpablo/estado-manitou?cosecha=${cosecha}`)
+      .then((lista) => setEstadoManitou((Array.isArray(lista) ? lista : []).find((d) => d.seccion === seccion)?.estado ?? null))
+      .catch(() => setEstadoManitou(null));
+  }, [esGeneral, unidad, cosecha, seccion]);
+
+  const marcarEstado = async (id) => {
+    const nuevo = estadoManitou === id ? null : id;
+    try {
+      const doc = await api.put("/ingresos-sanpablo/estado-manitou", { cosecha, seccion, estado: nuevo });
+      setEstadoManitou(doc.estado ?? null);
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
+    }
+  };
+
   // ── Desplegada (09/10/2026) ──
   // Todos los sistemas en una página: se traen juntos y las cotizaciones
   // una sola vez.
@@ -79,8 +106,12 @@ function ManitouGeneralSanPablo() {
   const [datos, setDatos] = useState(null); // { filas: { [sistema]: [] }, cotizaciones }
   // Un solo filtro para todos los sistemas.
   const [filtro, setFiltro] = useState(FILTRO_CHEQUEO_VACIO);
-  // Los sistemas agrupados (solo el título), por id.
-  const [plegados, setPlegados] = useState(() => new Set());
+  // Los sistemas agrupados (solo el título), por id. Se abre con todos
+  // agrupados (10/10/2026), salvo el sistema al que se vuelve desde sus
+  // repuestos (#sistema).
+  const [plegados, setPlegados] = useState(
+    () => new Set(SISTEMAS_MANITOU.map((s) => s.id).filter((id) => `#${id}` !== window.location.hash))
+  );
   const plegar = (id) =>
     setPlegados((prev) => {
       const nuevo = new Set(prev);
@@ -89,9 +120,20 @@ function ManitouGeneralSanPablo() {
       return nuevo;
     });
 
+  // El estado de ingreso de cada sistema (10/10/2026): { [sistema]: doc }.
+  const [estadosIngreso, setEstadosIngreso] = useState({});
+  useEffect(() => {
+    if (!desplegada || esGeneral) return;
+    api
+      .get(`/ingresos-sanpablo/estado-ingreso?cosecha=${cosecha}&seccion=${seccion}`)
+      .then((lista) => setEstadosIngreso(Object.fromEntries((Array.isArray(lista) ? lista : []).map((d) => [d.sistema, d]))))
+      .catch(() => setEstadosIngreso({}));
+  }, [desplegada, esGeneral, cosecha, seccion]);
+  const alCambiarEstadoIngreso = useCallback((doc) => setEstadosIngreso((prev) => ({ ...prev, [doc.sistema]: doc })), []);
+
   useEffect(() => {
     if (!desplegada) return;
-    // Un solo pedido con los ocho sistemas (antes era uno por sistema).
+    // Un solo pedido con todos los sistemas (antes era uno por sistema).
     Promise.all([
       api.get(`/ingresos-sanpablo/chequeos?cosecha=${cosecha}&seccion=${seccion}`).catch(() => []),
       api.get("/presupuestos-reparaciones").catch(() => []),
@@ -158,7 +200,7 @@ function ManitouGeneralSanPablo() {
       className={`d-flex align-items-start justify-content-between gap-3 pb-3 ${desplegada ? "mb-2" : "mb-4"}`}
       style={{ maxWidth: ancho, width: "100%", borderBottom: `3px solid ${VERDE}` }}
     >
-      <div className="d-flex align-items-center gap-3">
+      <div className="d-flex align-items-center gap-3" style={{ flex: "1 1 0", minWidth: 0 }}>
         <div
           className="d-flex align-items-center justify-content-center"
           style={{
@@ -182,9 +224,44 @@ function ManitouGeneralSanPablo() {
         </div>
       </div>
 
+      {/* En reparación / En espera, centrados entre el título y los botones: lleno el marcado. */}
+      {!esGeneral && (
+        <div className="d-flex align-items-center gap-3 align-self-center flex-shrink-0">
+          {ESTADOS_MANITOU.map((e) => {
+            const marcado = estadoManitou === e.id;
+            return (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => marcarEstado(e.id)}
+                disabled={sinEditar}
+                className="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1"
+                title={sinEditar ? "Sin permiso para editar" : marcado ? "Desmarcar" : `Marcar ${e.titulo.toLowerCase()}`}
+                style={{ fontSize: "0.82rem", fontWeight: marcado ? 700 : 600, color: marcado ? e.color : "#64748b", opacity: 1 }}
+              >
+                <span
+                  className="d-inline-flex align-items-center justify-content-center"
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    borderRadius: "50%",
+                    border: `2px solid ${marcado ? e.color : "#94a3b8"}`,
+                    backgroundColor: marcado ? e.color : "#fff",
+                    transition: "background-color 0.15s, border-color 0.15s",
+                  }}
+                >
+                  {marcado && <i className="bi bi-check-lg" style={{ color: "#fff", fontSize: "0.7rem", lineHeight: 1 }}></i>}
+                </span>
+                <span>{e.titulo}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Los botones y, debajo, los responsables cargados. Desplegada, un
           solo Excel con todos los sistemas. */}
-      <div className="d-flex flex-column align-items-end gap-1">
+      <div className="d-flex flex-column align-items-end gap-1" style={{ flex: "1 1 0", minWidth: 0 }}>
         <div className="d-flex gap-2">
           {desplegada && (
             <Button
@@ -369,13 +446,15 @@ function ManitouGeneralSanPablo() {
                   filtro={filtro}
                   plegado={plegados.has(s.id)}
                   onPlegar={() => plegar(s.id)}
+                  estadoIngreso={estadosIngreso[s.id]}
+                  onEstadoIngreso={esGeneral ? undefined : alCambiarEstadoIngreso}
                 />
               ))
             )}
           </div>
         </div>
       ) : (
-        /* Las 8 tarjetas en dos filas de 4, sin scroll, a la mitad del tamaño
+        /* Las 7 tarjetas en dos filas (4 y 3), sin scroll, a la mitad del tamaño
            de las de la cosecha. Arriba, bien visible, que es Manitou, y los
            responsables. */
         <TarjetasSanPablo

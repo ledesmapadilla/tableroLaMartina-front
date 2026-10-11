@@ -103,6 +103,23 @@ const SECCIONES = [
       brillo: 'rgba(16,185,129,0.25)',
     },
   },
+  {
+    // Por ahora solo para nacho (11/10/2026): va por usuario y no por
+    // permiso hasta que se acomode en la tabla de Roles.
+    id: 'resultados',
+    titulo: 'Resultados',
+    subtitulo: 'Lo gastado por taller y por C.C.',
+    icono: 'bi bi-graph-up-arrow',
+    destino: '/compras/resultados',
+    soloUsuario: 'nacho',
+    colores: {
+      fondo: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)',
+      fondoHover: 'linear-gradient(135deg, #451a03 0%, #78350f 100%)',
+      borde: '#fbbf24',
+      icono: '#fde68a',
+      brillo: 'rgba(251,191,36,0.25)',
+    },
+  },
 ]
 
 export default function Inicio() {
@@ -111,7 +128,7 @@ export default function Inicio() {
   const { user } = useAuth()
   const [hovered, setHovered] = useState(null)
 
-  const visibles = SECCIONES.filter((s) => puede(s.permiso))
+  const visibles = SECCIONES.filter((s) => (s.soloUsuario ? user?.usuario === s.soloUsuario : puede(s.permiso)))
 
   // La sección de quien está logueado va con su color y el resto en gris, para
   // que cada uno reconozca la suya de entrada (utils/seccionPropia.js). Si no
