@@ -192,7 +192,21 @@ function ManitouGeneralSanPablo() {
     if (await guardarLista([...responsables, nombre])) cerrar();
   };
 
-  const quitar = (i) => guardarLista(responsables.filter((_, j) => j !== i));
+  // Sacar a un responsable se confirma (11/10/2026): es sacar algo cargado.
+  const quitar = async (i) => {
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: "¿Quitar el responsable?",
+      text: responsables[i],
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Sí, quitar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+    });
+    if (isConfirmed) guardarLista(responsables.filter((_, j) => j !== i));
+  };
 
   // Arriba, bien visible, que es Manitou, y los responsables.
   const encabezado = (ancho) => (

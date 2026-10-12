@@ -6,9 +6,7 @@ import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonVolver } from './estilos'
 import { pesos } from './aceites'
-import { useAuth } from '../../context/AuthContext'
-import Error404 from '../pages/Error404'
-import { USUARIO_RESULTADOS, fechaCorta } from './accesoResultados'
+import { fechaCorta } from './accesoResultados'
 
 const TALLERES = { berdina: 'Berdina', sanpablo: 'San Pablo' }
 
@@ -19,12 +17,6 @@ const TALLERES = { berdina: 'Berdina', sanpablo: 'San Pablo' }
  * Tocar la OP la abre.
  */
 export default function ResultadosDetalle() {
-  const { user } = useAuth()
-  if (user?.usuario !== USUARIO_RESULTADOS) return <Error404 />
-  return <Detalle />
-}
-
-function Detalle() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const consulta = params.toString()

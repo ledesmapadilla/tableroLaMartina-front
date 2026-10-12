@@ -287,7 +287,7 @@ function LayoutDesktop() {
               <Route path="/compras/gerencia" element={<RutaProtegida><Gerencia /></RutaProtegida>} />
               <Route path="/compras/gerencia/historial" element={<RutaProtegida><GerenciaHistorial /></RutaProtegida>} />
 
-              {/* Resultados (11/10/2026): por ahora solo nacho, lo controla la pantalla. */}
+              {/* Resultados (11/10/2026): permiso compras.resultados, regla en permisosRutas.js. */}
               <Route path="/compras/resultados" element={<RutaProtegida><Resultados /></RutaProtegida>} />
               <Route path="/compras/resultados/detalle" element={<RutaProtegida><ResultadosDetalle /></RutaProtegida>} />
 

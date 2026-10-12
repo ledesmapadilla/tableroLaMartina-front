@@ -6,9 +6,7 @@ import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, th, thCentro, td, tdCentro } from './formato'
 import { Raya, FiltroTexto, FiltroSelect, BotonLimpiar } from './estilos'
 import { pesos } from './aceites'
-import { useAuth } from '../../context/AuthContext'
-import Error404 from '../pages/Error404'
-import { USUARIO_RESULTADOS, fechaCorta } from './accesoResultados'
+import { fechaCorta } from './accesoResultados'
 
 // "AAAA-MM-DD" de una fecha, en hora local.
 const iso = (d) =>
@@ -41,15 +39,9 @@ const FILTROS_INIT = { periodo: 'Este mes', ...rangoDe('Este mes'), cc: '' }
  * Compras › Resultados (11/10/2026): lo gastado en plata por CC y por taller
  * en un período. El gasto son las órdenes de pago, por su fecha; cada ítem
  * va al CC de su pedido (controllers/resultados.controller.js en el back).
- * Por ahora lo ve solo nacho; después pasa a la tabla de Roles.
+ * Quién la ve sale de la tabla de Roles (compras.resultados).
  */
 export default function Resultados() {
-  const { user } = useAuth()
-  if (user?.usuario !== USUARIO_RESULTADOS) return <Error404 />
-  return <TablaResultados />
-}
-
-function TablaResultados() {
   const navigate = useNavigate()
   // Los filtros van en la dirección: al volver del resumen de un valor quedan
   // como estaban. Sin nada en la dirección, los de arranque.

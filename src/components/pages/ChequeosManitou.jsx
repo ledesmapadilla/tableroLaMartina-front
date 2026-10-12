@@ -426,16 +426,18 @@ export default function ChequeosManitou({
   const borrar = async (fila) => {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
-      title: "¿Borrar el ítem?",
+      title: "¿Borrar la tarea?",
       text: esGeneral
         ? `${fila.item}. Se borra también de las Manitou, salvo donde tenga problemas o repuestos pedidos o mandados a cotizar.`
         : fila.repuestos?.length
           ? `${fila.item}. Los repuestos ya pedidos siguen en Compras.`
           : fila.item,
+      width: "320px",
       showCancelButton: true,
-      confirmButtonText: "Borrar",
+      confirmButtonText: "Sí, borrar",
       cancelButtonText: "Cancelar",
       confirmButtonColor: ROJO,
+      cancelButtonColor: "#64748b",
     });
     if (!isConfirmed) return;
     try {

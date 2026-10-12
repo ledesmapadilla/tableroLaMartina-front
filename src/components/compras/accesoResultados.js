@@ -4,8 +4,5 @@
 // Resultados.jsx al importar sin extensión, porque Windows no distingue
 // mayúsculas y Vite prueba .js antes que .jsx.
 
-// Por ahora Resultados es solo de nacho; el back también lo controla.
-export const USUARIO_RESULTADOS = 'nacho'
-
 // "AAAA-MM-DD" → "DD/MM/AAAA".
 export const fechaCorta = (s) => (s ? s.split('-').reverse().join('/') : '')
