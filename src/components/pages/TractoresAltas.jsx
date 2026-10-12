@@ -326,7 +326,7 @@ function TractoresAltas() {
       "Jorge Rosas",
       "Guillermo Bustos",
       "Carlos Chumiento",
-      "brandan alejandro",
+      "Brandan Alejandro",
       "Elio Rojas",
       "Kevin",
       "Victor",

@@ -86,7 +86,7 @@ const gruposInfo = [
   {
     numero: 4,
     label: "Grupo 4",
-    supervisor: "brandan alejandro",
+    supervisor: "Brandan Alejandro",
     bg: "linear-gradient(135deg, #581c87 0%, #6b21a8 100%)",
     hoverBg: "linear-gradient(135deg, #3b0764 0%, #581c87 100%)",
     accent: "#c084fc",
@@ -218,7 +218,7 @@ function TractoresReparaciones() {
     }
     const [masVisto] = [...cuenta.entries()].sort((a, b) => b[1] - a[1]);
     const nombre = masVisto ? masVisto[0] : g.supervisor || "";
-    // "brandan alejandro" → "Brandan Alejandro".
+    // Cada palabra con mayúscula, por si algún nombre quedó cargado en minúscula.
     return nombre.replace(/(^|\s)(\p{L})/gu, (m, esp, letra) => esp + letra.toUpperCase());
   };
 

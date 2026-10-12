@@ -7,7 +7,7 @@ const GRUPOS = {
   1: { label: "Grupo 1", supervisor: "Jorge Rosas" },
   2: { label: "Grupo 2", supervisor: "Guillermo Bustos" },
   3: { label: "Grupo 3", supervisor: "Carlos Chumiento" },
-  4: { label: "Grupo 4", supervisor: "brandan alejandro" },
+  4: { label: "Grupo 4", supervisor: "Brandan Alejandro" },
   5: { label: "Grupo 5", supervisor: "Elio Rojas" },
   6: { label: "Berdina", supervisor: "Kevin" },
   7: { label: "San Pablo", supervisor: "Victor" },

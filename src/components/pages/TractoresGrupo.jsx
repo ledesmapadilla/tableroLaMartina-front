@@ -55,7 +55,7 @@ const GRUPOS = {
   },
   4: {
     label: "Grupo 4",
-    supervisor: "brandan alejandro",
+    supervisor: "Brandan Alejandro",
     bg: "linear-gradient(135deg, #581c87 0%, #6b21a8 100%)",
     hoverBg: "linear-gradient(135deg, #3b0764 0%, #581c87 100%)",
     accent: "#c084fc",

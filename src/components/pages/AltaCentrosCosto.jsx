@@ -9,6 +9,10 @@ import { BORDO, BORDO_SUAVE, campo, th as thBase, td, tdCentro } from "../compra
 import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect } from "../compras/estilos";
 import { usePermisos } from "../../context/permisos";
 import { NOMBRES_EQUIPO, grupoDeEquipo, flotaDeEquipo } from "../../utils/equipos";
+import { UNIDADES_MANITOU } from "../../utils/sistemasManitou";
+
+const escaparHtml = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 // El verde de Producción y su clarito, para cuando la pantalla se abre ahí.
 const VERDE = "#1b4332";
@@ -158,6 +162,28 @@ export default function AltaCentrosCosto() {
     .slice()
     .sort((a, b) => (a === "Otros") - (b === "Otros") || a.localeCompare(b, "es"));
 
+  // Antes de cambiar el código de un CC: el back cuenta dónde está escrito
+  // (unidad, horómetros, historial, pedidos…) y se confirma, porque se
+  // reescribe en todos lados, también en lo cargado antes.
+  const confirmarRenombre = async (centro, nuevo) => {
+    const previa = await api.get(`/centros-costo/${centro._id}/renombre?cc=${encodeURIComponent(nuevo)}`);
+    const lista = previa.lugares.length
+      ? previa.lugares.map((l) => `<div>${l.label}: <b>${l.cantidad}</b></div>`).join("")
+      : "<div>No está escrito en ningún otro lado.</div>";
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: `¿Cambiar el CC ${escaparHtml(previa.viejo)} por ${escaparHtml(previa.nuevo)}?`,
+      html: `<div style="text-align:left">${lista}</div><div class="mt-2">Se cambia en todo el proyecto, también en lo cargado antes.</div>`,
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Sí, cambiar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#1e293b",
+      cancelButtonColor: "#64748b",
+    });
+    return isConfirmed;
+  };
+
   const guardar = async (e) => {
     e.preventDefault();
     const eraEdicion = Boolean(editando);
@@ -165,8 +191,13 @@ export default function AltaCentrosCosto() {
     // En un CC de Flota solo viajan los datos de Compras: el código y el
     // equipo quedan fijos y la descripción se edita en Flota. El grupo nunca
     // viaja: el back lo saca del equipo.
-    const datos = flotaEnEdicion ? { marca: limpio.marca, observaciones: limpio.observaciones } : limpio;
+    // El código sí viaja (12/10/2026): cambiarlo lo reescribe en todo el
+    // proyecto, y por eso antes se muestra qué se toca y se confirma.
+    const datos = flotaEnEdicion
+      ? { cc: limpio.cc, marca: limpio.marca, observaciones: limpio.observaciones }
+      : limpio;
     try {
+      if (eraEdicion && limpio.cc !== editando.cc && !(await confirmarRenombre(editando, limpio.cc))) return;
       if (eraEdicion) await api.put(`/centros-costo/${editando._id}`, datos);
       else await api.post("/centros-costo", datos);
       cerrar();
@@ -429,8 +460,8 @@ export default function AltaCentrosCosto() {
                 style={{ backgroundColor: "#f1f5f9", fontSize: "0.8rem", color: "#475569" }}
               >
                 <i className="bi bi-lock-fill me-1"></i>
-                Es un CC de {pantallaQueManda(editando)}: el código y el equipo quedan fijos y la descripción
-                se edita en {pantallaQueManda(editando)}. Acá se completan los datos de Compras.
+                Es un CC de {pantallaQueManda(editando)}: el equipo queda fijo y la descripción se edita en{" "}
+                {pantallaQueManda(editando)}. Si cambiás el código, se cambia en todo el proyecto.
               </div>
             )}
             {vaAFlota && (
@@ -455,7 +486,8 @@ export default function AltaCentrosCosto() {
                   value={form.cc}
                   onChange={(e) => setForm({ ...form, cc: e.target.value })}
                   maxLength={50}
-                  disabled={flotaEnEdicion}
+                  // Los de las Manitou están escritos en el programa.
+                  disabled={Boolean(editando) && UNIDADES_MANITOU.includes(editando.cc)}
                   required
                 />
               </Col>

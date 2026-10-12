@@ -37,7 +37,7 @@ const SUPERVISORES_POR_GRUPO = {
   1: "Jorge Rosas",
   2: "Guillermo Bustos",
   3: "Carlos Chumiento",
-  4: "brandan alejandro",
+  4: "Brandan Alejandro",
   5: "Elio Rojas",
 };
 

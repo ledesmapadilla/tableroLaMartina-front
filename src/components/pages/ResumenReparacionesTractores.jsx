@@ -56,7 +56,7 @@ const GRUPOS = {
   1: { label: "Grupo 1", supervisor: "Jorge Rosas", bgGradient: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)" },
   2: { label: "Grupo 2", supervisor: "Guillermo Bustos", bgGradient: "linear-gradient(135deg, #065f46 0%, #047857 100%)" },
   3: { label: "Grupo 3", supervisor: "Carlos Chumiento", bgGradient: "linear-gradient(135deg, #854d0e 0%, #a16207 100%)" },
-  4: { label: "Grupo 4", supervisor: "brandan alejandro", bgGradient: "linear-gradient(135deg, #581c87 0%, #6b21a8 100%)" },
+  4: { label: "Grupo 4", supervisor: "Brandan Alejandro", bgGradient: "linear-gradient(135deg, #581c87 0%, #6b21a8 100%)" },
   5: { label: "Grupo 5", supervisor: "Elio Rojas", bgGradient: "linear-gradient(135deg, #9a3412 0%, #c2410c 100%)" },
   6: { label: "Berdina", supervisor: "Kevin", bgGradient: "linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)" },
   7: { label: "San Pablo", supervisor: "Victor", bgGradient: "linear-gradient(135deg, #3f6212 0%, #4d7c0f 100%)" },

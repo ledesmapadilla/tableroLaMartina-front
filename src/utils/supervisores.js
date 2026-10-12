@@ -8,11 +8,12 @@ const SUPERVISORES_GRUPOS = [
   "Jorge Rosas",
   "Guillermo Bustos",
   "Carlos Chumiento",
-  "brandan alejandro",
+  "Brandan Alejandro",
   "Elio Rojas",
   "Kevin",
   "Victor",
   "Nahuel Dias",
+  "Vanegas",
 ];
 
 const ordenar = (lista) => [...lista].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
