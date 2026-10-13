@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { Button, Form, Modal } from "react-bootstrap";
+import { Button, Form, Modal, Table } from "react-bootstrap";
 import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
 import { usePermisos } from "../../context/permisos";
@@ -10,7 +10,15 @@ import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
 import { SISTEMAS_MANITOU, MANITOUS_DESPLEGADAS, seccionManitou, unidadManitouValida } from "../../utils/sistemasManitou";
 import ChequeosManitou from "./ChequeosManitou";
-import { exportarChequeoManitou, pasaFiltro, hayFiltro, FILTRO_CHEQUEO_VACIO } from "../../helpers/excelManitou";
+import {
+  exportarChequeoManitou,
+  exportarRepuestosManitou,
+  tareasConRepuestos,
+  pasaFiltro,
+  hayFiltro,
+  FILTRO_CHEQUEO_VACIO,
+} from "../../helpers/excelManitou";
+import { th as thBase, td } from "../compras/formato";
 import FiltroChequeoManitou from "../shared/FiltroChequeoManitou";
 import Error404 from "./Error404";
 
@@ -26,6 +34,16 @@ const COLOR = "#1e293b";
 const ANCHO = "min(500px, calc(100vh - 200px))";
 // La página desplegada: el ancho de la tabla de un sistema.
 const ANCHO_DESPLEGADA = "980px";
+const th = { ...thBase, backgroundColor: COLOR };
+const thCentro = { ...th, textAlign: "center" };
+
+// El color de cada estado de un repuesto en la tabla de Repuestos.
+const ESTADOS_REPUESTO = {
+  "Sin cotizar": { fondo: "#fee2e2", color: "#b91c1c" },
+  "Para cotizar": { fondo: "#e0e7ff", color: "#3730a3" },
+  Cotizado: { fondo: "#fef3c7", color: "#b45309" },
+  Pedido: { fondo: "#dcfce7", color: "#15803d" },
+};
 
 // Manitous › General o una Manitou: una tarjeta por sistema de la máquina
 // (06/10/2026; las Manitou desde el 09/10/2026, con lo copiado de General),
@@ -162,6 +180,25 @@ function ManitouGeneralSanPablo() {
       cotizaciones: datos.cotizaciones,
       general: esGeneral,
       filtro: esGeneral ? undefined : filtro,
+    });
+
+  // ── Repuestos (13/10/2026) ──
+  // Todos los repuestos de la Manitou en una tabla, por tarea, con su
+  // Excel. Sigue el filtro de la página, como el Excel de la página.
+  const [verRepuestos, setVerRepuestos] = useState(false);
+  const tareasRepuestos =
+    datos && !esGeneral
+      ? tareasConRepuestos(
+          SISTEMAS_MANITOU.map((s) => ({ sistema: s, filas: filasDeSistema(s.id) })),
+          datos.cotizaciones,
+          filtro
+        )
+      : [];
+  const exportarRepuestos = () =>
+    exportarRepuestosManitou({
+      titulo: `Repuestos — Manitou ${unidad} — Cosecha ${param}`,
+      archivo: `sanpablo_manitou_repuestos_${unidad}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      tareas: tareasRepuestos,
     });
 
   // Al volver de los repuestos (#sistema), a la tabla de ese sistema.
@@ -388,6 +425,112 @@ function ManitouGeneralSanPablo() {
     </Modal>
   );
 
+  // Repuestos: la tabla por tarea, cada repuesto con su estado, y el Excel.
+  const modalRepuestos = (
+    <Modal
+      show={verRepuestos}
+      onHide={() => setVerRepuestos(false)}
+      centered
+      size="lg"
+      scrollable
+      contentClassName="border-0 shadow-lg rounded-4"
+    >
+      <Modal.Header
+        closeButton
+        closeVariant="white"
+        style={{
+          backgroundColor: COLOR,
+          color: "#fff",
+          borderTopLeftRadius: "1rem",
+          borderTopRightRadius: "1rem",
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+        }}
+      >
+        <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
+          <i className="bi bi-gear-fill"></i>
+          <span>Repuestos · Manitou {unidad}</span>
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body className="p-3">
+        <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+          <span className="text-secondary" style={{ fontSize: "0.76rem" }}>
+            {hayFiltro(filtro) ? "Con los filtros de la página. " : ""}Los de cantidad 0 no salen: no hacen falta.
+          </span>
+          <Button
+            size="sm"
+            onClick={exportarRepuestos}
+            disabled={tareasRepuestos.length === 0}
+            className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1 flex-shrink-0"
+            style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.78rem", fontWeight: 600 }}
+            title="Exportar a Excel"
+          >
+            <i className="bi bi-file-earmark-excel-fill"></i>
+            <span>Excel</span>
+          </Button>
+        </div>
+        {tareasRepuestos.length === 0 ? (
+          <div className="text-center text-muted py-4" style={{ fontSize: "0.85rem" }}>
+            No hay repuestos cargados.
+          </div>
+        ) : (
+          <div className="rounded-3 bg-white" style={{ border: "1px solid #cbd5e1", overflow: "hidden" }}>
+            <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thCentro, width: "36px" }}>#</th>
+                  <th style={{ ...th, width: "30%" }}>Tarea</th>
+                  <th style={th}>Repuesto</th>
+                  <th style={{ ...thCentro, width: "70px" }}>Cant.</th>
+                  <th style={{ ...thCentro, width: "100px" }}>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Un renglón por repuesto; la tarea ocupa los de sus repuestos. */}
+                {tareasRepuestos.flatMap((t, idx) =>
+                  t.repuestos.map((r, i) => (
+                    <tr key={r._id}>
+                      {i === 0 && (
+                        <>
+                          <td rowSpan={t.repuestos.length} style={{ ...td, textAlign: "center", color: "#94a3b8" }}>
+                            {idx + 1}
+                          </td>
+                          <td rowSpan={t.repuestos.length} style={td}>
+                            <div className="fw-semibold">{t.tarea}</div>
+                            <div className="text-secondary" style={{ fontSize: "0.64rem" }}>
+                              {t.sistema.titulo}
+                            </div>
+                          </td>
+                        </>
+                      )}
+                      <td style={td}>{r.nombre_repuesto}</td>
+                      <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                        {r.cant} {r.unidad}
+                      </td>
+                      <td style={{ ...td, textAlign: "center" }}>
+                        <span
+                          className="px-1 rounded-1"
+                          style={{
+                            backgroundColor: ESTADOS_REPUESTO[r.estado]?.fondo,
+                            color: ESTADOS_REPUESTO[r.estado]?.color,
+                            fontSize: "0.62rem",
+                            fontWeight: 700,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {r.estado}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </Table>
+          </div>
+        )}
+      </Modal.Body>
+    </Modal>
+  );
+
   if (!unidadManitouValida(unidad)) return <Error404 />;
 
   return (
@@ -418,7 +561,7 @@ function ManitouGeneralSanPablo() {
             {/* Una línea: a la izquierda agrupar o desplegar todos los sistemas
                 (cada uno se agrupa también tocando su título), a la derecha
                 los filtros. */}
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
               <div className="d-flex gap-2">
                 <button
                   type="button"
@@ -439,7 +582,23 @@ function ManitouGeneralSanPablo() {
                   <span>Desplegar todo</span>
                 </button>
               </div>
-              {!esGeneral && <FiltroChequeoManitou valor={filtro} onChange={setFiltro} className="" />}
+              {/* A la derecha, el botón Repuestos y los filtros. */}
+              {!esGeneral && (
+                <div className="d-flex align-items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setVerRepuestos(true)}
+                    disabled={!datos}
+                    className="btn btn-sm rounded-3 px-2 py-0 d-flex align-items-center gap-1"
+                    style={{ height: "26px", fontSize: "0.74rem", fontWeight: 600, backgroundColor: COLOR, borderColor: COLOR, color: "#fff" }}
+                    title="Todos los repuestos de la Manitou, por tarea"
+                  >
+                    <i className="bi bi-gear-fill"></i>
+                    <span>Repuestos</span>
+                  </button>
+                  <FiltroChequeoManitou valor={filtro} onChange={setFiltro} className="" />
+                </div>
+              )}
             </div>
             {!datos ? (
               <div className="text-center text-muted py-5">Cargando…</div>
@@ -485,6 +644,7 @@ function ManitouGeneralSanPablo() {
       {/* Modal Responsable: un solo campo; cada uno que se guarda se suma
           abajo del botón. */}
       {modalResponsable}
+      {modalRepuestos}
     </div>
   );
 }

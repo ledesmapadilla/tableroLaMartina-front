@@ -77,7 +77,12 @@ export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos"
     fila.eachCell({ includeEmpty: true }, (cell, nro) => {
       if (columnas[nro - 1]?.moneda && typeof cell.value === "number") cell.numFmt = '"$"#,##0.00';
       if (esTotal) cell.font = { bold: true };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+      // Una celda con varios renglones (una lista, uno por renglón) se ajusta
+      // al texto y va a la izquierda, para que se lea (13/10/2026).
+      const lista = typeof cell.value === "string" && cell.value.includes("\n");
+      cell.alignment = lista
+        ? { horizontal: "left", vertical: "middle", wrapText: true }
+        : { horizontal: "center", vertical: "middle" };
       cell.border = {
         top: { style: "thin", color: { argb: "FFE2E8F0" } },
         bottom: { style: "thin", color: { argb: "FFE2E8F0" } },

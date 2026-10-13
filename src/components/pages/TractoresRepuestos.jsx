@@ -10,16 +10,7 @@ import { compararCC } from "../../utils/ordenCC";
 import { Raya, BotonAccion, FiltroTexto } from "../compras/estilos";
 import { usePermisos } from "../../context/permisos";
 import SesionUsuario from "../shared/SesionUsuario";
-
-// Los filtros que se llevan de cada unidad y cuántas marcas posibles tiene
-// cada uno.
-const FILTROS = [
-  { campo: "filtroAire", titulo: "Filtro de aire" },
-  { campo: "filtroCombustible", titulo: "Filtro de combustible" },
-  { campo: "filtroTrampaAgua", titulo: "Filtro trampa de agua" },
-  { campo: "filtroAceite", titulo: "Filtro de aceite" },
-];
-const MARCAS = 3;
+import { FILTROS, MARCAS } from "../../utils/filtrosTractor";
 
 // Formato común de tablas (docs/formato-tablas.md).
 const th = {
@@ -276,7 +267,9 @@ export default function TractoresRepuestos() {
 
         {/* Filtros */}
         <Card className="mb-3 p-2 shadow-sm border-0 rounded-3 flex-shrink-0">
-          <div className="d-flex align-items-end justify-content-center gap-2 flex-wrap">
+          {/* El buscador al centro y, a su altura, el Cotizador a la derecha. */}
+          <div className="d-flex align-items-end gap-2 flex-wrap">
+            <div style={{ flex: "1 1 0" }} />
             <FiltroTexto
               etiqueta="Buscar"
               ancho="240px"
@@ -284,6 +277,18 @@ export default function TractoresRepuestos() {
               onChange={setBuscar}
               placeholder="CC, descripción, marca, código…"
             />
+            <div className="d-flex justify-content-end" style={{ flex: "1 1 0" }}>
+              <Button
+                size="sm"
+                onClick={() => navigate("/tractores/repuestos/cotizador")}
+                className="rounded-3 px-3 d-flex align-items-center gap-2"
+                style={{ backgroundColor: "#0e7490", borderColor: "#0e7490", fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+                title="Elegir varios CC y sumar los filtros a pedir"
+              >
+                <i className="bi bi-calculator-fill"></i>
+                <span>Cotizador</span>
+              </Button>
+            </div>
           </div>
         </Card>
 

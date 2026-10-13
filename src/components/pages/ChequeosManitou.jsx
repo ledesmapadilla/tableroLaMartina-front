@@ -27,12 +27,12 @@ const VERDE_OK = "#16a34a";
 
 // El estado de una fila sale de sus repuestos (09/10/2026), uno solo y
 // mandando el menos avanzado: Pedir cotización si alguno no se mandó al
-// analista, Sin cotizar si el analista no lo cotizó, Cotizado si está
+// analista, Cotizando si el analista no lo cotizó, Cotizado si está
 // cotizado pero falta el pedido de compra, Pedido si están todos pedidos.
 // Lo ya pedido no cuenta para la cotización.
 const ESTADOS_FILA = {
   "Pedir cotización": { fondo: "#fee2e2", color: "#b91c1c" },
-  "Sin cotizar": { fondo: "#fef3c7", color: "#b45309" },
+  "Cotizando": { fondo: "#fef3c7", color: "#b45309" },
   Cotizado: { fondo: "#e0e7ff", color: "#3730a3" },
   Pedido: { fondo: "#dcfce7", color: "#15803d" },
 };

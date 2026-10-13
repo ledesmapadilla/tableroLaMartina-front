@@ -36,7 +36,13 @@ const fmtPrecio = (v) =>
 const precioCotizado = (p) => (p?.estado === "Cotizado" ? opcionElegida(p)?.precio ?? null : null);
 
 const estadoRepuesto = (r) =>
-  r.pedido && r.nro_pedido ? `Pedido ${fmtNro(r.nro_pedido, "sanpablo", "reparaciones")}` : r.pedido ? "Pedido" : "Sin pedir";
+  r.pedido && r.nro_pedido
+    ? `Pedido ${fmtNro(r.nro_pedido, "sanpablo", "reparaciones")}`
+    : r.pedido
+      ? "Pedido"
+      : r.cant > 0
+        ? "Sin pedir"
+        : "No hace falta";
 
 /**
  * Los repuestos de un ítem de una Manitou o de General (08/10/2026): una hoja
@@ -174,6 +180,25 @@ export default function RepuestosChequeoManitou() {
     }
   };
 
+  // Deshacer el "mandar a cotizar" (13/10/2026): solo mientras el analista
+  // no lo cotizó. El repuesto vuelve a quedar para mandar.
+  const cancelarCotizacion = async (r) => {
+    setGuardando(true);
+    try {
+      await api.post(`/presupuestos-reparaciones/${presupuestos[r._id]._id}/cancelar`);
+      setPresupuestos((m) => {
+        const resto = { ...m };
+        delete resto[r._id];
+        return resto;
+      });
+      avisar("Cotización cancelada");
+    } catch (err) {
+      error("No se pudo cancelar", err);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const borrar = async (r) => {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
@@ -264,7 +289,7 @@ export default function RepuestosChequeoManitou() {
           <Form.Control
             {...control}
             type="number"
-            min={1}
+            min={soloCant ? 0 : 1}
             step="any"
             value={form.cant}
             onChange={(e) => cambiar("cant", e.target.value)}
@@ -337,7 +362,7 @@ export default function RepuestosChequeoManitou() {
                   type="submit"
                   form="form-repuesto"
                   value="pedir"
-                  disabled={guardando}
+                  disabled={guardando || !(Number(form.cant) > 0)}
                   className="btn btn-sm btn-success rounded-2 px-2 py-0 d-flex align-items-center gap-1"
                   style={{ height: "24px", fontSize: "0.72rem", fontWeight: 600 }}
                   title="Pedirlo a Compras"
@@ -354,13 +379,14 @@ export default function RepuestosChequeoManitou() {
   };
 
   const repuestos = fila?.repuestos || [];
-  const sinCotizar = repuestos.filter((r) => !presupuestos[r._id]);
+  // Con cantidad 0 no hace falta en esta Manitou: no se cotiza ni se pide.
+  const sinCotizar = repuestos.filter((r) => !presupuestos[r._id] && r.cant > 0);
   const totalDe = (r) => {
     const precio = precioCotizado(presupuestos[r._id]);
     return precio === null ? null : precio * r.cant;
   };
   const totalGeneral = repuestos.reduce((acc, r) => acc + (totalDe(r) ?? 0), 0);
-  const sinPrecio = repuestos.filter((r) => totalDe(r) === null).length;
+  const sinPrecio = repuestos.filter((r) => totalDe(r) === null && r.cant > 0).length;
 
   // General no lleva C.C., estado, precios ni total: es la plantilla.
   const columnas = esGeneral ? 6 : 11;
@@ -554,8 +580,8 @@ export default function RepuestosChequeoManitou() {
                               <span
                                 className="px-1 rounded-1"
                                 style={{
-                                  backgroundColor: r.pedido ? "#dcfce7" : "#fef3c7",
-                                  color: r.pedido ? "#15803d" : "#b45309",
+                                  backgroundColor: r.pedido ? "#dcfce7" : r.cant > 0 ? "#fef3c7" : "#f1f5f9",
+                                  color: r.pedido ? "#15803d" : r.cant > 0 ? "#b45309" : "#64748b",
                                   fontSize: "0.66rem",
                                   fontWeight: 700,
                                 }}
@@ -577,27 +603,39 @@ export default function RepuestosChequeoManitou() {
                             {/* Cotizar va en todos los renglones de una Manitou; ya
                                 mandado, queda su estado en Presupuestos reparaciones. */}
                             {esGeneral ? null : presupuestos[r._id] ? (
-                              <span
-                                className="px-1 rounded-1"
-                                style={{
-                                  backgroundColor: presupuestos[r._id].estado === "Cotizado" ? "#dcfce7" : "#e0e7ff",
-                                  color: presupuestos[r._id].estado === "Cotizado" ? "#15803d" : "#3730a3",
-                                  fontSize: "0.66rem",
-                                  fontWeight: 700,
-                                  whiteSpace: "nowrap",
-                                }}
-                                title={`Presupuesto ${fmtPresupuesto(presupuestos[r._id].nro)}`}
-                              >
-                                {presupuestos[r._id].estado}
-                              </span>
+                              <>
+                                <span
+                                  className="px-1 rounded-1"
+                                  style={{
+                                    backgroundColor: presupuestos[r._id].estado === "Cotizado" ? "#dcfce7" : "#e0e7ff",
+                                    color: presupuestos[r._id].estado === "Cotizado" ? "#15803d" : "#3730a3",
+                                    fontSize: "0.66rem",
+                                    fontWeight: 700,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                  title={`Presupuesto ${fmtPresupuesto(presupuestos[r._id].nro)}`}
+                                >
+                                  {presupuestos[r._id].estado}
+                                </span>
+                                {/* Mandado por error: se deshace mientras el analista no lo cotizó. */}
+                                {presupuestos[r._id].estado === "Para cotizar" && (
+                                  <BotonAccion
+                                    icono="bi-arrow-counterclockwise"
+                                    titulo={sinEditar ? "Sin permiso para editar" : "Cancelar la cotización"}
+                                    variante="secondary"
+                                    onClick={() => cancelarCotizacion(r)}
+                                    deshabilitado={sinEditar || guardando}
+                                  />
+                                )}
+                              </>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => mandarACotizar([r])}
-                                disabled={sinEditar || guardando}
+                                disabled={sinEditar || guardando || !(r.cant > 0)}
                                 className="btn btn-sm rounded-2 px-2 py-0"
                                 style={{ height: "24px", fontSize: "0.72rem", fontWeight: 600, backgroundColor: COLOR, borderColor: COLOR, color: "#fff" }}
-                                title={sinEditar ? "Sin permiso para editar" : "Mandarlo a cotizar"}
+                                title={sinEditar ? "Sin permiso para editar" : r.cant > 0 ? "Mandarlo a cotizar" : "Con cantidad 0 no se cotiza"}
                               >
                                 Cotizar
                               </button>
@@ -608,10 +646,10 @@ export default function RepuestosChequeoManitou() {
                                 {!esGeneral && (
                                   <BotonAccion
                                     icono="bi-send"
-                                    titulo={sinEditar ? "Sin permiso para editar" : "Pedirlo a Compras"}
+                                    titulo={sinEditar ? "Sin permiso para editar" : r.cant > 0 ? "Pedirlo a Compras" : "Con cantidad 0 no se pide"}
                                     variante="success"
                                     onClick={() => pedirGuardado(r)}
-                                    deshabilitado={sinEditar || guardando}
+                                    deshabilitado={sinEditar || guardando || !(r.cant > 0)}
                                   />
                                 )}
                                 <BotonAccion

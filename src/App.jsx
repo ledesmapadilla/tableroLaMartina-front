@@ -98,6 +98,7 @@ const Tractores = lazy(() => import("./components/pages/Tractores"));
 const TractoresPreventivo = lazy(() => import("./components/pages/TractoresPreventivo"));
 const TractoresReparaciones = lazy(() => import("./components/pages/TractoresReparaciones"));
 const TractoresRepuestos = lazy(() => import("./components/pages/TractoresRepuestos"));
+const TractoresCotizador = lazy(() => import("./components/pages/TractoresCotizador"));
 const TractoresAltas = lazy(() => import("./components/pages/TractoresAltas"));
 const TractoresGrupo = lazy(() => import("./components/pages/TractoresGrupo"));
 const ReparacionesTractor = lazy(() => import("./components/pages/ReparacionesTractor"));
@@ -424,6 +425,7 @@ function LayoutDesktop() {
               <Route path="/tractores/preventivo" element={<TractoresPreventivo />} />
               <Route path="/tractores/reparaciones" element={<TractoresReparaciones />} />
               <Route path="/tractores/repuestos" element={<TractoresRepuestos />} />
+              <Route path="/tractores/repuestos/cotizador" element={<TractoresCotizador />} />
               <Route path="/tractores/services/reparaciones" element={<Navigate to="/tractores/reparaciones" replace />} />
               <Route path="/tractores/altas" element={<RutaProtegida><TractoresAltas /></RutaProtegida>} />
               <Route path="/tractores/grupo/:grupoId" element={<TractoresGrupo />} />
