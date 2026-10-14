@@ -35,11 +35,23 @@ const MODOS = [
   { id: "parcial", titulo: "Parcial", color: "#d97706" },
 ];
 
+// Lo armado queda en el sessionStorage (14/10/2026): sobrevive al cambiar de
+// pantalla y se pierde al cerrar la pestaña. Si el navegador no deja leerlo,
+// arranca vacío.
+const CLAVE_SESION = "tractores.cotizador";
+const leerSesion = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(CLAVE_SESION)) || {};
+  } catch {
+    return {};
+  }
+};
+
 /**
  * El cotizador de filtros (13/10/2026): se eligen varios CC y de cada uno se
  * dice si va completo o parcial. Al final, el resumen: cada código de filtro
  * con la cantidad total del pedido. De cada filtro se toma la primera marca
- * cargada. No guarda nada: es para armar el pedido o la cotización.
+ * cargada. No guarda nada en la base: es para armar el pedido o la cotización.
  */
 export default function TractoresCotizador() {
   const navigate = useNavigate();
@@ -48,15 +60,23 @@ export default function TractoresCotizador() {
   const [repuestos, setRepuestos] = useState({});
   const [cargando, setCargando] = useState(true);
   // Los CC elegidos, por id de tractor, en el orden en que se eligieron.
-  const [elegidos, setElegidos] = useState([]);
+  const [elegidos, setElegidos] = useState(() => leerSesion().elegidos || []);
   // { [tractorId]: "completo" | "parcial" }; sin marcar, completo.
-  const [modos, setModos] = useState({});
+  const [modos, setModos] = useState(() => leerSesion().modos || {});
   // { [tractorId]: cantidad }: cuántos de cada filtro en el completo (1).
-  const [cantCompleto, setCantCompleto] = useState({});
+  const [cantCompleto, setCantCompleto] = useState(() => leerSesion().cantCompleto || {});
   // { [tractorId]: { [campo]: cant } }: los tipos de filtro del parcial.
-  const [parciales, setParciales] = useState({});
+  const [parciales, setParciales] = useState(() => leerSesion().parciales || {});
   // El modal del parcial: el CC y las cantidades que se están cargando.
   const [modalParcial, setModalParcial] = useState(null); // { t, cants: { [campo]: cant } }
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(CLAVE_SESION, JSON.stringify({ elegidos, modos, cantCompleto, parciales }));
+    } catch {
+      // Sin sessionStorage el cotizador anda igual; solo no se recuerda.
+    }
+  }, [elegidos, modos, cantCompleto, parciales]);
 
   useEffect(() => {
     Promise.all([api.get("/tractores"), api.get("/repuestos-tractor")])
@@ -145,6 +165,32 @@ export default function TractoresCotizador() {
   );
   const totalFiltros = resumen.reduce((acc, g) => acc + g.cant, 0);
 
+  // Limpiar: borra todo lo armado (CC, modos, cantidades y parciales) para
+  // empezar una cotización nueva.
+  const hayAlgo =
+    elegidos.length > 0 ||
+    Object.keys(modos).length > 0 ||
+    Object.keys(cantCompleto).length > 0 ||
+    Object.keys(parciales).length > 0;
+  const limpiar = async () => {
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: "¿Limpiar la cotización?",
+      text: "Se borran los CC elegidos y sus cantidades.",
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Sí, limpiar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+    });
+    if (!isConfirmed) return;
+    setElegidos([]);
+    setModos({});
+    setCantCompleto({});
+    setParciales({});
+  };
+
   const exportarExcel = () =>
     exportarPlanilla({
       titulo: "Cotizador de filtros — Tractores",
@@ -232,11 +278,25 @@ export default function TractoresCotizador() {
         <Container fluid className="px-3 py-3" style={{ maxWidth: "1080px", width: "100%", margin: "0 auto" }}>
           {/* 1. Elegir los CC */}
           <Card className="mb-3 p-3 shadow-sm border-0 rounded-3">
-            <div className="d-flex align-items-end gap-2 flex-wrap mb-2">
-              <span className="fw-bold me-2" style={{ color: VERDE, fontSize: "1.05rem" }}>
+            {/* Título a la izquierda, Limpiar al medio, Elegir todos/Ninguno a la
+                derecha: los dos costados con flex 1 dejan Limpiar centrado. */}
+            <div className="d-flex align-items-end gap-2 flex-wrap mb-4">
+              <span className="fw-bold me-2" style={{ color: VERDE, fontSize: "1.05rem", flex: 1 }}>
                 Elegir CC
               </span>
-              <div className="d-flex gap-2 ms-auto">
+              <Button
+                size="sm"
+                variant="outline-danger"
+                onClick={limpiar}
+                disabled={!hayAlgo}
+                className="rounded-3 px-3 d-flex align-items-center gap-2"
+                style={{ fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+                title="Empezar una cotización nueva"
+              >
+                <i className="bi bi-eraser-fill"></i>
+                <span>Limpiar</span>
+              </Button>
+              <div className="d-flex gap-2 justify-content-end" style={{ flex: 1 }}>
                 <button
                   type="button"
                   onClick={elegirVisibles}
