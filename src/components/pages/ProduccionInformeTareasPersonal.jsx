@@ -237,6 +237,8 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
   const [edicion, setEdicion] = useState({ cantidad: "", precioUnitario: "", detalle: "" });
   // El renglón de alto rendimiento cuyo detalle por día está abierto.
   const [detalleAlto, setDetalleAlto] = useState(null);
+  // La persona cuyo resumen de tareas por día está abierto.
+  const [resumenPersona, setResumenPersona] = useState(null);
 
   // Modal del historial: la fila cuyos cambios se están mirando y corrigiendo.
   const [verHistorial, setVerHistorial] = useState(null);
@@ -418,7 +420,7 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
    * unidad (horas, plantas, bins) y mezclarlas no significaría nada. La plata
    * sí, así que el total de cada persona va en la columna de precio total.
    */
-  const { filas, totalPorPersona, numeroPorPersona } = useMemo(() => {
+  const { filas, totalPorPersona, numeroPorPersona, diasPorPersona } = useMemo(() => {
     const mapa = new Map();
 
     // El renglón de un parte; `alto` es el de alto rendimiento, que va aparte.
@@ -470,6 +472,14 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
     // Todos los días de cada renglón con tope de alto rendimiento: es el
     // detalle que abre el cartel "Alto Rto.".
     const diasPorClave = new Map();
+    // Todas las tareas de cada persona, día por día: es el resumen que abre
+    // el nombre (14/10/2026).
+    const diasPorPersona = new Map();
+    const anotarDia = (fila, dia) => {
+      const lista = diasPorPersona.get(fila.idPersona) || [];
+      lista.push({ tarea: fila.tarea, cliente: fila.cliente, unidad: fila.unidad, ...dia });
+      diasPorPersona.set(fila.idPersona, lista);
+    };
 
     for (const { parte: p, clave, cantidad } of porDia.values()) {
       const fila = filaDe(p, clave);
@@ -477,10 +487,26 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
       const precio = precioVigente(variables, fila.idTarea, fila.cliente, p.fecha);
       if (precio === null) {
         sumar(fila, cantidad, null);
+        anotarDia(fila, {
+          fecha: soloFecha(p.fecha),
+          cantidad,
+          alto: 0,
+          neto: null,
+          netoAlto: null,
+          importe: null,
+        });
       } else if (pagaAlto(establecimiento, precio)) {
         const { normal, alto } = repartirDia(cantidad, precio.cantAlto, fila.tarea);
         sumar(fila, normal, precio.neto, precio.bruto);
         if (alto > 0) sumar(filaDe(p, clave, true), alto, precio.netoAlto, precio.brutoAlto);
+        anotarDia(fila, {
+          fecha: soloFecha(p.fecha),
+          cantidad,
+          alto,
+          neto: precio.neto,
+          netoAlto: precio.netoAlto,
+          importe: redondear(normal * precio.neto + alto * precio.netoAlto),
+        });
         const dias = diasPorClave.get(clave) || [];
         dias.push({
           fecha: soloFecha(p.fecha),
@@ -495,6 +521,14 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
         diasPorClave.set(clave, dias);
       } else {
         sumar(fila, cantidad, precio.neto, precio.bruto);
+        anotarDia(fila, {
+          fecha: soloFecha(p.fecha),
+          cantidad,
+          alto: 0,
+          neto: precio.neto,
+          netoAlto: null,
+          importe: redondear(cantidad * precio.neto),
+        });
         // Un día de antes del tope también va al detalle, sin alto
         // rendimiento: así se ven todos los días de la tarea.
         const dias = diasPorClave.get(clave) || [];
@@ -627,7 +661,12 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
       totales.set(f.idPersona, redondear((totales.get(f.idPersona) || 0) + f.importe));
     }
 
-    return { filas: lista, totalPorPersona: totales, numeroPorPersona: numeros };
+    // Del día más viejo al más nuevo y, dentro del día, por tarea.
+    for (const dias of diasPorPersona.values()) {
+      dias.sort((a, b) => a.fecha.localeCompare(b.fecha) || comparar(a.tarea, b.tarea));
+    }
+
+    return { filas: lista, totalPorPersona: totales, numeroPorPersona: numeros, diasPorPersona };
   }, [partesFiltrados, variables, ajustes, establecimiento]);
 
   // ── descuentos por persona ────────────────────────────────────────
@@ -1626,7 +1665,21 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
                         <td style={{ ...td, textAlign: "center", color: "#64748b" }}>
                           {primeraDePersona ? f.legajo || raya : ""}
                         </td>
-                        <td style={{ ...td, fontWeight: 500 }}>{primeraDePersona ? f.persona : ""}</td>
+                        {/* El nombre abre el resumen de sus tareas día por día. */}
+                        <td style={{ ...td, fontWeight: 500 }}>
+                          {primeraDePersona && (
+                            <button
+                              type="button"
+                              onClick={() => setResumenPersona(f)}
+                              className="btn btn-link p-0 border-0 text-start text-decoration-none"
+                              style={{ fontSize: "inherit", fontWeight: 500, color: "inherit" }}
+                              title={`Ver las tareas de ${f.persona} día por día`}
+                            >
+                              {f.persona}{" "}
+                              <i className="bi bi-search" style={{ fontSize: "0.55rem", color: "#94a3b8" }}></i>
+                            </button>
+                          )}
+                        </td>
                         <td style={td}>
                           {f.tarea}
                           {/* De la tancada del tope en adelante, al neto alto. */}
@@ -1814,7 +1867,17 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
                             colSpan={8}
                             style={{ ...td, fontWeight: 700, color: "#1b4332", textAlign: "right" }}
                           >
-                            Total {f.persona}
+                            {/* Plegada no se ve el nombre de arriba: el total
+                                también abre el resumen por día. */}
+                            <button
+                              type="button"
+                              onClick={() => setResumenPersona(f)}
+                              className="btn btn-link p-0 border-0 text-decoration-none"
+                              style={{ fontSize: "inherit", fontWeight: 700, color: "inherit" }}
+                              title={`Ver las tareas de ${f.persona} día por día`}
+                            >
+                              Total {f.persona}
+                            </button>
                           </td>
                           {/* Los descuentos van acá, junto a los totales que
                               modifican. El número se edita en la celda; para
@@ -1963,6 +2026,128 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
               </tbody>
             </Table>
           </div>
+        </Modal.Body>
+      </Modal>
+
+      {/* Resumen de una persona: todas sus tareas, día por día, con lo que
+          suma cada una. Sale de los partes con los filtros puestos, igual que
+          la tabla (14/10/2026). */}
+      <Modal show={Boolean(resumenPersona)} onHide={() => setResumenPersona(null)} size="lg" centered scrollable>
+        <Modal.Header closeButton closeVariant="white" style={{ backgroundColor: "#1b4332", color: "#fff" }}>
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-calendar3" style={{ color: "#6ee7b7" }}></i>
+            <span>Tareas por día</span>
+          </Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body style={{ backgroundColor: "#f8f9fa" }}>
+          {(() => {
+            if (!resumenPersona) return null;
+            const dias = diasPorPersona.get(resumenPersona.idPersona) || [];
+            const cantidadDeDias = new Set(dias.map((d) => d.fecha)).size;
+            const conImporte = dias.filter((d) => d.importe !== null);
+            const totalNeto = redondear(conImporte.reduce((acc, d) => acc + d.importe, 0));
+            const corregida = filas.some((f) => f.idPersona === resumenPersona.idPersona && f.corregida);
+            return (
+              <>
+                <div className="fw-bold mb-2" style={{ color: "#1b4332", fontSize: "0.86rem" }}>
+                  {resumenPersona.persona}
+                  <span className="text-muted fw-normal" style={{ fontSize: "0.76rem" }}>
+                    {resumenPersona.legajo ? ` · Legajo ${resumenPersona.legajo}` : ""} · {cantidadDeDias}{" "}
+                    {cantidadDeDias === 1 ? "día trabajado" : "días trabajados"}
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-3" style={{ border: "1px solid #e2e8f0", overflow: "auto" }}>
+                  <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...th, textAlign: "center" }}>Fecha</th>
+                        <th style={th}>Tarea</th>
+                        <th style={th}>Cliente</th>
+                        <th style={{ ...th, textAlign: "center" }}>Cantidad</th>
+                        <th style={{ ...th, textAlign: "center" }}>$ unitario</th>
+                        <th style={{ ...th, textAlign: "center" }}>Neto del día</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dias.map((d, i) => {
+                        // La fecha va una sola vez por día; el primer renglón
+                        // de cada día lleva una línea arriba que los separa.
+                        const primeraDelDia = i === 0 || dias[i - 1].fecha !== d.fecha;
+                        const separador = primeraDelDia && i > 0 ? { borderTop: "2px solid #cbd5e1" } : null;
+                        return (
+                          <tr key={`${d.fecha}|${d.tarea}|${d.cliente}`}>
+                            <td style={{ ...td, ...separador, textAlign: "center", whiteSpace: "nowrap", fontWeight: 600 }}>
+                              {primeraDelDia ? formatFecha(d.fecha) : ""}
+                            </td>
+                            <td style={{ ...td, ...separador }}>
+                              {d.tarea}
+                              {d.alto > 0 && (
+                                <span
+                                  className="ms-1 px-1 rounded-1"
+                                  style={{ backgroundColor: "#fef3c7", color: "#b45309", fontSize: "0.58rem", fontWeight: 700 }}
+                                  title={`${numero(d.alto)} a ${pesos(d.netoAlto)}`}
+                                >
+                                  Alto Rto.
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ ...td, ...separador, color: d.cliente ? "#64748b" : "#dc2626" }}>
+                              {d.cliente || "Sin cliente"}
+                            </td>
+                            <td style={{ ...td, ...separador, textAlign: "center", fontWeight: 600 }}>
+                              {numero(d.cantidad)}
+                              {d.unidad && (
+                                <span className="fw-normal" style={{ color: "#94a3b8" }}>
+                                  {" "}
+                                  {d.unidad}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ ...td, ...separador, textAlign: "center", color: "#64748b" }}>
+                              {d.neto === null ? raya : pesos(d.neto)}
+                              {d.alto > 0 && (
+                                <div style={{ color: "#b45309", fontSize: "0.62rem" }}>
+                                  {numero(d.alto)} × {pesos(d.netoAlto)}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ ...td, ...separador, textAlign: "center", fontWeight: 600 }}>
+                              {d.importe === null ? raya : pesos(d.importe)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {dias.length > 0 && (
+                        <tr className="fila-total">
+                          <td style={{ ...td, textAlign: "center", fontWeight: 700, color: "#1b4332" }}>TOTAL</td>
+                          <td colSpan={4} style={td}></td>
+                          <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{pesos(totalNeto)}</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+
+                {/* Las correcciones del informe son por renglón y no se
+                    reparten por día: el total puede no cerrar con la tabla. */}
+                {(corregida || conImporte.length < dias.length) && (
+                  <div className="text-muted mt-2" style={{ fontSize: "0.7rem" }}>
+                    {corregida && (
+                      <div>
+                        <i className="bi bi-pencil-fill me-1" style={{ color: "#b45309" }}></i>
+                        Tiene renglones corregidos a mano: acá se ve lo que dicen los partes, sin las correcciones.
+                      </div>
+                    )}
+                    {conImporte.length < dias.length && (
+                      <div>Los días con raya no tienen precio cargado en Variables.</div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </Modal.Body>
       </Modal>
 

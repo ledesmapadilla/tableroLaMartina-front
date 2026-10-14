@@ -35,8 +35,6 @@ function ServicesUltimoService() {
   const [año, setAnio] = useState(2026);
   const [dropAño, setDropAño] = useState(false);
   const dropAñoRef = useRef(null);
-  const [telefonoAviso, setTelefonoAviso] = useState("");
-  const [guardandoTel, setGuardandoTel] = useState(false);
   const [busquedaPatente, setBusquedaPatente] = useState("");
   const [obsModalText, setObsModalText] = useState(null);
   const [guardandoObs, setGuardandoObs] = useState(false);
@@ -91,10 +89,6 @@ function ServicesUltimoService() {
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setCamionetas(Array.isArray(d) ? d : []))
       .catch(() => setCamionetas([]));
-    fetch("/api/config")
-      .then((r) => (r.ok ? r.json() : {}))
-      .then((cfg) => setTelefonoAviso(cfg?.telefonoAviso ?? ""))
-      .catch(() => {});
     cargarParadas();
   }, []);
 
@@ -270,21 +264,6 @@ function ServicesUltimoService() {
     URL.revokeObjectURL(url);
   };
 
-  const guardarTelefono = async () => {
-    setGuardandoTel(true);
-    try {
-      await fetch("/api/config", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ telefonoAviso }),
-      });
-      Swal.fire({ icon: "success", title: "Número guardado", timer: 1200, showConfirmButton: false, width: "280px" });
-    } catch {
-      /* silencioso */
-    }
-    setGuardandoTel(false);
-  };
-
   const guardarObservacion = async () => {
     if (!obsModalText) return;
     setGuardandoObs(true);
@@ -336,147 +315,6 @@ function ServicesUltimoService() {
       Swal.fire({ icon: "error", title: "Sin conexión", text: "No se pudo conectar", width: "300px" });
     } finally {
       setGuardandoObs(false);
-    }
-  };
-
-  const marcarWhatsapp = async (camionetaId, enviado) => {
-    try {
-      await fetch(`/api/camionetas/${camionetaId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ serviceNotificado: enviado }),
-      });
-      setCamionetas((prev) =>
-        prev.map((c) => (c._id === camionetaId ? { ...c, serviceNotificado: enviado } : c))
-      );
-    } catch {
-      /* silencioso */
-    }
-  };
-
-  const enviarAvisoWhatsapp = (c) => {
-    const telResp = c.telefono?.trim();
-    const telAviso = telefonoAviso?.trim();
-    const texto = encodeURIComponent(`Hola. Mensaje automático: El service de la camioneta ${c.patente} a cargo de ${c.responsable || "—"} ha vencido`);
-
-    if (telResp && telAviso && telResp !== telAviso) {
-      Swal.fire({
-        title: "Enviar aviso de service",
-        html: `
-          <p class="mb-3 text-muted small">Seleccioná destinatario para <b>${c.patente}</b>:</p>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
-            <button id="swal-btn-resp" class="btn w-100 fw-semibold text-white rounded-3" style="background-color: #25d366; padding: 8px 12px;">
-              <i class="bi bi-whatsapp me-2"></i>Responsable (${c.responsable || "Sin nombre"})
-            </button>
-            <button id="swal-btn-aviso" class="btn w-100 fw-semibold text-white rounded-3" style="background-color: #1e293b; padding: 8px 12px;">
-              <i class="bi bi-whatsapp me-2"></i>Número de aviso
-            </button>
-            <button id="swal-btn-ambos" class="btn w-100 fw-semibold text-white rounded-3" style="background-color: #15803d; padding: 8px 12px;">
-              <i class="bi bi-whatsapp me-2"></i>Enviar a ambos
-            </button>
-            <button id="swal-btn-informado" class="btn w-100 fw-semibold text-white rounded-3" style="background-color: #64748b; padding: 8px 12px;">
-              <i class="bi bi-check-circle me-2"></i>Informado
-            </button>
-          </div>
-        `,
-        icon: "question",
-        showConfirmButton: false,
-        showCancelButton: true,
-        cancelButtonText: "Cancelar",
-        cancelButtonColor: "#94a3b8",
-        width: "360px",
-        didOpen: () => {
-          const btnResp = document.getElementById("swal-btn-resp");
-          const btnAviso = document.getElementById("swal-btn-aviso");
-          const btnAmbos = document.getElementById("swal-btn-ambos");
-          const btnInformado = document.getElementById("swal-btn-informado");
-
-          if (btnResp) {
-            btnResp.onclick = () => {
-              Swal.close();
-              window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
-              marcarWhatsapp(c._id, true);
-            };
-          }
-          if (btnAviso) {
-            btnAviso.onclick = () => {
-              Swal.close();
-              window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
-              marcarWhatsapp(c._id, true);
-            };
-          }
-          if (btnAmbos) {
-            btnAmbos.onclick = () => {
-              Swal.close();
-              window.open(`https://wa.me/${telResp}?text=${texto}`, "_blank");
-              marcarWhatsapp(c._id, true);
-
-              setTimeout(() => {
-                Swal.fire({
-                  title: "Segundo aviso",
-                  html: `Se abrió el WhatsApp de <b>${c.responsable || "Responsable"}</b>.<br/><br/>Hacé clic para enviar al <b>número general</b> (${telAviso}).`,
-                  icon: "info",
-                  confirmButtonText: "Abrir 2do WhatsApp",
-                  confirmButtonColor: "#25d366",
-                  width: "340px",
-                }).then((res2) => {
-                  if (res2.isConfirmed) {
-                    window.open(`https://wa.me/${telAviso}?text=${texto}`, "_blank");
-                  }
-                });
-              }, 300);
-            };
-          }
-          if (btnInformado) {
-            btnInformado.onclick = () => {
-              Swal.close();
-              marcarWhatsapp(c._id, true);
-            };
-          }
-        },
-      });
-    } else {
-      const tel = telResp || telAviso;
-      if (tel) {
-        Swal.fire({
-          title: "Enviar aviso de service",
-          html: `
-            <p class="mb-3 text-muted small">Seleccioná una opción para <b>${c.patente}</b>:</p>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <button id="swal-btn-single-wa" class="btn w-100 fw-semibold text-white rounded-3" style="background-color: #25d366; padding: 8px 12px;">
-                <i class="bi bi-whatsapp me-2"></i>Enviar WhatsApp
-              </button>
-              <button id="swal-btn-single-inf" class="btn w-100 fw-semibold text-white rounded-3" style="background-color: #64748b; padding: 8px 12px;">
-                <i class="bi bi-check-circle me-2"></i>Informado
-              </button>
-            </div>
-          `,
-          icon: "question",
-          showConfirmButton: false,
-          showCancelButton: true,
-          cancelButtonText: "Cancelar",
-          cancelButtonColor: "#94a3b8",
-          width: "340px",
-          didOpen: () => {
-            const btnSingleWa = document.getElementById("swal-btn-single-wa");
-            const btnSingleInf = document.getElementById("swal-btn-single-inf");
-
-            if (btnSingleWa) {
-              btnSingleWa.onclick = () => {
-                Swal.close();
-                window.open(`https://wa.me/${tel}?text=${texto}`, "_blank");
-                marcarWhatsapp(c._id, true);
-              };
-            }
-            if (btnSingleInf) {
-              btnSingleInf.onclick = () => {
-                Swal.close();
-                marcarWhatsapp(c._id, true);
-              };
-            }
-          },
-        });
-      }
     }
   };
 
@@ -570,12 +408,12 @@ function ServicesUltimoService() {
 
       {/* Contenedor Principal */}
       <Container fluid className="px-4 py-3 d-flex flex-column flex-grow-1" style={{ overflow: "hidden" }}>
-        {/* Barra de Filtros, Teléfono y Acciones */}
+        {/* Barra de Filtros y Acciones */}
         <div
           className="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2"
           style={{ maxWidth: "1020px", width: "100%", margin: "0 auto" }}
         >
-          {/* Año, Buscador, Teléfono WhatsApp y Excel */}
+          {/* Año, Buscador y Excel */}
           <div className="d-flex align-items-center gap-2.5 flex-wrap">
             {/* Dropdown de Año */}
             <div ref={dropAñoRef} style={{ position: "relative" }}>
@@ -671,32 +509,6 @@ function ServicesUltimoService() {
                   ×
                 </button>
               )}
-            </div>
-
-            {/* Configuración Teléfono WhatsApp */}
-            <div className="d-flex align-items-center gap-2 bg-white px-3 py-1.5 rounded-3 border shadow-sm">
-              <i className="bi bi-whatsapp text-success" style={{ fontSize: "1.1rem" }}></i>
-              <span className="small fw-semibold text-secondary" style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>
-                J. Posleman:
-              </span>
-              <input
-                type="text"
-                value={telefonoAviso}
-                onChange={(e) => setTelefonoAviso(e.target.value)}
-                disabled={sinEditar}
-                onKeyDown={(e) => e.key === "Enter" && guardarTelefono()}
-                placeholder="5491123456789"
-                className="border-0 bg-transparent px-2"
-                style={{ fontSize: "0.86rem", width: "190px", outline: "none", color: "#1e293b" }}
-              />
-              <button
-                onClick={guardarTelefono}
-                disabled={guardandoTel || sinEditar}
-                className="btn btn-sm btn-outline-secondary py-1 px-3 rounded-2 fw-semibold"
-                style={{ fontSize: "0.76rem" }}
-              >
-                {guardandoTel ? "..." : "Guardar"}
-              </button>
             </div>
           </div>
 
@@ -885,7 +697,7 @@ function ServicesUltimoService() {
                         </button>
                       </td>
 
-                      {/* Estado y WhatsApp */}
+                      {/* Estado */}
                       <td style={{ padding: "2px 5px" }}>
                         <div className="d-flex align-items-center justify-content-center gap-1.5">
                           {estado ? (
@@ -904,52 +716,6 @@ function ServicesUltimoService() {
                           ) : (
                             <span className="text-muted">—</span>
                           )}
-
-                          {/* Botón WhatsApp si está atrasado */}
-                          {(() => {
-                            const tieneTelefono = Boolean(c.telefono?.trim() || telefonoAviso?.trim());
-                            if (estado?.label === "Atrasado" && tieneTelefono && !c.serviceNotificado) {
-                              return (
-                                <button
-                                  onClick={() => enviarAvisoWhatsapp(c)}
-                                  className="btn btn-sm py-1 px-2 text-white shadow-sm d-inline-flex align-items-center gap-1"
-                                  style={{
-                                    backgroundColor: "#25d366",
-                                    border: "none",
-                                    borderRadius: "6px",
-                                    fontSize: "0.68rem",
-                                    fontWeight: 600,
-                                  }}
-                                  title="Enviar aviso por WhatsApp"
-                                >
-                                  <i className="bi bi-whatsapp"></i>
-                                  <span>Avisar</span>
-                                </button>
-                              );
-                            }
-                            if (estado?.label === "Atrasado" && c.serviceNotificado) {
-                              return (
-                                <button
-                                  onClick={() => marcarWhatsapp(c._id, false)}
-                                  disabled={sinEditar}
-                                  className="btn btn-sm py-1 px-2 d-inline-flex align-items-center gap-1"
-                                  style={{
-                                    backgroundColor: "#dcfce7",
-                                    color: "#166534",
-                                    border: "1px solid #86efac",
-                                    borderRadius: "6px",
-                                    fontSize: "0.68rem",
-                                    fontWeight: 600,
-                                  }}
-                                  title="Avisado — clic para desmarcar"
-                                >
-                                  <i className="bi bi-check-lg"></i>
-                                  <span>Avisado</span>
-                                </button>
-                              );
-                            }
-                            return null;
-                          })()}
                         </div>
                       </td>
                     </tr>

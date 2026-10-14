@@ -143,7 +143,8 @@ const Selector = ({ etiqueta, valor, onChange, opciones }) => (
 function GraficoConsumoCC({ filas: todas, altoTabla = 0, porTarea = false, tipo = "consumo" }) {
   const medidas = MEDIDAS[tipo] || MEDIDAS.consumo;
   const idSwitch = useId();
-  const [porHorasCC, setPorHorasCC] = useState(false);
+  // Arranca en hs CC (14/10/2026); el switch deja pasar a hs de turno.
+  const [porHorasCC, setPorHorasCC] = useState(true);
   const [tareaElegida, setTareaElegida] = useState("");
   const [medidaElegida, setMedidaElegida] = useState(medidas[0].id);
   const [encima, setEncima] = useState(null);
