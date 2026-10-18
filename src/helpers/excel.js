@@ -35,14 +35,19 @@ async function descargar(wb, archivo) {
  * con totales, cortes y colores siguen usando `nuevoWorkbook` directo: eso no
  * entra en un formato generico.
  *
- *   columnas: [{ titulo, ancho, moneda? }]
+ *   columnas: [{ titulo, ancho, moneda?, negrita? }]
  *   filas:    [[valor, valor, ...]]
+ *   cortes:   índices de `filas` que llevan abajo la línea gruesa (18/10/2026)
+ *
+ * `negrita: true` pone esa columna en negrita (18/10/2026). `cortes` marca el
+ * fin de un grupo de filas, como los sistemas de una Manitou.
  *
  * `moneda: true` le pone a esa columna el formato de importe de todo el
  * proyecto ("$"#,##0.00) en las celdas con número (08/10/2026). Una fila que
  * empieza con "TOTAL" va en negrita, como la fila de total de la pantalla.
  */
-export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos", archivo }) {
+export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos", archivo, cortes = [] }) {
+  const conCorte = new Set(cortes);
   const wb = await nuevoWorkbook();
   const ws = wb.addWorksheet(hoja);
   const fechaHoy = new Date().toLocaleDateString("es-AR");
@@ -71,12 +76,12 @@ export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos"
   });
   ws.getRow(4).height = 20;
 
-  for (const datos of filas) {
+  filas.forEach((datos, i) => {
     const fila = ws.addRow(datos);
     const esTotal = datos[0] === "TOTAL";
     fila.eachCell({ includeEmpty: true }, (cell, nro) => {
       if (columnas[nro - 1]?.moneda && typeof cell.value === "number") cell.numFmt = '"$"#,##0.00';
-      if (esTotal) cell.font = { bold: true };
+      if (esTotal || columnas[nro - 1]?.negrita) cell.font = { bold: true };
       // Una celda con varios renglones (una lista, uno por renglón) se ajusta
       // al texto y va a la izquierda, para que se lea (13/10/2026).
       const lista = typeof cell.value === "string" && cell.value.includes("\n");
@@ -85,12 +90,14 @@ export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos"
         : { horizontal: "center", vertical: "middle" };
       cell.border = {
         top: { style: "thin", color: { argb: "FFE2E8F0" } },
-        bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+        bottom: conCorte.has(i)
+          ? { style: "medium", color: { argb: "FF1E293B" } }
+          : { style: "thin", color: { argb: "FFE2E8F0" } },
         left: { style: "thin", color: { argb: "FFE2E8F0" } },
         right: { style: "thin", color: { argb: "FFE2E8F0" } },
       };
     });
-  }
+  });
 
   ws.columns = columnas.map((c) => ({ width: c.ancho ?? 14 }));
   await descargar(wb, archivo);

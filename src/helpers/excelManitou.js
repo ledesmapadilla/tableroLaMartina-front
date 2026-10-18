@@ -78,12 +78,29 @@ export const exportarRepuestosManitou = ({ titulo, archivo, tareas }) =>
 
 export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizaciones, general = false, filtro }) => {
   const conSistema = secciones.length > 1;
+  // Cada sistema (Motor, Tren delantero…) cierra con una línea gruesa
+  // (18/10/2026): se marca su última fila exportada.
+  const filas = [];
+  const cortes = [];
+  for (const { sistema, filas: filasSistema } of secciones) {
+    filasSistema.forEach((f, idx) => {
+      if (filtro && !pasaFiltro(f, filtro, cotizaciones)) return;
+      filas.push([
+        idx + 1,
+        ...(conSistema ? [sistema.titulo] : []),
+        f.item,
+        f.no_aplica ? "NO APLICA" : f.descripcion || "",
+        ...(general ? [] : [reparacionesTexto(f), repuestosTexto(f, cotizaciones), f.chequeado ? "Sí" : "", (f.no_aplica ? "" : estadoDeFila(f, cotizaciones) || "")]),
+      ]);
+    });
+    if (filas.length && cortes.at(-1) !== filas.length - 1) cortes.push(filas.length - 1);
+  }
   return exportarPlanilla({
     titulo,
     columnas: [
       { titulo: "#", ancho: 6 },
       ...(conSistema ? [{ titulo: "Sistema", ancho: 18 }] : []),
-      { titulo: "Tarea", ancho: 34 },
+      { titulo: "Tarea", ancho: 34, negrita: true },
       { titulo: "Descripción", ancho: 50 },
       ...(general
         ? []
@@ -94,20 +111,8 @@ export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizacione
             { titulo: "Estado", ancho: 16 },
           ]),
     ],
-    filas: secciones.flatMap(({ sistema, filas }) =>
-      filas.flatMap((f, idx) => {
-        if (filtro && !pasaFiltro(f, filtro, cotizaciones)) return [];
-        return [
-          [
-            idx + 1,
-            ...(conSistema ? [sistema.titulo] : []),
-            f.item,
-            f.no_aplica ? "NO APLICA" : f.descripcion || "",
-            ...(general ? [] : [reparacionesTexto(f), repuestosTexto(f, cotizaciones), f.chequeado ? "Sí" : "", (f.no_aplica ? "" : estadoDeFila(f, cotizaciones) || "")]),
-          ],
-        ];
-      })
-    ),
+    filas,
+    cortes,
     hoja: "Chequeo",
     archivo,
   });
