@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal } from "react-bootstrap";
@@ -74,8 +74,10 @@ function CirculoOk({ marcado, onClick, deshabilitado, titulo, tamano = 18 }) {
 
 /**
  * El modal de las reparaciones de una fila de una Manitou (11/10/2026): una
- * tabla con el problema, el trabajo realizado (`detalle`), el círculo de
- * realizado y el editar y borrar, y abajo el renglón para sumar otra. Los
+ * tabla con el problema, el trabajo a realizar (`detalle`), el círculo de
+ * realizado con el + de los detalles de la reparación (`notas`, 18/10/2026,
+ * se escriben en un renglón que se abre abajo) y el editar y borrar, y abajo
+ * el renglón para sumar otra. Los
  * círculos, las ediciones y los borrados se guardan al tocarlos; Guardar
  * suma lo que haya quedado escrito y cierra. `onGuardar(lista)` manda la
  * lista entera y devuelve si quedó guardada.
@@ -84,6 +86,8 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
   const [nuevo, setNuevo] = useState({ problema: "", detalle: "" });
   // La que se corrige en su renglón: { id, problema, detalle }.
   const [editando, setEditando] = useState(null);
+  // Los detalles abiertos debajo de su renglón: { id, texto }.
+  const [notas, setNotas] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const lista = fila?.reparaciones ?? [];
 
@@ -100,7 +104,17 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
     editando?.problema.trim()
       ? l.map((r) => (r._id === editando.id ? { ...r, problema: editando.problema, detalle: editando.detalle } : r))
       : l;
+  const conNotas = (l) => {
+    const r = notas && l.find((x) => x._id === notas.id);
+    return r && (r.notas || "") !== notas.texto ? l.map((x) => (x === r ? { ...x, notas: notas.texto } : x)) : l;
+  };
   const conNuevo = (l) => (nuevo.problema.trim() ? [...l, { ...nuevo, realizado: false }] : l);
+
+  const abrirNotas = (r) => setNotas(notas?.id === r._id ? null : { id: r._id, texto: r.notas || "" });
+
+  const guardarNotas = async () => {
+    if (await guardar(conNotas(lista))) setNotas(null);
+  };
 
   const agregar = async (e) => {
     e?.preventDefault();
@@ -135,12 +149,13 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
   const cerrar = () => {
     setNuevo({ problema: "", detalle: "" });
     setEditando(null);
+    setNotas(null);
     onHide();
   };
 
   // Guardar: lo que quedó a medio editar o escrito sin Agregar, y se cierra.
   const guardarYCerrar = async () => {
-    const final = conNuevo(conEdicion(lista));
+    const final = conNuevo(conNotas(conEdicion(lista)));
     if (!sinEditar && final !== lista && !(await guardar(final))) return;
     cerrar();
     if (!sinEditar) {
@@ -171,8 +186,8 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
               <th style={{ ...thCentro, width: "36px" }}>#</th>
               <th style={{ ...th, width: "36%" }}>Problema</th>
               {/* La línea fuerte separa el problema de lo que se hizo. */}
-              <th className="col-corte" style={th}>Trabajo realizado</th>
-              <th style={{ ...thCentro, width: "84px" }}>Realizado</th>
+              <th className="col-corte" style={th}>Trabajo a realizar</th>
+              <th style={{ ...thCentro, width: "96px" }}>Realizado</th>
               {!sinEditar && <th style={{ ...thCentro, width: "72px" }}></th>}
             </tr>
           </thead>
@@ -186,8 +201,10 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
             ) : (
               lista.map((r, i) => {
                 const enEdicion = editando?.id === r._id;
+                const notasAbiertas = notas?.id === r._id;
                 return (
-                  <tr key={r._id}>
+                  <Fragment key={r._id}>
+                  <tr>
                     <td style={{ ...tdCentro, color: "#94a3b8" }}>{i + 1}</td>
                     <td style={{ ...td, whiteSpace: "pre-wrap" }}>
                       {enEdicion
@@ -196,16 +213,36 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
                     </td>
                     <td className="col-corte" style={{ ...td, whiteSpace: "pre-wrap", color: "#475569" }}>
                       {enEdicion
-                        ? campoRenglon(editando.detalle, (v) => setEditando({ ...editando, detalle: v }), "Trabajo realizado")
+                        ? campoRenglon(editando.detalle, (v) => setEditando({ ...editando, detalle: v }), "Trabajo a realizar")
                         : r.detalle || <Raya />}
                     </td>
                     <td style={{ ...tdCentro, padding: "3px 5px" }}>
-                      <CirculoOk
-                        marcado={r.realizado}
-                        onClick={() => alternar(r)}
-                        deshabilitado={sinEditar || guardando}
-                        titulo={r.realizado ? "Realizado" : "Marcar como realizado"}
-                      />
+                      {/* El + abre los detalles de la reparación; escritos, pasa
+                          a ser el ojo, que se abre aun sin permiso. */}
+                      <div className="d-flex justify-content-center align-items-center" style={{ gap: "6px" }}>
+                        <CirculoOk
+                          marcado={r.realizado}
+                          onClick={() => alternar(r)}
+                          deshabilitado={sinEditar || guardando}
+                          titulo={r.realizado ? "Realizado" : "Marcar como realizado"}
+                        />
+                        {r.notas ? (
+                          <BotonAccion
+                            icono="bi-eye"
+                            titulo="Ver los detalles de la reparación"
+                            variante="primary"
+                            onClick={() => abrirNotas(r)}
+                          />
+                        ) : (
+                          <BotonAccion
+                            icono="bi-plus-lg"
+                            titulo={sinEditar ? "Sin permiso para editar" : "Escribir los detalles de la reparación"}
+                            variante="success"
+                            onClick={() => abrirNotas(r)}
+                            deshabilitado={sinEditar}
+                          />
+                        )}
+                      </div>
                     </td>
                     {!sinEditar && (
                       <td style={tdCentro}>
@@ -237,6 +274,43 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
                       </td>
                     )}
                   </tr>
+                  {/* Los detalles, en un renglón abajo: sin permiso, solo se leen. */}
+                  {notasAbiertas && (
+                    <tr>
+                      <td style={tdCentro}></td>
+                      <td colSpan={sinEditar ? 3 : 4} style={{ ...td, backgroundColor: "#f8fafc" }}>
+                        <div className="fw-semibold text-secondary mb-1" style={{ fontSize: "0.74rem" }}>
+                          Detalles de la reparación
+                        </div>
+                        {sinEditar ? (
+                          <div style={{ whiteSpace: "pre-wrap", color: "#475569" }}>{r.notas}</div>
+                        ) : (
+                          <div className="d-flex align-items-start" style={{ gap: "6px" }}>
+                            <Form.Control
+                              as="textarea"
+                              rows={3}
+                              className="rounded-3"
+                              size="sm"
+                              style={campo}
+                              value={notas.texto}
+                              placeholder="Qué se hizo, repuestos usados, observaciones…"
+                              onChange={(e) => setNotas({ ...notas, texto: e.target.value })}
+                              autoFocus
+                            />
+                            <BotonAccion
+                              icono="bi-check-lg"
+                              titulo="Guardar"
+                              variante="success"
+                              onClick={guardarNotas}
+                              deshabilitado={guardando}
+                            />
+                            <BotonAccion icono="bi-x-lg" titulo="Cancelar" onClick={() => setNotas(null)} />
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })
             )}
@@ -258,7 +332,7 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
               size="sm"
               style={campo}
               value={nuevo.detalle}
-              placeholder="Trabajo realizado"
+              placeholder="Trabajo a realizar"
               onChange={(e) => setNuevo({ ...nuevo, detalle: e.target.value })}
             />
             <Button

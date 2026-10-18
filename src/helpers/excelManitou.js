@@ -29,7 +29,7 @@ export const estadoDeFila = (f, cotizaciones) => {
 // "problema: detalle" y si se realizó.
 const reparacionesTexto = (f) =>
   (f.reparaciones || [])
-    .map((r) => `${r.problema}${r.detalle ? `: ${r.detalle}` : ""}${r.realizado ? " (realizado)" : ""}`)
+    .map((r) => `${r.problema}${r.detalle ? `: ${r.detalle}` : ""}${r.realizado ? " (realizado)" : ""}${r.notas ? ` — ${r.notas}` : ""}`)
     .join("\n");
 
 // Los repuestos de una fila en una celda (13/10/2026): uno por renglón,
