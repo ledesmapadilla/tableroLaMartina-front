@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
 import { nombreEstablecimiento } from "../../utils/establecimientos";
+import { api } from "../../services/api";
+import { API_GASOIL, campoDeEstablecimiento } from "../compras/camposGasoil";
 
 // Los campos donde se produce. Es la entrada de Producción: todo lo demás
 // cuelga de uno de estos. Para sumar otro alcanza con agregar una entrada acá
@@ -62,6 +64,18 @@ const ESTABLECIMIENTOS = [
 function ProduccionEstablecimientos() {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
+
+  // Auditorías de gasoil que esperan la foto del nivel, por campo (20/10/2026):
+  // la tarjeta del campo lleva un triángulo hasta que el taller sube la foto.
+  // Si no se pueden traer, no se muestra nada.
+  const [pendientes, setPendientes] = useState({});
+  useEffect(() => {
+    api
+      .get(`${API_GASOIL}/auditorias/pendientes`)
+      .then((data) => setPendientes(data || {}))
+      .catch(() => setPendientes({}));
+  }, []);
+  const auditoriaPendiente = (id) => pendientes[campoDeEstablecimiento(id)?.id] || 0;
 
   return (
     <div
@@ -146,11 +160,13 @@ function ProduccionEstablecimientos() {
                 );
               }
 
+              const nAuditorias = auditoriaPendiente(e.id);
               return (
                 <div
                   key={e.id}
                   className="d-flex flex-column align-items-center justify-content-center text-center p-4"
                   style={{
+                    position: "relative",
                     background: isHovered ? e.colores.fondoHover : e.colores.fondo,
                     borderRadius: "20px",
                     flex: 1,
@@ -173,6 +189,27 @@ function ProduccionEstablecimientos() {
                   onMouseEnter={() => setHovered(e.id)}
                   onMouseLeave={() => setHovered(null)}
                 >
+                  {nAuditorias > 0 && (
+                    <div
+                      className="d-flex flex-column align-items-center"
+                      style={{ position: "absolute", top: "10px", right: "12px", lineHeight: 1.1 }}
+                      title={
+                        nAuditorias === 1
+                          ? "Auditoría de gasoil pendiente: falta la foto del nivel"
+                          : `${nAuditorias} auditorías de gasoil pendientes: falta la foto del nivel`
+                      }
+                    >
+                      <i
+                        className="bi bi-exclamation-triangle-fill"
+                        style={{ fontSize: "1.5rem", color: "#facc15", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}
+                      ></i>
+                      <span className="fw-bold text-center" style={{ fontSize: "0.62rem", color: "#fde68a" }}>
+                        Auditoría
+                        <br />
+                        gasoil
+                      </span>
+                    </div>
+                  )}
                   <div
                     className="mb-3 d-flex align-items-center justify-content-center"
                     style={{

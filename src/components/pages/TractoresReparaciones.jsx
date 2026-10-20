@@ -115,6 +115,17 @@ const gruposInfo = [
     hoverBg: "linear-gradient(135deg, #1a2e05 0%, #3f6212 100%)",
     accent: "#a3e635",
   },
+  // Las máquinas fuera de circulación (se mandan acá desde Flota o al dar de
+  // baja un CC con historial). Solo consulta: sin alertas ni supervisor.
+  {
+    numero: 8,
+    label: "En desuso",
+    supervisor: "",
+    bg: "linear-gradient(135deg, #475569 0%, #64748b 100%)",
+    hoverBg: "linear-gradient(135deg, #1e293b 0%, #475569 100%)",
+    accent: "#cbd5e1",
+    consulta: true,
+  },
 ];
 
 function TractoresReparaciones() {
@@ -127,7 +138,8 @@ function TractoresReparaciones() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      // Con las en desuso, para la tarjeta de consulta del grupo 8.
+      fetch("/api/tractores?incluirDesuso=1").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/trabajos-tractor/pendientes/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([tracsData, stopIdsData, pendIdsData]) => {
@@ -154,7 +166,8 @@ function TractoresReparaciones() {
     listForGrupo.forEach((t) => {
       const clean = String(t.cc || "").replace(/^cc\s*/i, "").trim();
       if (!clean) return;
-      const isParado = paradosIds.has(t._id?.toString()) || paradosIds.has(t.cc?.toString());
+      // Las en desuso no se pintan de rojo aunque hayan quedado paradas.
+      const isParado = Number(grupoNum) !== 8 && (paradosIds.has(t._id?.toString()) || paradosIds.has(t.cc?.toString()));
       if (!mapCC.has(clean)) {
         mapCC.set(clean, isParado);
       } else if (isParado) {
@@ -210,6 +223,7 @@ function TractoresReparaciones() {
   // El supervisor del grupo sale de sus tractores (el que más se repite), así
   // sigue al día si cambia; el de gruposInfo queda para un grupo sin tractores.
   const supervisorDe = (g) => {
+    if (g.consulta) return "";
     const cuenta = new Map();
     for (const t of tractores) {
       const nombre = String(t.supervisor || "").trim();
@@ -222,7 +236,8 @@ function TractoresReparaciones() {
     return nombre.replace(/(^|\s)(\p{L})/gu, (m, esp, letra) => esp + letra.toUpperCase());
   };
 
-  const totalTractores = tractores.length;
+  // Las unidades en uso: las en desuso no cuentan.
+  const totalTractores = tractores.filter((t) => Number(t.gruppo ?? 6) !== 8).length;
 
   return (
     <div
@@ -354,8 +369,8 @@ function TractoresReparaciones() {
         >
           {gruposInfo.map((g) => {
             const ccs = renderCCsPorGrupo(g.numero);
-            const cantParados = getTractoresParadosGrupoCount(g.numero);
-            const cantPendientes = getTractoresPendientesGrupoCount(g.numero);
+            const cantParados = g.consulta ? 0 : getTractoresParadosGrupoCount(g.numero);
+            const cantPendientes = g.consulta ? 0 : getTractoresPendientesGrupoCount(g.numero);
             const isHovered = hoveredCard === g.numero;
 
             return (

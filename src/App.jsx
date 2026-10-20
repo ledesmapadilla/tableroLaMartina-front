@@ -34,13 +34,14 @@ const StockCatalogo = lazy(() => import("./components/compras/StockCatalogo"));
 // vienen del Sistema de Gestión Lepa.
 const Almacen = lazy(() => import("./components/compras/Almacen"));
 const StockAceites = lazy(() => import("./components/compras/StockAceites"));
+const Gasoil = lazy(() => import("./components/compras/Gasoil"));
+const GasoilPlanilla = lazy(() => import("./components/compras/GasoilPlanilla"));
+const GasoilAuditorias = lazy(() => import("./components/compras/GasoilAuditorias"));
 const StockAceitesAlta = lazy(() => import("./components/compras/StockAceitesAlta"));
 const StockAceitesCompras = lazy(() => import("./components/compras/StockAceitesCompras"));
 const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
 const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
 const Gerencia = lazy(() => import("./components/compras/Gerencia"));
-const Resultados = lazy(() => import("./components/compras/Resultados"));
-const ResultadosDetalle = lazy(() => import("./components/compras/ResultadosDetalle"));
 const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistorial"));
 const VerOP = lazy(() => import("./components/compras/VerOP"));
 const Usuarios = lazy(() => import("./components/compras/Usuarios"));
@@ -288,9 +289,12 @@ function LayoutDesktop() {
               <Route path="/compras/gerencia" element={<RutaProtegida><Gerencia /></RutaProtegida>} />
               <Route path="/compras/gerencia/historial" element={<RutaProtegida><GerenciaHistorial /></RutaProtegida>} />
 
-              {/* Resultados (11/10/2026): permiso compras.resultados, regla en permisosRutas.js. */}
-              <Route path="/compras/resultados" element={<RutaProtegida><Resultados /></RutaProtegida>} />
-              <Route path="/compras/resultados/detalle" element={<RutaProtegida><ResultadosDetalle /></RutaProtegida>} />
+              {/* Gasoil (20/10/2026, en lugar de Resultados): una tarjeta por
+                  campo y su planilla. Permiso compras.gasoil. */}
+              <Route path="/compras/gasoil" element={<RutaProtegida><Gasoil /></RutaProtegida>} />
+              {/* Auditorías de gasoil: pedido y stock + foto de cada taller. Va antes del comodín. */}
+              <Route path="/compras/gasoil/auditorias" element={<RutaProtegida><GasoilAuditorias /></RutaProtegida>} />
+              <Route path="/compras/gasoil/:campo" element={<RutaProtegida><GasoilPlanilla /></RutaProtegida>} />
 
               <Route path="/compras/op/ver" element={<RutaProtegida><VerOP /></RutaProtegida>} />
               <Route path="/compras/op/:nro" element={<RutaProtegida><VerOP /></RutaProtegida>} />

@@ -4,6 +4,9 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
+import ModalIngresoGasoil from "../compras/ModalIngresoGasoil";
+import { campoDeEstablecimiento } from "../compras/camposGasoil";
+import { usePermisos } from "../../context/permisos";
 import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
 import { CLIENTE_POR_DEFECTO, useClientes, opcionesDeClientes } from "../../utils/clientes";
 import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
@@ -501,6 +504,11 @@ function ProduccionCertificadoMes({
 }) {
   const { anio, mes } = useParams();
   const navigate = useNavigate();
+  const { puede } = usePermisos();
+
+  // Carga gasoil: el formulario de ingreso de Compras › Gasoil, abierto acá.
+  const campoGasoilDeEstab = campoDeEstablecimiento(establecimiento);
+  const [cargandoGasoil, setCargandoGasoil] = useState(false);
   const { pathname } = useLocation();
   // Todas las llamadas de partes y de períodos van con el establecimiento.
   const qEstab = `establecimiento=${establecimiento}`;
@@ -2040,8 +2048,8 @@ function ProduccionCertificadoMes({
       onKeyDown={(e) => e.stopPropagation()}
       className="rounded-3 p-0 d-flex flex-column align-items-center justify-content-center"
       style={{
-        backgroundColor: "#1b4332",
-        borderColor: "#1b4332",
+        backgroundColor: "#1d4ed8",
+        borderColor: "#1d4ed8",
         fontSize: "0.72rem",
         width: "60px",
         height: "60px",
@@ -2074,8 +2082,34 @@ function ProduccionCertificadoMes({
               {titulo}
             </span>          </div>
 
-          {/* Cerrar / reabrir la certificación */}
+          {/* Carga gasoil y cerrar / reabrir la certificación */}
           <div className="d-flex align-items-center gap-2">
+            {/* Carga gasoil (20/10/2026): el ingreso al tanque de este campo,
+                el mismo formulario de Compras › Gasoil. Pide "Editar" en
+                Gasoil (tabla de Roles). */}
+            {campoGasoilDeEstab && (
+              <Button
+                size="sm"
+                onClick={() => setCargandoGasoil(true)}
+                disabled={!puede("compras.gasoil", "editar")}
+                className="rounded-3 px-3 d-flex align-items-center gap-2"
+                style={{
+                  backgroundColor: "#7c3aed",
+                  borderColor: "transparent",
+                  fontSize: "0.78rem",
+                  height: "30px",
+                  fontWeight: 600,
+                }}
+                title={
+                  puede("compras.gasoil", "editar")
+                    ? `Cargar gasoil que entró al tanque de ${campoGasoilDeEstab.titulo}`
+                    : "Sin permiso: hace falta Editar en Gasoil (Roles)"
+                }
+              >
+                <i className="bi bi-fuel-pump-fill"></i>
+                <span>Carga gasoil</span>
+              </Button>
+            )}
             <Button
               size="sm"
               onClick={cerrado ? permitirEditar : cerrarCertificacion}
@@ -2096,6 +2130,13 @@ function ProduccionCertificadoMes({
               <span className="text-muted" style={{ fontSize: "0.72rem" }}>
                 Cerrada el {formatFecha(fechaCierre)}
               </span>
+            )}
+            {cargandoGasoil && (
+              <ModalIngresoGasoil
+                ingreso="nuevo"
+                campo={campoGasoilDeEstab}
+                onCerrar={() => setCargandoGasoil(false)}
+              />
             )}
           </div>
 

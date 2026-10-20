@@ -240,6 +240,7 @@ function TractoresAltas() {
 
   const supervisorValue = useWatch({ control, name: "supervisor" });
   const encargadoValue = useWatch({ control, name: "encargadoGral" });
+  const gruppoValue = useWatch({ control, name: "gruppo" });
 
   const cargar = async () => {
     try {
@@ -264,7 +265,7 @@ function TractoresAltas() {
     setValue("supervisor", t.supervisor || "");
     setValue("encargadoGral", t.encargadoGral || "");
     setValue("gruppo", t.gruppo ?? 1);
-    setValue("unidad", t.unidad || "hs");
+    setValue("ubicacion", t.ubicacion || "");
     setShowModal(true);
   };
 
@@ -852,6 +853,12 @@ function TractoresAltas() {
                       </td>
                       <td className="text-start ps-3 fw-semibold text-dark" style={{ wordBreak: "break-word" }}>
                         {t.descripcion || "—"}
+                        {gruppoNum === 8 && t.ubicacion && (
+                          <div className="text-secondary fw-medium" style={{ fontSize: "0.66rem" }}>
+                            <i className="bi bi-geo-alt-fill me-1"></i>
+                            {t.ubicacion}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div
@@ -976,21 +983,24 @@ function TractoresAltas() {
                 </Form.Control.Feedback>
               </Col>
 
-              {/* Los camiones (como el CC 901) cuentan km: define el intervalo
-                  de service, las etiquetas del preventivo y que en el padrón
-                  de CC figure como "Camión" y no como "Tractor". */}
-              <Col md={4}>
-                <Form.Label className="fw-semibold text-dark small mb-1">Cuenta en</Form.Label>
-                <Form.Select
-                  size="sm"
-                  className="rounded-3"
-                  style={{ fontSize: "0.85rem", height: "36px" }}
-                  {...register("unidad")}
-                >
-                  <option value="hs">Horas — tractor (service c/250 hs)</option>
-                  <option value="km">Kilómetros — camión (service c/10.000 km)</option>
-                </Form.Select>
-              </Col>
+              {/* Dónde quedó guardada la máquina: solo para las en desuso. */}
+              {Number(gruppoValue) === 8 && (
+                <Col md={4}>
+                  <Form.Label className="fw-semibold text-dark small mb-1">Ubicación</Form.Label>
+                  <Form.Control
+                    placeholder="Ej: Galpón Berdina"
+                    className="rounded-3"
+                    style={{ fontSize: "0.85rem" }}
+                    {...register("ubicacion", {
+                      maxLength: { value: 80, message: "Máximo 80 caracteres" },
+                    })}
+                    isInvalid={!!errors.ubicacion}
+                  />
+                  <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                    {errors.ubicacion?.message}
+                  </Form.Control.Feedback>
+                </Col>
+              )}
             </Row>
           </Modal.Body>
           <Modal.Footer className="bg-light border-0 py-2.5 px-4" style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}>

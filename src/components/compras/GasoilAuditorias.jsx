@@ -1,0 +1,456 @@
+import { useEffect, useState } from 'react'
+import { Container, Table, Button, Form, Modal } from 'react-bootstrap'
+import Swal from 'sweetalert2'
+import { api } from '../../services/api'
+import { subirArchivo, borrarArchivo } from '../../services/archivos'
+import { usePermisos } from '../../context/permisos'
+import { useAuth } from '../../context/AuthContext'
+import { Raya, BotonAccion } from './estilos'
+import { litros } from './aceites'
+import { API_GASOIL, campoGasoil } from './camposGasoil'
+
+/**
+ * Compras › Gasoil › Auditorías (20/10/2026).
+ *
+ * Alguien de Compras toca "Pedir auditoría" y queda un renglón con la fecha
+ * del pedido y una fila por campo, Berdina y San Pablo. En cada una, el
+ * encargado de ese taller (Kevin en Berdina; Victor y Pablo en San Pablo)
+ * carga los litros que tiene en el tanque y sube la foto del nivel. El
+ * encargado ve solo la fila de su campo: el back no le manda la otra.
+ */
+const COLOR = '#334155'
+
+export default function GasoilAuditorias() {
+  const { puede } = usePermisos()
+  const { user } = useAuth()
+  const sinEditar = !puede('compras.gasoil', 'editar')
+  const esEncargado = user?.rol === 'solicitante'
+  // Pide (y borra) Compras; carga el encargado. El superadmin, las dos cosas.
+  const puedePedir = !sinEditar && !esEncargado
+  const puedeCargar = !sinEditar && (esEncargado || user?.rol === 'superadmin')
+
+  const [lista, setLista] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [pidiendo, setPidiendo] = useState(false)
+
+  // La carga de un campo: null cerrado o { auditoria, carga }.
+  const [editando, setEditando] = useState(null)
+  const [litrosForm, setLitrosForm] = useState('')
+  const [archivo, setArchivo] = useState(null)
+  // La x de la foto que ya estaba: se borra recién al guardar.
+  const [fotoQuitada, setFotoQuitada] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+
+  const cargar = () =>
+    api
+      .get(`${API_GASOIL}/auditorias`)
+      .then((data) => setLista(Array.isArray(data) ? data : []))
+      .catch((error) => Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: error.message, width: '300px' }))
+      .finally(() => setCargando(false))
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  const th = {
+    backgroundColor: COLOR,
+    color: '#fff',
+    fontSize: '0.66rem',
+    fontWeight: 600,
+    verticalAlign: 'middle',
+    padding: '3px 5px',
+    whiteSpace: 'nowrap',
+  }
+  const thCentro = { ...th, textAlign: 'center' }
+  const td = { fontSize: '0.7rem', padding: '2px 5px', verticalAlign: 'middle' }
+  const tdCentro = { ...td, textAlign: 'center', whiteSpace: 'nowrap' }
+
+  const fechaHora = (f) =>
+    f
+      ? new Date(f).toLocaleString('es-AR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : ''
+  const fecha = (f) => (f ? new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '')
+
+  // ── Pedido ──
+  const pedir = async () => {
+    setPidiendo(true)
+    try {
+      await api.post(`${API_GASOIL}/auditorias`, {})
+      cargar()
+      Swal.fire({ icon: 'success', title: 'Auditoría pedida', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo pedir', text: error.message, width: '300px' })
+    } finally {
+      setPidiendo(false)
+    }
+  }
+
+  const borrar = async (a) => {
+    const { isConfirmed } = await Swal.fire({
+      icon: 'warning',
+      title: '¿Borrar la auditoría?',
+      text: `La pedida el ${fecha(a.fechaPedido)}, con lo que se haya cargado. Esta acción no se puede deshacer.`,
+      width: '320px',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, borrar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.delete(`${API_GASOIL}/auditorias/${a._id}`)
+      a.cargas.forEach((c) => c.foto && borrarArchivo(c.foto))
+      cargar()
+      Swal.fire({ icon: 'success', title: 'Borrada', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo borrar', text: error.message, width: '300px' })
+    }
+  }
+
+  // ── Carga del encargado ──
+  const abrirCarga = (auditoria, carga) => {
+    setLitrosForm(carga.litros ?? '')
+    setArchivo(null)
+    setFotoQuitada(false)
+    setEditando({ auditoria, carga })
+  }
+
+  const guardarCarga = async (e) => {
+    e.preventDefault()
+    const { auditoria, carga } = editando
+    if (litrosForm === '' || Number(litrosForm) < 0) {
+      Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Los litros son obligatorios.', width: '300px' })
+      return
+    }
+    const fotoAnterior = fotoQuitada ? null : carga.foto
+    if (!archivo && !fotoAnterior) {
+      Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Falta la foto del nivel.', width: '300px' })
+      return
+    }
+    setGuardando(true)
+    try {
+      const foto = archivo ? await subirArchivo(archivo) : fotoAnterior
+      await api.put(`${API_GASOIL}/auditorias/${auditoria._id}/${carga.campo}`, { litros: litrosForm, foto })
+      // La foto que se reemplazó ya no la usa nadie.
+      if (archivo && carga.foto) borrarArchivo(carga.foto)
+      setEditando(null)
+      cargar()
+      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message, width: '300px' })
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  // ── La foto en la tabla ──
+  // Como los adjuntos de los pedidos: el nombre del archivo con el clip (abre
+  // la foto) y la x para sacarla; sin foto, "Subir".
+  const [subiendo, setSubiendo] = useState(null)
+  const urlFoto = (a, c) => `${API_GASOIL}/auditorias/${a._id}/${c.campo}/foto`
+
+  const subirFoto = async (a, c, file) => {
+    setSubiendo(`${a._id}-${c.campo}`)
+    try {
+      const foto = await subirArchivo(file)
+      await api.put(urlFoto(a, c), { foto })
+      cargar()
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo subir la foto', text: error.message, width: '300px' })
+    } finally {
+      setSubiendo(null)
+    }
+  }
+
+  const quitarFoto = async (a, c) => {
+    try {
+      // Primero se la saca de la auditoría: si después falla el borrado en
+      // Cloudinary, queda un archivo suelto y no un link roto en pantalla.
+      await api.put(urlFoto(a, c), { foto: null })
+      cargar()
+      await borrarArchivo(c.foto || {})
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar la foto', text: error.message, width: '300px' })
+    }
+  }
+
+  const celdaFoto = (a, c, cargada) => {
+    if (c.foto?.url) {
+      return (
+        <div className="d-flex align-items-center justify-content-center gap-1">
+          <a
+            href={c.foto.url}
+            target="_blank"
+            rel="noreferrer"
+            title={c.foto.nombre || 'Ver la foto del nivel'}
+            className="text-truncate"
+            style={{ maxWidth: 110, fontSize: '0.7rem' }}
+          >
+            <i className="bi bi-paperclip" /> {c.foto.nombre || 'Ver'}
+          </a>
+          {puedeCargar && (
+            <button
+              type="button"
+              className="btn btn-sm btn-link text-danger p-0"
+              style={{ lineHeight: 1 }}
+              title="Quitar la foto"
+              onClick={() => quitarFoto(a, c)}
+            >
+              <i className="bi bi-x-lg" style={{ fontSize: '0.7rem' }} />
+            </button>
+          )}
+        </div>
+      )
+    }
+    // Sin cargar todavía, la foto va con los litros, en el formulario.
+    if (!cargada || !puedeCargar) return <Raya />
+    const estaSubiendo = subiendo === `${a._id}-${c.campo}`
+    return (
+      <label
+        className={`btn btn-outline-dark mb-0${estaSubiendo ? ' disabled' : ''}`}
+        style={{ fontSize: '0.66rem', lineHeight: 1, padding: '1px 6px', borderRadius: '4px' }}
+        title="Subir la foto del nivel"
+      >
+        {estaSubiendo ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
+        <input
+          type="file"
+          accept="image/*"
+          hidden
+          disabled={estaSubiendo}
+          onChange={(e) => { const file = e.target.files?.[0]; if (file) subirFoto(a, c, file); e.target.value = '' }}
+        />
+      </label>
+    )
+  }
+
+  const columnas = esEncargado ? 5 : 6
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: '#f8f9fa',
+        height: '100%',
+        overflow: 'hidden',
+      }}
+    >
+      <Container
+        fluid
+        className="px-3 py-2 d-flex flex-column flex-grow-1"
+        style={{ maxWidth: '820px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+      >
+        <div className="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+          <div className="d-flex align-items-center gap-2">
+            <div
+              className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+              style={{ width: '34px', height: '34px', backgroundColor: COLOR, color: '#fff', fontSize: '1.05rem' }}
+            >
+              <i className="bi bi-clipboard-check-fill"></i>
+            </div>
+            <span className="fw-bold" style={{ color: COLOR, fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
+              Gasoil · Auditorías
+            </span>
+          </div>
+
+          {!esEncargado && (
+            <Button
+              size="sm"
+              onClick={pedir}
+              disabled={!puedePedir || pidiendo}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ backgroundColor: COLOR, borderColor: COLOR, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+              title={puedePedir ? 'Pedir a los talleres el stock de gasoil y la foto del nivel' : 'Sin permiso para editar'}
+            >
+              <i className="bi bi-plus-lg"></i>
+              <span>{pidiendo ? 'Pidiendo…' : 'Pedir auditoría'}</span>
+            </Button>
+          )}
+        </div>
+
+        <div
+          className="shadow-sm bg-white rounded-3"
+          style={{ flex: '0 1 auto', minHeight: 0, overflow: 'auto', border: '1px solid #cbd5e1' }}
+        >
+          <Table className="mb-0 tabla-informe" style={{ width: '100%', minWidth: '560px' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr>
+                <th style={{ ...thCentro, width: '100px' }}>Fecha pedido</th>
+                <th style={{ ...thCentro, width: '90px' }}>Taller</th>
+                <th style={{ ...thCentro, width: '100px' }}>Stock (lts)</th>
+                <th style={{ ...thCentro, width: '70px' }}>Foto</th>
+                <th style={th}>Cargó</th>
+                {!esEncargado && <th style={{ ...thCentro, width: '60px' }}></th>}
+              </tr>
+            </thead>
+            <tbody>
+              {lista.length === 0 ? (
+                <tr>
+                  <td colSpan={columnas} className="text-center text-muted py-4" style={td}>
+                    {cargando ? 'Cargando…' : 'No hay auditorías pedidas'}
+                  </td>
+                </tr>
+              ) : (
+                lista.map((a) =>
+                  a.cargas.map((c, n) => {
+                    const campo = campoGasoil(c.campo)
+                    const cargada = c.litros !== null && c.litros !== undefined
+                    // La primera fila de cada pedido lleva la fecha y el
+                    // borrar, que abarcan las filas de los dos campos.
+                    const primera = n === 0
+                    return (
+                      <tr key={`${a._id}-${c.campo}`} style={primera ? { borderTop: '2px solid #94a3b8' } : undefined}>
+                        {primera && (
+                          <td style={{ ...tdCentro, fontWeight: 600 }} rowSpan={a.cargas.length} title={a.pedidoPor ? `Pidió ${a.pedidoPor}` : undefined}>
+                            {fecha(a.fechaPedido)}
+                          </td>
+                        )}
+                        <td style={{ ...tdCentro, fontWeight: 600, color: campo?.color }}>{campo?.titulo || c.campo}</td>
+                        <td style={tdCentro}>
+                          {cargada ? (
+                            litros(c.litros)
+                          ) : puedeCargar ? (
+                            <Button
+                              size="sm"
+                              onClick={() => abrirCarga(a, c)}
+                              className="rounded-3 px-2 py-0 d-inline-flex align-items-center gap-1"
+                              style={{ fontSize: '0.7rem', backgroundColor: campo?.color, borderColor: campo?.color, fontWeight: 600 }}
+                            >
+                              <i className="bi bi-pencil-square"></i>
+                              <span>Cargar</span>
+                            </Button>
+                          ) : (
+                            <span className="fw-semibold" style={{ color: '#b45309' }}>
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td style={tdCentro}>{celdaFoto(a, c, cargada)}</td>
+                        <td style={td}>
+                          {cargada ? (
+                            <div className="d-flex align-items-center justify-content-between gap-2">
+                              <span>
+                                {c.cargadoPor || <Raya />}
+                                <span className="text-muted ms-1">{fechaHora(c.fechaCarga)}</span>
+                              </span>
+                              {puedeCargar && (
+                                <BotonAccion icono="bi-pencil" titulo="Corregir" variante="primary" onClick={() => abrirCarga(a, c)} />
+                              )}
+                            </div>
+                          ) : (
+                            <Raya />
+                          )}
+                        </td>
+                        {primera && !esEncargado && (
+                          <td style={tdCentro} rowSpan={a.cargas.length}>
+                            <BotonAccion
+                              icono="bi-trash"
+                              titulo={puedePedir ? 'Borrar la auditoría' : 'Sin permiso para editar'}
+                              variante="danger"
+                              deshabilitado={!puedePedir}
+                              onClick={() => borrar(a)}
+                            />
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })
+                )
+              )}
+            </tbody>
+          </Table>
+        </div>
+      </Container>
+
+      {/* Litros y foto del nivel de un campo. */}
+      <Modal show={editando !== null} onHide={() => setEditando(null)} centered contentClassName="border-0 shadow-lg rounded-4">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: editando ? campoGasoil(editando.carga.campo)?.color : COLOR,
+            color: '#fff',
+            borderTopLeftRadius: '1rem',
+            borderTopRightRadius: '1rem',
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-clipboard-check-fill"></i>
+            <span>
+              Auditoría del {editando && fecha(editando.auditoria.fechaPedido)} ·{' '}
+              {editando && campoGasoil(editando.carga.campo)?.titulo}
+            </span>
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={guardarCarga}>
+          <Modal.Body className="p-3 p-md-4">
+            <Form.Label className="fw-semibold text-dark small mb-1">Litros en el tanque</Form.Label>
+            <Form.Control
+              type="number"
+              min="0"
+              step="any"
+              inputMode="decimal"
+              value={litrosForm}
+              onChange={(e) => setLitrosForm(e.target.value)}
+              className="rounded-3 mb-3"
+              style={{ fontSize: '0.85rem', width: '140px' }}
+              required
+            />
+            <Form.Label className="fw-semibold text-dark small mb-1">Foto del nivel</Form.Label>
+            {/* La que ya está: el nombre con la x. Sacada, se elige otra. */}
+            {editando?.carga.foto?.url && !fotoQuitada ? (
+              <div className="d-flex align-items-center gap-2" style={{ fontSize: '0.85rem' }}>
+                <a href={editando.carga.foto.url} target="_blank" rel="noreferrer" className="text-truncate">
+                  <i className="bi bi-paperclip" /> {editando.carga.foto.nombre || 'Ver la foto'}
+                </a>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-link text-danger p-0"
+                  style={{ lineHeight: 1 }}
+                  title="Quitar la foto"
+                  onClick={() => setFotoQuitada(true)}
+                >
+                  <i className="bi bi-x-lg" style={{ fontSize: '0.8rem' }} />
+                </button>
+              </div>
+            ) : (
+              <Form.Control
+                type="file"
+                accept="image/*"
+                onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+                className="rounded-3"
+                style={{ fontSize: '0.85rem' }}
+              />
+            )}
+          </Modal.Body>
+          <Modal.Footer className="bg-light border-0 py-2 px-4" style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
+            <Button variant="outline-secondary" size="sm" onClick={() => setEditando(null)} className="rounded-3 px-3" style={{ fontSize: '0.84rem' }}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={guardando}
+              className="rounded-3 px-3 shadow-sm"
+              style={{
+                fontSize: '0.84rem',
+                backgroundColor: editando ? campoGasoil(editando.carga.campo)?.color : COLOR,
+                borderColor: editando ? campoGasoil(editando.carga.campo)?.color : COLOR,
+              }}
+            >
+              {guardando ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+    </div>
+  )
+}

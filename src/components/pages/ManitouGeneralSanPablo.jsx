@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Button, Form, Modal, Table } from "react-bootstrap";
 import { api } from "../../services/api";
@@ -75,6 +75,7 @@ const ESTADOS_MANITOU = [
 
 function ManitouGeneralSanPablo() {
   const { cosecha: param, unidad } = useParams();
+  const navigate = useNavigate();
   // General (la plantilla) o una Manitou: cada una con sus responsables.
   const seccion = seccionManitou(unidad);
   const esGeneral = unidad === "general";
@@ -194,11 +195,20 @@ function ManitouGeneralSanPablo() {
           filtro
         )
       : [];
+  // Filtro por estado del modal (20/10/2026): quedan los repuestos de ese
+  // estado y se va la tarea que se queda sin ninguno. El Excel lo sigue.
+  const [filtroEstadoRepuesto, setFiltroEstadoRepuesto] = useState("Todos");
+  const repuestosFiltrados =
+    filtroEstadoRepuesto === "Todos"
+      ? tareasRepuestos
+      : tareasRepuestos
+          .map((t) => ({ ...t, repuestos: t.repuestos.filter((r) => r.estado === filtroEstadoRepuesto) }))
+          .filter((t) => t.repuestos.length > 0);
   const exportarRepuestos = () =>
     exportarRepuestosManitou({
       titulo: `Repuestos — Manitou ${unidad} — Cosecha ${param}`,
       archivo: `sanpablo_manitou_repuestos_${unidad}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      tareas: tareasRepuestos,
+      tareas: repuestosFiltrados,
     });
 
   // Al volver de los repuestos (#sistema), a la tabla de ese sistema.
@@ -456,10 +466,47 @@ function ManitouGeneralSanPablo() {
           <span className="text-secondary" style={{ fontSize: "0.76rem" }}>
             {hayFiltro(filtro) ? "Con los filtros de la página. " : ""}Los de cantidad 0 no salen: no hacen falta.
           </span>
+          <div className="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+            <span className="fw-bold text-dark" style={{ fontSize: "0.78rem" }}>
+              Estado:
+            </span>
+            <div className="input-group input-group-sm" style={{ width: "150px" }}>
+              <Form.Select
+                size="sm"
+                value={filtroEstadoRepuesto}
+                onChange={(e) => setFiltroEstadoRepuesto(e.target.value)}
+                className={`rounded-3 ${filtroEstadoRepuesto !== "Todos" ? "rounded-end-0 border-end-0 fw-bold filtro-activo" : ""}`}
+                style={{
+                  fontSize: "0.78rem",
+                  height: "30px",
+                  padding: "2px 24px 2px 8px",
+                  color: filtroEstadoRepuesto !== "Todos" ? "#dc2626" : "#1e293b",
+                }}
+              >
+                <option value="Todos">Todos</option>
+                {Object.keys(ESTADOS_REPUESTO).map((e) => (
+                  <option key={e} value={e}>
+                    {e}
+                  </option>
+                ))}
+              </Form.Select>
+              {filtroEstadoRepuesto !== "Todos" && (
+                <button
+                  className="btn btn-outline-secondary border-start-0 d-flex align-items-center justify-content-center"
+                  type="button"
+                  onClick={() => setFiltroEstadoRepuesto("Todos")}
+                  title="Limpiar filtro estado"
+                  style={{ padding: "0 6px", height: "30px" }}
+                >
+                  <i className="bi bi-x" style={{ fontSize: "0.9rem" }}></i>
+                </button>
+              )}
+            </div>
+          </div>
           <Button
             size="sm"
             onClick={exportarRepuestos}
-            disabled={tareasRepuestos.length === 0}
+            disabled={repuestosFiltrados.length === 0}
             className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1 flex-shrink-0"
             style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.78rem", fontWeight: 600 }}
             title="Exportar a Excel"
@@ -468,9 +515,9 @@ function ManitouGeneralSanPablo() {
             <span>Excel</span>
           </Button>
         </div>
-        {tareasRepuestos.length === 0 ? (
+        {repuestosFiltrados.length === 0 ? (
           <div className="text-center text-muted py-4" style={{ fontSize: "0.85rem" }}>
-            No hay repuestos cargados.
+            {tareasRepuestos.length === 0 ? "No hay repuestos cargados." : `No hay repuestos en "${filtroEstadoRepuesto}".`}
           </div>
         ) : (
           <div className="rounded-3 bg-white" style={{ border: "1px solid #cbd5e1", overflow: "hidden" }}>
@@ -486,7 +533,7 @@ function ManitouGeneralSanPablo() {
               </thead>
               <tbody>
                 {/* Un renglón por repuesto; la tarea ocupa los de sus repuestos. */}
-                {tareasRepuestos.flatMap((t, idx) =>
+                {repuestosFiltrados.flatMap((t, idx) =>
                   t.repuestos.map((r, i) => (
                     <tr key={r._id}>
                       {i === 0 && (
@@ -582,9 +629,21 @@ function ManitouGeneralSanPablo() {
                   <span>Desplegar todo</span>
                 </button>
               </div>
-              {/* A la derecha, el botón Repuestos y los filtros. */}
+              {/* A la derecha, los botones Presupuesto y Repuestos y los filtros.
+                  Presupuesto lleva a la tarjeta de General (20/10/2026). */}
               {!esGeneral && (
                 <div className="d-flex align-items-center gap-4">
+                  <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/reparaciones/sanpablo/${param}/manitous/general/presupuesto`)}
+                    className="btn btn-sm rounded-3 px-2 py-0 d-flex align-items-center gap-1"
+                    style={{ height: "26px", fontSize: "0.74rem", fontWeight: 600, backgroundColor: "#059669", borderColor: "#059669", color: "#fff" }}
+                    title="El presupuesto de las Manitous"
+                  >
+                    <i className="bi bi-currency-dollar"></i>
+                    <span>Presupuesto</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setVerRepuestos(true)}
@@ -596,6 +655,7 @@ function ManitouGeneralSanPablo() {
                     <i className="bi bi-gear-fill"></i>
                     <span>Repuestos</span>
                   </button>
+                  </div>
                   <FiltroChequeoManitou valor={filtro} onChange={setFiltro} className="" />
                 </div>
               )}

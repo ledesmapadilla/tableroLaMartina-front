@@ -23,7 +23,7 @@ const REGLAS = [
   [/^\/compras\/analista/, "compras.analista"],
   [/^\/compras\/comprador/, "compras.comprador"],
   [/^\/compras\/gerencia/, "compras.gerencia"],
-  [/^\/compras\/resultados/, "compras.resultados"],
+  [/^\/compras\/gasoil/, "compras.gasoil"],
   [/^\/compras\/altas\/proveedores/, "altas.proveedores"],
   [/^\/compras\/altas\/centros-costo/, "altas.centrosCosto"],
   [/^\/compras\/?$/, GRUPO.compras],

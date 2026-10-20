@@ -81,6 +81,15 @@ const GRUPOS = {
     hoverBg: "linear-gradient(135deg, #1a2e05 0%, #3f6212 100%)",
     accent: "#a3e635",
   },
+  // Solo consulta: cada máquina abre directo su historial, sin cargar nada.
+  8: {
+    label: "En desuso",
+    supervisor: "",
+    bg: "linear-gradient(135deg, #475569 0%, #64748b 100%)",
+    hoverBg: "linear-gradient(135deg, #1e293b 0%, #475569 100%)",
+    accent: "#cbd5e1",
+    consulta: true,
+  },
 };
 
 function TractoresGrupo() {
@@ -100,9 +109,17 @@ function TractoresGrupo() {
     accent: "#38bdf8",
   };
 
+  const consulta = Boolean(infoGrupo.consulta);
+  // La en desuso abre el historial; las demás, el menú del tractor.
+  const abrirTractor = (t) =>
+    navigate(`/tractores/grupo/${grupoId}/reparaciones/${t._id}${consulta ? "/historial" : ""}`, {
+      state: { cc: t.cc, descripcion: t.descripcion },
+    });
+
   useEffect(() => {
     Promise.all([
-      fetch("/api/tractores").then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      // El back esconde las en desuso salvo que se las pida.
+      fetch(`/api/tractores${Number(grupoId) === 8 ? "?incluirDesuso=1" : ""}`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/trabajos-tractor/pendientes/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
       fetch("/api/trabajos-tractor/parados/ids").then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([tracs, pendientesIds, stopIds]) => {
@@ -210,7 +227,7 @@ function TractoresGrupo() {
       >
         <button
           onClick={() => navigate(`/tractores/grupo/${grupoId}/resumen`)}
-          className={`btn ${puede("tractores.planilla") ? "d-inline-flex" : "d-none"} align-items-center gap-2 rounded-3 px-3 py-1.5 text-white`}
+          className={`btn ${puede("tractores.planilla") && !consulta ? "d-inline-flex" : "d-none"} align-items-center gap-2 rounded-3 px-3 py-1.5 text-white`}
           style={{
             background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
             border: "1px solid rgba(255, 255, 255, 0.12)",
@@ -279,8 +296,8 @@ function TractoresGrupo() {
         >
           {tractores.map((t) => {
             const id = t._id?.toString();
-            const tieneTarea = conTareaPendiente.has(id);
-            const estaParado = paradosIds.has(id);
+            const tieneTarea = !consulta && conTareaPendiente.has(id);
+            const estaParado = !consulta && paradosIds.has(id);
             const isHovered = hoveredId === id;
             const cleanCC = String(t.cc || "").replace(/^cc\s*/i, "").trim();
 
@@ -305,19 +322,10 @@ function TractoresGrupo() {
                   transform: isHovered ? "translateY(-4px) scale(1.03)" : "translateY(0) scale(1)",
                   userSelect: "none",
                 }}
-                onClick={() =>
-                  navigate(`/tractores/grupo/${grupoId}/reparaciones/${t._id}`, {
-                    state: { cc: t.cc, descripcion: t.descripcion },
-                  })
-                }
+                onClick={() => abrirTractor(t)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) =>
-                  e.key === "Enter" &&
-                  navigate(`/tractores/grupo/${grupoId}/reparaciones/${t._id}`, {
-                    state: { cc: t.cc, descripcion: t.descripcion },
-                  })
-                }
+                onKeyDown={(e) => e.key === "Enter" && abrirTractor(t)}
                 onMouseEnter={() => setHoveredId(id)}
                 onMouseLeave={() => setHoveredId(null)}
               >
@@ -368,6 +376,18 @@ function TractoresGrupo() {
                 >
                   {t.descripcion || "Sin descripción"}
                 </div>
+
+                {/* Dónde está guardada la máquina en desuso (se carga en Flota). */}
+                {consulta && (
+                  <div
+                    className="small text-truncate w-100 px-2 mt-1 d-flex align-items-center justify-content-center gap-1"
+                    title={t.ubicacion || "Sin ubicación cargada"}
+                    style={{ fontSize: "0.74rem", color: infoGrupo.accent, fontWeight: 600 }}
+                  >
+                    <i className="bi bi-geo-alt-fill"></i>
+                    {t.ubicacion || "Sin ubicación"}
+                  </div>
+                )}
               </div>
             );
           })}

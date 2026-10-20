@@ -6,8 +6,9 @@
  *
  * Con el rol alcanza para Analista, Comprador y Gerencia. Los dos talleres
  * comparten el rol "Encargado de taller" (`solicitante`), así que ahí hay que
- * mirar quién es: Kevin es Berdina y Victor es San Pablo. Si cambia la persona
- * de un taller, se toca `POR_USUARIO` y nada más; el rol manda sobre el nombre,
+ * mirar quién es: Kevin es Berdina, y Victor y Pablo (20/10/2026) son San
+ * Pablo. Si cambia la persona de un taller, se toca `POR_USUARIO` (y su copia
+ * en el back, gasoil.controller.js) y nada más; el rol manda sobre el nombre,
  * así que si mañana Kevin pasa a comprador su tarjeta es la de Comprador.
  *
  * El superadmin no tiene una sección propia: ve todas y todas quedan con su
@@ -22,6 +23,7 @@ const POR_ROL = {
 const POR_USUARIO = {
   kevin: "berdina",
   victor: "sanpablo",
+  pablo: "sanpablo",
 };
 
 export const seccionPropia = (user) => {

@@ -44,15 +44,18 @@ const GRUPOS = {
   5: { label: "Grupo 5", supervisor: "Elio Rojas" },
   6: { label: "Berdina", supervisor: "Kevin" },
   7: { label: "San Pablo", supervisor: "Victor" },
+  8: { label: "En desuso", supervisor: "" },
 };
 
 function HistorialTractor() {
   // Ver sin editar (tabla de Roles): el borrar queda a la vista pero
   // deshabilitado.
   const { puede } = usePermisos();
-  const sinEditar = !puede("tractores.historial", "editar");
   const navigate = useNavigate();
   const { grupoId, tractorId } = useParams();
+  // Una máquina en desuso es solo consulta: ni borrar ni ir al menú del tractor.
+  const consulta = Number(grupoId) === 8;
+  const sinEditar = consulta || !puede("tractores.historial", "editar");
   const { state } = useLocation();
 
   const [tractor, setTractor] = useState(null);
@@ -63,7 +66,7 @@ function HistorialTractor() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("Todas");
   const opcionesCategoria = useMemo(() => opcionesFiltroCategoria(trabajos), [trabajos]);
-  const [filtroEstado, setFiltroEstado] = useState("Pendientes / En proceso"); // 'Pendientes / En proceso' | 'Todas' | 'Terminada' | 'En proceso' | 'Pendiente'
+  const [filtroEstado, setFiltroEstado] = useState(consulta ? "Todas" : "Pendientes / En proceso"); // 'Pendientes / En proceso' | 'Todas' | 'Terminada' | 'En proceso' | 'Pendiente'
   const [filtroTaller, setFiltroTaller] = useState("Todos"); // 'Todos' | 'Taller Propio' | 'Tercero'
   const [filtroSoloParadas, setFiltroSoloParadas] = useState(Boolean(state?.soloParadas || state?.maquinaParada));
 
@@ -93,11 +96,13 @@ function HistorialTractor() {
   const infoGrupo = GRUPOS[grupoId] || { label: state?.grupoLabel || `Grupo ${grupoId}`, supervisor: "—" };
 
   // Estado Parada vs Activa
+  // Una en desuso nunca figura parada: no se pinta de rojo.
   const estaParada = useMemo(() => {
+    if (consulta) return false;
     return trabajos.some(
       (t) => t.maquinaParada && estadoNormalizado(t.estado) !== "Terminada"
     );
-  }, [trabajos]);
+  }, [trabajos, consulta]);
 
   // Filtrado de Trabajos
   const trabajosFiltrados = useMemo(() => {
@@ -277,7 +282,7 @@ function HistorialTractor() {
         t.observaciones || "-",
       ]);
 
-      const esParadaFila = Boolean(t.maquinaParada || estaParada);
+      const esParadaFila = !consulta && Boolean(t.maquinaParada || estaParada);
 
       if (esParadaFila) {
         fila.eachCell((cell) => {
@@ -388,7 +393,7 @@ function HistorialTractor() {
           </button>
           <button
             onClick={() => navigate(`/tractores/grupo/${grupoId}/reparaciones/${tractorId}`)}
-            className="btn btn-sm btn-outline-light d-flex align-items-center gap-2 rounded-3 px-3 py-1"
+            className={`btn btn-sm btn-outline-light ${consulta ? "d-none" : "d-flex"} align-items-center gap-2 rounded-3 px-3 py-1`}
             style={{ fontSize: "0.82rem" }}
           >
             <TractorIcon size="1.05rem" color="#fff" />
@@ -419,6 +424,22 @@ function HistorialTractor() {
       </div>
 
       {/* Cartel / Banner de Estado del Tractor Centrado en la Página */}
+      {/* La en desuso lleva su cartel gris con dónde está guardada. */}
+      {consulta ? (
+        <div
+          className="px-4 py-2 border-bottom flex-shrink-0 d-flex align-items-center justify-content-center gap-3"
+          style={{ backgroundColor: "#f1f5f9", borderColor: "#cbd5e1" }}
+        >
+          <span className="fw-bold d-flex align-items-center gap-2" style={{ color: "#475569", fontSize: "0.88rem", letterSpacing: "0.3px" }}>
+            <i className="bi bi-archive-fill" style={{ fontSize: "1.05rem" }}></i>
+            EN DESUSO
+          </span>
+          <span className="d-flex align-items-center gap-1" style={{ color: "#334155", fontSize: "0.84rem" }}>
+            <i className="bi bi-geo-alt-fill"></i>
+            {tractor?.ubicacion || "Sin ubicación cargada"}
+          </span>
+        </div>
+      ) : (
       <div
         className="px-4 py-2 border-bottom flex-shrink-0 d-flex align-items-center justify-content-center"
         style={{
@@ -443,6 +464,7 @@ function HistorialTractor() {
           </span>
         </div>
       </div>
+      )}
 
       {/* Tarjeta, filtros y tabla comparten el ancho: más angosto que la
           pantalla, centrado, para que la tabla no se estire de más. */}
@@ -753,7 +775,7 @@ function HistorialTractor() {
                     const est = estadoNormalizado(t.estado);
                     const esTerminada = est === "Terminada";
                     const esEnProceso = est === "En proceso";
-                    const esParadaFila = Boolean(t.maquinaParada || estaParada);
+                    const esParadaFila = !consulta && Boolean(t.maquinaParada || estaParada);
 
                     return (
                       <tr key={t._id} className={esParadaFila ? "tr-parada" : ""}>
@@ -788,7 +810,7 @@ function HistorialTractor() {
                           >
                             {t.diagnostico || t.descripcion || "—"}
                           </div>
-                          {t.maquinaParada && (
+                          {!consulta && t.maquinaParada && (
                             <span
                               className="badge bg-danger-subtle text-danger border border-danger-subtle px-1 py-0 mt-0.5"
                               style={{ fontSize: "0.64rem" }}

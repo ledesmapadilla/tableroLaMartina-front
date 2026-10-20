@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 import { usePermisos } from '../../context/permisos'
 import { useAuth } from '../../context/AuthContext'
+import { camposVisibles } from './camposGasoil'
 import { GRUPO } from '../../utils/permisosCatalogo'
 import { seccionPropia, COLORES_NEUTROS } from '../../utils/seccionPropia'
 import { ultimaCentrada } from '../../utils/grillaTarjetas'
@@ -104,12 +105,13 @@ const SECCIONES = [
     },
   },
   {
-    id: 'resultados',
-    titulo: 'Resultados',
-    subtitulo: 'Lo gastado por taller y por C.C.',
-    icono: 'bi bi-graph-up-arrow',
-    destino: '/compras/resultados',
-    permiso: 'compras.resultados',
+    // Gasoil (20/10/2026): en lugar de Resultados. Berdina y San Pablo.
+    id: 'gasoil',
+    titulo: 'Gasoil',
+    subtitulo: 'Consumos e ingresos de Berdina y San Pablo',
+    icono: 'bi bi-fuel-pump-fill',
+    destino: '/compras/gasoil',
+    permiso: 'compras.gasoil',
     colores: {
       fondo: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)',
       fondoHover: 'linear-gradient(135deg, #451a03 0%, #78350f 100%)',
@@ -126,7 +128,14 @@ export default function Inicio() {
   const { user } = useAuth()
   const [hovered, setHovered] = useState(null)
 
-  const visibles = SECCIONES.filter((s) => puede(s.permiso))
+  // El encargado de taller, en Gasoil, ve solo los ingresos de su campo
+  // (camposGasoil.js): la tarjeta lo dice así.
+  const campoTaller = user?.rol === 'solicitante' ? camposVisibles(user)[0] : null
+  const visibles = SECCIONES.filter((s) => puede(s.permiso)).map((s) =>
+    s.id === 'gasoil' && user?.rol === 'solicitante'
+      ? { ...s, subtitulo: campoTaller ? `Ingresos de ${campoTaller.titulo}` : 'Ingresos de gasoil' }
+      : s
+  )
 
   // La sección de quien está logueado va con su color y el resto en gris, para
   // que cada uno reconozca la suya de entrada (utils/seccionPropia.js). Si no

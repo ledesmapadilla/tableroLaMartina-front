@@ -19,10 +19,10 @@ export const CATALOGO = [
   { seccion: "Compras", clave: "compras.analista", label: "Analista", hoy: PERMISOS.comprasAnalista },
   { seccion: "Compras", clave: "compras.comprador", label: "Comprador", hoy: PERMISOS.comprasAnalista },
   { seccion: "Compras", clave: "compras.gerencia", label: "Gerencia", hoy: PERMISOS.comprasGerencia },
-  // Resultados (12/10/2026, antes solo de nacho): nace solo para el
-  // superadmin y a los demás roles se les tilda. Es de consulta: "editar" no
-  // habilita nada más.
-  { seccion: "Compras", clave: "compras.resultados", label: "Resultados", hoy: PERMISOS.comprasUsuarios },
+  // Gasoil (20/10/2026, en lugar de Resultados): nace solo para el
+  // superadmin y a los demás roles se les tilda. "Editar" deja cargar,
+  // corregir y borrar en las planillas.
+  { seccion: "Compras", clave: "compras.gasoil", label: "Gasoil", hoy: PERMISOS.comprasUsuarios },
   // El almacén (20/09/2026). Hoy lo lleva el analista; cuando cada taller
   // tenga el suyo, cada uno va a sumar su propia fila.
   { seccion: "Compras", clave: "compras.stock", label: "Almacén de repuestos", hoy: PERMISOS.comprasAnalista },
