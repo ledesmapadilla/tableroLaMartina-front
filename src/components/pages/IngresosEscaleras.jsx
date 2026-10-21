@@ -597,6 +597,7 @@ export default function IngresosEscaleras({ icono }) {
     >
       <NavbarSanPablo
         titulo="Carros porta escaleras / Escaleras"
+        sinSeccion
         cosecha={cosecha}
         icono={icono}
         volverA={`/reparaciones/sanpablo/${cosecha}`}

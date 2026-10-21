@@ -5,7 +5,8 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
-import { UNIDADES_MANITOU, seccionManitou } from "../../utils/sistemasManitou";
+import { UNIDADES_MANITOU, MANITOUS_FUERA_DE_REPARACION, seccionManitou, fmtPct } from "../../utils/sistemasManitou";
+import { traerAvancesManitou, avanceTotalManitous } from "../../utils/avanceManitous";
 
 // El verde de la tarjeta Manitous de ReparacionesSanPablo.
 const verde = {
@@ -47,6 +48,9 @@ function ManitousSanPablo() {
   const [responsables, setResponsables] = useState({});
   // En reparación o en espera, por unidad (11/10/2026): { [unidad]: estado }.
   const [estados, setEstados] = useState({});
+  // El avance de la reparación de cada Manitou (21/10/2026), con la misma
+  // cuenta que su página: { [unidad]: % }. Sin pesos de los sistemas, vacío.
+  const [avances, setAvances] = useState({});
 
   useEffect(() => {
     const nro = cosechaDeParam(cosecha);
@@ -70,7 +74,30 @@ function ManitousSanPablo() {
         )
       )
       .catch(() => setEstados({}));
+
+    traerAvancesManitou(nro).then(setAvances);
   }, [cosecha]);
+
+  // El avance total, en la tarjeta General: el promedio de las que están en
+  // reparación (la 1100 no cuenta).
+  const valores = Object.values(avances);
+  const avanceTotal = avanceTotalManitous(avances);
+
+  // Lo del avance de cada tarjeta: la barra, el texto de la 1100 o nada.
+  const avanceDe = (id) => {
+    if (MANITOUS_FUERA_DE_REPARACION.includes(id)) return { avanceTexto: "Fuera de reparación" };
+    if (id === "general") {
+      return avanceTotal === null
+        ? {}
+        : {
+            // En General, en torta (21/10/2026, para probar).
+            torta: true,
+            avance: avanceTotal,
+            avanceTitulo: `Avance total: el promedio de las ${valores.length} Manitou en reparación`,
+          };
+    }
+    return avances[id] === undefined ? {} : { avance: avances[id], avanceTitulo: `Avance de la reparación: ${fmtPct(avances[id])}` };
+  };
 
   const conResponsables = tarjetas.map((t) => {
     const nombres = responsables[t.id] ?? [];
@@ -79,6 +106,7 @@ function ManitousSanPablo() {
       ...t,
       ...(nombres.length && { subtitulo: nombres.join(" · ") }),
       ...(estado && { etiqueta: estado }),
+      ...avanceDe(t.id),
     };
   });
 

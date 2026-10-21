@@ -1,4 +1,5 @@
 import { exportarPlanilla } from "./excel";
+import { avanceTarea } from "../utils/sistemasManitou";
 
 // El estado de una fila de chequeo de Manitou (09/10/2026), uno solo y
 // mandando el menos avanzado: Pedir cotización si alguno no se mandó al
@@ -90,7 +91,7 @@ export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizacione
         ...(conSistema ? [sistema.titulo] : []),
         f.item,
         f.no_aplica ? "NO APLICA" : f.descripcion || "",
-        ...(general ? [] : [reparacionesTexto(f), repuestosTexto(f, cotizaciones), f.chequeado ? "Sí" : "", (f.no_aplica ? "" : estadoDeFila(f, cotizaciones) || "")]),
+        ...(general ? [] : [reparacionesTexto(f), repuestosTexto(f, cotizaciones), f.no_aplica ? "" : `${avanceTarea(f)}%`, (f.no_aplica ? "" : estadoDeFila(f, cotizaciones) || "")]),
       ]);
     });
     if (filas.length && cortes.at(-1) !== filas.length - 1) cortes.push(filas.length - 1);
@@ -107,7 +108,7 @@ export const exportarChequeoManitou = ({ titulo, archivo, secciones, cotizacione
         : [
             { titulo: "Detalle reparación", ancho: 45 },
             { titulo: "Repuestos", ancho: 50 },
-            { titulo: "OK", ancho: 8 },
+            { titulo: "Avance", ancho: 10 },
             { titulo: "Estado", ancho: 16 },
           ]),
     ],

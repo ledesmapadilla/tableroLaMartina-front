@@ -31,6 +31,8 @@ export const CAMPOS_GASOIL = [
     titulo: 'Berdina',
     subtitulo: 'Consumos e ingresos de gasoil',
     color: '#991b1b',
+    // El sombreado del día del stock inicial en los consumos.
+    filaStock: '#fee2e2',
     colores: {
       fondo: 'linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)',
       fondoHover: 'linear-gradient(135deg, #450a0a 0%, #991b1b 100%)',
@@ -44,6 +46,7 @@ export const CAMPOS_GASOIL = [
     titulo: 'San Pablo',
     subtitulo: 'Consumos e ingresos de gasoil',
     color: '#3f6212',
+    filaStock: '#ecfccb',
     colores: {
       fondo: 'linear-gradient(135deg, #3f6212 0%, #4d7c0f 100%)',
       fondoHover: 'linear-gradient(135deg, #1a2e05 0%, #3f6212 100%)',

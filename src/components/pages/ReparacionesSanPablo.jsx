@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
+import { cosechaDeParam } from "../../utils/cosechas";
+import { fmtPct } from "../../utils/sistemasManitou";
+import { traerAvancesManitou, avanceTotalManitous } from "../../utils/avanceManitous";
 
 // Una tarjeta por tipo de equipo que se repara en la base San Pablo, dentro de
 // una cosecha (/reparaciones/sanpablo/:cosecha). Las que todavía no están
@@ -72,6 +75,13 @@ function ReparacionesSanPablo() {
   const { cosecha } = useParams();
   const [hoveredCard, setHoveredCard] = useState(null);
 
+  // El avance total de las Manitou en reparación (21/10/2026), en su
+  // tarjeta: el mismo que la tarjeta General de Manitous.
+  const [avanceManitous, setAvanceManitous] = useState(null);
+  useEffect(() => {
+    traerAvancesManitou(cosechaDeParam(cosecha)).then((a) => setAvanceManitous(avanceTotalManitous(a)));
+  }, [cosecha]);
+
   return (
     <div
       style={{
@@ -121,6 +131,8 @@ function ReparacionesSanPablo() {
                   transform: isHovered ? "translateY(-4px)" : "translateY(0)",
                   color: "#ffffff",
                   userSelect: "none",
+                  // Para el avance, que va al pie.
+                  position: "relative",
                 }}
                 onClick={() => navigate(ruta)}
                 role="button"
@@ -149,6 +161,31 @@ function ReparacionesSanPablo() {
                 <h3 className="fw-bold mb-0 text-white" style={{ fontSize: "1.2rem", lineHeight: 1.25 }}>
                   {t.titulo}
                 </h3>
+                {/* Manitous: el avance de la reparación al pie de la tarjeta
+                    (en las de cada Manitou va arriba). */}
+                {t.id === "manitous" && avanceManitous !== null && (
+                  <div
+                    className="d-flex align-items-center gap-2"
+                    style={{ position: "absolute", bottom: "16px", left: "50%", transform: "translateX(-50%)", width: "84%" }}
+                    title={`Avance de la reparación de las Manitou: ${fmtPct(avanceManitous)}`}
+                  >
+                    <div
+                      style={{
+                        flex: 1,
+                        height: "14px",
+                        borderRadius: "7px",
+                        backgroundColor: "rgba(255, 255, 255, 0.22)",
+                        border: "1px solid rgba(255, 255, 255, 0.35)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div style={{ width: `${Math.min(avanceManitous, 100)}%`, height: "100%", backgroundColor: "#facc15" }} />
+                    </div>
+                    <span className="fw-bold" style={{ fontSize: "1.25rem", lineHeight: 1, color: "#facc15" }}>
+                      {fmtPct(avanceManitous)}
+                    </span>
+                  </div>
+                )}
               </div>
             );
           })}

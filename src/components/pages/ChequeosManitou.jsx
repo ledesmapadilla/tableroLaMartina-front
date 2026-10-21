@@ -4,7 +4,7 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal } from "react-bootstrap";
 import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
-import { SISTEMAS_MANITOU, seccionManitou, unidadManitouValida } from "../../utils/sistemasManitou";
+import { SISTEMAS_MANITOU, seccionManitou, unidadManitouValida, fmtPct } from "../../utils/sistemasManitou";
 import { usePermisos } from "../../context/permisos";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TractorIcon from "../shared/TractorIcon";
@@ -45,6 +45,101 @@ const thCentro = { ...th, textAlign: "center" };
  * camionetas: vacío con borde oscuro y, tocado, lleno de verde con la tilde
  * blanca. Se guarda en el campo `chequeado`.
  */
+/**
+ * Un % de una tarea que se escribe en la tabla (21/10/2026): una cajita
+ * chica, con el número centrado. Se guarda al salir del campo o con Enter;
+ * vacío lo borra. `onGuardar(valor)` guarda; después se muestra lo que quedó
+ * en la fila (`actual`). `color(valor)` pinta el número.
+ */
+function CampoPorcentaje({ actual, onGuardar, deshabilitado, titulo, color = () => "#000", oculto = false }) {
+  // Lo que se está escribiendo; null muestra lo guardado.
+  const [borrador, setBorrador] = useState(null);
+  const valor = borrador ?? actual ?? "";
+  // Con `oculto` (el peso, 21/10/2026) el valor no se ve: hay un ojo que se
+  // toca para verlo y escribirlo (un + si todavía no tiene); al salir se
+  // vuelve a tapar.
+  const [visible, setVisible] = useState(false);
+
+  const guardar = async () => {
+    if (borrador !== null) {
+      const nuevo = borrador === "" ? null : Number(borrador);
+      if (nuevo !== (actual ?? null)) await onGuardar(nuevo);
+      // Guardado o no, vuelve a mostrar lo que tiene la fila.
+      setBorrador(null);
+    }
+    setVisible(false);
+  };
+
+  const caja = { width: "38px", height: "20px", borderRadius: "4px" };
+  if (oculto && !visible) {
+    return (
+      <div className="d-flex align-items-center justify-content-center">
+        {/* Con peso, el ojo para verlo; sin cargar, el + para escribirlo. */}
+        {actual === null || actual === undefined ? (
+          <BotonAccion
+            icono="bi-plus-lg"
+            titulo={deshabilitado ? "Sin permiso para editar" : "Cargar el peso"}
+            variante="success"
+            onClick={() => setVisible(true)}
+            deshabilitado={deshabilitado}
+          />
+        ) : (
+          <BotonAccion icono="bi-eye" titulo="Ver el peso" variante="secondary" onClick={() => setVisible(true)} />
+        )}
+      </div>
+    );
+  }
+  // Destapado sin permiso de editar: el número, y tocándolo se tapa.
+  if (oculto && deshabilitado) {
+    return (
+      <button
+        type="button"
+        className="btn btn-link p-0 text-decoration-none fw-bold"
+        style={{ fontSize: "0.7rem", color: "#000" }}
+        onClick={() => setVisible(false)}
+        title="Tocar para tapar"
+      >
+        {actual === null || actual === undefined ? "–" : `${actual}%`}
+      </button>
+    );
+  }
+
+  const tono = color(valor);
+  return (
+    <div className="d-flex align-items-center justify-content-center" style={{ gap: "2px" }}>
+      <input
+        type="number"
+        min="0"
+        max="100"
+        step="any"
+        inputMode="decimal"
+        // Sin la clase fw-bold: index.css pinta de rojo los input.fw-bold (los
+        // filtros con valor) y taparía el color de acá.
+        className="form-control form-control-sm text-center"
+        style={{ ...caja, fontSize: "0.7rem", padding: "0 2px", fontWeight: 700, color: tono }}
+        value={valor}
+        placeholder="0"
+        // Destapado, el cursor ya queda adentro.
+        autoFocus={oculto}
+        onChange={(e) => setBorrador(e.target.value)}
+        onBlur={guardar}
+        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+        disabled={deshabilitado}
+        title={deshabilitado ? "Sin permiso para editar" : titulo}
+      />
+      <span className="fw-bold" style={{ fontSize: "0.68rem", color: tono }}>
+        %
+      </span>
+    </div>
+  );
+}
+
+// El color del avance: gris sin cargar o en 0, ámbar a medias, verde al 100.
+const colorAvance = (valor) => {
+  const n = Number(valor) || 0;
+  return valor === "" ? "#94a3b8" : n >= 100 ? VERDE_OK : n > 0 ? "#b45309" : "#64748b";
+};
+
 function CirculoOk({ marcado, onClick, deshabilitado, titulo, tamano = 18 }) {
   const RELLENO = VERDE_OK;
   return (
@@ -385,6 +480,10 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
  * la máquina en ese sistema, cada una con su círculo de solucionado.
  * `estadoIngreso` es lo guardado ({ tareas }) y cada cambio se le pasa a
  * `onEstadoIngreso`.
+ *
+ * Con `avance` (21/10/2026, solo en las Manitou) el título lleva el avance
+ * del sistema: { parte (0 a 1), hechas, tareas, peso, aporte }, de
+ * avanceManitou en utils/sistemasManitou.js.
  */
 export default function ChequeosManitou({
   embebido = false,
@@ -397,6 +496,7 @@ export default function ChequeosManitou({
   onPlegar,
   estadoIngreso,
   onEstadoIngreso,
+  avance,
 }) {
   const { cosecha: param, unidad, sistema: sistemaParam } = useParams();
   const idSistema = sistemaProp ?? sistemaParam;
@@ -523,7 +623,10 @@ export default function ChequeosManitou({
   };
   // General no lleva OK ni Estado. La descripción del ítem va en
 // las dos (en las Manitou, la copiada de General).
-  const columnas = esGeneral ? 5 : 8;
+  const columnas = esGeneral ? 6 : 9;
+  // La suma de los pesos de las tareas que aplican (21/10/2026), para el
+  // encabezado de la columna Peso.
+  const sumaPesos = filas.filter((f) => !f.no_aplica).reduce((t, f) => t + (Number(f.peso) || 0), 0);
   const nombreUnidad = esGeneral ? "Manitous General" : `Manitou ${unidad}`;
 
   // Las reparaciones de una fila (11/10/2026), solo en las Manitou: el +
@@ -607,7 +710,6 @@ export default function ChequeosManitou({
   };
 
   // El OK a mano, solo sin problemas: con problemas se marca resolviéndolos.
-  const marcarOk = (f) => cambiar(f, { chequeado: !f.chequeado });
 
   // El estado de la fila (ver ESTADOS_FILA y helpers/excelManitou.js).
   const estadoDe = (f) => estadoDeFila(f, cotizaciones);
@@ -710,7 +812,7 @@ export default function ChequeosManitou({
             solo el sistema: la Manitou y la cosecha están arriba de la página. */}
         <div
           className={`d-flex align-items-center ${embebido ? "gap-2 mb-1 pb-1" : `gap-3 pb-2 ${esGeneral ? "mb-3" : "mb-2"}`} flex-wrap`}
-          style={{ borderBottom: `${embebido ? 2 : 3}px solid ${VERDE}`, cursor: embebido ? "pointer" : undefined }}
+          style={{ borderBottom: `${embebido ? 2 : 3}px solid ${VERDE}`, cursor: embebido ? "pointer" : undefined, position: "relative" }}
           onClick={embebido ? onPlegar : undefined}
           title={embebido ? (plegado ? "Desplegar" : "Agrupar") : undefined}
         >
@@ -773,7 +875,32 @@ export default function ChequeosManitou({
               (estado ingreso)
             </button>
           )}
+          {/* El avance del sistema: el promedio de sus tareas y lo que aporta al
+              total. Centrado en la línea del título, aparte del resto. */}
+          {embebido && avance && (
+            <div
+              className="d-flex align-items-center gap-2"
+              // El calc descuenta la mitad del pb-1 de la línea del título.
+              style={{ position: "absolute", left: "50%", top: "calc(50% - 2px)", transform: "translate(-50%, -50%)", fontSize: "0.8rem" }}
+              title={`${avance.hechas}/${avance.tareas} tareas al 100%${
+                avance.peso !== null ? ` · aporta ${fmtPct(avance.aporte)} de ${fmtPct(avance.peso)}` : ""
+              }`}
+            >
+              <div style={{ width: "120px", height: "8px", borderRadius: "4px", backgroundColor: "#e2e8f0", overflow: "hidden" }}>
+                <div style={{ width: `${Math.min(avance.parte * 100, 100)}%`, height: "100%", backgroundColor: VERDE }} />
+              </div>
+              <span className="fw-bold" style={{ color: avance.parte > 0 ? VERDE : "#94a3b8" }}>
+                {fmtPct(avance.parte * 100)}
+              </span>
+            </div>
+          )}
           <div className="ms-auto" />
+          {/* El peso del sistema en la reparación (cargado en General), solo el %. */}
+          {embebido && avance && avance.peso !== null && (
+            <span className="fw-bold" style={{ fontSize: "0.8rem", color: COLOR }} title="Lo que pesa este sistema en la reparación">
+              {fmtPct(avance.peso)}
+            </span>
+          )}
           {/* Embebida: la flecha de agrupar/desplegar. */}
           {embebido && (
             <span className="d-flex align-items-center gap-2 text-secondary fw-semibold" style={{ fontSize: "0.74rem" }}>
@@ -834,11 +961,18 @@ export default function ChequeosManitou({
                 {/* La descripción se lleva el resto del ancho. */}
                 <th style={{ ...th, width: "24%" }}>Tarea</th>
                 <th style={th}>Descripción</th>
+                {/* El peso de la tarea en su sistema (21/10/2026): se carga en
+                    General y se copia a cada Manitou, donde se puede cambiar
+                    para esa máquina. Con la suma debajo: tiene que dar 100. */}
+                <th style={{ ...thCentro, width: "56px", lineHeight: 1.15 }} title="Los pesos de las tareas del sistema tienen que sumar 100%">
+                  Peso
+                  <div style={{ fontSize: "0.62rem", fontWeight: 700 }}>{fmtPct(sumaPesos)}</div>
+                </th>
                 {/* En General (la plantilla) no se chequea: solo ítem y repuestos.
                     La columna Tareas (la lista de problemas) se sacó el
                     10/10/2026. */}
                 {!esGeneral && <th style={{ ...thCentro, width: "96px" }}>Detalle reparación</th>}
-                {!esGeneral && <th style={{ ...thCentro, width: "44px" }}>OK</th>}
+                {!esGeneral && <th style={{ ...thCentro, width: "60px" }}>Avance</th>}
                 {/* La línea fuerte separa lo del chequeo de lo de los repuestos. */}
                 <th className="col-corte" style={{ ...thCentro, width: "72px" }}>Repuestos</th>
                 {!esGeneral && <th style={{ ...thCentro, width: "108px" }}>Estado</th>}
@@ -873,6 +1007,26 @@ export default function ChequeosManitou({
                     <td style={{ ...td, color: "#475569" }}>
                       {f.no_aplica ? <span style={{ fontWeight: 700 }}>NO APLICA</span> : f.descripcion || <Raya />}
                     </td>
+                    {/* En General a la vista; en una Manitou tapado con el ojo. */}
+                    <td style={{ ...tdCentro, padding: "3px 4px" }}>
+                      {f.no_aplica ? (
+                        <Raya />
+                      ) : (
+                        <CampoPorcentaje
+                          actual={f.peso}
+                          onGuardar={(peso) => cambiar(f, { peso })}
+                          deshabilitado={sinEditar}
+                          titulo={
+                            esGeneral
+                              ? "Cuánto pesa la tarea en el sistema (se copia a cada Manitou)"
+                              : f.pesoPropio
+                                ? "Cambiado en esta Manitou. Vacío vuelve al de General"
+                                : "El de General. Cambiarlo acá vale solo para esta Manitou"
+                          }
+                          oculto={!esGeneral}
+                        />
+                      )}
+                    </td>
                     {!esGeneral && (
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
                         {/* Escrita, el ojo se abre aun sin permiso. */}
@@ -900,19 +1054,16 @@ export default function ChequeosManitou({
                     )}
                     {!esGeneral && (
                       <td style={{ ...tdCentro, padding: "3px 5px" }}>
-                        {/* Lo que no aplica a esta Manitou no se chequea. */}
+                        {/* El % de la tarea (21/10/2026; antes el círculo de
+                            OK). Lo que no aplica a esta Manitou no lleva. */}
                         {!f.no_aplica && (
-                          <CirculoOk
-                            marcado={f.chequeado}
-                            onClick={() => marcarOk(f)}
-                            deshabilitado={sinEditar || (f.problemas || []).length > 0}
-                            titulo={
-                              (f.problemas || []).length > 0
-                                ? f.chequeado
-                                  ? "OK: todas las tareas están resueltas"
-                                  : "Se marca OK resolviendo las tareas"
-                                : undefined
-                            }
+                          <CampoPorcentaje
+                            // Una tarea vieja con OK y sin % muestra 100.
+                            actual={f.avance ?? (f.chequeado ? 100 : null)}
+                            onGuardar={(avance) => cambiar(f, { avance })}
+                            deshabilitado={sinEditar}
+                            titulo="Cuánto lleva la tarea, de 0 a 100"
+                            color={colorAvance}
                           />
                         )}
                       </td>

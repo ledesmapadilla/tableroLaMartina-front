@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Container, Table, Button, Form, Modal } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
@@ -17,8 +17,15 @@ import { API_GASOIL, campoGasoil } from './camposGasoil'
  * encargado de ese taller (Kevin en Berdina; Victor y Pablo en San Pablo)
  * carga los litros que tiene en el tanque y sube la foto del nivel. El
  * encargado ve solo la fila de su campo: el back no le manda la otra.
+ *
+ * Arriba, el stock inicial de cada campo (21/10/2026): los litros con los
+ * que arranca el tanque, la fecha de la medición y la foto del nivel.
  */
 const COLOR = '#334155'
+// Las alturas mínimas de la tabla de auditorías. La del resultado, aparte a
+// la derecha, copia la altura real de cada fila (igualarFilas).
+const ALTO_ENCABEZADO = '26px'
+const ALTO_FILA = '30px'
 
 export default function GasoilAuditorias() {
   const { puede } = usePermisos()
@@ -41,6 +48,16 @@ export default function GasoilAuditorias() {
   const [fotoQuitada, setFotoQuitada] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
+  // El stock inicial: [{ campo, stock }] con stock null si no se cargó.
+  const [stocks, setStocks] = useState([])
+  // El del modal: null cerrado o { campo, stock }. Usa los litros y el
+  // archivo de arriba: los dos modales no se abren juntos.
+  const [editandoStock, setEditandoStock] = useState(null)
+  const [fechaForm, setFechaForm] = useState('')
+
+  // El resumen del resultado: null cerrado o { auditoria, carga }.
+  const [resumen, setResumen] = useState(null)
+
   const cargar = () =>
     api
       .get(`${API_GASOIL}/auditorias`)
@@ -48,8 +65,15 @@ export default function GasoilAuditorias() {
       .catch((error) => Swal.fire({ icon: 'error', title: 'No se pudo cargar', text: error.message, width: '300px' }))
       .finally(() => setCargando(false))
 
+  const cargarStocks = () =>
+    api
+      .get(`${API_GASOIL}/stock-inicial`)
+      .then((data) => setStocks(Array.isArray(data) ? data : []))
+      .catch((error) => Swal.fire({ icon: 'error', title: 'No se pudo cargar el stock inicial', text: error.message, width: '300px' }))
+
   useEffect(() => {
     cargar()
+    cargarStocks()
   }, [])
 
   const th = {
@@ -76,6 +100,9 @@ export default function GasoilAuditorias() {
         })
       : ''
   const fecha = (f) => (f ? new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '')
+  // La del stock inicial es un día (medianoche UTC): con la hora local
+  // daría el día anterior.
+  const fechaDia = (f) => (f ? f.slice(0, 10).split('-').reverse().join('/') : '')
 
   // ── Pedido ──
   const pedir = async () => {
@@ -147,6 +174,74 @@ export default function GasoilAuditorias() {
       Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message, width: '300px' })
     } finally {
       setGuardando(false)
+    }
+  }
+
+  // ── Stock inicial ──
+  // Cargado, no se corrige; solo Nacho (el superadmin "nacho"), con el lápiz.
+  // Los demás cambian solo la foto. Copia de corrigeStock en
+  // TableroBack/src/controllers/gasoil.controller.js.
+  const puedeCorregirStock = user?.rol === 'superadmin' && user?.usuario === 'nacho'
+
+  const abrirStock = (s) => {
+    setLitrosForm(s.stock?.litros ?? '')
+    setFechaForm(s.stock?.fecha ? s.stock.fecha.slice(0, 10) : new Date().toISOString().slice(0, 10))
+    setArchivo(null)
+    setEditandoStock(s)
+  }
+
+  const guardarStock = async (e) => {
+    e.preventDefault()
+    const { campo, stock } = editandoStock
+    if (litrosForm === '' || Number(litrosForm) < 0 || !fechaForm) {
+      Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Los litros y la fecha son obligatorios.', width: '300px' })
+      return
+    }
+    // Al corregir, sin archivo nuevo queda la foto que estaba.
+    if (!archivo && !stock?.foto?.url) {
+      Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Falta la foto del nivel.', width: '300px' })
+      return
+    }
+    setGuardando(true)
+    try {
+      const foto = archivo ? await subirArchivo(archivo) : stock.foto
+      await api.put(`${API_GASOIL}/stock-inicial/${campo}`, { litros: litrosForm, fecha: fechaForm, foto })
+      // La foto que se reemplazó ya no la usa nadie.
+      if (archivo && stock?.foto) borrarArchivo(stock.foto)
+      setEditandoStock(null)
+      cargarStocks()
+      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message, width: '300px' })
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  // La foto de la caja: la x la saca y "Subir" pone otra. Los litros y la
+  // fecha no se tocan.
+  const subirFotoStock = async (s, file) => {
+    setSubiendo(`stock-${s.campo}`)
+    try {
+      const foto = await subirArchivo(file)
+      await api.put(`${API_GASOIL}/stock-inicial/${s.campo}/foto`, { foto })
+      cargarStocks()
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo subir la foto', text: error.message, width: '300px' })
+    } finally {
+      setSubiendo(null)
+    }
+  }
+
+  const quitarFotoStock = async (s) => {
+    try {
+      // Como en las auditorías: primero se la saca del stock y después de
+      // Cloudinary.
+      await api.put(`${API_GASOIL}/stock-inicial/${s.campo}/foto`, { foto: null })
+      cargarStocks()
+      await borrarArchivo(s.stock.foto || {})
+    } catch (error) {
+      Swal.fire({ icon: 'error', title: 'No se pudo quitar la foto', text: error.message, width: '300px' })
     }
   }
 
@@ -230,7 +325,62 @@ export default function GasoilAuditorias() {
     )
   }
 
+  // El resultado (21/10/2026): lo medido menos lo que tendría que haber, del
+  // stock inicial (o la auditoría anterior) para acá. Lo calcula el back y
+  // no se lo manda al encargado. Positivo sobra, negativo falta. Tocándolo
+  // se abre el resumen de la cuenta.
+  const textoResultado = (n) => (n === 0 ? 'Justo' : `${n > 0 ? 'Sobran' : 'Faltan'} ${litros(Math.abs(n))} lts`)
+  const colorResultado = (n) => (n === 0 ? '#334155' : n > 0 ? '#15803d' : '#dc2626')
+  // La desviación en %: el resultado sobre lo que tendría que haber, con el
+  // signo del resultado (+ sobra, − falta). Si lo que tendría que haber da
+  // negativo (se consumió más de lo que había) se toma su valor absoluto;
+  // en cero no hay base y no se muestra.
+  const desviacion = (r) => {
+    if (!r.teorico) return ''
+    const pct = (r.resultado / Math.abs(r.teorico)) * 100
+    return `${pct > 0 ? '+' : ''}${pct.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+  }
+
+  const celdaResultado = (a, c) => {
+    if (!c.resultado) return <Raya />
+    const n = c.resultado.resultado
+    const pct = desviacion(c.resultado)
+    return (
+      <button
+        type="button"
+        onClick={() => setResumen({ auditoria: a, carga: c })}
+        className="btn btn-link p-0 border-0 fw-bold"
+        style={{ fontSize: '0.7rem', color: colorResultado(n), whiteSpace: 'nowrap' }}
+        title="Ver el resumen de la cuenta"
+      >
+        {textoResultado(n)}
+        {pct && <span className="fw-semibold ms-1">({pct})</span>}
+      </button>
+    )
+  }
+
   const columnas = esEncargado ? 5 : 6
+
+  // La tabla del resultado copia la altura de cada fila de la de auditorías
+  // (el encabezado incluido), así quedan parejas aunque una fila crezca. Se
+  // vuelve a igualar cada vez que la de auditorías cambia de tamaño.
+  const tablaRef = useRef(null)
+  const resultadoRef = useRef(null)
+  useLayoutEffect(() => {
+    const principal = tablaRef.current
+    const lado = resultadoRef.current
+    if (!principal || !lado) return
+    const igualarFilas = () => {
+      const otras = lado.querySelectorAll('tr')
+      principal.querySelectorAll('tr').forEach((fila, i) => {
+        if (otras[i]) otras[i].style.height = `${fila.getBoundingClientRect().height}px`
+      })
+    }
+    igualarFilas()
+    const observador = new ResizeObserver(igualarFilas)
+    observador.observe(principal)
+    return () => observador.disconnect()
+  }, [lista, esEncargado])
 
   return (
     <div
@@ -276,97 +426,243 @@ export default function GasoilAuditorias() {
           )}
         </div>
 
-        <div
-          className="shadow-sm bg-white rounded-3"
-          style={{ flex: '0 1 auto', minHeight: 0, overflow: 'auto', border: '1px solid #cbd5e1' }}
-        >
-          <Table className="mb-0 tabla-informe" style={{ width: '100%', minWidth: '560px' }}>
-            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-              <tr>
-                <th style={{ ...thCentro, width: '100px' }}>Fecha pedido</th>
-                <th style={{ ...thCentro, width: '90px' }}>Taller</th>
-                <th style={{ ...thCentro, width: '100px' }}>Stock (lts)</th>
-                <th style={{ ...thCentro, width: '70px' }}>Foto</th>
-                <th style={th}>Cargó</th>
-                {!esEncargado && <th style={{ ...thCentro, width: '60px' }}></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {lista.length === 0 ? (
-                <tr>
-                  <td colSpan={columnas} className="text-center text-muted py-4" style={td}>
-                    {cargando ? 'Cargando…' : 'No hay auditorías pedidas'}
-                  </td>
-                </tr>
-              ) : (
-                lista.map((a) =>
-                  a.cargas.map((c, n) => {
-                    const campo = campoGasoil(c.campo)
-                    const cargada = c.litros !== null && c.litros !== undefined
-                    // La primera fila de cada pedido lleva la fecha y el
-                    // borrar, que abarcan las filas de los dos campos.
-                    const primera = n === 0
-                    return (
-                      <tr key={`${a._id}-${c.campo}`} style={primera ? { borderTop: '2px solid #94a3b8' } : undefined}>
-                        {primera && (
-                          <td style={{ ...tdCentro, fontWeight: 600 }} rowSpan={a.cargas.length} title={a.pedidoPor ? `Pidió ${a.pedidoPor}` : undefined}>
-                            {fecha(a.fechaPedido)}
-                          </td>
-                        )}
-                        <td style={{ ...tdCentro, fontWeight: 600, color: campo?.color }}>{campo?.titulo || c.campo}</td>
-                        <td style={tdCentro}>
-                          {cargada ? (
-                            litros(c.litros)
-                          ) : puedeCargar ? (
-                            <Button
-                              size="sm"
-                              onClick={() => abrirCarga(a, c)}
-                              className="rounded-3 px-2 py-0 d-inline-flex align-items-center gap-1"
-                              style={{ fontSize: '0.7rem', backgroundColor: campo?.color, borderColor: campo?.color, fontWeight: 600 }}
+        {/* Stock inicial: una caja por campo (el encargado, solo la suya). */}
+        <div className="d-flex gap-2 flex-wrap justify-content-center mb-3 flex-shrink-0">
+          {stocks.map((s) => {
+            const campo = campoGasoil(s.campo)
+            const color = campo?.color || COLOR
+            const dato = { fontSize: '0.66rem', color: '#64748b', fontWeight: 600 }
+            return (
+              <div
+                key={s.campo}
+                className="bg-white rounded-3 shadow-sm"
+                style={{ flex: '1 1 220px', maxWidth: '320px', border: '1px solid #cbd5e1', borderTop: `4px solid ${color}` }}
+              >
+                <div className="d-flex align-items-center justify-content-between px-2 pt-2">
+                  <span className="fw-bold" style={{ color, fontSize: '0.8rem' }}>
+                    Stock inicial · {campo?.titulo || s.campo}
+                  </span>
+                  {s.stock && puedeCorregirStock && (
+                    <BotonAccion icono="bi-pencil" titulo="Corregir" variante="primary" onClick={() => abrirStock(s)} />
+                  )}
+                </div>
+                {s.stock ? (
+                  <div className="d-flex justify-content-between gap-2 px-2 pb-2 pt-1">
+                    <div>
+                      <div style={dato}>Fecha</div>
+                      <div style={{ fontSize: '0.8rem' }}>{fechaDia(s.stock.fecha)}</div>
+                    </div>
+                    <div>
+                      <div style={dato}>Lts</div>
+                      <div className="fw-bold" style={{ fontSize: '0.9rem', color }}>{litros(s.stock.litros)}</div>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={dato}>Foto</div>
+                      {s.stock.foto?.url ? (
+                        <div className="d-flex align-items-center gap-1">
+                          <a
+                            href={s.stock.foto.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={s.stock.foto.nombre || 'Ver la foto del nivel'}
+                            className="text-truncate"
+                            style={{ maxWidth: 100, fontSize: '0.75rem' }}
+                          >
+                            <i className="bi bi-paperclip" /> {s.stock.foto.nombre || 'Ver'}
+                          </a>
+                          {!sinEditar && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-link text-danger p-0"
+                              style={{ lineHeight: 1 }}
+                              title="Quitar la foto"
+                              onClick={() => quitarFotoStock(s)}
                             >
-                              <i className="bi bi-pencil-square"></i>
-                              <span>Cargar</span>
-                            </Button>
-                          ) : (
-                            <span className="fw-semibold" style={{ color: '#b45309' }}>
-                              Pendiente
-                            </span>
+                              <i className="bi bi-x-lg" style={{ fontSize: '0.7rem' }} />
+                            </button>
                           )}
-                        </td>
-                        <td style={tdCentro}>{celdaFoto(a, c, cargada)}</td>
-                        <td style={td}>
-                          {cargada ? (
-                            <div className="d-flex align-items-center justify-content-between gap-2">
-                              <span>
-                                {c.cargadoPor || <Raya />}
-                                <span className="text-muted ms-1">{fechaHora(c.fechaCarga)}</span>
-                              </span>
-                              {puedeCargar && (
-                                <BotonAccion icono="bi-pencil" titulo="Corregir" variante="primary" onClick={() => abrirCarga(a, c)} />
+                        </div>
+                      ) : !sinEditar ? (
+                        <label
+                          className={`btn btn-outline-dark mb-0${subiendo === `stock-${s.campo}` ? ' disabled' : ''}`}
+                          style={{ fontSize: '0.66rem', lineHeight: 1, padding: '1px 6px', borderRadius: '4px' }}
+                          title="Subir la foto del nivel"
+                        >
+                          {subiendo === `stock-${s.campo}` ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            disabled={subiendo === `stock-${s.campo}`}
+                            onChange={(e) => { const file = e.target.files?.[0]; if (file) subirFotoStock(s, file); e.target.value = '' }}
+                          />
+                        </label>
+                      ) : (
+                        <Raya />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-2 pb-2 pt-1">
+                    {!sinEditar ? (
+                      <Button
+                        size="sm"
+                        onClick={() => abrirStock(s)}
+                        className="rounded-3 px-2 py-0 d-inline-flex align-items-center gap-1"
+                        style={{ fontSize: '0.72rem', backgroundColor: color, borderColor: color, fontWeight: 600 }}
+                      >
+                        <i className="bi bi-pencil-square"></i>
+                        <span>Cargar</span>
+                      </Button>
+                    ) : (
+                      <span className="fw-semibold" style={{ color: '#b45309', fontSize: '0.75rem' }}>
+                        Pendiente
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="fw-semibold mb-1" style={{ color: COLOR, fontSize: '0.8rem' }}>
+          Auditorías
+        </div>
+        {/* Dos tablas en el mismo scroll: la de las auditorías y, a la
+            derecha y aparte, la del resultado, que copia la altura de cada
+            fila de la otra (igualarFilas). */}
+        <div style={{ flex: '0 1 auto', minHeight: 0, overflow: 'auto' }}>
+          <div className="d-flex align-items-start gap-3" style={{ minWidth: esEncargado ? '560px' : '750px' }}>
+            <div
+              className="shadow-sm bg-white rounded-3 flex-grow-1"
+              style={{ overflow: 'clip', border: '1px solid #cbd5e1' }}
+            >
+              <Table ref={tablaRef} className="mb-0 tabla-informe" style={{ width: '100%' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                  <tr style={{ height: ALTO_ENCABEZADO }}>
+                    <th style={{ ...thCentro, width: '100px' }}>Fecha pedido</th>
+                    <th style={{ ...thCentro, width: '90px' }}>Taller</th>
+                    <th style={{ ...thCentro, width: '100px' }}>Stock (lts)</th>
+                    <th style={{ ...thCentro, width: '70px' }}>Foto</th>
+                    <th style={th}>Cargó</th>
+                    {!esEncargado && <th style={{ ...thCentro, width: '60px' }}></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {lista.length === 0 ? (
+                    <tr>
+                      <td colSpan={columnas} className="text-center text-muted py-4" style={td}>
+                        {cargando ? 'Cargando…' : 'No hay auditorías pedidas'}
+                      </td>
+                    </tr>
+                  ) : (
+                    lista.map((a) =>
+                      a.cargas.map((c, n) => {
+                        const campo = campoGasoil(c.campo)
+                        const cargada = c.litros !== null && c.litros !== undefined
+                        // La primera fila de cada pedido lleva la fecha y el
+                        // borrar, que abarcan las filas de los dos campos.
+                        const primera = n === 0
+                        return (
+                          <tr key={`${a._id}-${c.campo}`} style={{ height: ALTO_FILA, ...(primera ? { borderTop: '2px solid #94a3b8' } : {}) }}>
+                            {primera && (
+                              <td style={{ ...tdCentro, fontWeight: 600 }} rowSpan={a.cargas.length} title={a.pedidoPor ? `Pidió ${a.pedidoPor}` : undefined}>
+                                {fecha(a.fechaPedido)}
+                              </td>
+                            )}
+                            <td style={{ ...tdCentro, fontWeight: 600, color: campo?.color }}>{campo?.titulo || c.campo}</td>
+                            <td style={tdCentro}>
+                              {cargada ? (
+                                litros(c.litros)
+                              ) : puedeCargar ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => abrirCarga(a, c)}
+                                  className="rounded-3 px-2 py-0 d-inline-flex align-items-center gap-1"
+                                  style={{ fontSize: '0.7rem', backgroundColor: campo?.color, borderColor: campo?.color, fontWeight: 600 }}
+                                >
+                                  <i className="bi bi-pencil-square"></i>
+                                  <span>Cargar</span>
+                                </Button>
+                              ) : (
+                                <span className="fw-semibold" style={{ color: '#b45309' }}>
+                                  Pendiente
+                                </span>
                               )}
-                            </div>
-                          ) : (
-                            <Raya />
-                          )}
-                        </td>
-                        {primera && !esEncargado && (
-                          <td style={tdCentro} rowSpan={a.cargas.length}>
-                            <BotonAccion
-                              icono="bi-trash"
-                              titulo={puedePedir ? 'Borrar la auditoría' : 'Sin permiso para editar'}
-                              variante="danger"
-                              deshabilitado={!puedePedir}
-                              onClick={() => borrar(a)}
-                            />
-                          </td>
-                        )}
-                      </tr>
+                            </td>
+                            <td style={tdCentro}>{celdaFoto(a, c, cargada)}</td>
+                            <td style={td}>
+                              {cargada ? (
+                                <div className="d-flex align-items-center justify-content-between gap-2">
+                                  <span>
+                                    {c.cargadoPor || <Raya />}
+                                    <span className="text-muted ms-1">{fechaHora(c.fechaCarga)}</span>
+                                  </span>
+                                  {puedeCargar && (
+                                    <BotonAccion icono="bi-pencil" titulo="Corregir" variante="primary" onClick={() => abrirCarga(a, c)} />
+                                  )}
+                                </div>
+                              ) : (
+                                <Raya />
+                              )}
+                            </td>
+                            {primera && !esEncargado && (
+                              <td style={tdCentro} rowSpan={a.cargas.length}>
+                                <BotonAccion
+                                  icono="bi-trash"
+                                  titulo={puedePedir ? 'Borrar la auditoría' : 'Sin permiso para editar'}
+                                  variante="danger"
+                                  deshabilitado={!puedePedir}
+                                  onClick={() => borrar(a)}
+                                />
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })
                     )
-                  })
-                )
-              )}
-            </tbody>
-          </Table>
+                  )}
+                </tbody>
+              </Table>
+            </div>
+
+            {/* El resultado, aparte: una fila por cada fila de la otra tabla. */}
+            {!esEncargado && (
+              <div
+                className="shadow-sm bg-white rounded-3 flex-shrink-0"
+                style={{ width: '170px', overflow: 'clip', border: '1px solid #cbd5e1' }}
+              >
+                <Table ref={resultadoRef} className="mb-0 tabla-informe" style={{ width: '100%' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                    <tr>
+                      <th style={thCentro}>Resultado (lts)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lista.length === 0 ? (
+                      <tr>
+                        <td className="text-center text-muted py-4" style={td}>
+                          <Raya />
+                        </td>
+                      </tr>
+                    ) : (
+                      lista.map((a) =>
+                        a.cargas.map((c, n) => (
+                          <tr
+                            key={`${a._id}-${c.campo}`}
+                            style={n === 0 ? { borderTop: '2px solid #94a3b8' } : undefined}
+                          >
+                            <td style={tdCentro}>{celdaResultado(a, c)}</td>
+                          </tr>
+                        ))
+                      )
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+            )}
+          </div>
         </div>
       </Container>
 
@@ -444,6 +740,131 @@ export default function GasoilAuditorias() {
                 fontSize: '0.84rem',
                 backgroundColor: editando ? campoGasoil(editando.carga.campo)?.color : COLOR,
                 borderColor: editando ? campoGasoil(editando.carga.campo)?.color : COLOR,
+              }}
+            >
+              {guardando ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* El resumen del resultado de una auditoría en un campo. */}
+      <Modal show={resumen !== null} onHide={() => setResumen(null)} centered size="sm" contentClassName="border-0 shadow-lg rounded-4">
+        {resumen && (() => {
+          const campo = campoGasoil(resumen.carga.campo)
+          const r = resumen.carga.resultado
+          const renglon = (etiqueta, valor, estilo) => (
+            <div className="d-flex justify-content-between py-1" style={{ borderBottom: '1px solid #e2e8f0', ...estilo }}>
+              <span className="text-muted">{etiqueta}</span>
+              <span className="fw-semibold">{valor}</span>
+            </div>
+          )
+          return (
+            <>
+              <Modal.Header
+                closeButton
+                closeVariant="white"
+                style={{ backgroundColor: campo?.color || COLOR, color: '#fff', borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}
+              >
+                <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+                  <i className="bi bi-calculator-fill"></i>
+                  <span>
+                    Resultado · {campo?.titulo} · {fecha(resumen.auditoria.fechaPedido)}
+                  </span>
+                </Modal.Title>
+              </Modal.Header>
+              <Modal.Body className="p-3" style={{ fontSize: '0.82rem' }}>
+                {renglon('Desde', fechaDia(r.desde))}
+                {renglon('Hasta', fechaDia(r.hasta))}
+                {renglon(r.origen === 'stock inicial' ? 'Stock inicial' : 'Auditoría anterior', `${litros(r.partida)} lts`)}
+                {renglon('Ingresa', `+ ${litros(r.ingresos)} lts`, { color: '#1d4ed8' })}
+                {renglon('Consumo', `− ${litros(r.consumos)} lts`)}
+                {renglon('Tendría que haber', `${litros(r.teorico)} lts`)}
+                {renglon('Medido', `${litros(r.medido)} lts`)}
+                <div className="d-flex justify-content-between pt-2 fw-bold" style={{ color: colorResultado(r.resultado), fontSize: '0.9rem' }}>
+                  <span>Resultado</span>
+                  <span>
+                    {textoResultado(r.resultado)}
+                    {desviacion(r) && <span className="ms-1">({desviacion(r)})</span>}
+                  </span>
+                </div>
+              </Modal.Body>
+            </>
+          )
+        })()}
+      </Modal>
+
+      {/* Stock inicial de un campo: litros, fecha y foto del nivel. */}
+      <Modal show={editandoStock !== null} onHide={() => setEditandoStock(null)} centered contentClassName="border-0 shadow-lg rounded-4">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: editandoStock ? campoGasoil(editandoStock.campo)?.color : COLOR,
+            color: '#fff',
+            borderTopLeftRadius: '1rem',
+            borderTopRightRadius: '1rem',
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-fuel-pump-fill"></i>
+            <span>Stock inicial · {editandoStock && campoGasoil(editandoStock.campo)?.titulo}</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={guardarStock}>
+          <Modal.Body className="p-3 p-md-4">
+            <div className="d-flex gap-3 flex-wrap mb-3">
+              <div>
+                <Form.Label className="fw-semibold text-dark small mb-1">Fecha</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={fechaForm}
+                  onChange={(e) => setFechaForm(e.target.value)}
+                  className="rounded-3"
+                  style={{ fontSize: '0.85rem', width: '150px' }}
+                  required
+                />
+              </div>
+              <div>
+                <Form.Label className="fw-semibold text-dark small mb-1">Litros en el tanque</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputMode="decimal"
+                  value={litrosForm}
+                  onChange={(e) => setLitrosForm(e.target.value)}
+                  className="rounded-3"
+                  style={{ fontSize: '0.85rem', width: '140px' }}
+                  required
+                />
+              </div>
+            </div>
+            <Form.Label className="fw-semibold text-dark small mb-1">
+              Foto del nivel
+              {editandoStock?.stock?.foto?.url && <span className="text-muted fw-normal"> (vacío deja la que está)</span>}
+            </Form.Label>
+            <Form.Control
+              type="file"
+              accept="image/*"
+              onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+              className="rounded-3"
+              style={{ fontSize: '0.85rem' }}
+            />
+          </Modal.Body>
+          <Modal.Footer className="bg-light border-0 py-2 px-4" style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
+            <Button variant="outline-secondary" size="sm" onClick={() => setEditandoStock(null)} className="rounded-3 px-3" style={{ fontSize: '0.84rem' }}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={guardando}
+              className="rounded-3 px-3 shadow-sm"
+              style={{
+                fontSize: '0.84rem',
+                backgroundColor: editandoStock ? campoGasoil(editandoStock.campo)?.color : COLOR,
+                borderColor: editandoStock ? campoGasoil(editandoStock.campo)?.color : COLOR,
               }}
             >
               {guardando ? 'Guardando…' : 'Guardar'}

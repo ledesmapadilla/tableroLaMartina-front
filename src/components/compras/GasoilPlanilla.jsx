@@ -12,6 +12,10 @@ import { useAuth } from '../../context/AuthContext'
 import ModalIngresoGasoil from './ModalIngresoGasoil'
 import Error404 from '../pages/Error404'
 
+// El sombreado del día de cada auditoría en los consumos: otro color que el
+// del stock inicial, igual en los dos campos.
+const FONDO_AUDITORIA = '#ede9fe'
+
 /**
  * El gasoil de un campo (20/10/2026), en dos solapas:
  *
@@ -463,7 +467,20 @@ export default function GasoilPlanilla() {
                   </tr>
                 ) : (
                   filasFiltradas.map((f) => (
-                    <tr key={f.fecha}>
+                    <tr
+                      key={f.fecha}
+                      // El día del stock inicial (color del campo) y los de
+                      // las auditorías (violeta), sombreados: de uno a otro
+                      // va cada cuenta. Si caen el mismo día, manda el stock.
+                      className={f.stockInicial != null || f.auditoria != null ? 'fila-stock-inicial' : undefined}
+                      style={
+                        f.stockInicial != null
+                          ? { '--fondo-stock': campo.filaStock }
+                          : f.auditoria != null
+                            ? { '--fondo-stock': FONDO_AUDITORIA }
+                            : undefined
+                      }
+                    >
                       <td style={tdNumero}>
                         {/* Con consumo, la fecha abre de qué partes sale. */}
                         {f.consumo === null ? (
@@ -484,7 +501,19 @@ export default function GasoilPlanilla() {
                       <td style={tdNumero} title={detalleConsumo(f)}>
                         {numeroOVacio(f.consumo)}
                       </td>
-                      <td style={{ ...td, wordBreak: 'break-word' }}>{f.observaciones || <Raya />}</td>
+                      <td style={{ ...td, wordBreak: 'break-word' }}>
+                        {f.stockInicial != null && (
+                          <span className="fw-semibold me-2" style={{ color: campo.color }}>
+                            <i className="bi bi-flag-fill" /> Stock inicial: {numeroOVacio(f.stockInicial)} lts
+                          </span>
+                        )}
+                        {f.auditoria != null && (
+                          <span className="fw-semibold me-2" style={{ color: '#6d28d9' }}>
+                            <i className="bi bi-clipboard-check-fill" /> Auditoría: {numeroOVacio(f.auditoria)} lts
+                          </span>
+                        )}
+                        {f.observaciones || (f.stockInicial == null && f.auditoria == null && <Raya />)}
+                      </td>
                       <td style={tdNumero}>
                         <div className="d-flex justify-content-center align-items-center gap-2">
                           <BotonAccion

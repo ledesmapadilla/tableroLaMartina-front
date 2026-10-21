@@ -13,7 +13,10 @@ import TractorIcon from "./TractorIcon";
  * costado del título. Con `subtitulo` (10/10/2026, los responsables de cada
  * Manitou) va un renglón chico debajo del título. Con `etiqueta` ({ texto,
  * color }, 11/10/2026, el estado de cada Manitou) va una pastilla de color
- * al pie de la tarjeta.
+ * al pie de la tarjeta. Con `avance` (21/10/2026, el de la reparación de
+ * cada Manitou, de 0 a 100) va una barra con el % arriba de la tarjeta; con
+ * `avanceTexto` (la 1100, fuera de reparación) va ese texto en su lugar. Los
+ * dos van arriba de todo (pedido así: más visibles).
  */
 export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, children }) {
   const navigate = useNavigate();
@@ -66,23 +69,57 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
               onMouseEnter={() => setHoveredCard(t.id)}
               onMouseLeave={() => setHoveredCard(null)}
             >
-              <div
-                className={`${apaisada ? "" : chicas ? "mb-2" : "mb-3"} d-flex align-items-center justify-content-center`}
-                style={{
-                  width: caja,
-                  height: caja,
-                  borderRadius: chicas ? "10px" : "16px",
-                  backgroundColor: "rgba(255, 255, 255, 0.1)",
-                  border: "1px solid rgba(255, 255, 255, 0.16)",
-                  boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
-                }}
-              >
-                {t.tractor ? (
-                  <TractorIcon size={icono} color={t.accentColor} />
-                ) : (
-                  <i className={t.icono} style={{ fontSize: icono, color: t.accentColor }}></i>
-                )}
-              </div>
+              {/* Con `torta` (21/10/2026, la tarjeta General) el avance va en
+                  una torta en lugar del ícono: amarillo lo hecho, el % al
+                  centro. */}
+              {t.torta && typeof t.avance === "number" ? (
+                <div
+                  className={`${chicas ? "mb-2" : "mb-3"} d-flex align-items-center justify-content-center`}
+                  title={t.avanceTitulo}
+                  style={{
+                    width: chicas ? "72px" : "104px",
+                    height: chicas ? "72px" : "104px",
+                    borderRadius: "50%",
+                    background: `conic-gradient(#facc15 0 ${Math.min(t.avance, 100)}%, rgba(255, 255, 255, 0.2) 0)`,
+                    border: "1px solid rgba(255, 255, 255, 0.35)",
+                    boxShadow: "0 6px 16px rgba(0, 0, 0, 0.25)",
+                  }}
+                >
+                  {/* El agujero del centro, con el color de la tarjeta, para leer el %. */}
+                  <div
+                    className="d-flex align-items-center justify-content-center fw-bold"
+                    style={{
+                      width: "64%",
+                      height: "64%",
+                      borderRadius: "50%",
+                      background: isHovered ? t.hoverBg : t.bg,
+                      color: "#facc15",
+                      fontSize: chicas ? "0.9rem" : "1.2rem",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {t.avance.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`${apaisada ? "" : chicas ? "mb-2" : "mb-3"} d-flex align-items-center justify-content-center`}
+                  style={{
+                    width: caja,
+                    height: caja,
+                    borderRadius: chicas ? "10px" : "16px",
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    border: "1px solid rgba(255, 255, 255, 0.16)",
+                    boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
+                  }}
+                >
+                  {t.tractor ? (
+                    <TractorIcon size={icono} color={t.accentColor} />
+                  ) : (
+                    <i className={t.icono} style={{ fontSize: icono, color: t.accentColor }}></i>
+                  )}
+                </div>
+              )}
               <h3
                 className="fw-bold mb-0 text-white"
                 style={{ fontSize: chicas ? "0.9rem" : "1.2rem", lineHeight: 1.25 }}
@@ -95,6 +132,64 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
                   style={{ fontSize: chicas ? "0.7rem" : "0.8rem", lineHeight: 1.2, color: t.accentColor }}
                 >
                   {t.subtitulo}
+                </div>
+              )}
+              {/* El avance de la reparación, arriba de todo y bien visible: la
+                  barra con el % al lado. Como la etiqueta del pie, no corre el
+                  nombre del centro. */}
+              {typeof t.avance === "number" && !t.torta && (
+                <div
+                  className="d-flex align-items-center gap-2"
+                  style={{
+                    position: "absolute",
+                    top: chicas ? "10px" : "16px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: "84%",
+                  }}
+                  title={t.avanceTitulo}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      height: chicas ? "10px" : "14px",
+                      borderRadius: "7px",
+                      backgroundColor: "rgba(255, 255, 255, 0.22)",
+                      border: "1px solid rgba(255, 255, 255, 0.35)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${Math.min(t.avance, 100)}%`,
+                        height: "100%",
+                        // Amarillo: resalta sobre el verde de las Manitou y el
+                        // gris de General (el acento verde se perdía).
+                        backgroundColor: "#facc15",
+                        transition: "width 0.3s",
+                      }}
+                    />
+                  </div>
+                  <span className="fw-bold" style={{ fontSize: chicas ? "0.95rem" : "1.25rem", lineHeight: 1, color: "#facc15" }}>
+                    {t.avance.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
+                  </span>
+                </div>
+              )}
+              {t.avanceTexto && (
+                <div
+                  className="fw-bold"
+                  style={{
+                    position: "absolute",
+                    top: chicas ? "10px" : "16px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    whiteSpace: "nowrap",
+                    fontSize: chicas ? "0.8rem" : "0.95rem",
+                    lineHeight: 1.2,
+                    color: "rgba(255, 255, 255, 0.75)",
+                  }}
+                >
+                  {t.avanceTexto}
                 </div>
               )}
               {t.etiqueta && (

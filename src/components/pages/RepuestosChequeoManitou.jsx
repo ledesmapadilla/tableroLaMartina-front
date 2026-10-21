@@ -241,7 +241,8 @@ export default function RepuestosChequeoManitou() {
 
   // Los campos van atados al form por `form=`, porque un <form> no puede
   // envolver renglones de una tabla. De un repuesto copiado de General, en
-  // la Manitou solo se escribe la cantidad: lo demás se ve como texto.
+  // la Manitou se escriben la cantidad y la descripción: lo demás se ve como
+  // texto.
   const renglonForm = (nro) => {
     const control = { form: "form-repuesto", size: "sm", className: "rounded-3", style: { ...campo, fontSize: "0.76rem" } };
     const soloCant = Boolean(repuestos.find((r) => r._id === repuestoId)?.origen);
@@ -330,17 +331,15 @@ export default function RepuestosChequeoManitou() {
             )}
           </td>
         )}
-        <td style={soloCant ? td : { ...td, padding: "3px 4px" }}>
-          {soloCant ? (
-            form.descripcion || <Raya />
-          ) : (
-            <Form.Control
-              {...control}
-              value={form.descripcion}
-              placeholder="Opcional"
-              onChange={(e) => cambiar("descripcion", e.target.value)}
-            />
-          )}
+        {/* La descripción se escribe también en una copia (21/10/2026): la
+            salvedad de esta Manitou, que no va a General. */}
+        <td style={{ ...td, padding: "3px 4px" }}>
+          <Form.Control
+            {...control}
+            value={form.descripcion}
+            placeholder={soloCant ? "Salvedad de esta Manitou" : "Opcional"}
+            onChange={(e) => cambiar("descripcion", e.target.value)}
+          />
         </td>
         {esGeneral ? (
           <td style={tdCentro}>
@@ -654,7 +653,7 @@ export default function RepuestosChequeoManitou() {
                                 )}
                                 <BotonAccion
                                   icono="bi-pencil"
-                                  titulo={sinEditar ? "Sin permiso para editar" : r.origen ? "Cambiar la cantidad" : "Corregir"}
+                                  titulo={sinEditar ? "Sin permiso para editar" : r.origen ? "Cambiar la cantidad o la descripción" : "Corregir"}
                                   variante="primary"
                                   onClick={() => editar(r)}
                                   deshabilitado={sinEditar || guardando}

@@ -9,9 +9,10 @@ import SesionUsuario from "./SesionUsuario";
  *
  * `titulo` va después de "Reparaciones San Pablo" (por ejemplo "Cosecha 2027
  * · Manitous"); sin título queda solo el nombre de la sección. Con `cosecha`
- * el año va aparte, en una pastilla ámbar.
+ * el año va aparte, en una pastilla ámbar. Con `sinSeccion` (21/10/2026,
+ * Escaleras) va solo el título, sin "Reparaciones San Pablo" adelante.
  */
-export default function NavbarSanPablo({ titulo, icono, cosecha, volverA = "/reparaciones/sanpablo" }) {
+export default function NavbarSanPablo({ titulo, icono, cosecha, sinSeccion = false, volverA = "/reparaciones/sanpablo" }) {
   const navigate = useNavigate();
   return (
     <div
@@ -34,7 +35,7 @@ export default function NavbarSanPablo({ titulo, icono, cosecha, volverA = "/rep
           {icono}
         </div>
         <span className="text-white fs-6 fw-semibold">
-          Reparaciones San Pablo{titulo ? ` · ${titulo}` : ""}
+          {sinSeccion && titulo ? titulo : `Reparaciones San Pablo${titulo ? ` · ${titulo}` : ""}`}
         </span>
         {/* La cosecha destacada, para no confundir un año con otro. */}
         {cosecha != null && (

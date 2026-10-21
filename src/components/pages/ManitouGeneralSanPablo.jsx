@@ -8,7 +8,14 @@ import { usePermisos } from "../../context/permisos";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
-import { SISTEMAS_MANITOU, MANITOUS_DESPLEGADAS, seccionManitou, unidadManitouValida } from "../../utils/sistemasManitou";
+import {
+  SISTEMAS_MANITOU,
+  MANITOUS_DESPLEGADAS,
+  seccionManitou,
+  unidadManitouValida,
+  avanceManitou,
+  fmtPct,
+} from "../../utils/sistemasManitou";
 import ChequeosManitou from "./ChequeosManitou";
 import {
   exportarChequeoManitou,
@@ -117,6 +124,42 @@ function ManitouGeneralSanPablo() {
     }
   };
 
+  // ── Pesos de los sistemas (21/10/2026) ──
+  // Cuánto pesa cada sistema en la reparación, en %: se cargan a mano en
+  // General y valen para las cinco Manitou, donde dan el avance.
+  const [pesos, setPesos] = useState({});
+  // El modal de General: null cerrado o { [sistema]: "texto del input" }.
+  const [pesosForm, setPesosForm] = useState(null);
+  useEffect(() => {
+    if (!unidadManitouValida(unidad)) return;
+    api
+      .get(`/ingresos-sanpablo/pesos-manitou?cosecha=${cosecha}`)
+      .then((r) => setPesos(r?.pesos || {}))
+      .catch(() => setPesos({}));
+  }, [unidad, cosecha]);
+
+  const sumaPesosForm = pesosForm ? SISTEMAS_MANITOU.reduce((t, s) => t + (Number(pesosForm[s.id]) || 0), 0) : 0;
+  const pesosCompletos = pesosForm && SISTEMAS_MANITOU.every((s) => pesosForm[s.id] !== "" && Number(pesosForm[s.id]) >= 0);
+  const sumanCien = Math.abs(sumaPesosForm - 100) < 0.01;
+
+  const abrirPesos = () =>
+    setPesosForm(Object.fromEntries(SISTEMAS_MANITOU.map((s) => [s.id, pesos[s.id] === undefined ? "" : String(pesos[s.id])])));
+
+  const guardarPesos = async (e) => {
+    e.preventDefault();
+    setGuardando(true);
+    try {
+      const r = await api.put("/ingresos-sanpablo/pesos-manitou", { cosecha, pesos: pesosForm });
+      setPesos(r.pesos || {});
+      setPesosForm(null);
+      Swal.fire({ icon: "success", title: "Pesos guardados", timer: 1500, showConfirmButton: false, width: "300px" });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   // ── Desplegada (09/10/2026) ──
   // Todos los sistemas en una página: se traen juntos y las cotizaciones
   // una sola vez.
@@ -172,6 +215,12 @@ function ManitouGeneralSanPablo() {
     setFilasVivas((prev) => (prev[idSistema] === filas ? prev : { ...prev, [idSistema]: filas }));
   }, []);
   const filasDeSistema = (id) => filasVivas[id] ?? datos.filas[id];
+
+  // El avance de esta Manitou con los pesos de General: se mueve con cada OK.
+  const avance =
+    desplegada && !esGeneral && datos
+      ? avanceManitou(Object.fromEntries(SISTEMAS_MANITOU.map((s) => [s.id, filasDeSistema(s.id)])), pesos)
+      : null;
 
   const exportarExcel = () =>
     exportarChequeoManitou({
@@ -322,7 +371,7 @@ function ManitouGeneralSanPablo() {
 
       {/* Los botones y, debajo, los responsables cargados. Desplegada, un
           solo Excel con todos los sistemas. */}
-      <div className="d-flex flex-column align-items-end gap-1" style={{ flex: "1 1 0", minWidth: 0 }}>
+      <div className="d-flex flex-column align-items-end gap-1 align-self-stretch" style={{ flex: "1 1 0", minWidth: 0 }}>
         <div className="d-flex gap-2">
           {desplegada && (
             <Button
@@ -370,6 +419,54 @@ function ManitouGeneralSanPablo() {
             )}
           </div>
         ))}
+        {/* Los pesos de los sistemas se cargan en General (21/10/2026):
+            abajo de los responsables, apoyado en la línea verde (el -1rem
+            se come el pb-3 del encabezado). */}
+        {esGeneral && (
+          <Button
+            size="sm"
+            onClick={abrirPesos}
+            className="rounded-3 rounded-bottom-0 px-3 py-1 shadow-sm d-flex align-items-center gap-1 mt-auto"
+            style={{ backgroundColor: VERDE, borderColor: VERDE, fontSize: "0.84rem", fontWeight: 600, marginBottom: "-1rem" }}
+            title="Cuánto pesa cada sistema en la reparación"
+          >
+            <i className="bi bi-percent"></i>
+            <span>Pesos</span>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  // El avance de la reparación (21/10/2026), centrado abajo del encabezado:
+  // el total con los pesos de General. El de cada sistema va al lado de su
+  // título (ChequeosManitou, prop avance).
+  const barra = (pct, alto) => (
+    <div style={{ width: "100%", height: alto, borderRadius: alto, backgroundColor: "#e2e8f0", overflow: "hidden" }}>
+      <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", backgroundColor: VERDE, transition: "width 0.3s" }} />
+    </div>
+  );
+  const panelAvance = avance && (
+    // Una sola línea en tres partes iguales a los costados: el título a la
+    // izquierda, la barra en el medio (su centro, el de la página) y el % a
+    // su derecha.
+    <div className="bg-white rounded-4 shadow-sm px-3 py-2 mb-3" style={{ border: "1px solid #cbd5e1" }}>
+      <div className="align-items-center" style={{ display: "grid", gridTemplateColumns: "1fr minmax(120px, 420px) 1fr", columnGap: "12px" }}>
+        <span className="fw-bold text-secondary text-uppercase" style={{ fontSize: "0.72rem", letterSpacing: "0.08em" }}>
+          Avance de la reparación
+        </span>
+        {avance.total === null ? (
+          <span className="text-muted fw-semibold text-center" style={{ fontSize: "0.9rem" }}>
+            Sin pesos cargados: se cargan en Manitous › General
+          </span>
+        ) : (
+          <>
+            {barra(avance.total, "12px")}
+            <span className="fw-bold" style={{ fontSize: "2.2rem", lineHeight: 1, color: VERDE }}>
+              {fmtPct(avance.total)}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -425,6 +522,106 @@ function ManitouGeneralSanPablo() {
               disabled={guardando}
               className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
               style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
+            >
+              <i className="bi bi-check-lg"></i>
+              <span>Guardar</span>
+            </Button>
+          </Modal.Footer>
+        </Form>
+      )}
+    </Modal>
+  );
+
+  // Pesos: un % por sistema, que tienen que sumar 100. Sin permiso de editar
+  // se ven y no se guardan.
+  const modalPesos = (
+    <Modal show={pesosForm !== null} onHide={() => setPesosForm(null)} centered size="sm" contentClassName="border-0 shadow-lg rounded-4">
+      <Modal.Header
+        closeButton
+        closeVariant="white"
+        style={{
+          backgroundColor: VERDE,
+          color: "#fff",
+          borderTopLeftRadius: "1rem",
+          borderTopRightRadius: "1rem",
+          borderBottom: "1px solid rgba(255,255,255,0.1)",
+        }}
+      >
+        <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
+          <i className="bi bi-percent"></i>
+          <span>Pesos de la reparación</span>
+        </Modal.Title>
+      </Modal.Header>
+      {pesosForm && (
+        <Form onSubmit={guardarPesos}>
+          <Modal.Body className="p-3">
+            <div className="text-secondary mb-2" style={{ fontSize: "0.76rem" }}>
+              Cuánto pesa cada sistema en la reparación. Vale para las cinco Manitou.
+            </div>
+            {SISTEMAS_MANITOU.map((s) => (
+              <div
+                key={s.id}
+                className="d-flex align-items-center justify-content-between gap-2 py-1"
+                style={{ borderBottom: "1px solid #e2e8f0" }}
+              >
+                <span className="d-flex align-items-center gap-2 fw-semibold" style={{ fontSize: "0.82rem", color: COLOR }}>
+                  <i className={s.icono} style={{ color: "#0e7490" }}></i>
+                  {s.titulo}
+                </span>
+                <div className="d-flex align-items-center gap-1">
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="any"
+                    inputMode="decimal"
+                    size="sm"
+                    className="rounded-3 text-end"
+                    style={{ width: "80px", fontSize: "0.82rem" }}
+                    value={pesosForm[s.id]}
+                    onChange={(e) => setPesosForm((f) => ({ ...f, [s.id]: e.target.value }))}
+                    disabled={sinEditar}
+                    required
+                  />
+                  <span className="text-secondary" style={{ fontSize: "0.82rem" }}>
+                    %
+                  </span>
+                </div>
+              </div>
+            ))}
+            <div
+              className="d-flex align-items-center justify-content-between pt-2 fw-bold"
+              style={{ fontSize: "0.86rem", color: sumanCien ? VERDE : "#dc2626" }}
+            >
+              <span>Total</span>
+              <span>{fmtPct(sumaPesosForm)}</span>
+            </div>
+            {!sumanCien && (
+              <div className="text-end" style={{ fontSize: "0.72rem", color: "#dc2626" }}>
+                Tienen que sumar 100%.
+              </div>
+            )}
+          </Modal.Body>
+          <Modal.Footer
+            className="bg-light border-0 py-2 px-4"
+            style={{ borderBottomLeftRadius: "1rem", borderBottomRightRadius: "1rem" }}
+          >
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setPesosForm(null)}
+              className="rounded-3 px-3 py-1"
+              style={{ fontSize: "0.84rem" }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={sinEditar || guardando || !pesosCompletos || !sumanCien}
+              className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+              style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
+              title={sinEditar ? "Sin permiso para editar" : undefined}
             >
               <i className="bi bi-check-lg"></i>
               <span>Guardar</span>
@@ -604,6 +801,7 @@ function ManitouGeneralSanPablo() {
         <div className="flex-grow-1 px-3 py-3" style={{ overflowY: "auto" }}>
           <div style={{ maxWidth: ANCHO_DESPLEGADA, margin: "0 auto" }}>
             {encabezado(ANCHO_DESPLEGADA)}
+            {panelAvance}
             {/* General no se chequea: no lleva filtros. */}
             {/* Una línea: a la izquierda agrupar o desplegar todos los sistemas
                 (cada uno se agrupa también tocando su título), a la derecha
@@ -681,6 +879,7 @@ function ManitouGeneralSanPablo() {
                   onPlegar={() => plegar(s.id)}
                   estadoIngreso={estadosIngreso[s.id]}
                   onEstadoIngreso={esGeneral ? undefined : alCambiarEstadoIngreso}
+                  avance={avance?.porSistema.find((p) => p.sistema.id === s.id)}
                 />
               ))
             )}
@@ -704,6 +903,7 @@ function ManitouGeneralSanPablo() {
       {/* Modal Responsable: un solo campo; cada uno que se guarda se suma
           abajo del botón. */}
       {modalResponsable}
+      {modalPesos}
       {modalRepuestos}
     </div>
   );
