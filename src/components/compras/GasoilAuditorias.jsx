@@ -774,8 +774,11 @@ export default function GasoilAuditorias() {
                 </Modal.Title>
               </Modal.Header>
               <Modal.Body className="p-3" style={{ fontSize: '0.82rem' }}>
-                {renglon('Desde', fechaDia(r.desde))}
-                {renglon('Hasta', fechaDia(r.hasta))}
+                {/* Desde: el día del stock inicial, o la foto de la anterior (con
+                    hora). Hasta: la foto de esta. El corte es por cuándo se
+                    escribió cada consumo e ingreso. */}
+                {renglon('Desde', r.desde?.length > 10 ? `Foto ${fechaHora(r.desde)}` : fechaDia(r.desde))}
+                {renglon('Hasta', `Foto ${fechaHora(r.hasta)}`)}
                 {renglon(r.origen === 'stock inicial' ? 'Stock inicial' : 'Auditoría anterior', `${litros(r.partida)} lts`)}
                 {renglon('Ingresa', `+ ${litros(r.ingresos)} lts`, { color: '#1d4ed8' })}
                 {renglon('Consumo', `− ${litros(r.consumos)} lts`)}
