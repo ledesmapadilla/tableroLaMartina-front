@@ -134,6 +134,17 @@ export default function Usuarios() {
           </div>
 
           <div className="d-flex align-items-center gap-2">
+            {/* Quién hizo qué y cuándo. */}
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => navigate('/compras/altas/usuarios/registro')}
+              className="rounded-3 px-3 py-1 d-flex align-items-center gap-2"
+              style={{ fontSize: '0.82rem', fontWeight: 600 }}
+            >
+              <i className="bi bi-clock-history"></i>
+              <span>Registro</span>
+            </Button>
             {/* Qué ve y qué edita cada rol. */}
             <Button
               size="sm"

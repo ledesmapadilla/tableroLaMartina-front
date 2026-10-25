@@ -46,6 +46,7 @@ const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistor
 const VerOP = lazy(() => import("./components/compras/VerOP"));
 const Usuarios = lazy(() => import("./components/compras/Usuarios"));
 const Roles = lazy(() => import("./components/compras/Roles"));
+const Registro = lazy(() => import("./components/compras/Registro"));
 const Proveedores = lazy(() => import("./components/compras/Proveedores"));
 
 import Footer from "./components/shared/Footer";
@@ -302,6 +303,8 @@ function LayoutDesktop() {
               <Route path="/compras/altas/usuarios" element={<RutaProtegida roles={PERMISOS.comprasUsuarios}><Usuarios /></RutaProtegida>} />
               {/* Qué ve y qué edita cada rol: solo el superadmin, como Usuarios. */}
               <Route path="/compras/altas/usuarios/roles" element={<RutaProtegida roles={PERMISOS.comprasUsuarios}><Roles /></RutaProtegida>} />
+              {/* Quién hizo qué y cuándo (25/10/2026): solo el superadmin. */}
+              <Route path="/compras/altas/usuarios/registro" element={<RutaProtegida roles={PERMISOS.comprasUsuarios}><Registro /></RutaProtegida>} />
               <Route path="/compras/altas/proveedores" element={<RutaProtegida><Proveedores /></RutaProtegida>} />
               {/* El CC es un solo padrón: la misma pantalla que /produccion/altas/cc,
                   dentro de la barra de Compras (y así llega desde el celular). */}
