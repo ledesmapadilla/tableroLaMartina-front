@@ -61,12 +61,12 @@ const resumenDe = (f) => {
 }
 
 const ZONA = 'America/Argentina/Buenos_Aires'
+// Mismo formato de fecha que el resto del proyecto: dd/mm/aaaa.
+const formatFecha = (aaaammdd) => aaaammdd.split('-').reverse().join('/')
+// Un momento, en hora argentina (UTC−3): el día dd/mm/aaaa y la hora HH:mm.
 const fechaHora = (iso) => {
-  const d = new Date(iso)
-  return {
-    fecha: d.toLocaleDateString('es-AR', { timeZone: ZONA, day: '2-digit', month: '2-digit', year: 'numeric' }),
-    hora: d.toLocaleTimeString('es-AR', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-  }
+  const [dia, hora] = new Date(new Date(iso).getTime() - 3 * 3600000).toISOString().split('T')
+  return { fecha: formatFecha(dia), hora: hora.slice(0, 5) }
 }
 const hoy = (menosDias = 0) => {
   const d = new Date(Date.now() - menosDias * 86400000)
@@ -86,8 +86,10 @@ const Valor = ({ texto }) => {
   if (v === null || v === '') return <Raya />
   if (typeof v === 'string' && ISO.test(v)) {
     const { fecha, hora } = fechaHora(v)
-    return <span>{v.endsWith('T00:00:00.000Z') ? new Date(v).toLocaleDateString('es-AR', { timeZone: 'UTC' }) : `${fecha} ${hora}`}</span>
+    // Las fechas de un día (los partes, el gasoil) se guardan a medianoche UTC.
+    return <span>{v.endsWith('T00:00:00.000Z') ? formatFecha(v.slice(0, 10)) : `${fecha} ${hora}`}</span>
   }
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return <span>{formatFecha(v)}</span>
   if (typeof v === 'object') return <code style={{ fontSize: '0.66rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{JSON.stringify(v)}</code>
   if (typeof v === 'boolean') return <span>{v ? 'Sí' : 'No'}</span>
   return <span>{String(v)}</span>
