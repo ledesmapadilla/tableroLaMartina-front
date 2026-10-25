@@ -31,7 +31,7 @@ const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
 // Las columnas de cada solapa: los egresos no llevan sanas, rotas ni
 // reparadas.
-const COLUMNAS = { ingresos: 11, egresos: 8, reparaciones: 5 };
+const COLUMNAS = { ingresos: 11, egresos: 8, reparaciones: 7 };
 
 // Los encargados del ingreso y el retiro (08/10/2026), obligatorio en los dos.
 // El back controla la misma lista.
@@ -380,6 +380,23 @@ export default function IngresosEscaleras({ icono }) {
     "cantidadEscaleras"
   );
   const enTaller = entraron - retiradas - bajas;
+  // La solapa Reparaciones (25/10/2026): de la más vieja a la más nueva, con
+  // lo que se va sumando de rotas y reparadas en cada fila.
+  const reparacionesAcumuladas = (() => {
+    let rotasHasta = 0;
+    let reparadasHasta = 0;
+    return [...reparaciones]
+      .sort(
+        (a, b) =>
+          aInput(a.fechaIngreso).localeCompare(aInput(b.fechaIngreso)) ||
+          String(a.createdAt || "").localeCompare(String(b.createdAt || ""))
+      )
+      .map((i) => {
+        rotasHasta += i.escalerasRotas || 0;
+        reparadasHasta += i.escalerasReparadas || 0;
+        return { ...i, rotasHasta, reparadasHasta };
+      });
+  })();
   const rotas = suma(clasificadas, "escalerasRotas") + suma(reparaciones, "escalerasRotas");
   const reparadas = suma(clasificadas, "escalerasReparadas") + suma(reparaciones, "escalerasReparadas");
   const totales = [
@@ -639,7 +656,6 @@ export default function IngresosEscaleras({ icono }) {
               <i className="bi bi-geo-alt"></i>
               <span>Alta de frente</span>
             </Button>
-            {botonEncabezado("Reparación escaleras", "bi-tools", abrirReparacion, VERDE)}
             <Button
               size="sm"
               variant="outline-secondary"
@@ -650,6 +666,7 @@ export default function IngresosEscaleras({ icono }) {
               <i className="bi bi-clock-history"></i>
               <span>Historial carros</span>
             </Button>
+            {botonEncabezado("Reparación escaleras", "bi-tools", abrirReparacion, VERDE)}
             {botonEncabezado("Baja de escaleras", "bi-trash3", abrirBaja, ROJO)}
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
             {botonEncabezado("Ingreso", "bi-box-arrow-in-down", abrirSinCarro, AZUL)}
@@ -787,6 +804,8 @@ export default function IngresosEscaleras({ icono }) {
                 <th style={thCentro}>Fecha</th>
                 <th style={thCentro}>Escaleras rotas</th>
                 <th style={thCentro}>Escaleras reparadas</th>
+                <th style={thCentro}>Rotas acumuladas</th>
+                <th style={thCentro}>Reparadas acumuladas</th>
                 <th style={th}>Observaciones</th>
                 <th style={thCentro}>Acciones</th>
               </tr>
@@ -799,11 +818,13 @@ export default function IngresosEscaleras({ icono }) {
                   </td>
                 </tr>
               ) : (
-                reparaciones.map((i) => (
+                reparacionesAcumuladas.map((i) => (
                   <tr key={i._id}>
                     <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso) || <Raya />}</td>
                     <td style={{ ...tdCentro, fontWeight: 700, color: ROJO }}>{i.escalerasRotas ?? <Raya />}</td>
                     <td style={{ ...tdCentro, fontWeight: 700, color: VERDE }}>{i.escalerasReparadas ?? <Raya />}</td>
+                    <td style={{ ...tdCentro, color: ROJO }}>{i.rotasHasta}</td>
+                    <td style={{ ...tdCentro, color: VERDE }}>{i.reparadasHasta}</td>
                     <td style={td}>{i.observaciones || <Raya />}</td>
                     <td style={tdCentro}>
                       <div className="d-flex justify-content-center align-items-center" style={{ gap: "6px" }}>
@@ -825,6 +846,19 @@ export default function IngresosEscaleras({ icono }) {
                     </td>
                   </tr>
                 ))
+              )}
+              {reparaciones.length > 0 && (
+                <tr className="fila-total">
+                  <td style={{ ...tdCentro, fontWeight: 700, color: COLOR }}>TOTAL</td>
+                  <td style={{ ...tdCentro, fontWeight: 700, color: ROJO }}>{suma(reparaciones, "escalerasRotas")}</td>
+                  <td style={{ ...tdCentro, fontWeight: 700, color: VERDE }}>
+                    {suma(reparaciones, "escalerasReparadas")}
+                  </td>
+                  <td colSpan={2} style={{ ...tdCentro, fontWeight: 700, color: ROJO }}>
+                    Rotas sin reparar: {suma(reparaciones, "escalerasRotas") - suma(reparaciones, "escalerasReparadas")}
+                  </td>
+                  <td colSpan={2} style={td}></td>
+                </tr>
               )}
             </tbody>
           </Table>
