@@ -31,7 +31,7 @@ const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
 // Las columnas de cada solapa: los egresos no llevan sanas, rotas ni
 // reparadas.
-const COLUMNAS = { ingresos: 11, egresos: 8 };
+const COLUMNAS = { ingresos: 11, egresos: 8, reparaciones: 5 };
 
 // Los encargados del ingreso y el retiro (08/10/2026), obligatorio en los dos.
 // El back controla la misma lista.
@@ -70,7 +70,7 @@ const suma = (lista, campoNum) => lista.reduce((s, i) => s + (i[campoNum] || 0),
 
 // Qué modal corresponde a una fila.
 const modoDe = (i) =>
-  i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : i.sinCarro ? "sinCarro" : "carro";
+  i.reparacion ? "reparacion" : i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : i.sinCarro ? "sinCarro" : "carro";
 // Los movimientos que sacan escaleras del taller.
 const sale = (i) => i.retiro || i.baja;
 
@@ -87,6 +87,9 @@ const sale = (i) => i.retiro || i.baja;
  *    las lleva y cuántas.
  *  - Las bajas ("Baja de escaleras"): fecha, cuántas, motivo, quién las
  *    desecha y a quién se avisó.
+ *  - Las reparaciones ("Reparación escaleras", 25/10/2026): fecha, rotas,
+ *    reparadas y observaciones. No mueven escaleras: suman a los totales de
+ *    rotas y reparadas, y van en su propia solapa.
  * El back no deja retirar ni dar de baja más de las que quedan.
  */
 export default function IngresosEscaleras({ icono }) {
@@ -97,6 +100,9 @@ export default function IngresosEscaleras({ icono }) {
   const supervisores = useSupervisores();
 
   const [ingresos, setIngresos] = useState([]);
+  // Las reparaciones vienen con los movimientos pero van aparte: no entran ni
+  // salen escaleras.
+  const [reparaciones, setReparaciones] = useState([]);
   const [carros, setCarros] = useState([]);
   // Los frentes se dan de alta acá.
   const [frentes, setFrentes] = useState([]);
@@ -107,9 +113,9 @@ export default function IngresosEscaleras({ icono }) {
   const [modo, setModo] = useState(null);
   const [editando, setEditando] = useState(null);
   const [form, setForm] = useState(null);
-  const [verHistorial, setVerHistorial] = useState(false);
   // Ingresos (nuevas, ingresos y lo de los carros) y egresos (retiros y
-  // bajas) van en solapas separadas (06/10/2026).
+  // bajas) van en solapas separadas (06/10/2026); las reparaciones, en la
+  // tercera (25/10/2026).
   const [solapa, setSolapa] = useState("ingresos");
   const [anterior, setAnterior] = useState([]);
   // El historial de los carros porta escaleras (06/10/2026): sale de estos
@@ -121,12 +127,12 @@ export default function IngresosEscaleras({ icono }) {
   const cosechaAnterior = cosecha - 1;
 
   useEffect(() => {
-    if (!verHistorial && !verControl) return;
+    if (!verControl) return;
     api
       .get(`/ingresos-sanpablo?cosecha=${cosechaAnterior}&tipo=escaleras`)
-      .then((data) => setAnterior(Array.isArray(data) ? data : []))
+      .then((data) => setAnterior(Array.isArray(data) ? data.filter((i) => !i.reparacion) : []))
       .catch(() => setAnterior([]));
-  }, [verHistorial, verControl, cosechaAnterior]);
+  }, [verControl, cosechaAnterior]);
 
   const cargarFrentes = () =>
     api
@@ -137,8 +143,15 @@ export default function IngresosEscaleras({ icono }) {
   const cargar = () =>
     api
       .get(`/ingresos-sanpablo?cosecha=${cosecha}&tipo=escaleras`)
-      .then((data) => setIngresos(Array.isArray(data) ? data : []))
-      .catch(() => setIngresos([]))
+      .then((data) => {
+        const filas = Array.isArray(data) ? data : [];
+        setIngresos(filas.filter((i) => !i.reparacion));
+        setReparaciones(filas.filter((i) => i.reparacion));
+      })
+      .catch(() => {
+        setIngresos([]);
+        setReparaciones([]);
+      })
       .finally(() => setCargando(false));
 
   useEffect(() => {
@@ -200,10 +213,25 @@ export default function IngresosEscaleras({ icono }) {
     setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", motivo: "", ingresadoPor: "", avisadoA: "" });
   };
 
+  const abrirReparacion = () => {
+    setModo("reparacion");
+    setEditando(null);
+    setForm({ fechaIngreso: hoy(), escalerasRotas: "", escalerasReparadas: "", observaciones: "" });
+  };
+
   const abrirEditar = (i) => {
     const m = modoDe(i);
     setModo(m);
     setEditando(i);
+    if (m === "reparacion") {
+      setForm({
+        fechaIngreso: aInput(i.fechaIngreso),
+        escalerasRotas: numeroOVacio(i.escalerasRotas),
+        escalerasReparadas: numeroOVacio(i.escalerasReparadas),
+        observaciones: i.observaciones || "",
+      });
+      return;
+    }
     if (m === "baja") {
       setForm({
         fechaIngreso: aInput(i.fechaIngreso),
@@ -262,17 +290,23 @@ export default function IngresosEscaleras({ icono }) {
           ...(modo === "retiro" ? { retiro: true } : {}),
           ...(modo === "baja" ? { baja: true } : {}),
           ...(modo === "sinCarro" ? { sinCarro: true } : {}),
+          ...(modo === "reparacion" ? { reparacion: true } : {}),
         });
       const titulo = eraEdicion
-        ? "Escaleras actualizadas"
-        : modo === "retiro"
+        ? modo === "reparacion"
+          ? "Reparación actualizada"
+          : "Escaleras actualizadas"
+        : modo === "reparacion"
+          ? "Reparación registrada"
+          : modo === "retiro"
           ? "Retiro registrado"
           : modo === "baja"
             ? "Baja registrada"
             : modo === "sinCarro"
               ? "Ingreso registrado"
               : "Escaleras nuevas registradas";
-      if (!eraEdicion) setSolapa(modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
+      if (!eraEdicion)
+        setSolapa(modo === "reparacion" ? "reparaciones" : modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
       cerrar();
       cargar();
       Swal.fire({ icon: "success", title: titulo, timer: 1400, showConfirmButton: false });
@@ -283,14 +317,18 @@ export default function IngresosEscaleras({ icono }) {
 
   const eliminar = async (i) => {
     const { isConfirmed } = await Swal.fire({
-      title: i.baja
+      title: i.reparacion
+        ? "¿Borrar la reparación?"
+        : i.baja
         ? "¿Borrar la baja?"
         : i.retiro
           ? "¿Borrar el retiro?"
           : i.sinCarro
             ? "¿Borrar el ingreso?"
             : "¿Borrar las escaleras nuevas?",
-      text: `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
+      text: i.reparacion
+        ? `${i.escalerasRotas ?? 0} rotas y ${i.escalerasReparadas ?? 0} reparadas del ${fechaCorta(i.fechaIngreso)}`
+        : `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, borrar",
@@ -304,7 +342,7 @@ export default function IngresosEscaleras({ icono }) {
       cargar();
       Swal.fire({
         icon: "success",
-        title: i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
+        title: i.reparacion ? "Reparación borrada" : i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
         timer: 1200,
         showConfirmButton: false,
       });
@@ -327,7 +365,8 @@ export default function IngresosEscaleras({ icono }) {
   );
 
   // Totales, arriba de la tabla. Sanas, rotas y reparadas se cargan en los
-  // ingresos (y en lo que dejó la página vieja de los carros).
+  // ingresos (y en lo que dejó la página vieja de los carros); rotas y
+  // reparadas, también en las reparaciones.
   const deCarros = ingresos.filter((i) => !i.nuevas && !i.sinCarro && !sale(i));
   const clasificadas = ingresos.filter((i) => !i.nuevas && !sale(i));
   const nuevas = ingresos.filter((i) => i.nuevas);
@@ -341,8 +380,8 @@ export default function IngresosEscaleras({ icono }) {
     "cantidadEscaleras"
   );
   const enTaller = entraron - retiradas - bajas;
-  const rotas = suma(clasificadas, "escalerasRotas");
-  const reparadas = suma(clasificadas, "escalerasReparadas");
+  const rotas = suma(clasificadas, "escalerasRotas") + suma(reparaciones, "escalerasRotas");
+  const reparadas = suma(clasificadas, "escalerasReparadas") + suma(reparaciones, "escalerasReparadas");
   const totales = [
     ["Ingresos", suma(sinCarro, "cantidadEscaleras"), AZUL],
     ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
@@ -355,35 +394,6 @@ export default function IngresosEscaleras({ icono }) {
     ["Reparadas", reparadas, VERDE],
     ["Rotas sin reparar", rotas - reparadas, ROJO],
   ];
-
-  // Historial: los totales de la cosecha y, por supervisor, lo que retiró la
-  // cosecha anterior y lo que ingresó y retiró esta.
-  const historial = (() => {
-    // Por supervisor: lo que retiró la cosecha anterior y lo que ingresó y
-    // retiró esta.
-    const porNombre = new Map();
-    const sumar = (i, campoSuma) => {
-      const nombre = (i.ingresadoPor || "").trim() || "Sin supervisor";
-      const fila = porNombre.get(nombre.toLowerCase()) || {
-        nombre,
-        retiradasAnterior: 0,
-        ingresadas: 0,
-        retiradas: 0,
-      };
-      fila[campoSuma] += i.cantidadEscaleras || 0;
-      porNombre.set(nombre.toLowerCase(), fila);
-    };
-    for (const i of anterior) if (i.retiro) sumar(i, "retiradasAnterior");
-    // Solo lo de los supervisores: ni las bajas ni las escaleras nuevas (esas las
-    // carga quien las construye).
-    for (const i of ingresos) if (!i.baja && !i.nuevas) sumar(i, i.retiro ? "retiradas" : "ingresadas");
-    const porSupervisor = [...porNombre.values()].sort((a, b) =>
-      a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" })
-    );
-    const retiradasAnterior = anterior.filter((i) => i.retiro).reduce((t, i) => t + (i.cantidadEscaleras || 0), 0);
-    const total = (campoSuma) => porSupervisor.reduce((t, f) => t + f[campoSuma], 0);
-    return { porSupervisor, retiradasAnterior, ingresadas: total("ingresadas"), retiradas: total("retiradas") };
-  })();
 
   // En un retiro: los carros que todavía no se llevaron escaleras en la cosecha
   // (el del retiro que se edita sigue estando).
@@ -546,7 +556,11 @@ export default function IngresosEscaleras({ icono }) {
     });
 
   const tituloModal =
-    modo === "baja"
+    modo === "reparacion"
+      ? editando
+        ? "Editar reparación de escaleras"
+        : "Reparación escaleras"
+      : modo === "baja"
       ? editando
         ? "Editar baja de escaleras"
         : "Baja de escaleras"
@@ -625,16 +639,7 @@ export default function IngresosEscaleras({ icono }) {
               <i className="bi bi-geo-alt"></i>
               <span>Alta de frente</span>
             </Button>
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              onClick={() => setVerHistorial(true)}
-              className={claseBoton}
-              style={estiloBoton}
-            >
-              <i className="bi bi-clock-history"></i>
-              <span>Historial escaleras</span>
-            </Button>
+            {botonEncabezado("Reparación escaleras", "bi-tools", abrirReparacion, VERDE)}
             <Button
               size="sm"
               variant="outline-secondary"
@@ -708,6 +713,7 @@ export default function IngresosEscaleras({ icono }) {
           {[
             ["ingresos", "Ingresos", "bi-box-arrow-in-down", ingresos.filter((i) => !sale(i)).length],
             ["egresos", "Egresos", "bi-box-arrow-right", ingresos.filter(sale).length],
+            ["reparaciones", "Reparaciones", "bi-tools", reparaciones.length],
           ].map(([clave, rotulo, iconoSolapa, cantidad]) => {
             const activa = solapa === clave;
             return (
@@ -774,6 +780,55 @@ export default function IngresosEscaleras({ icono }) {
             borderRadius: "0 0.5rem 0.5rem 0.5rem",
           }}
         >
+          {solapa === "reparaciones" ? (
+          <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+            <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
+              <tr>
+                <th style={thCentro}>Fecha</th>
+                <th style={thCentro}>Escaleras rotas</th>
+                <th style={thCentro}>Escaleras reparadas</th>
+                <th style={th}>Observaciones</th>
+                <th style={thCentro}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reparaciones.length === 0 ? (
+                <tr>
+                  <td colSpan={COLUMNAS.reparaciones} className="text-center text-muted py-4" style={td}>
+                    {cargando ? "Cargando…" : "No hay reparaciones de escaleras todavía"}
+                  </td>
+                </tr>
+              ) : (
+                reparaciones.map((i) => (
+                  <tr key={i._id}>
+                    <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso) || <Raya />}</td>
+                    <td style={{ ...tdCentro, fontWeight: 700, color: ROJO }}>{i.escalerasRotas ?? <Raya />}</td>
+                    <td style={{ ...tdCentro, fontWeight: 700, color: VERDE }}>{i.escalerasReparadas ?? <Raya />}</td>
+                    <td style={td}>{i.observaciones || <Raya />}</td>
+                    <td style={tdCentro}>
+                      <div className="d-flex justify-content-center align-items-center" style={{ gap: "6px" }}>
+                        <BotonAccion
+                          icono="bi-pencil"
+                          titulo={sinEditar ? "Sin permiso para editar" : "Editar"}
+                          variante="primary"
+                          onClick={() => abrirEditar(i)}
+                          deshabilitado={sinEditar}
+                        />
+                        <BotonAccion
+                          icono="bi-trash"
+                          titulo={sinEditar ? "Sin permiso para editar" : "Borrar"}
+                          variante="danger"
+                          onClick={() => eliminar(i)}
+                          deshabilitado={sinEditar}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </Table>
+          ) : (
           <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
               <tr>
@@ -927,6 +982,7 @@ export default function IngresosEscaleras({ icono }) {
               )}
             </tbody>
           </Table>
+          )}
         </div>
 
         {/* Referencia: la zona de cada encargado. */}
@@ -960,7 +1016,15 @@ export default function IngresosEscaleras({ icono }) {
           closeVariant="white"
           style={{
             backgroundColor:
-              modo === "baja" ? ROJO : modo === "retiro" ? NARANJA : modo === "sinCarro" ? AZUL : COLOR,
+              modo === "reparacion"
+                ? VERDE
+                : modo === "baja"
+                  ? ROJO
+                  : modo === "retiro"
+                    ? NARANJA
+                    : modo === "sinCarro"
+                      ? AZUL
+                      : COLOR,
             color: "#fff",
             borderTopLeftRadius: "1rem",
             borderTopRightRadius: "1rem",
@@ -970,7 +1034,9 @@ export default function IngresosEscaleras({ icono }) {
           <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
             <i
               className={`bi ${
-                modo === "baja"
+                modo === "reparacion"
+                  ? "bi-tools"
+                  : modo === "baja"
                   ? "bi-trash3"
                   : modo === "retiro"
                     ? "bi-box-arrow-right"
@@ -985,6 +1051,44 @@ export default function IngresosEscaleras({ icono }) {
         {form && (
           <Form onSubmit={guardar}>
             <Modal.Body className={modo === "sinCarro" ? "px-4 py-3" : "p-4"}>
+              {modo === "reparacion" && (
+                <Row className="g-3 form-ingresos">
+                  {campoFecha}
+                  <Col xs={6} />
+                  <Col xs={6}>
+                    <Form.Label className="fw-semibold small mb-1" style={{ color: ROJO }}>
+                      Escaleras rotas
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      min={0}
+                      step={1}
+                      className="rounded-3"
+                      style={campo}
+                      value={form.escalerasRotas}
+                      onChange={(e) => setForm({ ...form, escalerasRotas: e.target.value })}
+                      placeholder="0"
+                    />
+                  </Col>
+                  <Col xs={6}>
+                    <Form.Label className="fw-semibold small mb-1" style={{ color: VERDE }}>
+                      Escaleras reparadas
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      min={0}
+                      step={1}
+                      className="rounded-3"
+                      style={campo}
+                      value={form.escalerasReparadas}
+                      onChange={(e) => setForm({ ...form, escalerasReparadas: e.target.value })}
+                      placeholder="0"
+                    />
+                  </Col>
+                  {campoObservaciones("Qué se reparó…")}
+                </Row>
+              )}
+
               {modo === "nuevas" && (
                 <Row className="g-3 form-ingresos">
                   {campoFecha}
@@ -1269,76 +1373,6 @@ export default function IngresosEscaleras({ icono }) {
             </Modal.Footer>
           </Form>
         )}
-      </Modal>
-
-      {/* Historial de movimientos, con totales y el detalle por supervisor. */}
-      <Modal
-        show={verHistorial}
-        onHide={() => setVerHistorial(false)}
-        centered
-        scrollable
-        contentClassName="border-0 shadow-lg rounded-4"
-      >
-        <Modal.Header
-          closeButton
-          closeVariant="white"
-          style={{
-            backgroundColor: COLOR,
-            color: "#fff",
-            borderTopLeftRadius: "1rem",
-            borderTopRightRadius: "1rem",
-            borderBottom: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
-            <i className="bi bi-clock-history"></i>
-            <span>Historial de escaleras · Cosecha {cosecha}</span>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-3">
-          {/* Por supervisor */}
-          <div className="fw-semibold mb-1" style={{ color: COLOR, fontSize: "0.82rem" }}>
-            Por supervisor
-          </div>
-          <div className="rounded-3 bg-white" style={{ border: "1px solid #cbd5e1", overflowX: "auto" }}>
-            <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
-              <thead>
-                <tr>
-                  <th style={th}>Supervisor</th>
-                  <th style={thCentro}>Retiradas {cosechaAnterior}</th>
-                  <th style={thCentro}>Ingresadas {cosecha}</th>
-                  <th style={thCentro}>Retiradas {cosecha}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historial.porSupervisor.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="text-center text-muted py-3" style={td}>
-                      No hay movimientos todavía
-                    </td>
-                  </tr>
-                ) : (
-                  historial.porSupervisor.map((f) => (
-                    <tr key={f.nombre}>
-                      <td style={td}>{f.nombre}</td>
-                      <td style={{ ...tdCentro, color: "#64748b" }}>{f.retiradasAnterior || <Raya />}</td>
-                      <td style={{ ...tdCentro, color: COLOR }}>{f.ingresadas || <Raya />}</td>
-                      <td style={{ ...tdCentro, color: NARANJA }}>{f.retiradas || <Raya />}</td>
-                    </tr>
-                  ))
-                )}
-                {historial.porSupervisor.length > 0 && (
-                  <tr className="fila-total">
-                    <td style={{ ...td, fontWeight: 700, color: COLOR }}>TOTAL</td>
-                    <td style={{ ...tdCentro, fontWeight: 700 }}>{historial.retiradasAnterior}</td>
-                    <td style={{ ...tdCentro, fontWeight: 700 }}>{historial.ingresadas}</td>
-                    <td style={{ ...tdCentro, fontWeight: 700 }}>{historial.retiradas}</td>
-                  </tr>
-                )}
-              </tbody>
-            </Table>
-          </div>
-        </Modal.Body>
       </Modal>
 
       <ModalAltaFrente
