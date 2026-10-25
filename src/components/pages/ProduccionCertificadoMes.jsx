@@ -2082,9 +2082,9 @@ function ProduccionCertificadoMes({
               {titulo}
             </span>          </div>
 
-          {/* Carga gasoil y cerrar / reabrir la certificación */}
+          {/* Ingreso de gasoil y cerrar / reabrir la certificación */}
           <div className="d-flex align-items-center gap-2">
-            {/* Carga gasoil (20/10/2026): el ingreso al tanque de este campo,
+            {/* Ingreso de gasoil (20/10/2026; antes "Carga gasoil", 25/10/2026): el ingreso al tanque de este campo,
                 el mismo formulario de Compras › Gasoil. Pide "Editar" en
                 Gasoil (tabla de Roles). */}
             {campoGasoilDeEstab && (
@@ -2107,7 +2107,7 @@ function ProduccionCertificadoMes({
                 }
               >
                 <i className="bi bi-fuel-pump-fill"></i>
-                <span>Carga gasoil</span>
+                <span>Ingreso de gasoil</span>
               </Button>
             )}
             <Button
