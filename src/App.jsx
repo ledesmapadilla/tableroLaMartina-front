@@ -37,6 +37,7 @@ const StockAceites = lazy(() => import("./components/compras/StockAceites"));
 const Gasoil = lazy(() => import("./components/compras/Gasoil"));
 const GasoilPlanilla = lazy(() => import("./components/compras/GasoilPlanilla"));
 const GasoilAuditorias = lazy(() => import("./components/compras/GasoilAuditorias"));
+const GasoilGraficos = lazy(() => import("./components/compras/GasoilGraficos"));
 const StockAceitesAlta = lazy(() => import("./components/compras/StockAceitesAlta"));
 const StockAceitesCompras = lazy(() => import("./components/compras/StockAceitesCompras"));
 const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
@@ -295,6 +296,8 @@ function LayoutDesktop() {
               <Route path="/compras/gasoil" element={<RutaProtegida><Gasoil /></RutaProtegida>} />
               {/* Auditorías de gasoil: pedido y stock + foto de cada taller. Va antes del comodín. */}
               <Route path="/compras/gasoil/auditorias" element={<RutaProtegida><GasoilAuditorias /></RutaProtegida>} />
+              {/* El gráfico del resultado de las auditorías (27/10/2026). */}
+              <Route path="/compras/gasoil/auditorias/grafico" element={<RutaProtegida><GasoilGraficos /></RutaProtegida>} />
               <Route path="/compras/gasoil/:campo" element={<RutaProtegida><GasoilPlanilla /></RutaProtegida>} />
 
               <Route path="/compras/op/ver" element={<RutaProtegida><VerOP /></RutaProtegida>} />

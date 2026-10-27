@@ -78,6 +78,13 @@ main {
 .tabla-informe td.col-corte {
   border-left: 2px solid #000 !important;
 }
+/* La línea negra fina abajo de una fila que cierra un grupo (las auditorías
+   de gasoil: entre Berdina y San Pablo). Va abajo de la fila de arriba y no
+   arriba de la de abajo: con bordes del mismo ancho, gana el de la celda de
+   arriba. */
+.tabla-informe tr.fila-fin-grupo > td {
+  border-bottom: 1px solid #000 !important;
+}
 .tabla-informe tbody tr:nth-of-type(even) > td {
   background-color: #f1f5f4;
 }

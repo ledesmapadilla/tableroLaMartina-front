@@ -4,11 +4,12 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import SelectBuscador from '../shared/SelectBuscador'
 import { hoy } from './aceites'
-import { API_GASOIL } from './camposGasoil'
+import { API_GASOIL, TIPOS_GASOIL, conTipos, tiposDeCampo } from './camposGasoil'
 
 /**
  * Cargar o corregir un ingreso de gasoil de un campo (20/10/2026): fecha,
- * litros, quién carga, proveedor, N° remito/ticket y observaciones.
+ * litros, quién carga, proveedor, N° remito/ticket y observaciones. En San
+ * Pablo, además, a qué tanque entra: Común o Infinia (27/10/2026).
  *
  * Lo usan la planilla de Gasoil (GasoilPlanilla.jsx) y el botón "Carga
  * gasoil" de la certificación de Producción (ProduccionCertificadoMes.jsx).
@@ -20,11 +21,14 @@ const campoForm = { fontSize: '0.85rem' }
 
 const unicos = (valores) => [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b))
 
-const datosDe = (ingreso) =>
+// `tipoInicial`: el tanque con que arranca un ingreso nuevo. En San Pablo
+// arranca sin elegir, así no se carga en el Común sin querer.
+const datosDe = (ingreso, tipoInicial) =>
   ingreso === 'nuevo'
-    ? { fecha: hoy(), proveedor: '', remito: '', litros: '', quienCarga: '', observaciones: '' }
+    ? { fecha: hoy(), tipo: tipoInicial, proveedor: '', remito: '', litros: '', quienCarga: '', observaciones: '' }
     : {
         fecha: String(ingreso.fecha || '').slice(0, 10),
+        tipo: ingreso.tipo || 'comun',
         proveedor: ingreso.proveedor || '',
         remito: ingreso.remito || '',
         litros: ingreso.litros ?? '',
@@ -33,7 +37,8 @@ const datosDe = (ingreso) =>
       }
 
 export default function ModalIngresoGasoil({ ingreso, campo, onCerrar, onGuardado }) {
-  const [datos, setDatos] = useState(() => datosDe(ingreso))
+  const eligeTipo = conTipos(campo.id)
+  const [datos, setDatos] = useState(() => datosDe(ingreso, eligeTipo ? '' : 'comun'))
   const [guardando, setGuardando] = useState(false)
   const [proveedores, setProveedores] = useState([])
   const [nombres, setNombres] = useState([])
@@ -59,6 +64,10 @@ export default function ModalIngresoGasoil({ ingreso, campo, onCerrar, onGuardad
     e.preventDefault()
     if (!datos.fecha || !(Number(datos.litros) > 0)) {
       Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'La fecha y los litros son obligatorios.', width: '300px' })
+      return
+    }
+    if (!datos.tipo) {
+      Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Elegí si es gasoil Común o Infinia.', width: '300px' })
       return
     }
     setGuardando(true)
@@ -92,6 +101,40 @@ export default function ModalIngresoGasoil({ ingreso, campo, onCerrar, onGuardad
       <Form onSubmit={guardar}>
         <Modal.Body className="p-3 p-md-4">
           <Row className="g-3">
+            {/* El tanque, arriba y a la vista: Común o Infinia. */}
+            {eligeTipo && (
+              <Col xs={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Gasoil <span className="text-danger">*</span>
+                </Form.Label>
+                <div className="d-flex gap-2">
+                  {tiposDeCampo(campo.id).map((t) => {
+                    const elegido = datos.tipo === t
+                    return (
+                      <Button
+                        key={t}
+                        type="button"
+                        size="sm"
+                        onClick={() => setCampo('tipo', t)}
+                        className="rounded-3 px-3 d-flex align-items-center gap-1"
+                        style={{
+                          fontSize: '0.84rem',
+                          fontWeight: 600,
+                          minWidth: '110px',
+                          justifyContent: 'center',
+                          backgroundColor: elegido ? campo.color : '#fff',
+                          borderColor: campo.color,
+                          color: elegido ? '#fff' : campo.color,
+                        }}
+                      >
+                        {elegido && <i className="bi bi-check-lg"></i>}
+                        <span>{TIPOS_GASOIL[t]}</span>
+                      </Button>
+                    )
+                  })}
+                </div>
+              </Col>
+            )}
             <Col xs={6} md={4}>
               <Form.Label className="fw-semibold text-dark small mb-1">Fecha</Form.Label>
               <Form.Control

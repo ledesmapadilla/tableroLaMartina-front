@@ -305,7 +305,8 @@ function ProduccionInformeTareasPersonal({ establecimiento = "caspinchango" }) {
         const precios = resVariables.ok ? await resVariables.json() : [];
         const cargados = resDescuentos.ok ? await resDescuentos.json() : [];
         const correcciones = resCambios.ok ? await resCambios.json() : [];
-        setPartes(Array.isArray(lista) ? lista : []);
+        // "Uso interno" no es una persona (27/10/2026): no se paga ni se informa.
+        setPartes((Array.isArray(lista) ? lista : []).filter((p) => !p.persona?.usoInterno));
         setVariables(Array.isArray(precios) ? precios : []);
         setCambios(Array.isArray(correcciones) ? correcciones : []);
         const filasDescuento = Array.isArray(cargados) ? cargados : [];

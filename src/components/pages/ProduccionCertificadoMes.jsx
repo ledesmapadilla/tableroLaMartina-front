@@ -540,6 +540,9 @@ function ProduccionCertificadoMes({
     [partes, variables, establecimiento]
   );
   const [personal, setPersonal] = useState([]);
+  // "Uso interno" es un renglón del padrón de personal con la marca
+  // `usoInterno` (27/10/2026).
+  const esUsoInterno = (id) => Boolean(id) && personal.some((p) => p._id === id && p.usoInterno);
   const [centros, setCentros] = useState([]);
   const [tareas, setTareas] = useState([]);
   const [lotes, setLotes] = useState([]);
@@ -1177,17 +1180,28 @@ function ProduccionCertificadoMes({
 
   const guardarParte = async () => {
     if (cerrado) return;
+    // "Uso interno" (27/10/2026): un consumo de gasoil sin persona, CC ni
+    // tarea. Solo pide la fecha, el combustible y las observaciones, y nunca
+    // es provisorio.
+    const usoInterno = esUsoInterno(form.persona);
     // Mismos obligatorios que valida el backend. Un provisorio solo necesita
     // saber de quién y de qué día es: el resto se completa después.
     const falta = [];
     if (!form.fecha) falta.push("la fecha");
     if (!form.persona) falta.push("la persona");
-    // El cliente define el precio: obligatorio siempre, también en el
-    // provisorio (04/10/2026).
-    if (!(form.cliente || "").trim()) falta.push("el cliente");
-    if (!form.provisorio && !form.tarea) falta.push("la tarea");
-    if (!form.provisorio && pideCantidad && (form.cantidad === "" || form.cantidad === null)) {
-      falta.push("la cantidad");
+    if (usoInterno) {
+      if (form.combustible === "" || form.combustible === null || form.combustible === undefined) {
+        falta.push("el combustible");
+      }
+      if (!(form.observacion || "").trim()) falta.push("las observaciones");
+    } else {
+      // El cliente define el precio: obligatorio siempre, también en el
+      // provisorio (04/10/2026).
+      if (!(form.cliente || "").trim()) falta.push("el cliente");
+      if (!form.provisorio && !form.tarea) falta.push("la tarea");
+      if (!form.provisorio && pideCantidad && (form.cantidad === "" || form.cantidad === null)) {
+        falta.push("la cantidad");
+      }
     }
     if (falta.length) {
       avisar({
@@ -1336,6 +1350,7 @@ function ProduccionCertificadoMes({
     const datos = {
       ...delForm,
       ...segunFecha,
+      ...(usoInterno ? { provisorio: false } : {}),
       terminado: conEstadoDelLote(form.terminado),
       // Con un solo lote va por `lote` como siempre; con varios, la lista.
       lotes:
@@ -1633,8 +1648,15 @@ function ProduccionCertificadoMes({
   }, [tareas]);
 
   // Opciones de los desplegables con buscador de la fila de carga.
+  // "Uso interno" (27/10/2026) va primero y en negrita: es el de los consumos
+  // de gasoil sin persona.
   const opcionesPersonal = useMemo(
-    () => personal.map((p) => ({ valor: p._id, texto: p.apellidoNombre })),
+    () =>
+      [...personal.filter((p) => p.usoInterno), ...personal.filter((p) => !p.usoInterno)].map((p) => ({
+        valor: p._id,
+        texto: p.apellidoNombre,
+        destacada: Boolean(p.usoInterno),
+      })),
     [personal]
   );
 

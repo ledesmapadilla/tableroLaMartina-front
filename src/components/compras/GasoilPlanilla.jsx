@@ -7,7 +7,16 @@ import { exportarPlanilla } from '../../helpers/excel'
 import { usePermisos } from '../../context/permisos'
 import { Raya, BotonAccion, BotonLimpiar, FiltroSelect, FiltroTexto } from './estilos'
 import { litros } from './aceites'
-import { API_GASOIL, ROLES_EDITAR_INGRESO, ROLES_SIN_CONSUMOS, campoGasoil, camposVisibles } from './camposGasoil'
+import {
+  API_GASOIL,
+  ROLES_SIN_CONSUMOS,
+  TIPOS_GASOIL,
+  campoGasoil,
+  camposVisibles,
+  conTipos,
+  tiposDeCampo,
+  tituloTanque,
+} from './camposGasoil'
 import { useAuth } from '../../context/AuthContext'
 import ModalIngresoGasoil from './ModalIngresoGasoil'
 import Error404 from '../pages/Error404'
@@ -15,6 +24,8 @@ import Error404 from '../pages/Error404'
 // El sombreado del día de cada auditoría en los consumos: otro color que el
 // del stock inicial, igual en los dos campos.
 const FONDO_AUDITORIA = '#ede9fe'
+// Los botones de Común e Infinia: un color que no es el de ningún campo.
+const COLOR_TANQUE = '#0e7490'
 
 /**
  * El gasoil de un campo (20/10/2026), en dos solapas:
@@ -28,6 +39,10 @@ const FONDO_AUDITORIA = '#ede9fe'
  *
  * Arriba, los filtros: el período vale para las dos solapas; proveedor y
  * quién carga son de los ingresos.
+ *
+ * San Pablo tiene dos tanques (27/10/2026), Común e Infinia: se elige cuál se
+ * ve al lado del título y las dos solapas son de ese. El consumo del Infinia
+ * es solo lo cargado en la retro.
  */
 // Una solapa de la tabla, como las de una carpeta: la elegida es blanca, con
 // el borde de arriba en el color del campo, y se funde con el marco de la
@@ -91,13 +106,16 @@ export default function GasoilPlanilla() {
 
   const { puede } = usePermisos()
   const sinEditar = !puede('compras.gasoil', 'editar')
-  // El lápiz de un ingreso, además, solo para el comprador, gerencia y el superadmin.
-  const sinEditarIngreso = sinEditar || !ROLES_EDITAR_INGRESO.includes(user?.rol)
   // El encargado de taller ve solo los ingresos: ni la solapa de consumos ni
   // el pedido al back.
   const sinConsumos = ROLES_SIN_CONSUMOS.includes(user?.rol)
 
   const [solapa, setSolapa] = useState(sinConsumos ? 'ingresos' : 'consumos')
+  // El tanque que se ve. Uno que el campo no tiene (Infinia en Berdina) es
+  // Común.
+  const [tipoElegido, setTipo] = useState('comun')
+  const tipo = tiposDeCampo(idCampo).includes(tipoElegido) ? tipoElegido : 'comun'
+  const nombre = tituloTanque(idCampo, tipo)
   const [filas, setFilas] = useState([])
   const [ingresos, setIngresos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -123,8 +141,8 @@ export default function GasoilPlanilla() {
 
   const cargar = () =>
     Promise.all([
-      sinConsumos ? [] : api.get(`${API_GASOIL}?campo=${idCampo}`),
-      api.get(`${API_GASOIL}/ingresos?campo=${idCampo}`),
+      sinConsumos ? [] : api.get(`${API_GASOIL}?campo=${idCampo}&tipo=${tipo}`),
+      api.get(`${API_GASOIL}/ingresos?campo=${idCampo}&tipo=${tipo}`),
     ])
       .then(([lista, listaIngresos]) => {
         setFilas(Array.isArray(lista) ? lista : [])
@@ -137,7 +155,7 @@ export default function GasoilPlanilla() {
 
   useEffect(() => {
     if (campo) cargar()
-  }, [idCampo])
+  }, [idCampo, tipo])
 
   if (!campo) return <Error404 />
 
@@ -195,13 +213,13 @@ export default function GasoilPlanilla() {
   // ── Excel: la solapa que se está viendo, con los filtros puestos ──
   const exportarExcel = () => {
     const hoy = new Date().toISOString().slice(0, 10)
-    const archivo = (que) => `Gasoil_${campo.titulo.replace(/\s+/g, '')}_${que}_${hoy}.xlsx`
+    const archivo = (que) => `Gasoil_${nombre.replace(/[\s·]+/g, '')}_${que}_${hoy}.xlsx`
     const vacio = (n) => (n === null || n === undefined ? '' : n)
     // El período filtrado va en el título, así se sabe de qué fechas es.
     const periodo = desde || hasta ? ` (${desde ? fecha(desde) : '…'} al ${hasta ? fecha(hasta) : '…'})` : ''
     if (solapa === 'consumos') {
       return exportarPlanilla({
-        titulo: `Gasoil · ${campo.titulo} — Consumos${periodo}`,
+        titulo: `Gasoil · ${nombre} — Consumos${periodo}`,
         // Las mismas columnas que la tabla; abajo, los totales de los recuadros.
         columnas: [
           { titulo: 'Fecha', ancho: 12 },
@@ -219,7 +237,7 @@ export default function GasoilPlanilla() {
       })
     }
     return exportarPlanilla({
-      titulo: `Gasoil · ${campo.titulo} — Ingresos${periodo}`,
+      titulo: `Gasoil · ${nombre} — Ingresos${periodo}`,
       columnas: [
         { titulo: 'Fecha', ancho: 12 },
         { titulo: 'Proveedor', ancho: 30 },
@@ -248,7 +266,7 @@ export default function GasoilPlanilla() {
   const verDetalle = (f) => {
     setDetalle({ fila: f, partes: null })
     api
-      .get(`${API_GASOIL}/detalle?campo=${idCampo}&fecha=${f.fecha}`)
+      .get(`${API_GASOIL}/detalle?campo=${idCampo}&tipo=${tipo}&fecha=${f.fecha}`)
       .then((lista) => setDetalle({ fila: f, partes: Array.isArray(lista) ? lista : [] }))
       .catch((error) => {
         setDetalle(null)
@@ -265,7 +283,7 @@ export default function GasoilPlanilla() {
     e.preventDefault()
     setGuardando(true)
     try {
-      await api.put(API_GASOIL, { campo: idCampo, fecha: editandoDia.fecha, observaciones })
+      await api.put(API_GASOIL, { campo: idCampo, tipo, fecha: editandoDia.fecha, observaciones })
       setEditandoDia(null)
       cargar()
       Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false, width: '300px' })
@@ -433,6 +451,34 @@ export default function GasoilPlanilla() {
             titulo="Ingresos"
             icono="bi-box-arrow-in-down"
           />
+          {/* El tanque que se ve, donde hay dos: Común o Infinia. A la altura
+              de las solapas, a la derecha, en otro color que el campo. */}
+          {conTipos(idCampo) && (
+            <div className="d-flex gap-1 ms-auto mb-1">
+              {tiposDeCampo(idCampo).map((t) => {
+                const elegido = tipo === t
+                return (
+                  <Button
+                    key={t}
+                    size="sm"
+                    onClick={() => setTipo(t)}
+                    className="rounded-3 px-3 d-flex align-items-center gap-1"
+                    style={{
+                      fontSize: '0.78rem',
+                      height: '28px',
+                      fontWeight: 600,
+                      backgroundColor: elegido ? COLOR_TANQUE : '#fff',
+                      borderColor: COLOR_TANQUE,
+                      color: elegido ? '#fff' : COLOR_TANQUE,
+                    }}
+                  >
+                    <i className="bi bi-fuel-pump"></i>
+                    <span>{TIPOS_GASOIL[t]}</span>
+                  </Button>
+                )
+              })}
+            </div>
+          )}
         </div>
         <div
           className="shadow-sm bg-white"
@@ -568,9 +614,9 @@ export default function GasoilPlanilla() {
                           <div className="d-flex justify-content-center align-items-center gap-2">
                             <BotonAccion
                               icono="bi-pencil"
-                              titulo={sinEditarIngreso ? 'Solo compras, gerencia y el superadmin editan ingresos' : 'Editar'}
+                              titulo={sinEditar ? 'Sin permiso para editar' : 'Editar'}
                               variante="primary"
-                              deshabilitado={sinEditarIngreso}
+                              deshabilitado={sinEditar}
                               onClick={() => editarIngreso(i)}
                             />
                             <BotonAccion
@@ -612,7 +658,7 @@ export default function GasoilPlanilla() {
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <i className="bi bi-fuel-pump-fill"></i>
             <span>
-              Consumo del {detalle && fecha(detalle.fila.fecha)} · {campo.titulo}
+              Consumo del {detalle && fecha(detalle.fila.fecha)} · {nombre}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -685,7 +731,7 @@ export default function GasoilPlanilla() {
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <i className="bi bi-chat-left-text"></i>
             <span>
-              Observaciones del {editandoDia && fecha(editandoDia.fecha)} · {campo.titulo}
+              Observaciones del {editandoDia && fecha(editandoDia.fecha)} · {nombre}
             </span>
           </Modal.Title>
         </Modal.Header>

@@ -6,11 +6,6 @@ import { seccionPropia } from '../../utils/seccionPropia'
 
 export const API_GASOIL = '/gasoil'
 
-// Corregir un ingreso ya cargado es solo del comprador, gerencia y el
-// superadmin (20/10/2026), además del "Editar" de Gasoil. El analista no.
-// El back lo controla igual (gasoil.controller.js).
-export const ROLES_EDITAR_INGRESO = ['comprador', 'gerente', 'superadmin']
-
 // Los encargados de taller ven solo la solapa de ingresos, no la de consumos
 // (20/10/2026). El back tampoco les da los consumos (gasoil.controller.js).
 export const ROLES_SIN_CONSUMOS = ['solicitante']
@@ -58,6 +53,21 @@ export const CAMPOS_GASOIL = [
 ]
 
 export const campoGasoil = (id) => CAMPOS_GASOIL.find((c) => c.id === id)
+
+// Los tipos de gasoil (27/10/2026): San Pablo tiene dos tanques, Común e
+// Infinia, cada uno con su stock inicial, ingresos, consumos y auditoría. El
+// Infinia lo consume solo la retro (CC "Retro"). Berdina, solo Común. Copia
+// de TIPOS_DE_CAMPO en TableroBack/src/models/GasoilDia.js.
+export const TIPOS_GASOIL = { comun: 'Común', infinia: 'Infinia' }
+const TIPOS_DE_CAMPO = { berdina: ['comun'], sanpablo: ['comun', 'infinia'] }
+export const tiposDeCampo = (idCampo) => TIPOS_DE_CAMPO[idCampo] || ['comun']
+// Si el campo tiene más de un tanque: entonces el tipo se muestra.
+export const conTipos = (idCampo) => tiposDeCampo(idCampo).length > 1
+// "Berdina", o "San Pablo · Infinia" donde hay dos tanques.
+export const tituloTanque = (idCampo, tipo) => {
+  const titulo = campoGasoil(idCampo)?.titulo || idCampo
+  return conTipos(idCampo) ? `${titulo} · ${TIPOS_GASOIL[tipo || 'comun']}` : titulo
+}
 
 // El campo de Gasoil de cada establecimiento de Producción (la clave de
 // Berdina sigue siendo "caspinchango").

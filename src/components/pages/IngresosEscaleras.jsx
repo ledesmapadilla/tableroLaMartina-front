@@ -70,7 +70,7 @@ const suma = (lista, campoNum) => lista.reduce((s, i) => s + (i[campoNum] || 0),
 
 // Qué modal corresponde a una fila.
 const modoDe = (i) =>
-  i.reparacion ? "reparacion" : i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : i.sinCarro ? "sinCarro" : "carro";
+  i.estadoInicial ? "estadoInicial" : i.reparacion ? "reparacion" : i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : i.sinCarro ? "sinCarro" : "carro";
 // Los movimientos que sacan escaleras del taller.
 const sale = (i) => i.retiro || i.baja;
 
@@ -90,6 +90,9 @@ const sale = (i) => i.retiro || i.baja;
  *  - Las reparaciones ("Reparación escaleras", 25/10/2026): fecha, rotas,
  *    reparadas y observaciones. No mueven escaleras: suman a los totales de
  *    rotas y reparadas, y van en su propia solapa.
+ *  - El estado inicial ("Estado inicial", 27/10/2026): fecha, cuántas había
+ *    rotas y observaciones. Es una reparación más (suma a las rotas), uno
+ *    solo por cosecha.
  * El back no deja retirar ni dar de baja más de las que quedan.
  */
 export default function IngresosEscaleras({ icono }) {
@@ -186,9 +189,6 @@ export default function IngresosEscaleras({ icono }) {
       frente: "",
       encargado: "",
       cc: "",
-      escalerasSanas: "",
-      escalerasRotas: "",
-      escalerasReparadas: "",
       observaciones: "",
     });
   };
@@ -219,10 +219,27 @@ export default function IngresosEscaleras({ icono }) {
     setForm({ fechaIngreso: hoy(), escalerasRotas: "", escalerasReparadas: "", observaciones: "" });
   };
 
+  // Uno solo por cosecha: si ya está, el botón lo abre para editar.
+  const abrirEstadoInicial = () => {
+    const existente = reparaciones.find((i) => i.estadoInicial);
+    if (existente) return abrirEditar(existente);
+    setModo("estadoInicial");
+    setEditando(null);
+    setForm({ fechaIngreso: hoy(), escalerasRotas: "", observaciones: "" });
+  };
+
   const abrirEditar = (i) => {
     const m = modoDe(i);
     setModo(m);
     setEditando(i);
+    if (m === "estadoInicial") {
+      setForm({
+        fechaIngreso: aInput(i.fechaIngreso),
+        escalerasRotas: numeroOVacio(i.escalerasRotas),
+        observaciones: i.observaciones || "",
+      });
+      return;
+    }
     if (m === "reparacion") {
       setForm({
         fechaIngreso: aInput(i.fechaIngreso),
@@ -291,12 +308,17 @@ export default function IngresosEscaleras({ icono }) {
           ...(modo === "baja" ? { baja: true } : {}),
           ...(modo === "sinCarro" ? { sinCarro: true } : {}),
           ...(modo === "reparacion" ? { reparacion: true } : {}),
+          ...(modo === "estadoInicial" ? { estadoInicial: true } : {}),
         });
       const titulo = eraEdicion
-        ? modo === "reparacion"
+        ? modo === "estadoInicial"
+          ? "Estado inicial actualizado"
+          : modo === "reparacion"
           ? "Reparación actualizada"
           : "Escaleras actualizadas"
-        : modo === "reparacion"
+        : modo === "estadoInicial"
+          ? "Estado inicial registrado"
+          : modo === "reparacion"
           ? "Reparación registrada"
           : modo === "retiro"
           ? "Retiro registrado"
@@ -306,7 +328,7 @@ export default function IngresosEscaleras({ icono }) {
               ? "Ingreso registrado"
               : "Escaleras nuevas registradas";
       if (!eraEdicion)
-        setSolapa(modo === "reparacion" ? "reparaciones" : modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
+        setSolapa(modo === "reparacion" || modo === "estadoInicial" ? "reparaciones" : modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
       cerrar();
       cargar();
       Swal.fire({ icon: "success", title: titulo, timer: 1400, showConfirmButton: false });
@@ -317,7 +339,9 @@ export default function IngresosEscaleras({ icono }) {
 
   const eliminar = async (i) => {
     const { isConfirmed } = await Swal.fire({
-      title: i.reparacion
+      title: i.estadoInicial
+        ? "¿Borrar el estado inicial?"
+        : i.reparacion
         ? "¿Borrar la reparación?"
         : i.baja
         ? "¿Borrar la baja?"
@@ -326,7 +350,9 @@ export default function IngresosEscaleras({ icono }) {
           : i.sinCarro
             ? "¿Borrar el ingreso?"
             : "¿Borrar las escaleras nuevas?",
-      text: i.reparacion
+      text: i.estadoInicial
+        ? `${i.escalerasRotas ?? 0} rotas al ${fechaCorta(i.fechaIngreso)}`
+        : i.reparacion
         ? `${i.escalerasRotas ?? 0} rotas y ${i.escalerasReparadas ?? 0} reparadas del ${fechaCorta(i.fechaIngreso)}`
         : `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
       icon: "warning",
@@ -342,7 +368,7 @@ export default function IngresosEscaleras({ icono }) {
       cargar();
       Swal.fire({
         icon: "success",
-        title: i.reparacion ? "Reparación borrada" : i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
+        title: i.estadoInicial ? "Estado inicial borrado" : i.reparacion ? "Reparación borrada" : i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
         timer: 1200,
         showConfirmButton: false,
       });
@@ -397,19 +423,23 @@ export default function IngresosEscaleras({ icono }) {
         return { ...i, rotasHasta, reparadasHasta };
       });
   })();
+  // Las rotas del estado inicial entran acá: es una reparación más.
   const rotas = suma(clasificadas, "escalerasRotas") + suma(reparaciones, "escalerasRotas");
   const reparadas = suma(clasificadas, "escalerasReparadas") + suma(reparaciones, "escalerasReparadas");
+  const total = suma(sinCarro, "cantidadEscaleras") + suma(nuevas, "cantidadEscaleras");
   const totales = [
     ["Ingresos", suma(sinCarro, "cantidadEscaleras"), AZUL],
     ["Nuevas", suma(nuevas, "cantidadEscaleras"), VERDE],
-    ["Total", suma(sinCarro, "cantidadEscaleras") + suma(nuevas, "cantidadEscaleras"), COLOR],
+    ["Total", total, COLOR],
     ["Retiradas", retiradas, NARANJA],
     ["Dadas de baja", bajas, ROJO],
     ["En taller", enTaller, COLOR],
-    ["Sanas", suma(clasificadas, "escalerasSanas"), AZUL],
-    ["Rotas", rotas, ROJO],
+    // Las sanas (27/10/2026): el total menos las rotas, más las reparadas.
+    ["Sanas", total - rotas + reparadas, AZUL],
+    // Las reparadas se descuentan de las rotas (27/10/2026): son las que
+    // siguen rotas.
+    ["Rotas", rotas - reparadas, ROJO],
     ["Reparadas", reparadas, VERDE],
-    ["Rotas sin reparar", rotas - reparadas, ROJO],
   ];
 
   // En un retiro: los carros que todavía no se llevaron escaleras en la cosecha
@@ -424,15 +454,38 @@ export default function IngresosEscaleras({ icono }) {
     (c) => !ingresos.some((i) => !i.nuevas && !sale(i) && i.cc?._id === c._id && i._id !== editando?._id)
   );
 
-  // En el modal de un ingreso o de un carro: las que falta clasificar como
-  // sanas o rotas.
-  const esCarro = (modo === "carro" || modo === "sinCarro") && Boolean(form);
-  const cantidadQueEntro = modo === "carro" ? editando?.cantidadEscaleras || 0 : Number(form?.cantidadEscaleras) || 0;
+  // En el modal de un carro de la página vieja: las que falta clasificar como
+  // sanas o rotas. El ingreso ya no las pregunta (27/10/2026).
+  const esCarro = modo === "carro" && Boolean(form);
+  const cantidadQueEntro = editando?.cantidadEscaleras || 0;
   const sinClasificar = esCarro
     ? cantidadQueEntro - (Number(form.escalerasSanas) || 0) - (Number(form.escalerasRotas) || 0)
     : 0;
   const reparadasDeMas = esCarro && (Number(form.escalerasReparadas) || 0) > (Number(form.escalerasRotas) || 0);
-  const hayError = esCarro && (sinClasificar < 0 || reparadasDeMas);
+  // En una reparación o en el estado inicial (27/10/2026): en la cosecha no
+  // puede haber más reparadas que rotas. Cuenta todo menos la fila que se edita.
+  const cuentaRotas = (modo === "reparacion" || modo === "estadoInicial") && Boolean(form);
+  const otras = [...clasificadas, ...reparaciones].filter((i) => i._id !== editando?._id);
+  const rotasCosecha = suma(otras, "escalerasRotas") + (cuentaRotas ? Number(form.escalerasRotas) || 0 : 0);
+  const reparadasCosecha =
+    suma(otras, "escalerasReparadas") + (cuentaRotas ? Number(form.escalerasReparadas) || 0 : 0);
+  const masReparadasQueRotas = cuentaRotas && reparadasCosecha > rotasCosecha;
+  const hayError = (esCarro && (sinClasificar < 0 || reparadasDeMas)) || masReparadasQueRotas;
+  // El aviso abajo de los campos.
+  const avisoRotas = cuentaRotas && (
+    <Col xs={12}>
+      <div
+        style={{ fontSize: "0.74rem", color: masReparadasQueRotas ? ROJO : "#64748b" }}
+        className={masReparadasQueRotas ? "fw-semibold" : ""}
+      >
+        {masReparadasQueRotas
+          ? modo === "reparacion"
+            ? `Quedan ${Math.max(rotasCosecha - suma(otras, "escalerasReparadas"), 0)} rotas: no se pueden reparar más`
+            : `Las reparadas (${reparadasCosecha}) no pueden ser más que las rotas (${rotasCosecha})`
+          : `Rotas sin reparar: ${rotasCosecha - reparadasCosecha}`}
+      </div>
+    </Col>
+  );
 
   const campoNumero = (campoNum, rotulo, color) => (
     <Col xs={4} key={campoNum}>
@@ -573,7 +626,11 @@ export default function IngresosEscaleras({ icono }) {
     });
 
   const tituloModal =
-    modo === "reparacion"
+    modo === "estadoInicial"
+      ? editando
+        ? "Editar estado inicial"
+        : "Estado inicial"
+      : modo === "reparacion"
       ? editando
         ? "Editar reparación de escaleras"
         : "Reparación escaleras"
@@ -666,6 +723,7 @@ export default function IngresosEscaleras({ icono }) {
               <i className="bi bi-clock-history"></i>
               <span>Historial carros</span>
             </Button>
+            {botonEncabezado("Estado inicial", "bi-flag", abrirEstadoInicial, COLOR)}
             {botonEncabezado("Reparación escaleras", "bi-tools", abrirReparacion, VERDE)}
             {botonEncabezado("Baja de escaleras", "bi-trash3", abrirBaja, ROJO)}
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
@@ -825,7 +883,14 @@ export default function IngresosEscaleras({ icono }) {
                     <td style={{ ...tdCentro, fontWeight: 700, color: VERDE }}>{i.escalerasReparadas ?? <Raya />}</td>
                     <td style={{ ...tdCentro, color: ROJO }}>{i.rotasHasta}</td>
                     <td style={{ ...tdCentro, color: VERDE }}>{i.reparadasHasta}</td>
-                    <td style={td}>{i.observaciones || <Raya />}</td>
+                    <td style={td}>
+                      {i.estadoInicial && (
+                        <span className="fw-semibold me-1" style={{ color: COLOR }}>
+                          Estado inicial{i.observaciones ? " ·" : ""}
+                        </span>
+                      )}
+                      {i.observaciones || (!i.estadoInicial && <Raya />)}
+                    </td>
                     <td style={tdCentro}>
                       <div className="d-flex justify-content-center align-items-center" style={{ gap: "6px" }}>
                         <BotonAccion
@@ -1052,6 +1117,8 @@ export default function IngresosEscaleras({ icono }) {
             backgroundColor:
               modo === "reparacion"
                 ? VERDE
+                : modo === "estadoInicial"
+                ? COLOR
                 : modo === "baja"
                   ? ROJO
                   : modo === "retiro"
@@ -1070,6 +1137,8 @@ export default function IngresosEscaleras({ icono }) {
               className={`bi ${
                 modo === "reparacion"
                   ? "bi-tools"
+                  : modo === "estadoInicial"
+                  ? "bi-flag"
                   : modo === "baja"
                   ? "bi-trash3"
                   : modo === "retiro"
@@ -1085,13 +1154,12 @@ export default function IngresosEscaleras({ icono }) {
         {form && (
           <Form onSubmit={guardar}>
             <Modal.Body className={modo === "sinCarro" ? "px-4 py-3" : "p-4"}>
-              {modo === "reparacion" && (
+              {modo === "estadoInicial" && (
                 <Row className="g-3 form-ingresos">
                   {campoFecha}
-                  <Col xs={6} />
                   <Col xs={6}>
                     <Form.Label className="fw-semibold small mb-1" style={{ color: ROJO }}>
-                      Escaleras rotas
+                      Escaleras rotas <span className="text-danger">*</span>
                     </Form.Label>
                     <Form.Control
                       type="number"
@@ -1102,8 +1170,19 @@ export default function IngresosEscaleras({ icono }) {
                       value={form.escalerasRotas}
                       onChange={(e) => setForm({ ...form, escalerasRotas: e.target.value })}
                       placeholder="0"
+                      required
                     />
                   </Col>
+                  {avisoRotas}
+                  {campoObservaciones("Cómo estaban las escaleras al empezar…")}
+                </Row>
+              )}
+
+              {modo === "reparacion" && (
+                <Row className="g-3 form-ingresos">
+                  {/* Sin rotas (27/10/2026): las rotas salen del estado inicial
+                      y de los ingresos; acá solo se cargan las reparadas. */}
+                  {campoFecha}
                   <Col xs={6}>
                     <Form.Label className="fw-semibold small mb-1" style={{ color: VERDE }}>
                       Escaleras reparadas
@@ -1119,6 +1198,7 @@ export default function IngresosEscaleras({ icono }) {
                       placeholder="0"
                     />
                   </Col>
+                  {avisoRotas}
                   {campoObservaciones("Qué se reparó…")}
                 </Row>
               )}
@@ -1219,7 +1299,6 @@ export default function IngresosEscaleras({ icono }) {
                       ))}
                     </Form.Select>
                   </Col>
-                  {camposClasificacion}
                   {campoObservaciones("De dónde vienen, cómo llegaron…", 1)}
                 </Row>
               )}

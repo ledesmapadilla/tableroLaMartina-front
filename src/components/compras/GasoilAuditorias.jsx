@@ -7,21 +7,26 @@ import { usePermisos } from '../../context/permisos'
 import { useAuth } from '../../context/AuthContext'
 import { Raya, BotonAccion } from './estilos'
 import { litros } from './aceites'
-import { API_GASOIL, campoGasoil } from './camposGasoil'
+import { API_GASOIL, TIPOS_GASOIL, campoGasoil, conTipos, tituloTanque } from './camposGasoil'
+import HistorialAuditoriasGasoil from './HistorialAuditoriasGasoil'
 
 /**
  * Compras › Gasoil › Auditorías (20/10/2026).
  *
  * Alguien de Compras toca "Pedir auditoría" y queda un renglón con la fecha
- * del pedido y una fila por campo, Berdina y San Pablo. En cada una, el
+ * del pedido y una fila por tanque: Berdina y, en San Pablo, Común e Infinia
+ * (27/10/2026). En cada una, el
  * encargado de ese taller (Kevin en Berdina; Victor y Pablo en San Pablo)
  * carga los litros que tiene en el tanque y sube la foto del nivel. El
  * encargado ve solo la fila de su campo: el back no le manda la otra.
  *
- * Arriba, el stock inicial de cada campo (21/10/2026): los litros con los
+ * Arriba, el stock inicial de cada tanque (21/10/2026): los litros con los
  * que arranca el tanque, la fecha de la medición y la foto del nivel.
  */
 const COLOR = '#334155'
+// La palabra "Infinia" en la caja del stock inicial: un fucsia, que salte al
+// lado del verde de San Pablo.
+const COLOR_INFINIA = '#c026d3'
 // Las alturas mínimas de la tabla de auditorías. La del resultado, aparte a
 // la derecha, copia la altura real de cada fila (igualarFilas).
 const ALTO_ENCABEZADO = '26px'
@@ -35,6 +40,9 @@ export default function GasoilAuditorias() {
   // Pide (y borra) Compras; carga el encargado. El superadmin, las dos cosas.
   const puedePedir = !sinEditar && !esEncargado
   const puedeCargar = !sinEditar && (esEncargado || user?.rol === 'superadmin')
+  // La tabla del resultado (27/10/2026): la ve el que tiene Ver y Editar en
+  // Gasoil, sea cual sea su rol. El back no lo manda a los demás.
+  const verResultado = puede('compras.gasoil', 'ver') && !sinEditar
 
   const [lista, setLista] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -48,15 +56,17 @@ export default function GasoilAuditorias() {
   const [fotoQuitada, setFotoQuitada] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
-  // El stock inicial: [{ campo, stock }] con stock null si no se cargó.
+  // El stock inicial: [{ campo, tipo, stock }] con stock null si no se cargó.
   const [stocks, setStocks] = useState([])
-  // El del modal: null cerrado o { campo, stock }. Usa los litros y el
+  // El del modal: null cerrado o { campo, tipo, stock }. Usa los litros y el
   // archivo de arriba: los dos modales no se abren juntos.
   const [editandoStock, setEditandoStock] = useState(null)
   const [fechaForm, setFechaForm] = useState('')
 
   // El resumen del resultado: null cerrado o { auditoria, carga }.
   const [resumen, setResumen] = useState(null)
+  // El historial con el gráfico (27/10/2026).
+  const [verHistorial, setVerHistorial] = useState(false)
 
   const cargar = () =>
     api
@@ -163,8 +173,8 @@ export default function GasoilAuditorias() {
     }
     setGuardando(true)
     try {
-      const foto = archivo ? await subirArchivo(archivo) : fotoAnterior
-      await api.put(`${API_GASOIL}/auditorias/${auditoria._id}/${carga.campo}`, { litros: litrosForm, foto })
+      const foto = archivo ? await subirArchivo(archivo, { achicar: true }) : fotoAnterior
+      await api.put(`${API_GASOIL}/auditorias/${auditoria._id}/${carga.campo}?tipo=${carga.tipo}`, { litros: litrosForm, foto })
       // La foto que se reemplazó ya no la usa nadie.
       if (archivo && carga.foto) borrarArchivo(carga.foto)
       setEditando(null)
@@ -178,10 +188,12 @@ export default function GasoilAuditorias() {
   }
 
   // ── Stock inicial ──
-  // Cargado, no se corrige; solo Nacho (el superadmin "nacho"), con el lápiz.
-  // Los demás cambian solo la foto. Copia de corrigeStock en
+  // Un stock ya cargado, el inicial o los litros de una auditoría, lo corrige
+  // solo el comprador (27/10/2026), y Nacho (el superadmin "nacho"), que puede
+  // todo. Los demás cambian solo la foto. Copia de corrigeStock en
   // TableroBack/src/controllers/gasoil.controller.js.
-  const puedeCorregirStock = user?.rol === 'superadmin' && user?.usuario === 'nacho'
+  const puedeCorregirStock =
+    !sinEditar && (user?.rol === 'comprador' || (user?.rol === 'superadmin' && user?.usuario === 'nacho'))
 
   const abrirStock = (s) => {
     setLitrosForm(s.stock?.litros ?? '')
@@ -192,7 +204,7 @@ export default function GasoilAuditorias() {
 
   const guardarStock = async (e) => {
     e.preventDefault()
-    const { campo, stock } = editandoStock
+    const { campo, tipo, stock } = editandoStock
     if (litrosForm === '' || Number(litrosForm) < 0 || !fechaForm) {
       Swal.fire({ icon: 'error', title: 'Faltan datos', text: 'Los litros y la fecha son obligatorios.', width: '300px' })
       return
@@ -204,8 +216,8 @@ export default function GasoilAuditorias() {
     }
     setGuardando(true)
     try {
-      const foto = archivo ? await subirArchivo(archivo) : stock.foto
-      await api.put(`${API_GASOIL}/stock-inicial/${campo}`, { litros: litrosForm, fecha: fechaForm, foto })
+      const foto = archivo ? await subirArchivo(archivo, { achicar: true }) : stock.foto
+      await api.put(`${API_GASOIL}/stock-inicial/${campo}?tipo=${tipo}`, { litros: litrosForm, fecha: fechaForm, foto })
       // La foto que se reemplazó ya no la usa nadie.
       if (archivo && stock?.foto) borrarArchivo(stock.foto)
       setEditandoStock(null)
@@ -221,10 +233,10 @@ export default function GasoilAuditorias() {
   // La foto de la caja: la x la saca y "Subir" pone otra. Los litros y la
   // fecha no se tocan.
   const subirFotoStock = async (s, file) => {
-    setSubiendo(`stock-${s.campo}`)
+    setSubiendo(`stock-${s.campo}-${s.tipo}`)
     try {
-      const foto = await subirArchivo(file)
-      await api.put(`${API_GASOIL}/stock-inicial/${s.campo}/foto`, { foto })
+      const foto = await subirArchivo(file, { achicar: true })
+      await api.put(`${API_GASOIL}/stock-inicial/${s.campo}/foto?tipo=${s.tipo}`, { foto })
       cargarStocks()
     } catch (error) {
       Swal.fire({ icon: 'error', title: 'No se pudo subir la foto', text: error.message, width: '300px' })
@@ -237,7 +249,7 @@ export default function GasoilAuditorias() {
     try {
       // Como en las auditorías: primero se la saca del stock y después de
       // Cloudinary.
-      await api.put(`${API_GASOIL}/stock-inicial/${s.campo}/foto`, { foto: null })
+      await api.put(`${API_GASOIL}/stock-inicial/${s.campo}/foto?tipo=${s.tipo}`, { foto: null })
       cargarStocks()
       await borrarArchivo(s.stock.foto || {})
     } catch (error) {
@@ -249,12 +261,12 @@ export default function GasoilAuditorias() {
   // Como los adjuntos de los pedidos: el nombre del archivo con el clip (abre
   // la foto) y la x para sacarla; sin foto, "Subir".
   const [subiendo, setSubiendo] = useState(null)
-  const urlFoto = (a, c) => `${API_GASOIL}/auditorias/${a._id}/${c.campo}/foto`
+  const urlFoto = (a, c) => `${API_GASOIL}/auditorias/${a._id}/${c.campo}/foto?tipo=${c.tipo}`
 
   const subirFoto = async (a, c, file) => {
-    setSubiendo(`${a._id}-${c.campo}`)
+    setSubiendo(`${a._id}-${c.campo}-${c.tipo}`)
     try {
-      const foto = await subirArchivo(file)
+      const foto = await subirArchivo(file, { achicar: true })
       await api.put(urlFoto(a, c), { foto })
       cargar()
     } catch (error) {
@@ -306,7 +318,7 @@ export default function GasoilAuditorias() {
     }
     // Sin cargar todavía, la foto va con los litros, en el formulario.
     if (!cargada || !puedeCargar) return <Raya />
-    const estaSubiendo = subiendo === `${a._id}-${c.campo}`
+    const estaSubiendo = subiendo === `${a._id}-${c.campo}-${c.tipo}`
     return (
       <label
         className={`btn btn-outline-dark mb-0${estaSubiendo ? ' disabled' : ''}`}
@@ -361,6 +373,26 @@ export default function GasoilAuditorias() {
 
   const columnas = esEncargado ? 5 : 6
 
+  // La primera fila de cada pedido va con la línea gris arriba.
+  const bordeFila = (a, n) => (n === 0 ? { borderTop: '2px solid #94a3b8' } : {})
+  // La última fila de un campo, si sigue otro (27/10/2026), lleva la línea
+  // negra fina abajo (fila-fin-grupo de index.css), así las dos de San Pablo
+  // se ven juntas. Las dos tablas usan las mismas, para quedar parejas.
+  const claseFila = (a, n) =>
+    a.cargas[n + 1] && a.cargas[n + 1].campo !== a.cargas[n].campo ? 'fila-fin-grupo' : undefined
+
+  // El nombre del tanque, con "Infinia" en su color (27/10/2026).
+  const nombreTanque = (idCampo, tipo) => {
+    const titulo = campoGasoil(idCampo)?.titulo || idCampo
+    if (!conTipos(idCampo)) return titulo
+    return (
+      <>
+        {titulo} ·{' '}
+        <span style={tipo === 'infinia' ? { color: COLOR_INFINIA } : undefined}>{TIPOS_GASOIL[tipo]}</span>
+      </>
+    )
+  }
+
   // La tabla del resultado copia la altura de cada fila de la de auditorías
   // (el encabezado incluido), así quedan parejas aunque una fila crezca. Se
   // vuelve a igualar cada vez que la de auditorías cambia de tamaño.
@@ -380,7 +412,7 @@ export default function GasoilAuditorias() {
     const observador = new ResizeObserver(igualarFilas)
     observador.observe(principal)
     return () => observador.disconnect()
-  }, [lista, esEncargado])
+  }, [lista, verResultado])
 
   return (
     <div
@@ -411,6 +443,20 @@ export default function GasoilAuditorias() {
             </span>
           </div>
 
+          <div className="d-flex align-items-center gap-2">
+          {/* El historial lleva los resultados: lo ve quien los ve. */}
+          {verResultado && (
+            <Button
+              size="sm"
+              onClick={() => setVerHistorial(true)}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ backgroundColor: '#fff', borderColor: COLOR, color: COLOR, fontSize: '0.78rem', height: '30px', fontWeight: 600 }}
+              title="Resumen de las auditorías y gráfico del resultado"
+            >
+              <i className="bi bi-clock-history"></i>
+              <span>Historial</span>
+            </Button>
+          )}
           {!esEncargado && (
             <Button
               size="sm"
@@ -424,23 +470,34 @@ export default function GasoilAuditorias() {
               <span>{pidiendo ? 'Pidiendo…' : 'Pedir auditoría'}</span>
             </Button>
           )}
+          </div>
         </div>
 
-        {/* Stock inicial: una caja por campo (el encargado, solo la suya). */}
+        {/* Stock inicial: una caja por tanque (el encargado, solo las de su
+            campo). */}
         <div className="d-flex gap-2 flex-wrap justify-content-center mb-3 flex-shrink-0">
-          {stocks.map((s) => {
+          {stocks.map((s, i) => {
             const campo = campoGasoil(s.campo)
+            // Un espacio entre campos (27/10/2026): las dos de San Pablo van
+            // juntas, aparte de la de Berdina.
+            const otroCampo = i > 0 && stocks[i - 1].campo !== s.campo
             const color = campo?.color || COLOR
             const dato = { fontSize: '0.66rem', color: '#64748b', fontWeight: 600 }
             return (
               <div
-                key={s.campo}
+                key={`${s.campo}-${s.tipo}`}
                 className="bg-white rounded-3 shadow-sm"
-                style={{ flex: '1 1 220px', maxWidth: '320px', border: '1px solid #cbd5e1', borderTop: `4px solid ${color}` }}
+                style={{
+                  flex: '1 1 220px',
+                  maxWidth: '320px',
+                  border: '1px solid #cbd5e1',
+                  borderTop: `4px solid ${color}`,
+                  ...(otroCampo ? { marginLeft: '24px' } : {}),
+                }}
               >
                 <div className="d-flex align-items-center justify-content-between px-2 pt-2">
                   <span className="fw-bold" style={{ color, fontSize: '0.8rem' }}>
-                    Stock inicial · {campo?.titulo || s.campo}
+                    Stock inicial · {nombreTanque(s.campo, s.tipo)}
                   </span>
                   {s.stock && puedeCorregirStock && (
                     <BotonAccion icono="bi-pencil" titulo="Corregir" variante="primary" onClick={() => abrirStock(s)} />
@@ -484,16 +541,16 @@ export default function GasoilAuditorias() {
                         </div>
                       ) : !sinEditar ? (
                         <label
-                          className={`btn btn-outline-dark mb-0${subiendo === `stock-${s.campo}` ? ' disabled' : ''}`}
+                          className={`btn btn-outline-dark mb-0${subiendo === `stock-${s.campo}-${s.tipo}` ? ' disabled' : ''}`}
                           style={{ fontSize: '0.66rem', lineHeight: 1, padding: '1px 6px', borderRadius: '4px' }}
                           title="Subir la foto del nivel"
                         >
-                          {subiendo === `stock-${s.campo}` ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
+                          {subiendo === `stock-${s.campo}-${s.tipo}` ? 'Subiendo…' : <><i className="bi bi-upload" /> Subir</>}
                           <input
                             type="file"
                             accept="image/*"
                             hidden
-                            disabled={subiendo === `stock-${s.campo}`}
+                            disabled={subiendo === `stock-${s.campo}-${s.tipo}`}
                             onChange={(e) => { const file = e.target.files?.[0]; if (file) subirFotoStock(s, file); e.target.value = '' }}
                           />
                         </label>
@@ -525,6 +582,9 @@ export default function GasoilAuditorias() {
             )
           })}
         </div>
+
+        {/* La línea que separa el stock inicial de las auditorías. */}
+        <hr className="mt-0 mb-2 flex-shrink-0" style={{ borderTop: `1px solid ${COLOR}`, opacity: 0.5 }} />
 
         <div className="fw-semibold mb-1" style={{ color: COLOR, fontSize: '0.8rem' }}>
           Auditorías
@@ -565,13 +625,17 @@ export default function GasoilAuditorias() {
                         // borrar, que abarcan las filas de los dos campos.
                         const primera = n === 0
                         return (
-                          <tr key={`${a._id}-${c.campo}`} style={{ height: ALTO_FILA, ...(primera ? { borderTop: '2px solid #94a3b8' } : {}) }}>
+                          <tr
+                            key={`${a._id}-${c.campo}-${c.tipo}`}
+                            className={claseFila(a, n)}
+                            style={{ height: ALTO_FILA, ...bordeFila(a, n) }}
+                          >
                             {primera && (
                               <td style={{ ...tdCentro, fontWeight: 600 }} rowSpan={a.cargas.length} title={a.pedidoPor ? `Pidió ${a.pedidoPor}` : undefined}>
                                 {fecha(a.fechaPedido)}
                               </td>
                             )}
-                            <td style={{ ...tdCentro, fontWeight: 600, color: campo?.color }}>{campo?.titulo || c.campo}</td>
+                            <td style={{ ...tdCentro, fontWeight: 600, color: campo?.color }}>{nombreTanque(c.campo, c.tipo)}</td>
                             <td style={tdCentro}>
                               {cargada ? (
                                 litros(c.litros)
@@ -599,7 +663,7 @@ export default function GasoilAuditorias() {
                                     {c.cargadoPor || <Raya />}
                                     <span className="text-muted ms-1">{fechaHora(c.fechaCarga)}</span>
                                   </span>
-                                  {puedeCargar && (
+                                  {puedeCorregirStock && (
                                     <BotonAccion icono="bi-pencil" titulo="Corregir" variante="primary" onClick={() => abrirCarga(a, c)} />
                                   )}
                                 </div>
@@ -628,7 +692,7 @@ export default function GasoilAuditorias() {
             </div>
 
             {/* El resultado, aparte: una fila por cada fila de la otra tabla. */}
-            {!esEncargado && (
+            {verResultado && (
               <div
                 className="shadow-sm bg-white rounded-3 flex-shrink-0"
                 style={{ width: '170px', overflow: 'clip', border: '1px solid #cbd5e1' }}
@@ -650,8 +714,9 @@ export default function GasoilAuditorias() {
                       lista.map((a) =>
                         a.cargas.map((c, n) => (
                           <tr
-                            key={`${a._id}-${c.campo}`}
-                            style={n === 0 ? { borderTop: '2px solid #94a3b8' } : undefined}
+                            key={`${a._id}-${c.campo}-${c.tipo}`}
+                            className={claseFila(a, n)}
+                            style={bordeFila(a, n)}
                           >
                             <td style={tdCentro}>{celdaResultado(a, c)}</td>
                           </tr>
@@ -682,7 +747,7 @@ export default function GasoilAuditorias() {
             <i className="bi bi-clipboard-check-fill"></i>
             <span>
               Auditoría del {editando && fecha(editando.auditoria.fechaPedido)} ·{' '}
-              {editando && campoGasoil(editando.carga.campo)?.titulo}
+              {editando && tituloTanque(editando.carga.campo, editando.carga.tipo)}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -748,6 +813,13 @@ export default function GasoilAuditorias() {
         </Form>
       </Modal>
 
+      <HistorialAuditoriasGasoil
+        show={verHistorial}
+        onHide={() => setVerHistorial(false)}
+        lista={lista}
+        orden={stocks.map((s) => ({ campo: s.campo, tipo: s.tipo }))}
+      />
+
       {/* El resumen del resultado de una auditoría en un campo. */}
       <Modal show={resumen !== null} onHide={() => setResumen(null)} centered size="sm" contentClassName="border-0 shadow-lg rounded-4">
         {resumen && (() => {
@@ -769,15 +841,15 @@ export default function GasoilAuditorias() {
                 <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
                   <i className="bi bi-calculator-fill"></i>
                   <span>
-                    Resultado · {campo?.titulo} · {fecha(resumen.auditoria.fechaPedido)}
+                    Resultado · {tituloTanque(resumen.carga.campo, resumen.carga.tipo)} · {fecha(resumen.auditoria.fechaPedido)}
                   </span>
                 </Modal.Title>
               </Modal.Header>
               <Modal.Body className="p-3" style={{ fontSize: '0.82rem' }}>
-                {/* Desde: el día del stock inicial, o la foto de la anterior (con
-                    hora). Hasta: la foto de esta. El corte es por cuándo se
-                    escribió cada consumo e ingreso. */}
-                {renglon('Desde', r.desde?.length > 10 ? `Foto ${fechaHora(r.desde)}` : fechaDia(r.desde))}
+                {/* Desde: cuando se cargó el stock inicial (27/10/2026), o la
+                    foto de la anterior. Hasta: la foto de esta. El corte es
+                    por cuándo se escribió cada consumo e ingreso. */}
+                {renglon('Desde', `${r.origen === 'stock inicial' ? 'Stock inicial' : 'Foto'} ${fechaHora(r.desde)}`)}
                 {renglon('Hasta', `Foto ${fechaHora(r.hasta)}`)}
                 {renglon(r.origen === 'stock inicial' ? 'Stock inicial' : 'Auditoría anterior', `${litros(r.partida)} lts`)}
                 {renglon('Ingresa', `+ ${litros(r.ingresos)} lts`, { color: '#1d4ed8' })}
@@ -811,7 +883,7 @@ export default function GasoilAuditorias() {
         >
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
             <i className="bi bi-fuel-pump-fill"></i>
-            <span>Stock inicial · {editandoStock && campoGasoil(editandoStock.campo)?.titulo}</span>
+            <span>Stock inicial · {editandoStock && tituloTanque(editandoStock.campo, editandoStock.tipo)}</span>
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={guardarStock}>

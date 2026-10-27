@@ -514,8 +514,12 @@ function ProduccionInformeMes({ establecimiento = "caspinchango", soloPersonal =
         ]);
         const lista = resPartes.ok ? await resPartes.json() : [];
         const consumos = resConsumos.ok ? await resConsumos.json() : {};
+        // "Uso interno" no es una persona (27/10/2026): no entra en ningún
+        // informe.
         setPartes(
-          (Array.isArray(lista) ? lista : []).map((p) => ({ ...p, consumoMaquina: consumos?.[p._id] || null }))
+          (Array.isArray(lista) ? lista : [])
+            .filter((p) => !p.persona?.usoInterno)
+            .map((p) => ({ ...p, consumoMaquina: consumos?.[p._id] || null }))
         );
       } catch {
         setPartes([]);
