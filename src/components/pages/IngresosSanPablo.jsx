@@ -262,7 +262,8 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
       <NavbarSanPablo
         titulo={`Cosecha ${cosecha} · ${titulo}`}
         icono={icono}
-        volverA={`/reparaciones/sanpablo/${cosecha}`}
+        // Los carros se entran desde Carros (28/10/2026): vuelven ahí.
+        volverA={`/reparaciones/sanpablo/${cosecha}${tipo.startsWith("carros") ? "/carros" : ""}`}
       />
 
       <Container

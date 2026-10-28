@@ -63,7 +63,7 @@ export default function BerdinaPedidos() {
   useEffect(() => { cargar() }, [])
 
   const items = pedidos.flatMap(p =>
-    (p.items || []).map(item => ({ ...item, nro_pedido: p.nro_pedido, fecha: p.fecha, pedidoId: p._id, archivoPedido: p.archivo }))
+    (p.items || []).map(item => ({ ...item, nro_pedido: p.nro_pedido, fecha: p.fecha, pedidoId: p._id, archivoPedido: p.archivo, tituloPedido: p.titulo }))
   )
 
   const lista = items.filter(item => {
@@ -98,11 +98,14 @@ export default function BerdinaPedidos() {
     // El pedido y su adjunto, para la columna Adjunto de la fila en negrita.
     pedidoId: items[0].pedidoId,
     archivoPedido: items[0].archivoPedido,
+    tituloPedido: items[0].tituloPedido,
     cc:              colapsar(uniq(items.map(i => i.cc))),
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
     cant:            colapsar(uniq(items.map(i => i.cant?.toString()))),
     unidad:          colapsar(uniq(items.map(i => i.unidad))),
-    descripcion:     colapsar(uniq(items.map(i => i.descripcion))),
+    // Las vacías cuentan (28/10/2026): si solo algunos ítems tienen
+    // descripción, es "Varios" y no la de esos ítems para todo el pedido.
+    descripcion:     colapsar([...new Set(items.map(i => i.descripcion || ''))]),
     urgencia:        colapsar(uniq(items.map(i => i.urgencia))),
     grupo:           colapsar(uniq(items.map(i => i.grupo))),
     solicita:        colapsar(uniq(items.map(i => i.solicita))),
@@ -193,6 +196,32 @@ export default function BerdinaPedidos() {
       Swal.fire({ icon: 'error', title: 'No se pudo adjuntar', text: err.message })
     } finally {
       setSubiendo(null)
+    }
+  }
+
+  // El título de un pedido de varios ítems (28/10/2026): va en la fila del
+  // pedido, en lugar de "Varios" en Repuesto. Vacío lo saca.
+  const ponerTitulo = async (fila) => {
+    const { value, isConfirmed } = await Swal.fire({
+      title: 'Título del pedido',
+      text: fmtNro(fila.nro_pedido, fila.origen),
+      input: 'text',
+      inputValue: fila.tituloPedido || '',
+      inputAttributes: { maxlength: 80 },
+      width: '440px',
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#1e293b',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.put(`/berdina/pedidos/${fila.pedidoId}/titulo`, { titulo: value })
+      cargar()
+      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: err.message, width: '300px' })
     }
   }
 
@@ -533,7 +562,7 @@ export default function BerdinaPedidos() {
       <Container
         fluid
         className="px-3 py-2 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: '1120px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
+        style={{ maxWidth: '1240px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
       >
         {/* Encabezado. El volver está en el navbar de Compras, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
@@ -697,7 +726,30 @@ export default function BerdinaPedidos() {
                       </td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={tdCentro}>{item.cc === 'Varios' ? varios() : item.cc || <Raya />}</td>
-                      <td style={td}>{item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}</td>
+                      <td style={td}>
+                        {item._agrupado && item._count > 1 ? (
+                          // La fila de un pedido de varios ítems: su título, o
+                          // "Varios" mientras no tenga, y el lápiz para ponerlo.
+                          <div className="d-flex align-items-center gap-1">
+                            {item.tituloPedido ? (
+                              <span style={{ color: BORDO }}>{item.tituloPedido}</span>
+                            ) : (
+                              varios()
+                            )}
+                            {!sinEditar && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-link p-0 ms-1"
+                                style={{ lineHeight: 1, color: '#94a3b8' }}
+                                title={item.tituloPedido ? 'Cambiar el título del pedido' : 'Ponerle un título al pedido'}
+                                onClick={(e) => { e.stopPropagation(); ponerTitulo(item) }}
+                              >
+                                <i className="bi bi-pencil" style={{ fontSize: '0.72rem' }} />
+                              </button>
+                            )}
+                          </div>
+                        ) : item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}
+                      </td>
                       <td style={tdCentro}>{item.cant === 'Varios' ? varios() : item.cant ?? <Raya />}</td>
                       <td style={tdCentro}>{item.unidad === 'Varios' ? varios() : item.unidad || <Raya />}</td>
                       <td style={tdCentro}>

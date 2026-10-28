@@ -38,6 +38,9 @@ const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', 
 export default function SanPabloNuevoPedido() {
   const navigate = useNavigate()
   const [fecha, setFecha] = useState(hoyLocal())
+  // El título del pedido (28/10/2026), opcional: en un pedido de varios ítems
+  // es lo que se ve en la fila del pedido en lugar de "Varios".
+  const [titulo, setTitulo] = useState('')
   const [itemForm, setItemForm] = useState(ITEM_INIT)
   const [items, setItems] = useState([])
   const [editingId, setEditingId] = useState(null)
@@ -168,7 +171,7 @@ export default function SanPabloNuevoPedido() {
           ...(solicita ? { solicita } : {}),
         }
       })
-      await api.post('/sanpablo/pedidos', { fecha, items: itemsLimpios })
+      await api.post('/sanpablo/pedidos', { fecha, titulo: items.length > 1 ? titulo.trim() : '', items: itemsLimpios })
       Swal.fire({ icon: 'success', title: 'Pedido guardado', timer: 1500, showConfirmButton: false })
       navigate('/compras/sanpablo/pedidos')
     } catch (err) {
@@ -215,6 +218,23 @@ export default function SanPabloNuevoPedido() {
             >
               {items.length} {items.length === 1 ? 'ítem' : 'ítems'}
             </span>
+          )}
+          {/* Solo con más de un ítem: un pedido de uno ya se llama como su repuesto. */}
+          {items.length > 1 && (
+          <div className="d-flex align-items-center gap-2 ms-auto">
+            <span className="fw-bold" style={{ color: BORDO, fontSize: '0.82rem' }}>
+              Título
+            </span>
+            <Form.Control
+              size="sm"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              maxLength={80}
+              className="rounded-3"
+              style={{ width: '300px', fontSize: '0.82rem', height: '32px' }}
+              title="Opcional: el nombre del pedido cuando tiene varios ítems"
+            />
+          </div>
           )}
         </div>
 

@@ -152,7 +152,21 @@ export default function GasoilAuditorias() {
   }
 
   // ── Carga del encargado ──
-  const abrirCarga = (auditoria, carga) => {
+  const abrirCarga = async (auditoria, carga) => {
+    // El stock medido se compara con lo que dan los partes: si falta cargar
+    // algún consumo, la auditoría da una diferencia que no es tal.
+    const { isConfirmed } = await Swal.fire({
+      icon: 'question',
+      title: '¿Están cargados todos los consumos?',
+      text: 'Antes de medir la existencia en los tanques tienen que estar cargados todos los consumos en las planillas.',
+      width: '320px',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#1e293b',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
     setLitrosForm(carga.litros ?? '')
     setArchivo(null)
     setFotoQuitada(false)

@@ -82,7 +82,9 @@ export default function AnalistaPendientes() {
     nombre_repuesto: colapsar(uniq(its.map(i => i.nombre_repuesto))),
     cant:            colapsar(uniq(its.map(i => i.cant?.toString()))),
     unidad:          colapsar(uniq(its.map(i => i.unidad))),
-    descripcion:     colapsar(uniq(its.map(i => i.descripcion))),
+    // Las vacías cuentan (28/10/2026): si solo algunos ítems tienen
+    // descripción, es "Varios" y no la de esos ítems para todo el pedido.
+    descripcion:     colapsar([...new Set(its.map(i => i.descripcion || ''))]),
     urgencia:        colapsar(uniq(its.map(i => i.urgencia))),
     grupo:           colapsar(uniq(its.map(i => i.grupo))),
     solicita:        colapsar(uniq(its.map(i => i.solicita))),

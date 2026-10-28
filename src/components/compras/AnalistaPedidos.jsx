@@ -99,6 +99,8 @@ export default function AnalistaPedidos() {
       pedidoId: p._id,
       // El adjunto del pedido entero, si lo tiene (28/09/2026).
       archivoPedido: p.archivo,
+      // El título del pedido de varios ítems (28/10/2026).
+      tituloPedido: p.titulo,
       _src: p._src,
     }))
   )
@@ -145,11 +147,14 @@ export default function AnalistaPedidos() {
     origen: items[0].origen,
     fecha: items[0].fecha,
     archivoPedido: items[0].archivoPedido,
+    tituloPedido: items[0].tituloPedido,
     cc:              colapsar(uniq(items.map(i => i.cc))),
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
     cant:            colapsar(uniq(items.map(i => i.cant?.toString()))),
     unidad:          colapsar(uniq(items.map(i => i.unidad))),
-    descripcion:     colapsar(uniq(items.map(i => i.descripcion))),
+    // Las vacías cuentan (28/10/2026): si solo algunos ítems tienen
+    // descripción, es "Varios" y no la de esos ítems para todo el pedido.
+    descripcion:     colapsar([...new Set(items.map(i => i.descripcion || ''))]),
     urgencia:        colapsar(uniq(items.map(i => i.urgencia))),
     grupo:           colapsar(uniq(items.map(i => i.grupo))),
     solicita:        colapsar(uniq(items.map(i => i.solicita))),
@@ -750,7 +755,12 @@ export default function AnalistaPedidos() {
                       </td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={tdCentro}>{item.cc === 'Varios' ? varios() : item.cc || <Raya />}</td>
-                      <td style={td}>{item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}</td>
+                      <td style={td}>
+                        {/* En un pedido de varios ítems, su título si lo tiene. */}
+                        {item._agrupado && item._count > 1 && item.tituloPedido ? (
+                          <span style={{ color: BORDO }}>{item.tituloPedido}</span>
+                        ) : item.nombre_repuesto === 'Varios' ? varios() : item.nombre_repuesto}
+                      </td>
                       <td style={tdCentro}>{item.cant === 'Varios' ? varios() : item.cant ?? <Raya />}</td>
                       <td style={tdCentro}>{item.unidad === 'Varios' ? varios() : item.unidad || <Raya />}</td>
                       <td style={tdCentro}>

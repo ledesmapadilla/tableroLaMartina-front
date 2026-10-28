@@ -89,7 +89,9 @@ export default function Pendientes({ taller }) {
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
     cant:            colapsar(uniq(items.map(i => i.cant?.toString()))),
     unidad:          colapsar(uniq(items.map(i => i.unidad))),
-    descripcion:     colapsar(uniq(items.map(i => i.descripcion))),
+    // Las vacías cuentan (28/10/2026): si solo algunos ítems tienen
+    // descripción, es "Varios" y no la de esos ítems para todo el pedido.
+    descripcion:     colapsar([...new Set(items.map(i => i.descripcion || ''))]),
     urgencia:        colapsar(uniq(items.map(i => i.urgencia))),
     grupo:           colapsar(uniq(items.map(i => i.grupo))),
     solicita:        colapsar(uniq(items.map(i => i.solicita))),

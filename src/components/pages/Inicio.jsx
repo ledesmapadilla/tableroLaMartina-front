@@ -123,7 +123,7 @@ function Inicio() {
         <div
           style={{
             position: "relative",
-            maxWidth: "min(560px, calc(100vh - 200px))",
+            maxWidth: "min(680px, calc(100vh - 150px))",
             width: "100%",
           }}
         >

@@ -124,6 +124,44 @@ function ManitouGeneralSanPablo() {
     }
   };
 
+  // ── Fecha límite (28/10/2026) ──
+  // La de esta Manitou, en el panel de avance, que no pasa la total (la de
+  // arriba de las tarjetas de Manitous). Las dos en "AAAA-MM-DD" o "".
+  const [fechaLimite, setFechaLimite] = useState({ total: "", propia: "" });
+  useEffect(() => {
+    if (esGeneral || !unidadManitouValida(unidad)) return;
+    api
+      .get(`/ingresos-sanpablo/fecha-limite-manitou?cosecha=${cosecha}`)
+      .then((r) =>
+        setFechaLimite({
+          total: r.fecha ? r.fecha.slice(0, 10) : "",
+          propia: r.porManitou?.[seccion] ? r.porManitou[seccion].slice(0, 10) : "",
+        })
+      )
+      .catch(() => setFechaLimite({ total: "", propia: "" }));
+  }, [esGeneral, unidad, cosecha, seccion]);
+
+  // Se guarda al elegirla; vacía la borra.
+  const guardarFechaLimite = async (valor) => {
+    if (valor && fechaLimite.total && valor > fechaLimite.total) {
+      Swal.fire({
+        icon: "error",
+        title: "Fecha fuera de término",
+        text: `No puede pasar la fecha límite de las Manitou (${fechaLimite.total.split("-").reverse().join("/")}).`,
+        width: "300px",
+      });
+      return;
+    }
+    const anterior = fechaLimite.propia;
+    setFechaLimite((f) => ({ ...f, propia: valor }));
+    try {
+      await api.put("/ingresos-sanpablo/fecha-limite-manitou", { cosecha, seccion, fecha: valor || null });
+    } catch (err) {
+      setFechaLimite((f) => ({ ...f, propia: anterior }));
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
+    }
+  };
+
   // ── Pesos de los sistemas (21/10/2026) ──
   // Cuánto pesa cada sistema en la reparación, en %: se cargan a mano en
   // General y valen para las cinco Manitou, donde dan el avance.
@@ -451,7 +489,7 @@ function ManitouGeneralSanPablo() {
     // izquierda, la barra en el medio (su centro, el de la página) y el % a
     // su derecha.
     <div className="bg-white rounded-4 shadow-sm px-3 py-2 mb-3" style={{ border: "1px solid #cbd5e1" }}>
-      <div className="align-items-center" style={{ display: "grid", gridTemplateColumns: "1fr minmax(120px, 420px) 1fr", columnGap: "12px" }}>
+      <div className="align-items-center" style={{ display: "grid", gridTemplateColumns: "1fr minmax(100px, 280px) 1fr", columnGap: "12px" }}>
         <span className="fw-bold text-secondary text-uppercase" style={{ fontSize: "0.72rem", letterSpacing: "0.08em" }}>
           Avance de la reparación
         </span>
@@ -460,13 +498,37 @@ function ManitouGeneralSanPablo() {
             Sin pesos cargados: se cargan en Manitous › General
           </span>
         ) : (
-          <>
-            {barra(avance.total, "12px")}
-            <span className="fw-bold" style={{ fontSize: "2.2rem", lineHeight: 1, color: VERDE }}>
+          barra(avance.total, "8px")
+        )}
+        {/* El % y, a la derecha, la fecha límite de esta Manitou. */}
+        <div className="d-flex align-items-center gap-3">
+          {avance.total !== null && (
+            <span className="fw-bold" style={{ fontSize: "1.4rem", lineHeight: 1, color: VERDE }}>
               {fmtPct(avance.total)}
             </span>
-          </>
-        )}
+          )}
+          <div className="ms-auto d-flex align-items-center gap-2">
+            <span className="fw-bold text-secondary text-uppercase text-nowrap" style={{ fontSize: "0.72rem", letterSpacing: "0.08em" }}>
+              Fecha límite
+            </span>
+            <input
+              type="date"
+              className="form-control form-control-sm"
+              style={{ width: "auto" }}
+              value={fechaLimite.propia}
+              max={fechaLimite.total || undefined}
+              onChange={(e) => guardarFechaLimite(e.target.value)}
+              disabled={sinEditar}
+              title={
+                sinEditar
+                  ? "Sin permiso para editar"
+                  : fechaLimite.total
+                  ? `Hasta el ${fechaLimite.total.split("-").reverse().join("/")}, la fecha límite de las Manitou`
+                  : "Para cuándo tiene que estar reparada"
+              }
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

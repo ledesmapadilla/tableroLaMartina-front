@@ -73,6 +73,8 @@ const Error404 = lazy(() => import("./components/pages/Error404"));
 const Camionetas = lazy(() => import("./components/pages/Camionetas"));
 const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesSanPablo"));
 const ManitousSanPablo = lazy(() => import("./components/pages/ManitousSanPablo"));
+const CarrosSanPablo = lazy(() => import("./components/pages/CarrosSanPablo"));
+const ReparacionEscaleras = lazy(() => import("./components/pages/ReparacionEscaleras"));
 const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
 const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
 const PresupuestoManitous = lazy(() => import("./components/pages/PresupuestoManitous"));
@@ -507,6 +509,18 @@ function LayoutDesktop() {
                     <IngresosEscaleras icono={<i className="bi bi-bar-chart-steps"></i>} />
                   </RutaCosecha>
                 }
+              />
+              {/* La reparación de los carros porta escaleras y de las
+                  escaleras (28/10/2026), desde el botón Reparación. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/escaleras/reparacion"
+                element={<RutaCosecha><ReparacionEscaleras /></RutaCosecha>}
+              />
+              {/* Carros (28/10/2026): porta bines, porta bolsones y porta
+                  escaleras, cada uno a su página. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/carros"
+                element={<RutaCosecha><CarrosSanPablo /></RutaCosecha>}
               />
               {/* Colectivos, carros porta bines y pulverizadoras: todavía no
                   están construidas. */}

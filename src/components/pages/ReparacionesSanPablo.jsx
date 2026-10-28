@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
+import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
 import { fmtPct } from "../../utils/sistemasManitou";
 import { traerAvancesManitou, avanceTotalManitous } from "../../utils/avanceManitous";
@@ -34,32 +35,18 @@ const tarjetas = [
     accentColor: "#f59e0b",
     icono: "bi bi-minecart-loaded",
   },
+  // Los carros porta bines, porta bolsones y porta escaleras, juntos en
+  // Carros (28/10/2026, CarrosSanPablo).
   {
-    id: "carros-porta-bines",
-    titulo: "Carros porta bines",
+    id: "carros",
+    titulo: "Carros",
     bg: "linear-gradient(135deg, #312e81 0%, #4338ca 100%)",
     hoverBg: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
     accentColor: "#818cf8",
-    icono: "bi bi-box-seam-fill",
+    icono: "bi bi-truck-flatbed",
   },
-  {
-    id: "carros-porta-bolsones",
-    titulo: "Carros porta bolsones",
-    bg: "linear-gradient(135deg, #831843 0%, #9d174d 100%)",
-    hoverBg: "linear-gradient(135deg, #500724 0%, #831843 100%)",
-    accentColor: "#f472b6",
-    icono: "bi bi-bag-fill",
-  },
-  // Carros porta escaleras se maneja desde Escaleras (06/10/2026): su
-  // tarjeta se borró y su página cae en el 404.
-  {
-    id: "escaleras",
-    titulo: "Carros porta escaleras / Escaleras",
-    bg: "linear-gradient(135deg, #365314 0%, #4d7c0f 100%)",
-    hoverBg: "linear-gradient(135deg, #1a2e05 0%, #365314 100%)",
-    accentColor: "#a3e635",
-    icono: "bi bi-bar-chart-steps",
-  },
+  // Escaleras se entra solo desde Carros › Carros porta escaleras
+  // (28/10/2026): su tarjeta se borró.
   {
     id: "pulverizadoras",
     titulo: "Pulverizadoras",
@@ -78,8 +65,16 @@ function ReparacionesSanPablo() {
   // El avance total de las Manitou en reparación (21/10/2026), en su
   // tarjeta: el mismo que la tarjeta General de Manitous.
   const [avanceManitous, setAvanceManitous] = useState(null);
+  // La fecha límite de las Manitou (28/10/2026), la que se carga adentro, en
+  // dd/mm/aaaa; "" si no se cargó.
+  const [fechaLimite, setFechaLimite] = useState("");
   useEffect(() => {
-    traerAvancesManitou(cosechaDeParam(cosecha)).then((a) => setAvanceManitous(avanceTotalManitous(a)));
+    const nro = cosechaDeParam(cosecha);
+    traerAvancesManitou(nro).then((a) => setAvanceManitous(avanceTotalManitous(a)));
+    api
+      .get(`/ingresos-sanpablo/fecha-limite-manitou?cosecha=${nro}`)
+      .then((r) => setFechaLimite(r.fecha ? r.fecha.slice(0, 10).split("-").reverse().join("/") : ""))
+      .catch(() => setFechaLimite(""));
   }, [cosecha]);
 
   return (
@@ -96,7 +91,7 @@ function ReparacionesSanPablo() {
     >
       <NavbarSanPablo titulo={`Cosecha ${cosecha}`} icono={<i className="bi bi-tools"></i>} />
 
-      {/* Las 7 tarjetas en dos filas (4 y 3, centradas), sin scroll: el
+      {/* Las 5 tarjetas en dos filas (3 y 2, centradas), sin scroll: el
           ancho se limita al alto disponible para que entren las dos filas. */}
       <div
         className="flex-grow-1 d-flex flex-column align-items-center justify-content-center p-4"
@@ -106,7 +101,7 @@ function ReparacionesSanPablo() {
           className="d-flex flex-wrap justify-content-center"
           style={{
             gap: "1.75rem",
-            maxWidth: "min(1000px, calc((100vh - 200px) * 2))",
+            maxWidth: "min(800px, calc((100vh - 200px) * 1.5))",
             width: "100%",
           }}
         >
@@ -120,7 +115,7 @@ function ReparacionesSanPablo() {
                 style={{
                   background: isHovered ? t.hoverBg : t.bg,
                   borderRadius: "20px",
-                  width: "calc((100% - 3 * 1.75rem) / 4)",
+                  width: "calc((100% - 2 * 1.75rem) / 3)",
                   aspectRatio: "1 / 1",
                   boxShadow: isHovered
                     ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
@@ -161,6 +156,17 @@ function ReparacionesSanPablo() {
                 <h3 className="fw-bold mb-0 text-white" style={{ fontSize: "1.2rem", lineHeight: 1.25 }}>
                   {t.titulo}
                 </h3>
+                {/* Manitous: la fecha límite arriba. */}
+                {t.id === "manitous" && fechaLimite && (
+                  <div
+                    className="fw-semibold"
+                    style={{ position: "absolute", top: "14px", left: 0, right: 0, fontSize: "0.85rem", color: t.accentColor }}
+                    title="Para cuándo tienen que estar reparadas las Manitou"
+                  >
+                    <i className="bi bi-calendar-event me-1"></i>
+                    Fecha límite: {fechaLimite}
+                  </div>
+                )}
                 {/* Manitous: el avance de la reparación al pie de la tarjeta
                     (en las de cada Manitou va arriba). */}
                 {t.id === "manitous" && avanceManitous !== null && (
