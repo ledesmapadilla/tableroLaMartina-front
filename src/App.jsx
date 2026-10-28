@@ -74,7 +74,7 @@ const Camionetas = lazy(() => import("./components/pages/Camionetas"));
 const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesSanPablo"));
 const ManitousSanPablo = lazy(() => import("./components/pages/ManitousSanPablo"));
 const CarrosSanPablo = lazy(() => import("./components/pages/CarrosSanPablo"));
-const ReparacionEscaleras = lazy(() => import("./components/pages/ReparacionEscaleras"));
+const ReparacionCarros = lazy(() => import("./components/pages/ReparacionCarros"));
 const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
 const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
 const PresupuestoManitous = lazy(() => import("./components/pages/PresupuestoManitous"));
@@ -510,11 +510,11 @@ function LayoutDesktop() {
                   </RutaCosecha>
                 }
               />
-              {/* La reparación de los carros porta escaleras y de las
-                  escaleras (28/10/2026), desde el botón Reparación. */}
+              {/* Reparación carros (28/10/2026): una tarjeta por carro porta
+                  escaleras y la General. Sus páginas todavía caen en el 404. */}
               <Route
                 path="/reparaciones/sanpablo/:cosecha/escaleras/reparacion"
-                element={<RutaCosecha><ReparacionEscaleras /></RutaCosecha>}
+                element={<RutaCosecha><ReparacionCarros /></RutaCosecha>}
               />
               {/* Carros (28/10/2026): porta bines, porta bolsones y porta
                   escaleras, cada uno a su página. */}

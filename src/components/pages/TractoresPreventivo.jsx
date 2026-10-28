@@ -69,24 +69,45 @@ const baseDe = (obj) =>
 
 /**
  * Lo que se muestra de cada tractor (01/10/2026). Las cuentas del service se
- * hacen en horas acumuladas, pero después de un cambio de horómetro lo que se
- * lee es el horómetro nuevo, que arranca de 0: el actual y el próximo service
- * van en ese horómetro. Ej.: el anterior hizo 100 hs desde el service, así que
- * el próximo toca a las 150 hs del nuevo (250 desde el service).
+ * hacen en horas acumuladas.
+ *
+ * Un cambio de horómetro después del último service reinicia la cuenta
+ * (28/10/2026): el próximo service toca al intervalo del horómetro nuevo,
+ * contado desde 0. Ej.: service a 449 en el H1, cambio de horómetro, el
+ * próximo toca a las 250 hs del H2. Sin service cargado pasa lo mismo: con un
+ * cambio de horómetro, el próximo toca al intervalo del nuevo.
  */
 const lecturasDeFila = (hmObj, reg, intervalo) => {
   const hsActuales = horasDe(hmObj);
-  const hsUltimoService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
-  const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
   const base = baseDe(hmObj);
+  const hsDelService = typeof horasDe(reg) === "number" ? horasDe(reg) : null;
+  const numeroActual = hmObj?.numeroHorometro || 1;
+  const numeroService = reg?.numeroHorometro || 1;
+  const reinicia = numeroActual > (hsDelService !== null ? numeroService : 1);
+  // Desde dónde se cuenta: el service o, con un cambio después, el 0 del
+  // horómetro nuevo (las horas que traía la máquina al ponerlo).
+  const hsUltimoService = reinicia ? base : hsDelService;
+  const hsProxService = hsUltimoService !== null ? hsUltimoService + intervalo : null;
   return {
     hsActuales,
     hsUltimoService,
+    reinicia,
     hsProxService,
     base,
     lecturaActual: typeof hmObj?.horometro === "number" ? hmObj.horometro : hsActuales,
     proxEnActual:
       hsProxService !== null ? Math.round((hsProxService - base) * 100) / 100 : null,
+    // Lo que marcaba el horómetro en el service y a cuánto le toca el
+    // próximo (28/10/2026): en el horómetro del service o, si después se
+    // cambió, al intervalo del nuevo. Es lo que se muestra; el estado se
+    // calcula en horas acumuladas.
+    lecturaService: typeof reg?.horometro === "number" ? reg.horometro : null,
+    proxDelService: reinicia
+      ? intervalo
+      : typeof reg?.horometro === "number"
+        ? Math.round((reg.horometro + intervalo) * 100) / 100
+        : null,
+    numeroProx: reinicia ? numeroActual : numeroService,
   };
 };
 
@@ -810,7 +831,7 @@ function TractoresPreventivo() {
       const fechaHsActual = hmObj?.fecha;
       const unidad = unidadDe(t);
       const intervalo = reg?.intervalo || unidad.intervalo;
-      const { hsActuales, hsUltimoService, lecturaActual, proxEnActual } = lecturasDeFila(
+      const { hsActuales, hsUltimoService, lecturaActual, lecturaService, proxDelService } = lecturasDeFila(
         hmObj,
         reg,
         intervalo
@@ -828,8 +849,8 @@ function TractoresPreventivo() {
         fechaHsActual ? formatFecha(fechaHsActual) : "—",
         conUnidad(lecturaActual, unidad),
         reg ? formatFecha(reg.fecha) : "—",
-        conUnidad(hsUltimoService, unidad),
-        conUnidad(proxEnActual, unidad),
+        conUnidad(lecturaService, unidad),
+        conUnidad(proxDelService, unidad),
         reg?.observaciones || "—",
         estado.label,
       ]);
@@ -1201,7 +1222,7 @@ function TractoresPreventivo() {
                 const fechaHsActual = hmObj?.fecha;
                 const unidad = unidadDe(t);
                 const intervalo = reg?.intervalo || unidad.intervalo;
-                const { hsActuales, hsUltimoService, hsProxService, base, lecturaActual, proxEnActual } =
+                const { hsActuales, hsUltimoService, base, lecturaActual, lecturaService, proxDelService, numeroProx, reinicia } =
                   lecturasDeFila(hmObj, reg, intervalo);
                 const estado = getEstadoTractor(hsActuales, hsUltimoService, intervalo, estaParado, unidad.margen);
 
@@ -1317,26 +1338,26 @@ function TractoresPreventivo() {
 
                     {/* Horómetro Service (Horómetro último service) */}
                     <td className="fw-semibold text-primary" style={{ fontSize: "0.72rem", padding: "2px 4px" }}>
-                      {conUnidad(hsUltimoService, unidad)}
+                      {conUnidad(lecturaService, unidad)}
                       <BadgeHorometro numero={reg?.numeroHorometro} />
                     </td>
 
                     {/* Hm. Próx. Srv. */}
-                    {/* En el horómetro que tiene puesto, que es el que se va a
-                        mirar para saber cuándo toca. */}
+                    {/* Las horas a las que le toca: las del último service más
+                        el intervalo, en el horómetro del service (28/10/2026). */}
                     <td
                       className="fw-semibold"
                       style={{ fontSize: "0.72rem", color: "#2563eb", padding: "2px 4px" }}
                       title={
-                        base
-                          ? `${conUnidad(hsProxService, unidad)} en total: ${conUnidad(intervalo, unidad)} desde el último service`
-                          : undefined
+                        proxDelService === null
+                          ? undefined
+                          : reinicia
+                            ? `Se cambió el horómetro${reg ? " después del último service" : ""}: cuenta desde 0 del horómetro N° ${numeroProx}`
+                            : `${conUnidad(lecturaService, unidad)} del último service + ${conUnidad(intervalo, unidad)}`
                       }
                     >
-                      {conUnidad(proxEnActual, unidad)}
-                      {base > 0 && proxEnActual !== null && (
-                        <BadgeHorometro numero={hmObj?.numeroHorometro} />
-                      )}
+                      {conUnidad(proxDelService, unidad)}
+                      {proxDelService !== null && <BadgeHorometro numero={numeroProx} />}
                     </td>
 
                     {/* Obs */}

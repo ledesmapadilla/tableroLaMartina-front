@@ -73,6 +73,8 @@ const modoDe = (i) =>
   i.estadoInicial ? "estadoInicial" : i.reparacion ? "reparacion" : i.baja ? "baja" : i.retiro ? "retiro" : i.nuevas ? "nuevas" : i.sinCarro ? "sinCarro" : "carro";
 // Los movimientos que sacan escaleras del taller.
 const sale = (i) => i.retiro || i.baja;
+// Qué historial abre cada total al tocarlo (28/10/2026).
+const HISTORIAL_DE_TOTAL = { Reparadas: "reparadas", Retiradas: "retiradas", "Dadas de baja": "bajas" };
 
 /**
  * Escaleras de Reparaciones San Pablo, dentro de una cosecha.
@@ -87,13 +89,14 @@ const sale = (i) => i.retiro || i.baja;
  *    las lleva y cuántas.
  *  - Las bajas ("Baja de escaleras"): fecha, cuántas, motivo, quién las
  *    desecha y a quién se avisó.
- *  - Las reparaciones (25/10/2026): no mueven escaleras, suman a los totales
- *    de rotas y reparadas. Desde el 28/10/2026 se cargan y se ven en su
- *    página (botón "Reparación", ReparacionEscaleras), junto con la de los
- *    carros.
+ *  - Las reparaciones (25/10/2026): no mueven escaleras, suman a las
+ *    reparadas y se restan de las rotas. Desde el 28/10/2026 se cargan
+ *    tocando el total de Rotas (fecha, cantidad, quién repara y
+ *    observaciones), y tocando el de Reparadas se ve su historial. La de los
+ *    carros va en su página (botón "Reparación carros", ReparacionCarros).
  *  - El estado inicial (botón "Rotas", 27/10/2026): fecha, cuántas había
  *    rotas y observaciones. Es una reparación más (suma a las rotas), uno
- *    solo por cosecha; se ve en Reparación › Escaleras.
+ *    solo por cosecha.
  * El back no deja retirar ni dar de baja más de las que quedan.
  */
 export default function IngresosEscaleras({ icono }) {
@@ -129,6 +132,9 @@ export default function IngresosEscaleras({ icono }) {
   // El control con el año pasado (08/10/2026): por carro, lo que salió en la
   // cosecha anterior contra lo que ingresó en esta.
   const [verControl, setVerControl] = useState(false);
+  // El historial que se abre tocando un total (28/10/2026): "reparadas",
+  // "retiradas", "bajas" o null.
+  const [historial, setHistorial] = useState(null);
   const cosechaAnterior = cosecha - 1;
 
   useEffect(() => {
@@ -215,6 +221,14 @@ export default function IngresosEscaleras({ icono }) {
     setForm({ fechaIngreso: hoy(), cantidadEscaleras: "", motivo: "", ingresadoPor: "", avisadoA: "" });
   };
 
+  // Escaleras reparadas (28/10/2026): se abre tocando el total de rotas.
+  // Restan de las rotas.
+  const abrirReparacion = () => {
+    setModo("reparacion");
+    setEditando(null);
+    setForm({ fechaIngreso: hoy(), escalerasReparadas: "", reparadoPor: "", observaciones: "" });
+  };
+
   // Uno solo por cosecha: si ya está, el botón lo abre para editar.
   const abrirEstadoInicial = () => {
     const existente = reparaciones.find((i) => i.estadoInicial);
@@ -232,6 +246,15 @@ export default function IngresosEscaleras({ icono }) {
       setForm({
         fechaIngreso: aInput(i.fechaIngreso),
         escalerasRotas: numeroOVacio(i.escalerasRotas),
+        observaciones: i.observaciones || "",
+      });
+      return;
+    }
+    if (m === "reparacion") {
+      setForm({
+        fechaIngreso: aInput(i.fechaIngreso),
+        escalerasReparadas: numeroOVacio(i.escalerasReparadas),
+        reparadoPor: i.reparadoPor || "",
         observaciones: i.observaciones || "",
       });
       return;
@@ -295,13 +318,18 @@ export default function IngresosEscaleras({ icono }) {
           ...(modo === "baja" ? { baja: true } : {}),
           ...(modo === "sinCarro" ? { sinCarro: true } : {}),
           ...(modo === "estadoInicial" ? { estadoInicial: true } : {}),
+          ...(modo === "reparacion" ? { reparacion: true } : {}),
         });
       const titulo = eraEdicion
         ? modo === "estadoInicial"
           ? "Rotas actualizadas"
-          : "Escaleras actualizadas"
+          : modo === "reparacion"
+            ? "Reparación actualizada"
+            : "Escaleras actualizadas"
         : modo === "estadoInicial"
           ? "Rotas registradas"
+          : modo === "reparacion"
+          ? "Reparadas registradas"
           : modo === "retiro"
           ? "Retiro registrado"
           : modo === "baja"
@@ -309,27 +337,32 @@ export default function IngresosEscaleras({ icono }) {
             : modo === "sinCarro"
               ? "Ingreso registrado"
               : "Escaleras nuevas registradas";
-      // Las rotas se ven en Reparación › Escaleras: la solapa no cambia.
-      if (!eraEdicion && modo !== "estadoInicial") setSolapa(modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
+      // Las rotas y las reparadas van en los totales: la solapa no cambia.
+      if (!eraEdicion && modo !== "estadoInicial" && modo !== "reparacion") setSolapa(modo === "retiro" || modo === "baja" ? "egresos" : "ingresos");
       cerrar();
       cargar();
-      Swal.fire({ icon: "success", title: titulo, timer: 1400, showConfirmButton: false });
+      Swal.fire({ icon: "success", title: titulo, timer: 1500, showConfirmButton: false, width: "300px" });
     } catch (err) {
-      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message });
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
     }
   };
 
   const eliminar = async (i) => {
     const { isConfirmed } = await Swal.fire({
-      title: i.baja
+      title: i.reparacion
+        ? "¿Borrar la reparación?"
+        : i.baja
         ? "¿Borrar la baja?"
         : i.retiro
           ? "¿Borrar el retiro?"
           : i.sinCarro
             ? "¿Borrar el ingreso?"
             : "¿Borrar las escaleras nuevas?",
-      text: `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
+      text: i.reparacion
+        ? `${i.escalerasReparadas ?? 0} reparadas del ${fechaCorta(i.fechaIngreso)}`
+        : `${i.cantidadEscaleras ?? 0} escaleras del ${fechaCorta(i.fechaIngreso)}`,
       icon: "warning",
+      width: "320px",
       showCancelButton: true,
       confirmButtonText: "Sí, borrar",
       cancelButtonText: "Cancelar",
@@ -342,12 +375,13 @@ export default function IngresosEscaleras({ icono }) {
       cargar();
       Swal.fire({
         icon: "success",
-        title: i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
-        timer: 1200,
+        title: i.reparacion ? "Reparación borrada" : i.baja ? "Baja borrada" : i.retiro ? "Retiro borrado" : i.sinCarro ? "Ingreso borrado" : "Escaleras borradas",
+        timer: 1500,
         showConfirmButton: false,
+        width: "300px",
       });
     } catch (err) {
-      Swal.fire({ icon: "error", title: "No se pudo borrar", text: err.message });
+      Swal.fire({ icon: "error", title: "No se pudo borrar", text: err.message, width: "300px" });
     }
   };
 
@@ -399,6 +433,67 @@ export default function IngresosEscaleras({ icono }) {
     ["Reparadas", reparadas, VERDE],
   ];
 
+  // Los historiales de los totales, de la más nueva a la más vieja: las
+  // reparaciones (sin la fila de Rotas), los retiros y las bajas.
+  const masNuevaPrimero = (lista) =>
+    [...lista].sort(
+      (a, b) =>
+        aInput(b.fechaIngreso).localeCompare(aInput(a.fechaIngreso)) ||
+        String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+    );
+  const historialReparadas = masNuevaPrimero(reparaciones.filter((i) => !i.estadoInicial));
+  const carroDe = (i) => (
+    <>
+      {i.cc?.cc || <Raya />}
+      {i.cc?.descripcion && (
+        <span className="text-muted fw-normal" style={{ fontSize: "0.66rem" }}>
+          {" "}
+          · {i.cc.descripcion}
+        </span>
+      )}
+    </>
+  );
+  const HISTORIALES = {
+    reparadas: {
+      titulo: "Escaleras reparadas",
+      color: VERDE,
+      filas: historialReparadas,
+      campoCant: "escalerasReparadas",
+      vacio: "Todavía no hay escaleras reparadas",
+      columnas: [
+        ["Quién repara", (i) => i.reparadoPor || <Raya />],
+        ["Observaciones", (i) => i.observaciones || <Raya />],
+      ],
+    },
+    retiradas: {
+      titulo: "Escaleras retiradas",
+      color: NARANJA,
+      filas: masNuevaPrimero(ingresos.filter((i) => i.retiro)),
+      campoCant: "cantidadEscaleras",
+      vacio: "Todavía no hay retiros",
+      columnas: [
+        ["Frente", (i) => <CeldaFrente frente={i.frente} />],
+        ["Encargado", (i) => i.encargado || <Raya />],
+        ["Quién retira", (i) => i.ingresadoPor || <Raya />],
+        ["Carro", carroDe],
+        ["Observaciones", (i) => i.observaciones || <Raya />],
+      ],
+    },
+    bajas: {
+      titulo: "Escaleras dadas de baja",
+      color: ROJO,
+      filas: masNuevaPrimero(ingresos.filter((i) => i.baja)),
+      campoCant: "cantidadEscaleras",
+      vacio: "Todavía no hay bajas",
+      columnas: [
+        ["Motivo", (i) => i.motivo || <Raya />],
+        ["Quién las desecha", (i) => i.ingresadoPor || <Raya />],
+        ["Avisado a", (i) => i.avisadoA || <Raya />],
+      ],
+    },
+  };
+  const verHistorial = historial && HISTORIALES[historial];
+
   // En un retiro: los carros que todavía no se llevaron escaleras en la cosecha
   // (el del retiro que se edita sigue estando).
   const carrosLibres = carros.filter(
@@ -419,15 +514,19 @@ export default function IngresosEscaleras({ icono }) {
     ? cantidadQueEntro - (Number(form.escalerasSanas) || 0) - (Number(form.escalerasRotas) || 0)
     : 0;
   const reparadasDeMas = esCarro && (Number(form.escalerasReparadas) || 0) > (Number(form.escalerasRotas) || 0);
-  // En el estado inicial (27/10/2026): en la cosecha no puede haber más
-  // reparadas que rotas. Cuenta todo menos la fila que se edita. Las
-  // reparaciones se cargan en su página (ReparacionEscaleras, 28/10/2026).
-  const cuentaRotas = modo === "estadoInicial" && Boolean(form);
+  // En el estado inicial (27/10/2026) y en las reparadas: en la cosecha no
+  // puede haber más reparadas que rotas. Cuenta todo menos la fila que se
+  // edita.
+  const cuentaRotas = (modo === "estadoInicial" || modo === "reparacion") && Boolean(form);
   const otras = [...clasificadas, ...reparaciones].filter((i) => i._id !== editando?._id);
   const rotasCosecha = suma(otras, "escalerasRotas") + (cuentaRotas ? Number(form.escalerasRotas) || 0 : 0);
   const reparadasCosecha =
     suma(otras, "escalerasReparadas") + (cuentaRotas ? Number(form.escalerasReparadas) || 0 : 0);
   const masReparadasQueRotas = cuentaRotas && reparadasCosecha > rotasCosecha;
+  // Las que quedan hoy sin reparar, sin contar la fila que se carga: es el
+  // tope de una reparación (28/10/2026).
+  const pendientes = suma(otras, "escalerasRotas") - suma(otras, "escalerasReparadas");
+  const cantReparada = cuentaRotas ? Number(form.escalerasReparadas) || 0 : 0;
   const hayError = (esCarro && (sinClasificar < 0 || reparadasDeMas)) || masReparadasQueRotas;
   // El aviso abajo de los campos.
   const avisoRotas = cuentaRotas && (
@@ -436,9 +535,13 @@ export default function IngresosEscaleras({ icono }) {
         style={{ fontSize: "0.74rem", color: masReparadasQueRotas ? ROJO : "#64748b" }}
         className={masReparadasQueRotas ? "fw-semibold" : ""}
       >
-        {masReparadasQueRotas
-          ? `Las reparadas (${reparadasCosecha}) no pueden ser más que las rotas (${rotasCosecha})`
-          : `Rotas sin reparar: ${rotasCosecha - reparadasCosecha}`}
+        {modo === "reparacion"
+          ? masReparadasQueRotas
+            ? `Quedan ${Math.max(pendientes, 0)} rotas sin reparar: no se pueden reparar ${cantReparada}`
+            : `Quedan ${pendientes} rotas sin reparar${cantReparada ? `; después de esta, ${pendientes - cantReparada}` : ""}`
+          : masReparadasQueRotas
+            ? `Las reparadas (${reparadasCosecha}) no pueden ser más que las rotas (${rotasCosecha})`
+            : `Rotas sin reparar: ${rotasCosecha - reparadasCosecha}`}
       </div>
     </Col>
   );
@@ -586,6 +689,10 @@ export default function IngresosEscaleras({ icono }) {
       ? editando
         ? "Editar rotas"
         : "Rotas"
+      : modo === "reparacion"
+      ? editando
+        ? "Editar escaleras reparadas"
+        : "Escaleras reparadas"
       : modo === "baja"
       ? editando
         ? "Editar baja de escaleras"
@@ -677,7 +784,8 @@ export default function IngresosEscaleras({ icono }) {
               <span>Historial carros</span>
             </Button>
             {botonEncabezado("Rotas", "bi-flag", abrirEstadoInicial, COLOR)}
-            {/* La reparación de carros y escaleras va en su página (28/10/2026). */}
+            {/* La reparación de los carros va en su página (28/10/2026); la de
+                las escaleras, tocando las rotas en los totales. */}
             <Button
               size="sm"
               onClick={() => navigate(`/reparaciones/sanpablo/${cosecha}/escaleras/reparacion`)}
@@ -685,7 +793,7 @@ export default function IngresosEscaleras({ icono }) {
               style={{ ...estiloBoton, backgroundColor: VERDE, borderColor: VERDE }}
             >
               <i className="bi bi-tools"></i>
-              <span>Reparación</span>
+              <span>Reparación carros</span>
             </Button>
             {botonEncabezado("Baja de escaleras", "bi-trash3", abrirBaja, ROJO)}
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
@@ -729,9 +837,30 @@ export default function IngresosEscaleras({ icono }) {
                 </div>
               ) : (
               <div key={rotulo} className="d-flex flex-column align-items-center lh-sm">
+                {/* Rotas abre la carga de reparadas; Reparadas, Retiradas y
+                    Dadas de baja, su historial (28/10/2026). */}
+                {rotulo === "Rotas" || HISTORIAL_DE_TOTAL[rotulo] ? (
+                  <button
+                    type="button"
+                    onClick={rotulo === "Rotas" ? abrirReparacion : () => setHistorial(HISTORIAL_DE_TOTAL[rotulo])}
+                    disabled={rotulo === "Rotas" && sinEditar}
+                    className="btn btn-link p-0 fw-bold"
+                    style={{ fontSize: "1.3rem", color, lineHeight: 1.2, textDecoration: "underline" }}
+                    title={
+                      rotulo === "Rotas"
+                        ? sinEditar
+                          ? "Sin permiso para editar"
+                          : "Cargar escaleras reparadas"
+                        : `Ver el historial de las ${rotulo.toLowerCase()}`
+                    }
+                  >
+                    {cargando ? "—" : valor}
+                  </button>
+                ) : (
                 <span className="fw-bold" style={{ fontSize: "1.3rem", color }}>
                   {cargando ? "—" : valor}
                 </span>
+                )}
                 <span className="text-muted" style={{ fontSize: "0.7rem" }}>
                   {rotulo}
                 </span>
@@ -1004,6 +1133,8 @@ export default function IngresosEscaleras({ icono }) {
             backgroundColor:
               modo === "estadoInicial"
                 ? COLOR
+                : modo === "reparacion"
+                ? VERDE
                 : modo === "baja"
                   ? ROJO
                   : modo === "retiro"
@@ -1022,6 +1153,8 @@ export default function IngresosEscaleras({ icono }) {
               className={`bi ${
                 modo === "estadoInicial"
                   ? "bi-flag"
+                  : modo === "reparacion"
+                  ? "bi-tools"
                   : modo === "baja"
                   ? "bi-trash3"
                   : modo === "retiro"
@@ -1058,6 +1191,41 @@ export default function IngresosEscaleras({ icono }) {
                   </Col>
                   {avisoRotas}
                   {campoObservaciones("Cómo estaban las escaleras al empezar…")}
+                </Row>
+              )}
+
+              {modo === "reparacion" && (
+                <Row className="g-3 form-ingresos">
+                  {campoFecha}
+                  <Col xs={6}>
+                    <Form.Label className="fw-semibold small mb-1" style={{ color: VERDE }}>
+                      Cantidad <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      min={1}
+                      max={Math.max(pendientes, 1)}
+                      step={1}
+                      className="rounded-3"
+                      style={campo}
+                      value={form.escalerasReparadas}
+                      onChange={(e) => setForm({ ...form, escalerasReparadas: e.target.value })}
+                      placeholder="0"
+                      required
+                    />
+                  </Col>
+                  <Col xs={12}>
+                    <Form.Label className="fw-semibold text-dark small mb-1">Quién repara</Form.Label>
+                    <Form.Control
+                      className="rounded-3"
+                      style={campo}
+                      value={form.reparadoPor}
+                      onChange={(e) => setForm({ ...form, reparadoPor: e.target.value })}
+                      maxLength={80}
+                    />
+                  </Col>
+                  {avisoRotas}
+                  {campoObservaciones("Qué se reparó…")}
                 </Row>
               )}
 
@@ -1359,6 +1527,122 @@ export default function IngresosEscaleras({ icono }) {
         cosecha={cosecha}
         ingresos={ingresos}
       />
+
+      {/* El historial de un total (28/10/2026): las reparadas, los retiros o
+          las bajas, de la más nueva a la más vieja. Desde acá se corrigen o
+          se borran; al tocar una acción se cierra. */}
+      <Modal
+        show={Boolean(verHistorial)}
+        onHide={() => setHistorial(null)}
+        centered
+        size="lg"
+        scrollable
+        contentClassName="border-0 shadow-lg rounded-4"
+      >
+        {verHistorial && (
+          <>
+            <Modal.Header
+              closeButton
+              closeVariant="white"
+              style={{
+                backgroundColor: verHistorial.color,
+                color: "#fff",
+                borderTopLeftRadius: "1rem",
+                borderTopRightRadius: "1rem",
+              }}
+            >
+              <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
+                <i className="bi bi-clock-history"></i>
+                <span>
+                  {verHistorial.titulo} · Cosecha {cosecha}
+                </span>
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body className="p-3">
+              <div className="rounded-3 bg-white" style={{ border: "1px solid #cbd5e1", overflow: "auto" }}>
+                <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+                  <thead>
+                    <tr>
+                      <th style={thCentro}>Fecha</th>
+                      <th style={thCentro}>Cant.</th>
+                      {verHistorial.columnas.map(([titulo]) => (
+                        <th key={titulo} style={th}>
+                          {titulo}
+                        </th>
+                      ))}
+                      <th style={thCentro}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {verHistorial.filas.length === 0 ? (
+                      <tr>
+                        <td colSpan={verHistorial.columnas.length + 3} className="text-center text-muted py-4" style={td}>
+                          {verHistorial.vacio}
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        {verHistorial.filas.map((i) => (
+                          <tr key={i._id}>
+                            <td style={{ ...tdCentro, whiteSpace: "nowrap" }}>{fechaCorta(i.fechaIngreso)}</td>
+                            <td style={{ ...tdCentro, fontWeight: 700, color: verHistorial.color }}>
+                              {i[verHistorial.campoCant] ?? <Raya />}
+                            </td>
+                            {verHistorial.columnas.map(([titulo, celda]) => (
+                              <td key={titulo} style={td}>
+                                {celda(i)}
+                              </td>
+                            ))}
+                            <td style={tdCentro}>
+                              <div className="d-flex justify-content-center align-items-center" style={{ gap: "6px" }}>
+                                <BotonAccion
+                                  icono="bi-pencil"
+                                  titulo={sinEditar ? "Sin permiso para editar" : "Editar"}
+                                  variante="primary"
+                                  onClick={() => {
+                                    setHistorial(null);
+                                    abrirEditar(i);
+                                  }}
+                                  deshabilitado={sinEditar}
+                                />
+                                <BotonAccion
+                                  icono="bi-trash"
+                                  titulo={sinEditar ? "Sin permiso para editar" : "Borrar"}
+                                  variante="danger"
+                                  onClick={() => {
+                                    // Se cierra antes de preguntar, como al editar.
+                                    setHistorial(null);
+                                    eliminar(i);
+                                  }}
+                                  deshabilitado={sinEditar}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="fila-total">
+                          <td style={{ ...tdCentro, fontWeight: 700, color: COLOR }}>TOTAL</td>
+                          <td style={{ ...tdCentro, fontWeight: 700, color: verHistorial.color }}>
+                            {suma(verHistorial.filas, verHistorial.campoCant)}
+                          </td>
+                          <td colSpan={verHistorial.columnas.length + 1} style={td}></td>
+                        </tr>
+                      </>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+              {/* Las reparadas cargadas en un ingreso suman al total de arriba
+                  pero no son de este historial. */}
+              {historial === "reparadas" && reparadas !== suma(historialReparadas, "escalerasReparadas") && (
+                <div className="text-muted mt-2" style={{ fontSize: "0.72rem" }}>
+                  Hay {reparadas - suma(historialReparadas, "escalerasReparadas")} reparadas más cargadas en los ingresos.
+                </div>
+              )}
+            </Modal.Body>
+          </>
+        )}
+      </Modal>
 
       <ControlAnioPasado
         show={verControl}
