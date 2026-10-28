@@ -41,7 +41,8 @@ export const CAMPOS_GASOIL = [
     titulo: 'San Pablo',
     subtitulo: 'Consumos e ingresos de gasoil',
     color: '#3f6212',
-    filaStock: '#ecfccb',
+    // Más marcado que el lima de antes (#ecfccb), que casi no se veía.
+    filaStock: '#d9f99d',
     colores: {
       fondo: 'linear-gradient(135deg, #3f6212 0%, #4d7c0f 100%)',
       fondoHover: 'linear-gradient(135deg, #1a2e05 0%, #3f6212 100%)',

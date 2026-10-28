@@ -26,6 +26,11 @@ import Error404 from '../pages/Error404'
 const FONDO_AUDITORIA = '#ede9fe'
 // Los botones de Común e Infinia: un color que no es el de ningún campo.
 const COLOR_TANQUE = '#0e7490'
+// Lo que no entra en la cuenta desde el stock inicial, más suave.
+const FUERA_DE_CUENTA = '#a0aec0'
+// El renglón del ajuste por la diferencia de una auditoría.
+const FONDO_AJUSTE = '#fef3c7'
+const COLOR_AJUSTE = '#b45309'
 
 /**
  * El gasoil de un campo (20/10/2026), en dos solapas:
@@ -204,11 +209,37 @@ export default function GasoilPlanilla() {
   }
 
   const totalIngresos = ingresosFiltrados.reduce((s, i) => s + (i.litros || 0), 0)
-  const totalConsumo = filasFiltradas.reduce((s, f) => s + (f.consumo || 0), 0)
-  // Los ingresos de la solapa de consumos salen de sus mismos días (sin los
-  // filtros de proveedor y quién carga, que son de la otra solapa).
-  const totalIngresosDias = filasFiltradas.reduce((s, f) => s + (f.ingreso || 0), 0)
-  const saldo = Math.round((totalIngresosDias - totalConsumo) * 100) / 100
+  // Los totales de arriba cuentan desde el stock inicial (28/10/2026): el
+  // stock es lo que hay al cierre de su día, y entran los días siguientes. El
+  // back marca en cada día cuánto del consumo y del ingreso entra en la
+  // cuenta de las auditorías (consumoCuenta, ingresoCuenta). El saldo es el
+  // stock inicial más eso, así coincide con lo que mide la auditoría mientras
+  // no haya diferencia. Sin stock inicial cuenta todo, como antes.
+  const filaStock = filas.find((f) => f.stockInicial != null)
+  const consumoCuenta = (f) => f.consumoCuenta ?? f.consumo ?? 0
+  const ingresoCuenta = (f) => f.ingresoCuenta ?? f.ingreso ?? 0
+  const redondear = (n) => Math.round(n * 100) / 100
+  const sumar = (lista, valor) => redondear(lista.reduce((s, f) => s + valor(f), 0))
+  // Los totales (arriba, al lado del Excel) son de todos los días, sin mirar
+  // los filtros (28/10/2026); el saldo es el del tanque.
+  const totalConsumo = sumar(filas, consumoCuenta)
+  const totalIngresosDias = sumar(filas, ingresoCuenta)
+  const saldo = redondear((filaStock?.stockInicial || 0) + totalIngresosDias - totalConsumo)
+  // Los parciales (en la tarjeta de los filtros) son de las fechas elegidas,
+  // con la misma regla. Los ingresos de la solapa de consumos salen de sus
+  // mismos días (sin los filtros de proveedor y quién carga, que son de la
+  // otra solapa).
+  const parcialConsumo = sumar(filasFiltradas, consumoCuenta)
+  const parcialIngresos = sumar(filasFiltradas, ingresoCuenta)
+  const parcialDiferencia = redondear(parcialIngresos - parcialConsumo)
+  const desdeStock = filaStock ? ` desde el stock inicial del ${fecha(filaStock.fecha)}` : ''
+  // Un valor que no entra en la cuenta (del día del stock inicial o antes):
+  // más suave, y al pasar el mouse, por qué.
+  const fueraDeCuenta = (total, cuenta) => cuenta != null && total != null && cuenta < total
+  // Los días del stock inicial o antes (no su renglón propio): la fecha
+  // también va más suave.
+  const diaFuera = (f) => Boolean(filaStock) && !f.esStock && aDia(f.fecha) <= aDia(filaStock.fecha)
+  const avisoCuenta = () => `No entra en la cuenta: el stock inicial ya es lo que había al cierre del ${fecha(filaStock?.fecha)}`
 
   // ── Excel: la solapa que se está viendo, con los filtros puestos ──
   const exportarExcel = () => {
@@ -228,9 +259,14 @@ export default function GasoilPlanilla() {
           { titulo: 'Observaciones', ancho: 40 },
         ],
         filas: [
-          ...filasFiltradas.map((f) => [fecha(f.fecha), vacio(f.ingreso), vacio(f.consumo), f.observaciones || '']),
-          ['TOTAL', totalIngresosDias, totalConsumo, ''],
-          ['SALDO', saldo, '', 'Total ingresos − total consumo'],
+          ...filasFiltradas.map((f) => [
+            fecha(f.fecha),
+            vacio(f.ingreso),
+            vacio(f.consumo),
+            f.esStock ? `Stock inicial: ${litros(f.stockInicial)} lts` : f.observaciones || '',
+          ]),
+          ['TOTAL', parcialIngresos, parcialConsumo, filaStock ? `Lo que entra en la cuenta${desdeStock}` : ''],
+          ['SALDO', saldo, '', filaStock ? 'Stock inicial + total ingresos − total consumo' : 'Total ingresos − total consumo'],
         ],
         hoja: 'Consumos',
         archivo: archivo('Consumos'),
@@ -346,7 +382,7 @@ export default function GasoilPlanilla() {
         style={{ maxWidth: '820px', width: '100%', margin: '0 auto', overflow: 'hidden' }}
       >
         <div className="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex align-items-center gap-2" style={{ flex: '1 1 0' }}>
             <div
               className="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
               style={{
@@ -364,7 +400,35 @@ export default function GasoilPlanilla() {
             </span>
           </div>
 
+          {/* Los totales del tanque, de todos los días: centrados, a la altura
+              del Excel. Solo en la solapa de consumos, que el encargado de
+              taller no tiene. */}
+          {solapa === 'consumos' && (
+            <div className="d-flex align-items-end gap-2">
+              <Total
+                etiqueta="Total ingresos"
+                valor={totalIngresosDias}
+                color="#1d4ed8"
+                titulo={`Ingresos de todos los días${desdeStock}`}
+              />
+              <Total
+                etiqueta="Total consumo"
+                valor={totalConsumo}
+                color={campo.color}
+                titulo={`Consumo de todos los días${desdeStock}`}
+              />
+              <Total
+                etiqueta="Saldo"
+                valor={saldo}
+                color={saldo < 0 ? '#dc2626' : '#334155'}
+                relleno
+                titulo={filaStock ? `Stock inicial (${litros(filaStock.stockInicial)} lts) + total ingresos − total consumo` : 'Total ingresos − total consumo'}
+              />
+            </div>
+          )}
+
           {/* Baja la solapa que se está viendo, con los filtros puestos. */}
+          <div className="d-flex justify-content-end" style={{ flex: '1 1 0' }}>
           <Button
             size="sm"
             onClick={exportarExcel}
@@ -376,6 +440,7 @@ export default function GasoilPlanilla() {
             <i className="bi bi-file-earmark-excel-fill"></i>
             <span>Excel</span>
           </Button>
+          </div>
         </div>
 
         <Card className="mb-2 p-2 shadow-sm border-0 rounded-3">
@@ -404,29 +469,27 @@ export default function GasoilPlanilla() {
               </>
             )}
             {hayFiltros && <BotonLimpiar onClick={limpiar} />}
-            {/* Ingresos, consumo y saldo de los días que se ven: con el período
-                filtrado, los de esas fechas. Pegados a la derecha. Solo en la
-                solapa de consumos, que el encargado de taller no tiene. */}
+            {/* Los parciales: ingresos, consumo y la diferencia de las fechas
+                elegidas (sin fechas, de todos los días). Pegados a la derecha. */}
             {solapa === 'consumos' && (
               <div className="d-flex align-items-end gap-2 ms-auto">
                 <Total
-                  etiqueta="Total ingresos"
-                  valor={totalIngresosDias}
+                  etiqueta="Ingresos parcial"
+                  valor={parcialIngresos}
                   color="#1d4ed8"
-                  titulo={hayFiltros ? 'Ingresos del período filtrado' : 'Ingresos de todos los días'}
+                  titulo={`Ingresos de las fechas elegidas${desdeStock}`}
                 />
                 <Total
-                  etiqueta="Total consumo"
-                  valor={totalConsumo}
+                  etiqueta="Consumo parcial"
+                  valor={parcialConsumo}
                   color={campo.color}
-                  titulo={hayFiltros ? 'Consumo del período filtrado' : 'Consumo de todos los días'}
+                  titulo={`Consumo de las fechas elegidas${desdeStock}`}
                 />
                 <Total
-                  etiqueta="Saldo"
-                  valor={saldo}
-                  color={saldo < 0 ? '#dc2626' : '#334155'}
-                  relleno
-                  titulo="Total ingresos − total consumo"
+                  etiqueta="Diferencia parcial"
+                  valor={parcialDiferencia}
+                  color={parcialDiferencia < 0 ? '#dc2626' : '#334155'}
+                  titulo="Ingresos parcial − consumo parcial"
                 />
               </div>
             )}
@@ -514,37 +577,65 @@ export default function GasoilPlanilla() {
                 ) : (
                   filasFiltradas.map((f) => (
                     <tr
-                      key={f.fecha}
+                      // El stock inicial va en un renglón solo, con la misma
+                      // fecha que el de su día (28/10/2026).
+                      key={f.esStock ? `stock-${f.fecha}` : f.esAjuste ? `ajuste-${f.auditoriaId}` : f.fecha}
                       // El día del stock inicial (color del campo) y los de
                       // las auditorías (violeta), sombreados: de uno a otro
                       // va cada cuenta. Si caen el mismo día, manda el stock.
-                      className={f.stockInicial != null || f.auditoria != null ? 'fila-stock-inicial' : undefined}
+                      className={f.stockInicial != null || f.auditoria != null || f.esAjuste ? 'fila-stock-inicial' : undefined}
                       style={
                         f.stockInicial != null
                           ? { '--fondo-stock': campo.filaStock }
-                          : f.auditoria != null
+                          : f.esAjuste
+                            ? { '--fondo-stock': FONDO_AJUSTE }
+                            : f.auditoria != null
                             ? { '--fondo-stock': FONDO_AUDITORIA }
                             : undefined
                       }
                     >
-                      <td style={tdNumero}>
-                        {/* Con consumo, la fecha abre de qué partes sale. */}
-                        {f.consumo === null ? (
+                      <td style={{ ...tdNumero, color: diaFuera(f) ? FUERA_DE_CUENTA : undefined }}>
+                        {/* Con consumo, la fecha abre de qué partes sale. El
+                            ajuste de una auditoría no sale de ningún parte. */}
+                        {f.consumo === null || f.esAjuste ? (
                           fecha(f.fecha)
                         ) : (
                           <button
                             type="button"
                             onClick={() => verDetalle(f)}
                             className="btn btn-link p-0 border-0 fw-semibold"
-                            style={{ fontSize: '0.7rem', color: campo.color }}
+                            style={{ fontSize: '0.7rem', color: diaFuera(f) ? FUERA_DE_CUENTA : campo.color }}
                             title="Ver el detalle del consumo"
                           >
                             {fecha(f.fecha)}
                           </button>
                         )}
                       </td>
-                      <td style={{ ...tdNumero, color: f.ingreso ? '#1d4ed8' : undefined }}>{numeroOVacio(f.ingreso)}</td>
-                      <td style={tdNumero} title={detalleConsumo(f)}>
+                      <td
+                        style={{
+                          ...tdNumero,
+                          color: fueraDeCuenta(f.ingreso, f.ingresoCuenta) ? FUERA_DE_CUENTA : f.ingreso ? '#1d4ed8' : undefined,
+                        }}
+                        title={fueraDeCuenta(f.ingreso, f.ingresoCuenta) ? avisoCuenta() : undefined}
+                      >
+                        {numeroOVacio(f.ingreso)}
+                      </td>
+                      <td
+                        style={{
+                          ...tdNumero,
+                          color: f.esAjuste ? COLOR_AJUSTE : fueraDeCuenta(f.consumo, f.consumoCuenta) ? FUERA_DE_CUENTA : undefined,
+                          fontWeight: f.esAjuste ? 700 : undefined,
+                        }}
+                        title={
+                          f.esAjuste
+                            ? f.consumo > 0
+                              ? 'Faltó gasoil en la auditoría: va como consumo'
+                              : 'Sobró gasoil en la auditoría: va como consumo negativo'
+                            : fueraDeCuenta(f.consumo, f.consumoCuenta)
+                            ? `${detalleConsumo(f)}. ${avisoCuenta()}`
+                            : detalleConsumo(f)
+                        }
+                      >
                         {numeroOVacio(f.consumo)}
                       </td>
                       <td style={{ ...td, wordBreak: 'break-word' }}>
@@ -558,18 +649,28 @@ export default function GasoilPlanilla() {
                             <i className="bi bi-clipboard-check-fill" /> Auditoría: {numeroOVacio(f.auditoria)} lts
                           </span>
                         )}
-                        {f.observaciones || (f.stockInicial == null && f.auditoria == null && <Raya />)}
+                        {f.esAjuste ? (
+                          <span className="fw-semibold" style={{ color: COLOR_AJUSTE }}>
+                            <i className="bi bi-arrow-left-right" /> {f.observaciones}
+                          </span>
+                        ) : (
+                          f.observaciones || (f.stockInicial == null && f.auditoria == null && <Raya />)
+                        )}
                       </td>
                       <td style={tdNumero}>
-                        <div className="d-flex justify-content-center align-items-center gap-2">
-                          <BotonAccion
-                            icono="bi-pencil"
-                            titulo={sinEditar ? 'Sin permiso para editar' : 'Observaciones'}
-                            variante="primary"
-                            deshabilitado={sinEditar}
-                            onClick={() => abrirDia(f)}
-                          />
-                        </div>
+                        {/* Las observaciones son del día: el renglón del stock
+                            inicial no las lleva. */}
+                        {!f.esStock && !f.esAjuste && (
+                          <div className="d-flex justify-content-center align-items-center gap-2">
+                            <BotonAccion
+                              icono="bi-pencil"
+                              titulo={sinEditar ? 'Sin permiso para editar' : 'Observaciones'}
+                              variante="primary"
+                              deshabilitado={sinEditar}
+                              onClick={() => abrirDia(f)}
+                            />
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))
