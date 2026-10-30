@@ -466,9 +466,6 @@ function LayoutDesktop() {
                 path="/reparaciones/sanpablo/:cosecha/manitous/general/presupuesto"
                 element={<RutaCosecha><PresupuestoManitous /></RutaCosecha>}
               />
-              {/* La 1100 va al 404 por ahora (10/10/2026); sus datos siguen en
-                  la base. */}
-              <Route path="/reparaciones/sanpablo/:cosecha/manitous/1100/*" element={<Error404 />} />
               {/* General (la plantilla) y cada Manitou (09/10/2026): una tarjeta
                   por sistema, cada una con su tabla de chequeo. */}
               <Route

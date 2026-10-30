@@ -7,7 +7,7 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
-import { UNIDADES_MANITOU, MANITOUS_FUERA_DE_REPARACION, seccionManitou, fmtPct } from "../../utils/sistemasManitou";
+import { UNIDADES_MANITOU, seccionManitou, fmtPct } from "../../utils/sistemasManitou";
 import { traerAvancesManitou, avanceTotalManitous } from "../../utils/avanceManitous";
 
 // El verde de la tarjeta Manitous de ReparacionesSanPablo.
@@ -99,14 +99,12 @@ function ManitousSanPablo() {
     }
   };
 
-  // El avance total, en la tarjeta General: el promedio de las que están en
-  // reparación (la 1100 no cuenta).
+  // El avance total, en la tarjeta General: el promedio de todas.
   const valores = Object.values(avances);
   const avanceTotal = avanceTotalManitous(avances);
 
-  // Lo del avance de cada tarjeta: la barra, el texto de la 1100 o nada.
+  // Lo del avance de cada tarjeta: la barra o nada.
   const avanceDe = (id) => {
-    if (MANITOUS_FUERA_DE_REPARACION.includes(id)) return { avanceTexto: "Fuera de reparación" };
     if (id === "general") {
       return avanceTotal === null
         ? {}
@@ -114,7 +112,7 @@ function ManitousSanPablo() {
             // En General, en torta (21/10/2026, para probar).
             torta: true,
             avance: avanceTotal,
-            avanceTitulo: `Avance total: el promedio de las ${valores.length} Manitou en reparación`,
+            avanceTitulo: `Avance total: el promedio de las ${valores.length} Manitou`,
           };
     }
     return avances[id] === undefined ? {} : { avance: avances[id], avanceTitulo: `Avance de la reparación: ${fmtPct(avances[id])}` };

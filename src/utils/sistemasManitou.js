@@ -17,11 +17,6 @@ export const SISTEMAS_MANITOU = [
 // (catalogos/manitous.js).
 export const UNIDADES_MANITOU = ["1100", "1101", "1102", "1103", "1104"];
 
-// Las que están fuera de reparación (21/10/2026): no tienen avance y no
-// cuentan en el avance total de la tarjeta General. La 1100 además va al 404
-// (App.jsx).
-export const MANITOUS_FUERA_DE_REPARACION = ["1100"];
-
 // La sección de los chequeos: "general" (la de la dirección) o el número.
 export const seccionManitou = (unidad) => (unidad === "general" ? "manitous-general" : `manitou-${unidad}`);
 export const unidadManitouValida = (unidad) => unidad === "general" || UNIDADES_MANITOU.includes(unidad);

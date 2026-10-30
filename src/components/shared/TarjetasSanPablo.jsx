@@ -14,9 +14,8 @@ import TractorIcon from "./TractorIcon";
  * Manitou) va un renglón chico debajo del título. Con `etiqueta` ({ texto,
  * color }, 11/10/2026, el estado de cada Manitou) va una pastilla de color
  * al pie de la tarjeta. Con `avance` (21/10/2026, el de la reparación de
- * cada Manitou, de 0 a 100) va una barra con el % arriba de la tarjeta; con
- * `avanceTexto` (la 1100, fuera de reparación) va ese texto en su lugar. Los
- * dos van arriba de todo (pedido así: más visibles). Con `fechaLimite`
+ * cada Manitou, de 0 a 100) va una barra con el % arriba de todo (pedido
+ * así: más visible). Con `fechaLimite`
  * (28/10/2026, "dd/mm/aaaa") va otro renglón chico debajo del subtítulo.
  */
 export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, iconoChico = false, children }) {
@@ -185,23 +184,6 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
                   <span className="fw-bold" style={{ fontSize: chicas ? "0.95rem" : "1.25rem", lineHeight: 1, color: "#facc15" }}>
                     {t.avance.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%
                   </span>
-                </div>
-              )}
-              {t.avanceTexto && (
-                <div
-                  className="fw-bold"
-                  style={{
-                    position: "absolute",
-                    top: chicas ? "10px" : "16px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    whiteSpace: "nowrap",
-                    fontSize: chicas ? "0.8rem" : "0.95rem",
-                    lineHeight: 1.2,
-                    color: "rgba(255, 255, 255, 0.75)",
-                  }}
-                >
-                  {t.avanceTexto}
                 </div>
               )}
               {t.etiqueta && (
