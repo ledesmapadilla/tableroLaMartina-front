@@ -108,7 +108,7 @@ export default function AnalistaPedidos() {
   const lista = items.filter(item => {
     const normEstado = (item.estado === 'Pedido' || item.estado === 'En analisis' || item.estado === 'Para revision') ? 'Para analisis' : item.estado
     if (esComprador && normEstado === 'Para analisis') return false
-    if (filtros.nro && !fmtNro(item.nro_pedido, item._src, item.origen).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro && !fmtNro(item.nro_pedido, item._src, item.origen, item.servicio).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -145,6 +145,7 @@ export default function AnalistaPedidos() {
     _src: items[0]._src,
     nro_pedido: items[0].nro_pedido,
     origen: items[0].origen,
+    servicio: items[0].servicio,
     fecha: items[0].fecha,
     archivoPedido: items[0].archivoPedido,
     tituloPedido: items[0].tituloPedido,
@@ -308,7 +309,7 @@ export default function AnalistaPedidos() {
       ],
       filas: lista.map((item) => [
         item._src === "berdina" ? "Berdina" : "San Pablo",
-        fmtNro(item.nro_pedido, item._src, item.origen),
+        fmtNro(item.nro_pedido, item._src, item.origen, item.servicio),
         item.fecha?.slice(0, 10).split("-").reverse().join("/"),
         item.cc || "",
         item.nombre_repuesto,
@@ -391,7 +392,7 @@ export default function AnalistaPedidos() {
   }
 
   const verDetalle = (item) =>
-    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src, item.origen)}`, items: item._items || [item] })
+    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}`, items: item._items || [item] })
 
   const verMotivoRevision = async (item) => {
     try {
@@ -731,7 +732,7 @@ export default function AnalistaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            ↳ {fmtNro(item.nro_pedido, item._src, item.origen)}
+                            ↳ {fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}
                           </button>
                         ) : (
                           <button
@@ -746,7 +747,7 @@ export default function AnalistaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(item.nro_pedido, item._src, item.origen)}
+                            {fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}
                           </button>
                         )}
                         {item._agrupado && item._count > 1 && (

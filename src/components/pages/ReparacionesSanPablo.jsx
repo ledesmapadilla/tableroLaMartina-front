@@ -68,6 +68,9 @@ function ReparacionesSanPablo() {
   // La fecha límite de las Manitou (28/10/2026), la que se carga adentro, en
   // dd/mm/aaaa; "" si no se cargó.
   const [fechaLimite, setFechaLimite] = useState("");
+  // Las de las tolvas y los colectivos (29/10/2026), las que se cargan en su
+  // General: { tolvas, colectivos, carros } en dd/mm/aaaa.
+  const [fechas, setFechas] = useState({});
   useEffect(() => {
     const nro = cosechaDeParam(cosecha);
     traerAvancesManitou(nro).then((a) => setAvanceManitous(avanceTotalManitous(a)));
@@ -75,6 +78,17 @@ function ReparacionesSanPablo() {
       .get(`/ingresos-sanpablo/fecha-limite-manitou?cosecha=${nro}`)
       .then((r) => setFechaLimite(r.fecha ? r.fecha.slice(0, 10).split("-").reverse().join("/") : ""))
       .catch(() => setFechaLimite(""));
+    api
+      .get(`/ingresos-sanpablo/fecha-limite-escaleras?cosecha=${nro}`)
+      .then((r) =>
+        setFechas({
+          tolvas: r.tolvas ? r.tolvas.slice(0, 10).split("-").reverse().join("/") : "",
+          colectivos: r.colectivos ? r.colectivos.slice(0, 10).split("-").reverse().join("/") : "",
+          // La de los tres carros juntos, la de arriba de la página Carros.
+          carros: r.carrosTotal ? r.carrosTotal.slice(0, 10).split("-").reverse().join("/") : "",
+        })
+      )
+      .catch(() => setFechas({}));
   }, [cosecha]);
 
   return (
@@ -165,6 +179,17 @@ function ReparacionesSanPablo() {
                   >
                     <i className="bi bi-calendar-event me-1"></i>
                     Fecha límite: {fechaLimite}
+                  </div>
+                )}
+                {/* Tolvas, colectivos y carros: su fecha límite, también arriba. */}
+                {fechas[t.id] && (
+                  <div
+                    className="fw-semibold"
+                    style={{ position: "absolute", top: "14px", left: 0, right: 0, fontSize: "0.85rem", color: t.accentColor }}
+                    title={`Para cuándo tienen que estar reparad${t.id === "tolvas" ? "as las tolvas" : `os los ${t.id}`}`}
+                  >
+                    <i className="bi bi-calendar-event me-1"></i>
+                    Fecha límite: {fechas[t.id]}
                   </div>
                 )}
                 {/* Manitous: el avance de la reparación al pie de la tarjeta

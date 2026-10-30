@@ -48,7 +48,7 @@ export default function AnalistaPendientes() {
   }, [])
 
   const lista = items.filter(item => {
-    if (filtros.nro      && !fmtNro(item.nro_pedido, item._src, item.origen).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro      && !fmtNro(item.nro_pedido, item._src, item.origen, item.servicio).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha    && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc       && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -76,6 +76,7 @@ export default function AnalistaPendientes() {
     _src:            its[0]._src,
     nro_pedido:      its[0].nro_pedido,
     origen:          its[0].origen,
+    servicio:        its[0].servicio,
     fecha:           its[0].fecha,
     pedidoId:        its[0].pedidoId,
     cc:              colapsar(uniq(its.map(i => i.cc))),
@@ -137,7 +138,7 @@ export default function AnalistaPendientes() {
 
   const verDetalle = (item) =>
     verDetallePedido({
-      titulo: `Pedido ${fmtNro(item.nro_pedido, item._src, item.origen)}`,
+      titulo: `Pedido ${fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}`,
       items: item._items,
       conDescripcion: false,
     })
@@ -294,9 +295,9 @@ export default function AnalistaPendientes() {
                         }}
                       >
                         {item._anidada ? (
-                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src, item.origen)}</span>
+                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}</span>
                         ) : (
-                          fmtNro(item.nro_pedido, item._src, item.origen)
+                          fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)
                         )}
                         {item._agrupado && item._count > 1 && (
                           <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />

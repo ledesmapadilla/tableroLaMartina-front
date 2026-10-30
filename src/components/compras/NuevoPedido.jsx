@@ -35,12 +35,16 @@ const getNombreUsuario = () => {
 
 const ITEM_INIT = { nombre_repuesto: '', cant: '', unidad: '', descripcion: '', urgencia: 'Media', grupo: '', cc: '', estado: 'Para analisis' }
 
+// El verde del pedido de servicio (29/10/2026).
+const VERDE_SERVICIO = '#16a34a'
+
 export default function NuevoPedido() {
   const navigate = useNavigate()
   const [fecha, setFecha] = useState(hoyLocal())
   // El título del pedido (28/10/2026), opcional: en un pedido de varios ítems
   // es lo que se ve en la fila del pedido en lugar de "Varios".
   const [titulo, setTitulo] = useState('')
+  const [servicio, setServicio] = useState(false)
   const [itemForm, setItemForm] = useState(ITEM_INIT)
   const [items, setItems] = useState([])
   const [editingId, setEditingId] = useState(null)
@@ -171,7 +175,7 @@ export default function NuevoPedido() {
           ...(solicita ? { solicita } : {}),
         }
       })
-      await api.post('/berdina/pedidos', { fecha, titulo: items.length > 1 ? titulo.trim() : '', items: itemsLimpios })
+      await api.post('/berdina/pedidos', { fecha, titulo: items.length > 1 ? titulo.trim() : '', servicio, items: itemsLimpios })
       Swal.fire({ icon: 'success', title: 'Pedido guardado', timer: 1500, showConfirmButton: false })
       navigate('/compras/berdina/pedidos')
     } catch (err) {
@@ -219,6 +223,28 @@ export default function NuevoPedido() {
               {items.length} {items.length === 1 ? 'ítem' : 'ítems'}
             </span>
           )}
+          {/* Pedido de servicio (29/10/2026): el número lleva una S al final. */}
+          {/* Un círculo que se tilda y se destilda (no un radio, que no se saca). */}
+          <Form.Check id="pedido-servicio" className="d-flex align-items-center mb-0 ps-0 me-4" style={{ minHeight: 0, gap: '10px', marginLeft: '3rem' }}>
+            <Form.Check.Input
+              type="checkbox"
+              checked={servicio}
+              onChange={(e) => setServicio(e.target.checked)}
+              className="m-0"
+              style={{
+                borderRadius: '50%',
+                width: '1.1rem',
+                height: '1.1rem',
+                cursor: 'pointer',
+                borderColor: VERDE_SERVICIO,
+                backgroundColor: servicio ? VERDE_SERVICIO : '#fff',
+                boxShadow: 'none',
+              }}
+            />
+            <Form.Check.Label className="fw-bold" style={{ color: VERDE_SERVICIO, fontSize: '0.82rem', cursor: 'pointer' }}>
+              Servicio
+            </Form.Check.Label>
+          </Form.Check>
           {/* Solo con más de un ítem: un pedido de uno ya se llama como su repuesto. */}
           {items.length > 1 && (
           <div className="d-flex align-items-center gap-2 ms-auto">

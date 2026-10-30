@@ -22,8 +22,9 @@ import {
   CeldaOP,
 } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
+import { fmtNro as fmtNroPedido } from './nroPedido'
 
-const fmtNro = (n) => `B-${String(n).padStart(3, '0')}`
+const fmtNro = (n, origen, servicio) => fmtNroPedido(n, 'berdina', origen, servicio)
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 const ESTADOS   = ['Para analisis', 'Para hacer OP', 'Autorizar', 'Para retirar', 'Retirado', 'Rechazado']
@@ -67,7 +68,7 @@ export default function BerdinaPedidos() {
   )
 
   const lista = items.filter(item => {
-    if (filtros.nro && !fmtNro(item.nro_pedido).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro && !fmtNro(item.nro_pedido, item.origen, item.servicio).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -94,6 +95,7 @@ export default function BerdinaPedidos() {
     _items: items,
     _key: items[0].nro_pedido,
     nro_pedido: items[0].nro_pedido,
+    servicio: items[0].servicio,
     fecha: items[0].fecha,
     // El pedido y su adjunto, para la columna Adjunto de la fila en negrita.
     pedidoId: items[0].pedidoId,
@@ -204,7 +206,7 @@ export default function BerdinaPedidos() {
   const ponerTitulo = async (fila) => {
     const { value, isConfirmed } = await Swal.fire({
       title: 'Título del pedido',
-      text: fmtNro(fila.nro_pedido, fila.origen),
+      text: fmtNro(fila.nro_pedido, fila.origen, fila.servicio),
       input: 'text',
       inputValue: fila.tituloPedido || '',
       inputAttributes: { maxlength: 80 },
@@ -311,7 +313,7 @@ export default function BerdinaPedidos() {
   const borrar = async (item) => {
     const result = await Swal.fire({
       title: '¿Borrar ítem?',
-      text: 'Esta acción no se puede deshacer.',
+      text: `${fmtNro(item.nro_pedido, item.origen, item.servicio)} · ${item.nombre_repuesto || ''}`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Sí, borrar',
@@ -348,7 +350,7 @@ export default function BerdinaPedidos() {
       { titulo: "O.P.", ancho: 12 },
     ],
       filas: lista.map((item) => [
-      fmtNro(item.nro_pedido),
+      fmtNro(item.nro_pedido, item.origen, item.servicio),
       item.fecha?.slice(0, 10).split("-").reverse().join("/"),
       item.cc || "",
       item.nombre_repuesto,
@@ -430,7 +432,7 @@ export default function BerdinaPedidos() {
   }
 
   const verDetalle = (item) =>
-    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido)}`, items: item._items || [item] })
+    verDetallePedido({ titulo: `Pedido ${fmtNro(item.nro_pedido, item.origen, item.servicio)}`, items: item._items || [item] })
 
   const verMotivoRetirado = async (item) => {
     try {
@@ -702,7 +704,7 @@ export default function BerdinaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            ↳ {fmtNro(item.nro_pedido)}
+                            ↳ {fmtNro(item.nro_pedido, item.origen, item.servicio)}
                           </button>
                         ) : (
                           <button
@@ -717,7 +719,7 @@ export default function BerdinaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(item.nro_pedido)}
+                            {fmtNro(item.nro_pedido, item.origen, item.servicio)}
                           </button>
                         )}
                         {item._agrupado && item._count > 1 && (

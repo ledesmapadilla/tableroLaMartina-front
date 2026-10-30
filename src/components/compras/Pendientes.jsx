@@ -30,7 +30,7 @@ const ESTADOS_VISIBLES = new Set(['Pedido', 'En analisis', 'Para analisis', 'Par
 
 export default function Pendientes({ taller }) {
   const navigate = useNavigate()
-  const fmtNro = (n, origen) => fmtNroPedido(n, taller, origen)
+  const fmtNro = (n, origen, servicio) => fmtNroPedido(n, taller, origen, servicio)
   const apiBase = `/${taller}/pedidos`
   const titulo = taller === 'berdina' ? 'Berdina' : 'San Pablo'
 
@@ -57,7 +57,7 @@ export default function Pendientes({ taller }) {
   )
 
   const lista = items.filter(item => {
-    if (filtros.nro     && !fmtNro(item.nro_pedido, item.origen).includes(filtros.nro.toUpperCase())) return false
+    if (filtros.nro     && !fmtNro(item.nro_pedido, item.origen, item.servicio).includes(filtros.nro.toUpperCase())) return false
     if (filtros.fecha   && item.fecha?.slice(0, 10) !== filtros.fecha) return false
     if (filtros.cc      && !item.cc?.toLowerCase().includes(filtros.cc.toLowerCase())) return false
     if (filtros.repuesto && !item.nombre_repuesto?.toLowerCase().includes(filtros.repuesto.toLowerCase())) return false
@@ -84,6 +84,7 @@ export default function Pendientes({ taller }) {
     _key:            items[0].nro_pedido,
     nro_pedido:      items[0].nro_pedido,
     origen:          items[0].origen,
+    servicio:        items[0].servicio,
     fecha:           items[0].fecha,
     cc:              colapsar(uniq(items.map(i => i.cc))),
     nombre_repuesto: colapsar(uniq(items.map(i => i.nombre_repuesto))),
@@ -145,7 +146,7 @@ export default function Pendientes({ taller }) {
 
   const verDetalle = (item) =>
     verDetallePedido({
-      titulo: `Pedido ${fmtNro(item.nro_pedido, item.origen)}`,
+      titulo: `Pedido ${fmtNro(item.nro_pedido, item.origen, item.servicio)}`,
       items: item._items,
       conDescripcion: false,
     })
@@ -205,7 +206,7 @@ export default function Pendientes({ taller }) {
       { titulo: "O.P.", ancho: 12 },
     ],
       filas: lista.map((item) => [
-      fmtNro(item.nro_pedido, item.origen),
+      fmtNro(item.nro_pedido, item.origen, item.servicio),
       item.fecha?.slice(0, 10).split("-").reverse().join("/"),
       item.cc || "",
       item.nombre_repuesto,
@@ -347,9 +348,9 @@ export default function Pendientes({ taller }) {
                         }}
                       >
                         {item._anidada ? (
-                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item.origen)}</span>
+                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item.origen, item.servicio)}</span>
                         ) : (
-                          fmtNro(item.nro_pedido, item.origen)
+                          fmtNro(item.nro_pedido, item.origen, item.servicio)
                         )}
                         {item._agrupado && item._count > 1 && (
                           <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />

@@ -16,7 +16,9 @@ import TractorIcon from "./TractorIcon";
  * al pie de la tarjeta. Con `avance` (21/10/2026, el de la reparación de
  * cada Manitou, de 0 a 100) va una barra con el % arriba de todo (pedido
  * así: más visible). Con `fechaLimite`
- * (28/10/2026, "dd/mm/aaaa") va otro renglón chico debajo del subtítulo.
+ * (28/10/2026, "dd/mm/aaaa") va otro renglón chico debajo del subtítulo;
+ * `fechaEtiqueta` cambia el "Fecha límite" de adelante y `fechaAbajo` la
+ * lleva al pie de la tarjeta.
  */
 export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, iconoChico = false, children }) {
   const navigate = useNavigate();
@@ -137,12 +139,23 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
               )}
               {t.fechaLimite && (
                 <div
-                  className="mt-3 text-nowrap"
-                  style={{ fontSize: chicas ? "0.7rem" : "0.8rem", lineHeight: 1.2, color: "#fde68a" }}
+                  className={`${t.fechaAbajo ? "" : "mt-3 "}text-nowrap`}
+                  style={{
+                    fontSize: chicas ? "0.7rem" : "0.8rem",
+                    lineHeight: 1.2,
+                    color: "#fde68a",
+                    // Al pie, sin correr el nombre del centro, como la etiqueta.
+                    ...(t.fechaAbajo && {
+                      position: "absolute",
+                      bottom: chicas ? "10px" : "18px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                    }),
+                  }}
                   title="Para cuándo tiene que estar reparada"
                 >
                   <i className="bi bi-calendar-event me-1"></i>
-                  Fecha límite: {t.fechaLimite}
+                  {t.fechaEtiqueta ?? "Fecha límite"}: {t.fechaLimite}
                 </div>
               )}
               {/* El avance de la reparación, arriba de todo y bien visible: la

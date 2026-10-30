@@ -75,6 +75,8 @@ const ReparacionesSanPablo = lazy(() => import("./components/pages/ReparacionesS
 const ManitousSanPablo = lazy(() => import("./components/pages/ManitousSanPablo"));
 const CarrosSanPablo = lazy(() => import("./components/pages/CarrosSanPablo"));
 const ReparacionCarros = lazy(() => import("./components/pages/ReparacionCarros"));
+const ReparacionCarrosGeneral = lazy(() => import("./components/pages/ReparacionCarrosGeneral"));
+import { CARROS_REPARACION } from "./utils/carrosReparacion";
 const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
 const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
 const PresupuestoManitous = lazy(() => import("./components/pages/PresupuestoManitous"));
@@ -485,7 +487,6 @@ function LayoutDesktop() {
                   de CC ofrece y con qué ícono. */}
               {[
                 ["tolvas", "Tolvas", "Tolva", <i className="bi bi-minecart-loaded"></i>],
-                ["carros-porta-bolsones", "Carros porta bolsones", "Carro porta bolsones", <i className="bi bi-bag-fill"></i>],
               ].map(([tipo, titulo, equipo, icono]) => (
                 <Route
                   key={tipo}
@@ -513,14 +514,34 @@ function LayoutDesktop() {
                 path="/reparaciones/sanpablo/:cosecha/escaleras/reparacion"
                 element={<RutaCosecha><ReparacionCarros /></RutaCosecha>}
               />
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/escaleras/reparacion/general"
+                element={<RutaCosecha><ReparacionCarrosGeneral /></RutaCosecha>}
+              />
+              {/* Carros porta bines y porta bolsones (29/10/2026): lo mismo que
+                  Reparación carros, una tarjeta por carro y la General con la
+                  fecha límite. Porta bolsones tenía la tabla de ingresos, sin
+                  nada cargado. Las tolvas, igual, desde su tabla de ingresos, y
+                  los colectivos desde su tarjeta. */}
+              {["bines", "bolsones", "tolvas", "colectivos"].flatMap((tipo) => [
+                <Route
+                  key={tipo}
+                  path={`/reparaciones/sanpablo/:cosecha/${CARROS_REPARACION[tipo].ruta}`}
+                  element={<RutaCosecha><ReparacionCarros key={tipo} tipo={tipo} /></RutaCosecha>}
+                />,
+                <Route
+                  key={`${tipo}-general`}
+                  path={`/reparaciones/sanpablo/:cosecha/${CARROS_REPARACION[tipo].ruta}/general`}
+                  element={<RutaCosecha><ReparacionCarrosGeneral key={tipo} tipo={tipo} /></RutaCosecha>}
+                />,
+              ])}
               {/* Carros (28/10/2026): porta bines, porta bolsones y porta
                   escaleras, cada uno a su página. */}
               <Route
                 path="/reparaciones/sanpablo/:cosecha/carros"
                 element={<RutaCosecha><CarrosSanPablo /></RutaCosecha>}
               />
-              {/* Colectivos, carros porta bines y pulverizadoras: todavía no
-                  están construidas. */}
+              {/* Pulverizadoras: todavía no está construida. */}
               <Route path="/reparaciones/sanpablo/:cosecha/:tipo" element={<Error404 />} />
               <Route path="/colectivo" element={<Colectivo />} />
               <Route path="/colectivo/preventivo" element={<ColectivosPreventivo />} />

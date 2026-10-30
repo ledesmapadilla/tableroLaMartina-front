@@ -109,7 +109,7 @@ export default function Gerencia() {
       const agrupado = Object.values(
         todos.reduce((acc, item) => {
           const key = `${item._src}-${item.nro_pedido}`
-          if (!acc[key]) acc[key] = { _src: item._src, nro_pedido: item.nro_pedido, origen: item.origen, fecha: item.fecha, items: [] }
+          if (!acc[key]) acc[key] = { _src: item._src, nro_pedido: item.nro_pedido, origen: item.origen, servicio: item.servicio, fecha: item.fecha, items: [] }
           acc[key].items.push(item)
           return acc
         }, {})
@@ -199,7 +199,7 @@ export default function Gerencia() {
       .join('')
 
     Swal.fire({
-      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}`,
+      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)}`,
       html: `<div style="max-height:65vh;overflow:auto">${fichas}</div>`,
       width: 360,
       padding: '0.9rem',
@@ -304,7 +304,7 @@ export default function Gerencia() {
       )
       // Una tabla por ítem; con varios, cada una lleva el nombre del repuesto.
       verHistorialPedido({
-        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}`,
+        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)}`,
         secciones: historiales.map(({ item, hist }) => ({
           subtitulo: grupo.items.length > 1 ? item.nombre_repuesto : '',
           historial: conCreacion(hist, { fecha: grupo.fecha, solicita: item.solicita }),
@@ -328,7 +328,7 @@ export default function Gerencia() {
    */
   const decidir = async (grupo, accion) => {
     const a = ACCIONES[accion]
-    const nro = fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)
+    const nro = fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)
     const varios = grupo.items.length > 1
 
     const lista = grupo.items
@@ -580,7 +580,7 @@ export default function Gerencia() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}
+                            {fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)}
                           </button>
                           {campana(grupo)}
                         </div>

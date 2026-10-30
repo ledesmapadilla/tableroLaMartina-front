@@ -129,7 +129,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
       if (state?.item) {
         const key = `${state.item._src}-${state.item.nro_pedido}`
         setSelectedKey(key)
-        setBusqueda(fmtNro(state.item.nro_pedido, state.item._src, state.item.origen))
+        setBusqueda(fmtNro(state.item.nro_pedido, state.item._src, state.item.origen, state.item.servicio))
         const pedido = todos.find(p => `${p._src}-${p.nro_pedido}` === key)
         if (pedido) {
           initForms(pedido)
@@ -152,7 +152,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   }, [])
 
   const pedidosFiltrados = pedidos.filter(p =>
-    fmtNro(p.nro_pedido, p._src, p.origen).toLowerCase().includes(busqueda.toLowerCase())
+    fmtNro(p.nro_pedido, p._src, p.origen, p.servicio).toLowerCase().includes(busqueda.toLowerCase())
   )
 
   const esMultiple = (p) => (p.items || []).filter(i => enVista(i)).length > 1
@@ -232,7 +232,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
   const elegirPedido = (p) => {
     const key = `${p._src}-${p.nro_pedido}`
     setSelectedKey(key)
-    setBusqueda(fmtNro(p.nro_pedido, p._src, p.origen))
+    setBusqueda(fmtNro(p.nro_pedido, p._src, p.origen, p.servicio))
     setShowDropdown(false)
     setRetenidos(new Set())
     setCantLiberar({})
@@ -826,7 +826,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                 setShowDropdown(true)
               }}
               onBlur={() => {
-                if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen))
+                if (pedidoSeleccionado) setBusqueda(fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen, pedidoSeleccionado.servicio))
               }}
               placeholder="Buscar pedido…"
               autoComplete="off"
@@ -871,7 +871,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                         e.currentTarget.style.backgroundColor = elegido ? BORDO_SUAVE : 'transparent'
                       }}
                     >
-                      {fmtNro(p.nro_pedido, p._src, p.origen)}
+                      {fmtNro(p.nro_pedido, p._src, p.origen, p.servicio)}
                       {multiple && (
                         <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
                           ({(p.items || []).filter((i) => enVista(i)).length} ítems)
@@ -1079,7 +1079,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                 <div className="mt-2 text-center" style={{ fontSize: '0.82rem', color: '#64748b' }}>
                   Total del pedido{' '}
                   <span className="fw-bold" style={{ color: BORDO }}>
-                    {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen) : ''}
+                    {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen, pedidoSeleccionado.servicio) : ''}
                   </span>
                   {filas.some((f) => f.elegida && !f.elegida.esMinima)
                     ? ', con proveedores elegidos a mano'

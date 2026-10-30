@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col } from "react-bootstrap";
 import { api } from "../../services/api";
@@ -51,7 +51,9 @@ const NARANJA = "#c2410c";
  */
 export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
   // La cosecha viene de la dirección (RutaCosecha ya la validó).
-  const cosecha = cosechaDeParam(useParams().cosecha);
+  const { cosecha: param } = useParams();
+  const cosecha = cosechaDeParam(param);
+  const navigate = useNavigate();
   const { puede } = usePermisos();
   const sinEditar = !puede("sanpablo.ingresos", "editar");
   // Los carros porta escaleras cargan además cuántas escaleras traen.
@@ -288,6 +290,19 @@ export default function IngresosSanPablo({ tipo, titulo, equipos, icono }) {
             </span>
           )}
           <div className="ms-auto" />
+          {/* La reparación de las tolvas va en su página (29/10/2026), como la
+              de los carros porta escaleras. */}
+          {tipo === "tolvas" && (
+            <Button
+              size="sm"
+              onClick={() => navigate(`/reparaciones/sanpablo/${param}/tolvas/reparacion`)}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{ backgroundColor: COLOR, borderColor: COLOR, fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
+            >
+              <i className="bi bi-tools"></i>
+              <span>Reparación tolvas</span>
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={exportarExcel}

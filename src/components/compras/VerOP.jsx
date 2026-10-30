@@ -65,6 +65,7 @@ const filaElegidaDeItem = (item) => {
     nro_pedido:      item.nro_pedido,
     _src:            item._src,
     origen:          item.origen,
+    servicio:        item.servicio,
     fecha:           item.fecha,
     nombre_repuesto: item.nombre_repuesto,
     cant:            item.cant,
@@ -103,7 +104,7 @@ export default function VerOP() {
         const total = filas.reduce((sum, f) => sum + (f.precio_total ?? 0), 0)
         const ref = itemsArr[0]
         setOp({
-          nro_oc_display: fmtNro(ref.nro_pedido, ref._src, ref.origen),
+          nro_oc_display: fmtNro(ref.nro_pedido, ref._src, ref.origen, ref.servicio),
           fecha:          ref.fecha,
           establecimiento: ref._src,
           items:          filas,

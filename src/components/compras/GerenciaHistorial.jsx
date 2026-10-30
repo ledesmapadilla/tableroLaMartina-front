@@ -83,7 +83,7 @@ export default function GerenciaHistorial() {
       const agrupado = Object.values(
         todas.reduce((acc, item) => {
           const key = `${item._src}-${item.nro_pedido}`
-          if (!acc[key]) acc[key] = { _src: item._src, _key: key, nro_pedido: item.nro_pedido, origen: item.origen, fecha: item.fecha, items: [] }
+          if (!acc[key]) acc[key] = { _src: item._src, _key: key, nro_pedido: item.nro_pedido, origen: item.origen, servicio: item.servicio, fecha: item.fecha, items: [] }
           acc[key].items.push(item)
           return acc
         }, {})
@@ -114,7 +114,7 @@ export default function GerenciaHistorial() {
     // Un solo buscador para el número y el repuesto: en el celular no entran dos.
     if (filtros.buscar) {
       const q = filtros.buscar.trim()
-      const porNro = fmtNro(g.nro_pedido, g._src, g.origen).includes(q.toUpperCase())
+      const porNro = fmtNro(g.nro_pedido, g._src, g.origen, g.servicio).includes(q.toUpperCase())
       const porRepuesto = g.items.some((i) => i.nombre_repuesto?.toLowerCase().includes(q.toLowerCase()))
       if (!porNro && !porRepuesto) return false
     }
@@ -143,7 +143,7 @@ export default function GerenciaHistorial() {
     const { value: motivo, isConfirmed } = await Swal.fire({
       title: '¿Deshacer el rechazo?',
       html: `<div style="font-weight:600;margin-bottom:8px">${escaparHtml(
-        fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)
+        fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)
       )}</div>
       <div style="font-size:0.82rem;color:#64748b">Vuelve al analista para que lo retome.</div>`,
       input: 'textarea',
@@ -232,7 +232,7 @@ export default function GerenciaHistorial() {
       : ''
 
     const { isConfirmed } = await Swal.fire({
-      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}`,
+      title: `Pedido ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)}`,
       html: `<div style="max-height:60vh;overflow:auto">${motivo}${fichas}</div>`,
       width: 360,
       padding: '0.9rem',
@@ -259,7 +259,7 @@ export default function GerenciaHistorial() {
       )
       // Una tabla por ítem; con varios, cada una lleva el nombre del repuesto.
       verHistorialPedido({
-        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen)}`,
+        titulo: `Historial · ${fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)}`,
         secciones: historiales.map(({ item, hist }) => ({
           subtitulo: grupo.items.length > 1 ? item.nombre_repuesto : '',
           historial: conCreacion(hist, { fecha: grupo.fecha, solicita: item.solicita }),
@@ -367,7 +367,7 @@ export default function GerenciaHistorial() {
                           }}
                           title="Ver el detalle del pedido"
                         >
-                          {fmtNro(f.nro_pedido, f._src, f.origen)}
+                          {fmtNro(f.nro_pedido, f._src, f.origen, f.servicio)}
                         </button>
                         <div style={{ fontSize: '0.62rem', color: '#64748b' }}>
                           {f.accion?.fecha ? fmtFecha(f.accion.fecha) : <Raya />}
