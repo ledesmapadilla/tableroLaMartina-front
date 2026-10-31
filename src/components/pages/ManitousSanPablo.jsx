@@ -7,7 +7,8 @@ import { cosechaDeParam } from "../../utils/cosechas";
 import TractorIcon from "../shared/TractorIcon";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
-import { UNIDADES_MANITOU, seccionManitou, fmtPct } from "../../utils/sistemasManitou";
+import { ordenarTarjetas } from "../../utils/ordenTarjetas";
+import { UNIDADES_MANITOU, etiquetaEstado, seccionManitou, fmtPct } from "../../utils/sistemasManitou";
 import { traerAvancesManitou, avanceTotalManitous } from "../../utils/avanceManitous";
 
 // El verde de la tarjeta Manitous de ReparacionesSanPablo.
@@ -15,12 +16,6 @@ const verde = {
   bg: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
   hoverBg: "linear-gradient(135deg, #022c22 0%, #064e3b 100%)",
   accentColor: "#34d399",
-};
-
-// Los colores de los círculos de la página de cada Manitou.
-const ESTADOS = {
-  reparacion: { texto: "En reparación", color: "#ea580c" },
-  espera: { texto: "En espera", color: "#2563eb" },
 };
 
 // Una tarjeta por Manitou y la General (06/10/2026). Todas abren
@@ -46,7 +41,7 @@ const tarjetas = [
 function ManitousSanPablo() {
   const { cosecha } = useParams();
   // Los responsables ya no van en la tarjeta (28/10/2026): se ven adentro.
-  // En reparación o en espera, por unidad (11/10/2026): { [unidad]: estado }.
+  // En reparación o en espera, por unidad (11/10/2026): { [unidad]: { estado, orden } }.
   const [estados, setEstados] = useState({});
   // El avance de la reparación de cada Manitou (21/10/2026), con la misma
   // cuenta que su página: { [unidad]: % }. Sin pesos de los sistemas, vacío.
@@ -67,7 +62,7 @@ function ManitousSanPablo() {
           Object.fromEntries(
             (Array.isArray(lista) ? lista : [])
               .filter((d) => d.estado)
-              .map((d) => [UNIDADES_MANITOU.find((u) => seccionManitou(u) === d.seccion), d.estado])
+              .map((d) => [UNIDADES_MANITOU.find((u) => seccionManitou(u) === d.seccion), d])
           )
         )
       )
@@ -118,8 +113,14 @@ function ManitousSanPablo() {
     return avances[id] === undefined ? {} : { avance: avances[id], avanceTitulo: `Avance de la reparación: ${fmtPct(avances[id])}` };
   };
 
-  const conDatos = tarjetas.map((t) => {
-    const estado = ESTADOS[estados[t.id]];
+  const ordenadas = ordenarTarjetas(
+    tarjetas,
+    (t) => estados[t.id]?.orden,
+    (t) => fechasManitou[seccionManitou(t.id)]
+  );
+
+  const conDatos = ordenadas.map((t) => {
+    const estado = etiquetaEstado(estados[t.id], UNIDADES_MANITOU.length);
     const fecha = t.id !== "general" && fechasManitou[seccionManitou(t.id)];
     return {
       ...t,

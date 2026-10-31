@@ -1,3 +1,5 @@
+import { FAMILIA_TOLVA } from "./familiasReparacion";
+
 /**
  * Los tres carros de Reparaciones San Pablo con página de reparación
  * (29/10/2026): una tarjeta por carro del padrón de CC más la General, que
@@ -9,6 +11,8 @@
  *  - tarjeta  el id de su tarjeta en CarrosSanPablo, que muestra la fecha.
  *  - prefijo  lo que va antes del CC en cada tarjeta ("Carro" si no está).
  *  - porFila  cuántas tarjetas por fila (7 si no está).
+ *  - familia  si tiene plantilla, como las Manitou (utils/familiasReparacion.js):
+ *             General y cada tarjeta abren esas páginas, con el avance en la tarjeta.
  * Porta escaleras sigue entrando por el botón de la página de Escaleras.
  */
 export const CARROS_REPARACION = {
@@ -57,18 +61,19 @@ export const CARROS_REPARACION = {
       icono: "bi bi-bag-fill",
     },
   },
-  // Las tolvas (29/10/2026), igual que los carros: se entra desde el botón
-  // "Reparación tolvas" de su tabla de ingresos, y la fecha se ve en la
+  // Las tolvas (29/10/2026), igual que los carros: se entra desde la tarjeta
+  // Tolvas de ReparacionesSanPablo, y la fecha se ve en la
   // tarjeta Tolvas de ReparacionesSanPablo.
   tolvas: {
     titulo: "Reparación tolvas",
     tituloGeneral: "Reparación tolvas · General",
     prefijo: "Tolva",
     porFila: 3,
+    familia: FAMILIA_TOLVA,
     equipo: "Tolva",
     solapa: "tolvas",
     ruta: "tolvas/reparacion",
-    volver: "tolvas",
+    volver: "",
     colores: {
       bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
       hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",

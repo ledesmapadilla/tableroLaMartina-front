@@ -6,6 +6,7 @@ import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
 import { fmtPct } from "../../utils/sistemasManitou";
 import { traerAvancesManitou, avanceTotalManitous } from "../../utils/avanceManitous";
+import { FAMILIA_TOLVA, traerUnidades } from "../../utils/familiasReparacion";
 
 // Una tarjeta por tipo de equipo que se repara en la base San Pablo, dentro de
 // una cosecha (/reparaciones/sanpablo/:cosecha). Las que todavía no están
@@ -29,6 +30,8 @@ const tarjetas = [
   },
   {
     id: "tolvas",
+    // Directo a las tarjetas (31/10/2026): se borró la tabla de ingresos.
+    ruta: "tolvas/reparacion",
     titulo: "Tolvas",
     bg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)",
     hoverBg: "linear-gradient(135deg, #451a03 0%, #78350f 100%)",
@@ -65,6 +68,8 @@ function ReparacionesSanPablo() {
   // El avance total de las Manitou en reparación (21/10/2026), en su
   // tarjeta: el mismo que la tarjeta General de Manitous.
   const [avanceManitous, setAvanceManitous] = useState(null);
+  // El de las tolvas (31/10/2026), igual: el promedio de todas.
+  const [avanceTolvas, setAvanceTolvas] = useState(null);
   // La fecha límite de las Manitou (28/10/2026), la que se carga adentro, en
   // dd/mm/aaaa; "" si no se cargó.
   const [fechaLimite, setFechaLimite] = useState("");
@@ -74,6 +79,9 @@ function ReparacionesSanPablo() {
   useEffect(() => {
     const nro = cosechaDeParam(cosecha);
     traerAvancesManitou(nro).then((a) => setAvanceManitous(avanceTotalManitous(a)));
+    traerUnidades(FAMILIA_TOLVA)
+      .then((unidades) => traerAvancesManitou(nro, FAMILIA_TOLVA, unidades.map((u) => u.id)))
+      .then((a) => setAvanceTolvas(avanceTotalManitous(a)));
     api
       .get(`/ingresos-sanpablo/fecha-limite-manitou?cosecha=${nro}`)
       .then((r) => setFechaLimite(r.fecha ? r.fecha.slice(0, 10).split("-").reverse().join("/") : ""))
@@ -121,7 +129,8 @@ function ReparacionesSanPablo() {
         >
           {tarjetas.map((t) => {
             const isHovered = hoveredCard === t.id;
-            const ruta = `/reparaciones/sanpablo/${cosecha}/${t.id}`;
+            const avance = { manitous: avanceManitous, tolvas: avanceTolvas }[t.id] ?? null;
+            const ruta = `/reparaciones/sanpablo/${cosecha}/${t.ruta ?? t.id}`;
             return (
               <div
                 key={t.id}
@@ -192,13 +201,13 @@ function ReparacionesSanPablo() {
                     Fecha límite: {fechas[t.id]}
                   </div>
                 )}
-                {/* Manitous: el avance de la reparación al pie de la tarjeta
-                    (en las de cada Manitou va arriba). */}
-                {t.id === "manitous" && avanceManitous !== null && (
+                {/* Manitous y Tolvas: el avance de la reparación al pie de la
+                    tarjeta (en las de cada unidad va arriba). */}
+                {avance !== null && (
                   <div
                     className="d-flex align-items-center gap-2"
                     style={{ position: "absolute", bottom: "16px", left: "50%", transform: "translateX(-50%)", width: "84%" }}
-                    title={`Avance de la reparación de las Manitou: ${fmtPct(avanceManitous)}`}
+                    title={`Avance de la reparación de las ${t.titulo}: ${fmtPct(avance)}`}
                   >
                     <div
                       style={{
@@ -210,10 +219,10 @@ function ReparacionesSanPablo() {
                         overflow: "hidden",
                       }}
                     >
-                      <div style={{ width: `${Math.min(avanceManitous, 100)}%`, height: "100%", backgroundColor: "#facc15" }} />
+                      <div style={{ width: `${Math.min(avance, 100)}%`, height: "100%", backgroundColor: "#facc15" }} />
                     </div>
                     <span className="fw-bold" style={{ fontSize: "1.25rem", lineHeight: 1, color: "#facc15" }}>
-                      {fmtPct(avanceManitous)}
+                      {fmtPct(avance)}
                     </span>
                   </div>
                 )}

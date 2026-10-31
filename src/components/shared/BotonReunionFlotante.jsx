@@ -49,8 +49,10 @@ const DESTINOS = [
 /**
  * `top` lo manda App.jsx: va abajo del botón de tablero, salvo que el rol no
  * vea el tablero, y entonces ocupa su lugar en vez de dejar el hueco.
+ * Con `destino` (31/10/2026, Reparaciones San Pablo) va directo ahí, sin el
+ * menú de planillas.
  */
-function BotonReunionFlotante({ top = "calc(25% + 50px)" }) {
+function BotonReunionFlotante({ top = "calc(25% + 50px)", destino }) {
   const navigate = useNavigate();
   const { puede } = usePermisos();
   const [hovered, setHovered] = useState(false);
@@ -72,10 +74,10 @@ function BotonReunionFlotante({ top = "calc(25% + 50px)" }) {
   return (
     <>
       <button
-        onClick={() => setAbierto(true)}
+        onClick={() => (destino ? navigate(destino) : setAbierto(true))}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title="Reunión — planillas de la flota"
+        title={destino ? "Reunión" : "Reunión — planillas de la flota"}
         style={{
           position: "fixed",
           // Pegado abajo del botón de tablero, que mide 44px y arranca en 25%.

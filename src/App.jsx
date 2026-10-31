@@ -77,11 +77,11 @@ const CarrosSanPablo = lazy(() => import("./components/pages/CarrosSanPablo"));
 const ReparacionCarros = lazy(() => import("./components/pages/ReparacionCarros"));
 const ReparacionCarrosGeneral = lazy(() => import("./components/pages/ReparacionCarrosGeneral"));
 import { CARROS_REPARACION } from "./utils/carrosReparacion";
+import { FAMILIA_TOLVA } from "./utils/familiasReparacion";
 const ManitouGeneralSanPablo = lazy(() => import("./components/pages/ManitouGeneralSanPablo"));
 const ChequeosManitou = lazy(() => import("./components/pages/ChequeosManitou"));
 const PresupuestoManitous = lazy(() => import("./components/pages/PresupuestoManitous"));
 const RepuestosChequeoManitou = lazy(() => import("./components/pages/RepuestosChequeoManitou"));
-const IngresosSanPablo = lazy(() => import("./components/pages/IngresosSanPablo"));
 const IngresosEscaleras = lazy(() => import("./components/pages/IngresosEscaleras"));
 const CosechasSanPablo = lazy(() => import("./components/pages/CosechasSanPablo"));
 import RutaCosecha from "./components/shared/RutaCosecha";
@@ -205,7 +205,6 @@ function App() {
 
 function LayoutDesktop() {
   const { pathname } = useLocation();
-  const esPaginaPrincipal = pathname === "/";
   // Producción es una sección independiente: se navega con su propio navbar
   const esProduccion = pathname === "/produccion" || pathname.startsWith("/produccion/");
   // Compras también es independiente: trae su propio Menu superior.
@@ -214,8 +213,12 @@ function LayoutDesktop() {
   const esPublica = esRutaPublica(pathname);
   // Ya no hay sidebar (sacado el 15/09/2026): cada pantalla de Mantenimiento
   // vuelve a la principal con el logo o "General", y Altas y Salir están en
-  // la principal y en Mantenimiento. Los botones flotantes siguen solo acá.
-  const esMantenimiento = !(esPaginaPrincipal || esProduccion || esCompras || esPublica);
+  // la principal y en Mantenimiento. Los botones flotantes van solo en las
+  // tarjetas de Tractores y Camionetas (31/10/2026).
+  const conBotonesFlotantes = ["/tractores", "/tractores/", "/camionetas", "/camionetas/"].includes(pathname);
+  // En las tarjetas de Reparaciones San Pablo, el de Reunión: todavía sin
+  // pantalla, cae en el 404.
+  const cosechaSanPablo = /^\/reparaciones\/sanpablo\/([^/]+)\/?$/.exec(pathname)?.[1];
 
   // El login cubre todo el proyecto. Se controla acá, en un solo punto, y no
   // ruta por ruta: así ninguna pantalla nueva puede quedar abierta por olvido.
@@ -237,9 +240,12 @@ function LayoutDesktop() {
   return (
       <div className="app-wrapper">
         {/* Los dos botones flotantes tienen su permiso en la tabla de Roles. */}
-        {esMantenimiento && puede("tablero.camionetas") && <BotonTableroFlotante />}
-        {esMantenimiento && puede("tablero.reunion") && (
+        {conBotonesFlotantes && puede("tablero.camionetas") && <BotonTableroFlotante />}
+        {conBotonesFlotantes && puede("tablero.reunion") && (
           <BotonReunionFlotante top={puede("tablero.camionetas") ? "calc(25% + 50px)" : "25%"} />
+        )}
+        {cosechaSanPablo && puede("tablero.reunion") && (
+          <BotonReunionFlotante top="25%" destino={`/reparaciones/sanpablo/${cosechaSanPablo}/reunion`} />
         )}
         <div className="layout-right">
           {esProduccion && <NavbarProduccion />}
@@ -483,21 +489,24 @@ function LayoutDesktop() {
                 path="/reparaciones/sanpablo/:cosecha/manitous/:unidad/:sistema/:fila"
                 element={<RutaCosecha><RepuestosChequeoManitou /></RutaCosecha>}
               />
-              {/* La tabla de ingresos de cada tarjeta: qué equipos del padrón
-                  de CC ofrece y con qué ícono. */}
-              {[
-                ["tolvas", "Tolvas", "Tolva", <i className="bi bi-minecart-loaded"></i>],
-              ].map(([tipo, titulo, equipo, icono]) => (
-                <Route
-                  key={tipo}
-                  path={`/reparaciones/sanpablo/:cosecha/${tipo}`}
-                  element={
-                    <RutaCosecha>
-                      <IngresosSanPablo key={tipo} tipo={tipo} titulo={titulo} equipos={[equipo]} icono={icono} />
-                    </RutaCosecha>
-                  }
-                />
-              ))}
+              {/* Reparación tolvas (31/10/2026): las mismas páginas que las
+                  Manitou. La lista de tarjetas está más abajo, con los carros. */}
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/tolvas/reparacion/general/presupuesto"
+                element={<RutaCosecha><PresupuestoManitous familia={FAMILIA_TOLVA} /></RutaCosecha>}
+              />
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/tolvas/reparacion/:unidad"
+                element={<RutaCosecha><ManitouGeneralSanPablo familia={FAMILIA_TOLVA} /></RutaCosecha>}
+              />
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/tolvas/reparacion/:unidad/:sistema"
+                element={<RutaCosecha><ChequeosManitou familia={FAMILIA_TOLVA} /></RutaCosecha>}
+              />
+              <Route
+                path="/reparaciones/sanpablo/:cosecha/tolvas/reparacion/:unidad/:sistema/:fila"
+                element={<RutaCosecha><RepuestosChequeoManitou familia={FAMILIA_TOLVA} /></RutaCosecha>}
+              />
               {/* Carros porta escaleras / Escaleras: los carros se manejan desde acá
                   (06/10/2026); /carros-porta-escaleras cae en el 404. */}
               <Route
@@ -521,19 +530,20 @@ function LayoutDesktop() {
               {/* Carros porta bines y porta bolsones (29/10/2026): lo mismo que
                   Reparación carros, una tarjeta por carro y la General con la
                   fecha límite. Porta bolsones tenía la tabla de ingresos, sin
-                  nada cargado. Las tolvas, igual, desde su tabla de ingresos, y
-                  los colectivos desde su tarjeta. */}
+                  nada cargado. Las tolvas y los colectivos, desde su tarjeta. */}
               {["bines", "bolsones", "tolvas", "colectivos"].flatMap((tipo) => [
                 <Route
                   key={tipo}
                   path={`/reparaciones/sanpablo/:cosecha/${CARROS_REPARACION[tipo].ruta}`}
                   element={<RutaCosecha><ReparacionCarros key={tipo} tipo={tipo} /></RutaCosecha>}
                 />,
-                <Route
-                  key={`${tipo}-general`}
-                  path={`/reparaciones/sanpablo/:cosecha/${CARROS_REPARACION[tipo].ruta}/general`}
-                  element={<RutaCosecha><ReparacionCarrosGeneral key={tipo} tipo={tipo} /></RutaCosecha>}
-                />,
+                !CARROS_REPARACION[tipo].familia && (
+                  <Route
+                    key={`${tipo}-general`}
+                    path={`/reparaciones/sanpablo/:cosecha/${CARROS_REPARACION[tipo].ruta}/general`}
+                    element={<RutaCosecha><ReparacionCarrosGeneral key={tipo} tipo={tipo} /></RutaCosecha>}
+                  />
+                ),
               ])}
               {/* Carros (28/10/2026): porta bines, porta bolsones y porta
                   escaleras, cada uno a su página. */}

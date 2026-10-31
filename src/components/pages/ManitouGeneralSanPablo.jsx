@@ -5,17 +5,14 @@ import { Button, Form, Modal, Table } from "react-bootstrap";
 import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
 import { usePermisos } from "../../context/permisos";
-import TractorIcon from "../shared/TractorIcon";
+import IconoFamilia from "../shared/IconoFamilia";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
 import TarjetasSanPablo from "../shared/TarjetasSanPablo";
 import {
-  SISTEMAS_MANITOU,
-  MANITOUS_DESPLEGADAS,
-  seccionManitou,
-  unidadManitouValida,
   avanceManitou,
   fmtPct,
 } from "../../utils/sistemasManitou";
+import { FAMILIA_MANITOU, totalEsperaDe, useUnidadReparacion } from "../../utils/familiasReparacion";
 import ChequeosManitou from "./ChequeosManitou";
 import {
   exportarChequeoManitou,
@@ -35,8 +32,6 @@ const cian = {
   hoverBg: "linear-gradient(135deg, #083344 0%, #164e63 100%)",
   accentColor: "#22d3ee",
 };
-// El verde de Manitous, para el título.
-const VERDE = "#047857";
 const COLOR = "#1e293b";
 const ANCHO = "min(500px, calc(100vh - 200px))";
 // La página desplegada: el ancho de la tabla de un sistema.
@@ -55,8 +50,6 @@ const ESTADOS_REPUESTO = {
 // Manitous › General o una Manitou: una tarjeta por sistema de la máquina
 // (06/10/2026; las Manitou desde el 09/10/2026, con lo copiado de General),
 // cada una con su tabla de chequeo (ChequeosManitou).
-const tarjetas = SISTEMAS_MANITOU.map((t) => ({ ...t, ...cian }));
-
 // En General, abajo, la del presupuesto (09/10/2026): de la mitad de alto y
 // el doble de ancho. Abre PresupuestoManitous.
 const tarjetaPresupuesto = {
@@ -80,12 +73,20 @@ const ESTADOS_MANITOU = [
   { id: "espera", titulo: "En espera", color: "#2563eb" },
 ];
 
-function ManitouGeneralSanPablo() {
+function ManitouGeneralSanPablo({ familia = FAMILIA_MANITOU }) {
   const { cosecha: param, unidad } = useParams();
   const navigate = useNavigate();
-  // General (la plantilla) o una Manitou: cada una con sus responsables.
-  const seccion = seccionManitou(unidad);
+  // General (la plantilla) o una unidad: cada una con sus responsables.
+  const seccion = familia.seccion(unidad);
   const esGeneral = unidad === "general";
+  const { valida, nombre: nombreUnidad } = useUnidadReparacion(familia, unidad);
+  const SISTEMAS = familia.sistemas;
+  const tarjetas = SISTEMAS.map((t) => ({ ...t, ...cian }));
+  // En una pantalla baja no se achican más: los títulos dejarían de entrar.
+  const anchoGeneral = familia.anchoGeneral ?? `max(${ANCHO_GENERAL}, 480px)`;
+  // El color de la familia, para el título.
+  const VERDE = familia.color;
+  const raiz = `/reparaciones/sanpablo/${param}/${familia.ruta}`;
   const cosecha = cosechaDeParam(param);
   const { puede } = usePermisos();
   const sinEditar = !puede("sanpablo.ingresos", "editar");
@@ -97,31 +98,74 @@ function ManitouGeneralSanPablo() {
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    if (!unidadManitouValida(unidad)) return;
+    if (!valida) return;
     api
       .get(`/ingresos-sanpablo/responsables?cosecha=${cosecha}&seccion=${seccion}`)
       .then((r) => setResponsables(r.nombres))
       .catch(() => setResponsables([]));
-  }, [cosecha, seccion, unidad]);
+  }, [cosecha, seccion, valida]);
 
   // El estado de la Manitou en la cosecha (no en General).
   const [estadoManitou, setEstadoManitou] = useState(null);
+  // El lugar que se le puso en la espera y sobre cuántas (31/10/2026).
+  const [espera, setEspera] = useState({ orden: null, total: 0 });
   useEffect(() => {
-    if (esGeneral || !unidadManitouValida(unidad)) return;
+    if (esGeneral || !valida) return;
     api
       .get(`/ingresos-sanpablo/estado-manitou?cosecha=${cosecha}`)
-      .then((lista) => setEstadoManitou((Array.isArray(lista) ? lista : []).find((d) => d.seccion === seccion)?.estado ?? null))
+      .then((data) => {
+        const lista = Array.isArray(data) ? data : [];
+        const propia = lista.find((d) => d.seccion === seccion);
+        setEstadoManitou(propia?.estado ?? null);
+        setEspera((e) => ({ ...e, orden: propia?.orden ?? null }));
+      })
       .catch(() => setEstadoManitou(null));
-  }, [esGeneral, unidad, cosecha, seccion]);
+  }, [esGeneral, valida, cosecha, seccion, familia]);
 
-  const marcarEstado = async (id) => {
-    const nuevo = estadoManitou === id ? null : id;
+  useEffect(() => {
+    if (esGeneral || !valida) return;
+    totalEsperaDe(familia).then((total) => setEspera((e) => ({ ...e, total })));
+  }, [esGeneral, valida, familia]);
+
+  // Qué lugar ocupa en la espera: null si se cancela.
+  const pedirOrden = async () => {
+    const max = espera.total;
+    const { value, isConfirmed } = await Swal.fire({
+      title: "Lugar en la espera",
+      text: `Del 1 al ${max}.`,
+      input: "number",
+      inputValue: espera.orden ?? "",
+      inputAttributes: { min: 1, max, step: 1 },
+      inputValidator: (v) => (Number.isInteger(Number(v)) && v >= 1 && v <= max ? undefined : `Poné un número de 1 a ${max}`),
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#1e293b",
+      cancelButtonColor: "#64748b",
+    });
+    return isConfirmed ? Number(value) : null;
+  };
+
+  const guardarEstado = async (estado, orden) => {
     try {
-      const doc = await api.put("/ingresos-sanpablo/estado-manitou", { cosecha, seccion, estado: nuevo });
+      const doc = await api.put("/ingresos-sanpablo/estado-manitou", { cosecha, seccion, estado, orden });
       setEstadoManitou(doc.estado ?? null);
+      setEspera((e) => ({ ...e, orden: doc.orden ?? null }));
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
     }
+  };
+
+  const cambiarOrden = async () => {
+    const orden = await pedirOrden();
+    if (orden !== null) guardarEstado("espera", orden);
+  };
+
+  const marcarEstado = async (id) => {
+    const nuevo = estadoManitou === id ? null : id;
+    if (nuevo !== "espera") return guardarEstado(nuevo);
+    cambiarOrden();
   };
 
   // ── Fecha límite (28/10/2026) ──
@@ -129,9 +173,9 @@ function ManitouGeneralSanPablo() {
   // arriba de las tarjetas de Manitous). Las dos en "AAAA-MM-DD" o "".
   const [fechaLimite, setFechaLimite] = useState({ total: "", propia: "" });
   useEffect(() => {
-    if (esGeneral || !unidadManitouValida(unidad)) return;
+    if (esGeneral || !valida) return;
     api
-      .get(`/ingresos-sanpablo/fecha-limite-manitou?cosecha=${cosecha}`)
+      .get(`/ingresos-sanpablo/fecha-limite-manitou?cosecha=${cosecha}${familia.consulta}`)
       .then((r) =>
         setFechaLimite({
           total: r.fecha ? r.fecha.slice(0, 10) : "",
@@ -139,7 +183,7 @@ function ManitouGeneralSanPablo() {
         })
       )
       .catch(() => setFechaLimite({ total: "", propia: "" }));
-  }, [esGeneral, unidad, cosecha, seccion]);
+  }, [esGeneral, valida, cosecha, seccion, familia]);
 
   // Se guarda al elegirla; vacía la borra.
   const guardarFechaLimite = async (valor) => {
@@ -147,7 +191,7 @@ function ManitouGeneralSanPablo() {
       Swal.fire({
         icon: "error",
         title: "Fecha fuera de término",
-        text: `No puede pasar la fecha límite de las Manitou (${fechaLimite.total.split("-").reverse().join("/")}).`,
+        text: `No puede pasar la fecha límite de las ${familia.plural} (${fechaLimite.total.split("-").reverse().join("/")}).`,
         width: "300px",
       });
       return;
@@ -155,7 +199,7 @@ function ManitouGeneralSanPablo() {
     const anterior = fechaLimite.propia;
     setFechaLimite((f) => ({ ...f, propia: valor }));
     try {
-      await api.put("/ingresos-sanpablo/fecha-limite-manitou", { cosecha, seccion, fecha: valor || null });
+      await api.put("/ingresos-sanpablo/fecha-limite-manitou", { cosecha, seccion, fecha: valor || null, ...familia.extra });
     } catch (err) {
       setFechaLimite((f) => ({ ...f, propia: anterior }));
       Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
@@ -169,25 +213,25 @@ function ManitouGeneralSanPablo() {
   // El modal de General: null cerrado o { [sistema]: "texto del input" }.
   const [pesosForm, setPesosForm] = useState(null);
   useEffect(() => {
-    if (!unidadManitouValida(unidad)) return;
+    if (!valida) return;
     api
-      .get(`/ingresos-sanpablo/pesos-manitou?cosecha=${cosecha}`)
+      .get(`/ingresos-sanpablo/pesos-manitou?cosecha=${cosecha}${familia.consulta}`)
       .then((r) => setPesos(r?.pesos || {}))
       .catch(() => setPesos({}));
-  }, [unidad, cosecha]);
+  }, [valida, cosecha, familia]);
 
-  const sumaPesosForm = pesosForm ? SISTEMAS_MANITOU.reduce((t, s) => t + (Number(pesosForm[s.id]) || 0), 0) : 0;
-  const pesosCompletos = pesosForm && SISTEMAS_MANITOU.every((s) => pesosForm[s.id] !== "" && Number(pesosForm[s.id]) >= 0);
+  const sumaPesosForm = pesosForm ? SISTEMAS.reduce((t, s) => t + (Number(pesosForm[s.id]) || 0), 0) : 0;
+  const pesosCompletos = pesosForm && SISTEMAS.every((s) => pesosForm[s.id] !== "" && Number(pesosForm[s.id]) >= 0);
   const sumanCien = Math.abs(sumaPesosForm - 100) < 0.01;
 
   const abrirPesos = () =>
-    setPesosForm(Object.fromEntries(SISTEMAS_MANITOU.map((s) => [s.id, pesos[s.id] === undefined ? "" : String(pesos[s.id])])));
+    setPesosForm(Object.fromEntries(SISTEMAS.map((s) => [s.id, pesos[s.id] === undefined ? "" : String(pesos[s.id])])));
 
   const guardarPesos = async (e) => {
     e.preventDefault();
     setGuardando(true);
     try {
-      const r = await api.put("/ingresos-sanpablo/pesos-manitou", { cosecha, pesos: pesosForm });
+      const r = await api.put("/ingresos-sanpablo/pesos-manitou", { cosecha, pesos: pesosForm, ...familia.extra });
       setPesos(r.pesos || {});
       setPesosForm(null);
       Swal.fire({ icon: "success", title: "Pesos guardados", timer: 1500, showConfirmButton: false, width: "300px" });
@@ -201,7 +245,7 @@ function ManitouGeneralSanPablo() {
   // ── Desplegada (09/10/2026) ──
   // Todos los sistemas en una página: se traen juntos y las cotizaciones
   // una sola vez.
-  const desplegada = MANITOUS_DESPLEGADAS.includes(unidad);
+  const desplegada = !esGeneral && valida;
   const { hash } = useLocation();
   const [datos, setDatos] = useState(null); // { filas: { [sistema]: [] }, cotizaciones }
   // Un solo filtro para todos los sistemas.
@@ -210,7 +254,7 @@ function ManitouGeneralSanPablo() {
   // agrupados (10/10/2026), salvo el sistema al que se vuelve desde sus
   // repuestos (#sistema).
   const [plegados, setPlegados] = useState(
-    () => new Set(SISTEMAS_MANITOU.map((s) => s.id).filter((id) => `#${id}` !== window.location.hash))
+    () => new Set(SISTEMAS.map((s) => s.id).filter((id) => `#${id}` !== window.location.hash))
   );
   const plegar = (id) =>
     setPlegados((prev) => {
@@ -240,11 +284,11 @@ function ManitouGeneralSanPablo() {
     ]).then(([todas, presupuestos]) => {
       const lista = Array.isArray(todas) ? todas : [];
       setDatos({
-        filas: Object.fromEntries(SISTEMAS_MANITOU.map((s) => [s.id, lista.filter((f) => f.sistema === s.id)])),
+        filas: Object.fromEntries(SISTEMAS.map((s) => [s.id, lista.filter((f) => f.sistema === s.id)])),
         cotizaciones: Object.fromEntries((Array.isArray(presupuestos) ? presupuestos : []).map((p) => [p.repuesto, p.estado])),
       });
     });
-  }, [desplegada, cosecha, seccion]);
+  }, [desplegada, cosecha, seccion, SISTEMAS]);
 
   // Las filas al día de cada sistema (cada tabla avisa sus cambios), para
   // el Excel único de la página.
@@ -257,14 +301,14 @@ function ManitouGeneralSanPablo() {
   // El avance de esta Manitou con los pesos de General: se mueve con cada OK.
   const avance =
     desplegada && !esGeneral && datos
-      ? avanceManitou(Object.fromEntries(SISTEMAS_MANITOU.map((s) => [s.id, filasDeSistema(s.id)])), pesos)
+      ? avanceManitou(Object.fromEntries(SISTEMAS.map((s) => [s.id, filasDeSistema(s.id)])), pesos, SISTEMAS)
       : null;
 
   const exportarExcel = () =>
     exportarChequeoManitou({
-      titulo: `Reparaciones San Pablo — Manitou ${unidad} — Cosecha ${param}`,
-      archivo: `sanpablo_manitou_${unidad}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      secciones: SISTEMAS_MANITOU.map((s) => ({ sistema: s, filas: filasDeSistema(s.id) })),
+      titulo: `Reparaciones San Pablo — ${familia.nombre} ${nombreUnidad} — Cosecha ${param}`,
+      archivo: `sanpablo_${familia.id}_${nombreUnidad}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      secciones: SISTEMAS.map((s) => ({ sistema: s, filas: filasDeSistema(s.id) })),
       cotizaciones: datos.cotizaciones,
       general: esGeneral,
       filtro: esGeneral ? undefined : filtro,
@@ -277,7 +321,7 @@ function ManitouGeneralSanPablo() {
   const tareasRepuestos =
     datos && !esGeneral
       ? tareasConRepuestos(
-          SISTEMAS_MANITOU.map((s) => ({ sistema: s, filas: filasDeSistema(s.id) })),
+          SISTEMAS.map((s) => ({ sistema: s, filas: filasDeSistema(s.id) })),
           datos.cotizaciones,
           filtro
         )
@@ -293,8 +337,8 @@ function ManitouGeneralSanPablo() {
           .filter((t) => t.repuestos.length > 0);
   const exportarRepuestos = () =>
     exportarRepuestosManitou({
-      titulo: `Repuestos — Manitou ${unidad} — Cosecha ${param}`,
-      archivo: `sanpablo_manitou_repuestos_${unidad}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      titulo: `Repuestos — ${familia.nombre} ${nombreUnidad} — Cosecha ${param}`,
+      archivo: `sanpablo_${familia.id}_repuestos_${nombreUnidad}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
       tareas: repuestosFiltrados,
     });
 
@@ -355,20 +399,23 @@ function ManitouGeneralSanPablo() {
             width: "56px",
             height: "56px",
             borderRadius: "14px",
-            background: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
-            boxShadow: "0 6px 16px rgba(4, 120, 87, 0.35)",
+            background: familia.gradiente,
+            boxShadow: familia.sombra,
             flexShrink: 0,
           }}
         >
-          <TractorIcon size="2rem" color="#fff" />
+          <IconoFamilia familia={familia} size="2rem" />
         </div>
         <div>
           <div className="fw-bold" style={{ fontSize: "2rem", lineHeight: 1, color: VERDE, letterSpacing: "0.02em" }}>
-            {desplegada ? `MANITOU ${esGeneral ? "GENERAL" : unidad}` : "MANITOU"}
+            {desplegada ? `${familia.nombre.toUpperCase()} ${esGeneral ? "GENERAL" : nombreUnidad}` : familia.nombre.toUpperCase()}
           </div>
-          <div className="text-secondary fw-semibold" style={{ fontSize: "0.9rem" }}>
-            {desplegada ? `${esGeneral ? "Plantilla · " : ""}Cosecha ${param}` : `${esGeneral ? "General (plantilla)" : `Manitou ${unidad}`} · Cosecha ${param}`}
-          </div>
+          {/* En General, solo el título. */}
+          {desplegada && (
+            <div className="text-secondary fw-semibold" style={{ fontSize: "0.9rem" }}>
+              Cosecha {param}
+            </div>
+          )}
         </div>
       </div>
 
@@ -378,8 +425,8 @@ function ManitouGeneralSanPablo() {
           {ESTADOS_MANITOU.map((e) => {
             const marcado = estadoManitou === e.id;
             return (
+              <div key={e.id} className="d-flex align-items-center gap-1">
               <button
-                key={e.id}
                 type="button"
                 onClick={() => marcarEstado(e.id)}
                 disabled={sinEditar}
@@ -402,6 +449,20 @@ function ManitouGeneralSanPablo() {
                 </span>
                 <span>{e.titulo}</span>
               </button>
+              {/* Su lugar: se toca para cambiarlo. */}
+              {marcado && e.id === "espera" && (
+                <button
+                  type="button"
+                  onClick={cambiarOrden}
+                  disabled={sinEditar}
+                  className="btn btn-link p-0 text-decoration-none fw-bold"
+                  style={{ fontSize: "0.82rem", color: e.color, opacity: 1 }}
+                  title={sinEditar ? "Sin permiso para editar" : "Cambiar el lugar en la espera"}
+                >
+                  {espera.orden ?? "—"}/{espera.total}
+                </button>
+              )}
+              </div>
             );
           })}
         </div>
@@ -495,7 +556,7 @@ function ManitouGeneralSanPablo() {
         </span>
         {avance.total === null ? (
           <span className="text-muted fw-semibold text-center" style={{ fontSize: "0.9rem" }}>
-            Sin pesos cargados: se cargan en Manitous › General
+            Sin pesos cargados: se cargan en {familia.plural} › General
           </span>
         ) : (
           barra(avance.total, "8px")
@@ -523,7 +584,7 @@ function ManitouGeneralSanPablo() {
                 sinEditar
                   ? "Sin permiso para editar"
                   : fechaLimite.total
-                  ? `Hasta el ${fechaLimite.total.split("-").reverse().join("/")}, la fecha límite de las Manitou`
+                  ? `Hasta el ${fechaLimite.total.split("-").reverse().join("/")}, la fecha límite de las ${familia.plural}`
                   : "Para cuándo tiene que estar reparada"
               }
             />
@@ -618,9 +679,9 @@ function ManitouGeneralSanPablo() {
         <Form onSubmit={guardarPesos}>
           <Modal.Body className="p-3">
             <div className="text-secondary mb-2" style={{ fontSize: "0.76rem" }}>
-              Cuánto pesa cada sistema en la reparación. Vale para las cinco Manitou.
+              Cuánto pesa cada sistema en la reparación. Vale para todas las {familia.plural}.
             </div>
-            {SISTEMAS_MANITOU.map((s) => (
+            {SISTEMAS.map((s) => (
               <div
                 key={s.id}
                 className="d-flex align-items-center justify-content-between gap-2 py-1"
@@ -717,7 +778,7 @@ function ManitouGeneralSanPablo() {
       >
         <Modal.Title className="fs-6 fw-normal d-flex align-items-center gap-2 text-white">
           <i className="bi bi-gear-fill"></i>
-          <span>Repuestos · Manitou {unidad}</span>
+          <span>Repuestos · {familia.nombre} {nombreUnidad}</span>
         </Modal.Title>
       </Modal.Header>
       <Modal.Body className="p-3">
@@ -837,7 +898,7 @@ function ManitouGeneralSanPablo() {
     </Modal>
   );
 
-  if (!unidadManitouValida(unidad)) return <Error404 />;
+  if (!valida) return <Error404 />;
 
   return (
     <div
@@ -854,7 +915,7 @@ function ManitouGeneralSanPablo() {
       {/* La cosecha y Manitou › General ya están en el encabezado de abajo. */}
       <NavbarSanPablo
         icono={<i className="bi bi-grid-fill"></i>}
-        volverA={`/reparaciones/sanpablo/${param}/manitous`}
+        volverA={raiz}
       />
 
       {desplegada ? (
@@ -872,7 +933,7 @@ function ManitouGeneralSanPablo() {
               <div className="d-flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setPlegados(new Set(SISTEMAS_MANITOU.map((s) => s.id)))}
+                  onClick={() => setPlegados(new Set(SISTEMAS.map((s) => s.id)))}
                   className="btn btn-sm btn-outline-secondary rounded-3 px-2 py-0 d-flex align-items-center gap-1"
                   style={{ height: "26px", fontSize: "0.74rem", fontWeight: 600 }}
                 >
@@ -896,10 +957,10 @@ function ManitouGeneralSanPablo() {
                   <div className="d-flex align-items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => navigate(`/reparaciones/sanpablo/${param}/manitous/general/presupuesto`)}
+                    onClick={() => navigate(`${raiz}/general/presupuesto`)}
                     className="btn btn-sm rounded-3 px-2 py-0 d-flex align-items-center gap-1"
                     style={{ height: "26px", fontSize: "0.74rem", fontWeight: 600, backgroundColor: "#059669", borderColor: "#059669", color: "#fff" }}
-                    title="El presupuesto de las Manitous"
+                    title={`El presupuesto de las ${familia.plural}`}
                   >
                     <i className="bi bi-currency-dollar"></i>
                     <span>Presupuesto</span>
@@ -910,7 +971,7 @@ function ManitouGeneralSanPablo() {
                     disabled={!datos}
                     className="btn btn-sm rounded-3 px-2 py-0 d-flex align-items-center gap-1"
                     style={{ height: "26px", fontSize: "0.74rem", fontWeight: 600, backgroundColor: COLOR, borderColor: COLOR, color: "#fff" }}
-                    title="Todos los repuestos de la Manitou, por tarea"
+                    title={`Todos los repuestos de la ${familia.nombre}, por tarea`}
                   >
                     <i className="bi bi-gear-fill"></i>
                     <span>Repuestos</span>
@@ -923,12 +984,12 @@ function ManitouGeneralSanPablo() {
             {!datos ? (
               <div className="text-center text-muted py-5">Cargando…</div>
             ) : hayFiltro(filtro) &&
-              !SISTEMAS_MANITOU.some((s) =>
+              !SISTEMAS.some((s) =>
                 filasDeSistema(s.id).some((f) => pasaFiltro(f, filtro, datos.cotizaciones))
               ) ? (
               <div className="text-center text-muted py-5">Ningún ítem coincide con los filtros.</div>
             ) : (
-              SISTEMAS_MANITOU.map((s) => (
+              SISTEMAS.map((s) => (
                 <ChequeosManitou
                   key={s.id}
                   embebido
@@ -942,6 +1003,8 @@ function ManitouGeneralSanPablo() {
                   estadoIngreso={estadosIngreso[s.id]}
                   onEstadoIngreso={esGeneral ? undefined : alCambiarEstadoIngreso}
                   avance={avance?.porSistema.find((p) => p.sistema.id === s.id)}
+                  familia={familia}
+                  datosUnidad={{ valida, nombre: nombreUnidad }}
                 />
               ))
             )}
@@ -953,12 +1016,14 @@ function ManitouGeneralSanPablo() {
            responsables. */
         <TarjetasSanPablo
           tarjetas={esGeneral ? [...tarjetas, tarjetaPresupuesto] : tarjetas}
-          base={`/reparaciones/sanpablo/${param}/manitous/${unidad}`}
-          porFila={4}
-          maxWidth={esGeneral ? ANCHO_GENERAL : ANCHO}
+          base={`${raiz}/${unidad}`}
+          porFila={familia.porFila}
+          maxWidth={esGeneral ? anchoGeneral : ANCHO}
           chicas
+          parejas={familia.parejas}
+          ajustadas={esGeneral}
         >
-          {encabezado(esGeneral ? ANCHO_GENERAL : ANCHO)}
+          {encabezado(esGeneral ? anchoGeneral : ANCHO)}
         </TarjetasSanPablo>
       )}
 

@@ -3,9 +3,9 @@ import { useParams } from "react-router-dom";
 import { Container, Table, Button, Modal } from "react-bootstrap";
 import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
-import { SISTEMAS_MANITOU, UNIDADES_MANITOU } from "../../utils/sistemasManitou";
+import { FAMILIA_MANITOU, traerUnidades } from "../../utils/familiasReparacion";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
-import TractorIcon from "../shared/TractorIcon";
+import IconoFamilia from "../shared/IconoFamilia";
 import { th as thBase, td, tdCentro, thGrande, tdGrande } from "../compras/formato";
 import { Raya } from "../compras/estilos";
 import { opcionElegida } from "../compras/precioElegido";
@@ -47,7 +47,7 @@ const importeDe = (p) => {
 };
 
 // Suma por sistema y por Manitou: { [sistema]: { [unidad]: importe } }.
-const sumar = (lista, importe, unidad) => {
+const sumar = (lista, importe, unidad, unidades, sistemas) => {
   const tabla = {};
   for (const x of lista) {
     const v = importe(x);
@@ -56,9 +56,9 @@ const sumar = (lista, importe, unidad) => {
     tabla[x.sistema][unidad(x)] = (tabla[x.sistema][unidad(x)] || 0) + v;
   }
   const celda = (s, u) => tabla[s]?.[u] ?? 0;
-  const porSistema = (s) => UNIDADES_MANITOU.reduce((acc, u) => acc + celda(s, u), 0);
-  const porUnidad = (u) => SISTEMAS_MANITOU.reduce((acc, s) => acc + celda(s.id, u), 0);
-  const total = SISTEMAS_MANITOU.reduce((acc, s) => acc + porSistema(s.id), 0);
+  const porSistema = (s) => unidades.reduce((acc, u) => acc + celda(s, u), 0);
+  const porUnidad = (u) => sistemas.reduce((acc, s) => acc + celda(s.id, u), 0);
+  const total = sistemas.reduce((acc, s) => acc + porSistema(s.id), 0);
   return { celda, porSistema, porUnidad, total };
 };
 
@@ -72,11 +72,14 @@ const sumar = (lista, importe, unidad) => {
  * verdad, que sale de las órdenes de pago de los repuestos pedidos desde las
  * Manitou (también sin IVA). Cada número se toca y abre su detalle.
  */
-export default function PresupuestoManitous() {
+export default function PresupuestoManitous({ familia = FAMILIA_MANITOU }) {
   const { cosecha: param } = useParams();
+  const sistemas = familia.sistemas;
   const cosecha = cosechaDeParam(param);
   const [presupuestos, setPresupuestos] = useState([]);
   const [reales, setReales] = useState([]);
+  // Los C.C. de las columnas.
+  const [unidades, setUnidades] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [vista, setVista] = useState("presupuesto"); // "presupuesto" | "real"
   // El detalle de un número tocado: { tipo: "presupuesto" | "real", titulo, sistema?, unidad? }.
@@ -94,17 +97,20 @@ export default function PresupuestoManitous() {
   useEffect(() => {
     Promise.all([
       api.get("/presupuestos-reparaciones").catch(() => []),
-      api.get(`/ingresos-sanpablo/chequeos/real?cosecha=${cosecha}`).catch(() => []),
+      api.get(`/ingresos-sanpablo/chequeos/real?cosecha=${cosecha}${familia.consulta}`).catch(() => []),
+      traerUnidades(familia),
     ])
-      .then(([pres, real]) => {
-        setPresupuestos((Array.isArray(pres) ? pres : []).filter((p) => p.cosecha === cosecha));
+      .then(([pres, real, lista]) => {
+        const ccs = lista.map((u) => u.cc).sort((a, b) => a.localeCompare(b, "es", { numeric: true }));
+        setUnidades(ccs);
+        setPresupuestos((Array.isArray(pres) ? pres : []).filter((p) => p.cosecha === cosecha && ccs.includes(p.cc)));
         setReales(Array.isArray(real) ? real : []);
       })
       .finally(() => setCargando(false));
-  }, [cosecha]);
+  }, [cosecha, familia]);
 
-  const pres = sumar(presupuestos, importeDe, (p) => p.cc);
-  const real = sumar(reales, (r) => r.total, (r) => r.unidad);
+  const pres = sumar(presupuestos, importeDe, (p) => p.cc, unidades, familia.sistemas);
+  const real = sumar(reales, (r) => r.total, (r) => r.unidad, unidades, familia.sistemas);
   const sinCotizar = presupuestos.filter((p) => importeDe(p) === null).length;
   const esReal = vista === "real";
 
@@ -145,15 +151,15 @@ export default function PresupuestoManitous() {
       </div>
     );
 
-  const tituloSistema = (id) => SISTEMAS_MANITOU.find((s) => s.id === id)?.titulo || id;
-  const ordenSistema = (id) => SISTEMAS_MANITOU.findIndex((s) => s.id === id);
+  const tituloSistema = (id) => sistemas.find((s) => s.id === id)?.titulo || id;
+  const ordenSistema = (id) => sistemas.findIndex((s) => s.id === id);
   const enDetalle = (sistema, unidad) =>
     (!detalle.sistema || sistema === detalle.sistema) && (!detalle.unidad || unidad === detalle.unidad);
 
   const lineasPresupuesto =
     detalle?.tipo === "presupuesto"
       ? presupuestos
-          .filter((p) => importeDe(p) !== null && UNIDADES_MANITOU.includes(p.cc) && enDetalle(p.sistema, p.cc))
+          .filter((p) => importeDe(p) !== null && unidades.includes(p.cc) && enDetalle(p.sistema, p.cc))
           .sort((a, b) => a.cc.localeCompare(b.cc) || ordenSistema(a.sistema) - ordenSistema(b.sistema) || a.nro - b.nro)
       : [];
   // En el real, un renglón por ítem de OP; un pedido sin OP todavía, uno solo.
@@ -172,10 +178,10 @@ export default function PresupuestoManitous() {
   const exportarExcel = () =>
     esReal
       ? exportarPlanilla({
-          titulo: `Reparaciones San Pablo — Manitous: presupuestado vs. real — Cosecha ${param}`,
+          titulo: `Reparaciones San Pablo — ${familia.plural}: presupuestado vs. real — Cosecha ${param}`,
           columnas: [
             { titulo: "Sistema", ancho: 22 },
-            ...UNIDADES_MANITOU.flatMap((u) => [
+            ...unidades.flatMap((u) => [
               { titulo: `${u} presup.`, ancho: 15, moneda: true },
               { titulo: `${u} real`, ancho: 15, moneda: true },
             ]),
@@ -184,40 +190,40 @@ export default function PresupuestoManitous() {
             { titulo: "Diferencia", ancho: 17, moneda: true },
           ],
           filas: [
-            ...SISTEMAS_MANITOU.map((s) => [
+            ...sistemas.map((s) => [
               s.titulo,
-              ...UNIDADES_MANITOU.flatMap((u) => [pres.celda(s.id, u), real.celda(s.id, u)]),
+              ...unidades.flatMap((u) => [pres.celda(s.id, u), real.celda(s.id, u)]),
               pres.porSistema(s.id),
               real.porSistema(s.id),
               pres.porSistema(s.id) - real.porSistema(s.id),
             ]),
             [
               "TOTAL",
-              ...UNIDADES_MANITOU.flatMap((u) => [pres.porUnidad(u), real.porUnidad(u)]),
+              ...unidades.flatMap((u) => [pres.porUnidad(u), real.porUnidad(u)]),
               pres.total,
               real.total,
               pres.total - real.total,
             ],
           ],
           hoja: "Comparación",
-          archivo: `sanpablo_manitous_presupuesto_vs_real_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          archivo: `sanpablo_${familia.id}_presupuesto_vs_real_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
         })
       : exportarPlanilla({
-          titulo: `Reparaciones San Pablo — Presupuesto Manitous — Cosecha ${param}`,
+          titulo: `Reparaciones San Pablo — Presupuesto ${familia.plural} — Cosecha ${param}`,
           columnas: [
             { titulo: "Sistema", ancho: 22 },
-            ...UNIDADES_MANITOU.map((u) => ({ titulo: `Manitou ${u}`, ancho: 16, moneda: true })),
+            ...unidades.map((u) => ({ titulo: `${familia.nombre} ${u}`, ancho: 16, moneda: true })),
             { titulo: "Total", ancho: 18, moneda: true },
           ],
           filas: [
-            ...SISTEMAS_MANITOU.map((s) => [s.titulo, ...UNIDADES_MANITOU.map((u) => pres.celda(s.id, u)), pres.porSistema(s.id)]),
-            ["TOTAL", ...UNIDADES_MANITOU.map(pres.porUnidad), pres.total],
+            ...sistemas.map((s) => [s.titulo, ...unidades.map((u) => pres.celda(s.id, u)), pres.porSistema(s.id)]),
+            ["TOTAL", ...unidades.map(pres.porUnidad), pres.total],
           ],
           hoja: "Presupuesto",
-          archivo: `sanpablo_manitous_presupuesto_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+          archivo: `sanpablo_${familia.id}_presupuesto_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
         });
 
-  const columnasTabla = UNIDADES_MANITOU.length + (esReal ? 4 : 2);
+  const columnasTabla = unidades.length + (esReal ? 4 : 2);
 
   return (
     <div
@@ -233,7 +239,7 @@ export default function PresupuestoManitous() {
     >
       <NavbarSanPablo
         icono={<i className="bi bi-currency-dollar"></i>}
-        volverA={`/reparaciones/sanpablo/${param}/manitous/general`}
+        volverA={`/reparaciones/sanpablo/${param}/${familia.ruta}/general`}
       />
 
       <Container
@@ -241,28 +247,28 @@ export default function PresupuestoManitous() {
         className="px-3 py-3 d-flex flex-column flex-grow-1"
         style={{ maxWidth: esReal ? "1200px" : "1050px", width: "100%", margin: "0 auto", overflow: "hidden" }}
       >
-        <div className="d-flex align-items-center gap-3 mb-3 pb-2 flex-wrap" style={{ borderBottom: `3px solid ${VERDE}` }}>
+        <div className="d-flex align-items-center gap-3 mb-3 pb-2 flex-wrap" style={{ borderBottom: `3px solid ${familia.color}` }}>
           <div
             className="d-flex align-items-center justify-content-center"
             style={{
               width: "44px",
               height: "44px",
               borderRadius: "12px",
-              background: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
-              boxShadow: "0 6px 16px rgba(4, 120, 87, 0.35)",
+              background: familia.gradiente,
+              boxShadow: familia.sombra,
               flexShrink: 0,
             }}
           >
-            <TractorIcon size="1.6rem" color="#fff" />
+            <IconoFamilia familia={familia} size="1.6rem" />
           </div>
           <div>
-            <div className="fw-bold" style={{ fontSize: "1.5rem", lineHeight: 1, color: VERDE, letterSpacing: "0.02em" }}>
+            <div className="fw-bold" style={{ fontSize: "1.5rem", lineHeight: 1, color: familia.color, letterSpacing: "0.02em" }}>
               {esReal ? (
                 <>
-                  MANITOU · PRESUPUESTADO <span style={{ textTransform: "none" }}>vs.</span> REAL
+                  {familia.nombre.toUpperCase()} · PRESUPUESTADO <span style={{ textTransform: "none" }}>vs.</span> REAL
                 </>
               ) : (
-                "MANITOU · PRESUPUESTO"
+                `${familia.nombre.toUpperCase()} · PRESUPUESTO`
               )}
             </div>
             <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
@@ -311,9 +317,9 @@ export default function PresupuestoManitous() {
             <thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
               <tr>
                 <th style={thG}>Sistema</th>
-                {UNIDADES_MANITOU.map((u) => (
+                {unidades.map((u) => (
                   <th key={u} style={thGCentro}>
-                    Manitou {u}
+                    {familia.nombre} {u}
                   </th>
                 ))}
                 {esReal ? (
@@ -336,13 +342,13 @@ export default function PresupuestoManitous() {
                 </tr>
               ) : (
                 <>
-                  {SISTEMAS_MANITOU.map((s) => {
-                    const dSistema = { titulo: `${s.titulo} · Todas las Manitous`, sistema: s.id };
+                  {sistemas.map((s) => {
+                    const dSistema = { titulo: `${s.titulo} · Todas las ${familia.plural}`, sistema: s.id };
                     return (
                       <tr key={s.id}>
                         <td style={{ ...tdG, fontWeight: 600 }}>{s.titulo}</td>
-                        {UNIDADES_MANITOU.map((u) => {
-                          const d = { titulo: `${s.titulo} · Manitou ${u}`, sistema: s.id, unidad: u };
+                        {unidades.map((u) => {
+                          const d = { titulo: `${s.titulo} · ${familia.nombre} ${u}`, sistema: s.id, unidad: u };
                           return (
                             <td key={u} style={tdGImporte}>
                               {esReal ? celdaComparada(pres.celda(s.id, u), real.celda(s.id, u), d) : importe(pres.celda(s.id, u), d)}
@@ -365,8 +371,8 @@ export default function PresupuestoManitous() {
                   })}
                   <tr className="fila-total">
                     <td style={{ ...tdG, fontWeight: 700, color: COLOR }}>TOTAL</td>
-                    {UNIDADES_MANITOU.map((u) => {
-                      const d = { titulo: `Manitou ${u} · Todos los sistemas`, unidad: u };
+                    {unidades.map((u) => {
+                      const d = { titulo: `${familia.nombre} ${u} · Todos los sistemas`, unidad: u };
                       return (
                         <td key={u} style={{ ...tdGImporte, fontWeight: 700, color: COLOR }}>
                           {esReal ? celdaComparada(pres.porUnidad(u), real.porUnidad(u), d) : importe(pres.porUnidad(u), d)}
@@ -376,16 +382,16 @@ export default function PresupuestoManitous() {
                     {esReal ? (
                       <>
                         <td className="col-corte" style={{ ...tdGImporte, fontWeight: 700, color: GRIS }}>
-                          {pres.total ? importe(pres.total, { titulo: "Todas las Manitous" }) : fmtPrecio(0)}
+                          {pres.total ? importe(pres.total, { titulo: `Todas las ${familia.plural}` }) : fmtPrecio(0)}
                         </td>
                         <td style={{ ...tdTotal, backgroundColor: "#d1fae5" }}>
-                          {real.total ? importeReal(real.total, { titulo: "Todas las Manitous" }) : fmtPrecio(0)}
+                          {real.total ? importeReal(real.total, { titulo: `Todas las ${familia.plural}` }) : fmtPrecio(0)}
                         </td>
                         <td style={{ ...tdGImporte, fontWeight: 700 }}>{diferencia(pres.total, real.total)}</td>
                       </>
                     ) : (
                       <td className="col-corte" style={{ ...tdTotal, backgroundColor: "#d1fae5" }}>
-                        {pres.total ? importe(pres.total, { titulo: "Todas las Manitous" }) : fmtPrecio(0)}
+                        {pres.total ? importe(pres.total, { titulo: `Todas las ${familia.plural}` }) : fmtPrecio(0)}
                       </td>
                     )}
                   </tr>
@@ -398,7 +404,7 @@ export default function PresupuestoManitous() {
         {!cargando && (
           <div className="text-muted mt-2" style={{ fontSize: "0.76rem" }}>
             {esReal
-              ? "P: presupuestado (lo cotizado). R: real (lo pagado en las órdenes de pago de los repuestos pedidos desde las Manitou). Diferencia en rojo: se gastó más de lo presupuestado."
+              ? `P: presupuestado (lo cotizado). R: real (lo pagado en las órdenes de pago de los repuestos pedidos desde las ${familia.plural}). Diferencia en rojo: se gastó más de lo presupuestado.`
               : sinCotizar > 0 &&
                 (sinCotizar === 1
                   ? "1 repuesto mandado a cotizar todavía no tiene precio: no suma."
@@ -441,7 +447,7 @@ export default function PresupuestoManitous() {
                 <thead>
                   <tr>
                     <th style={thCentro}>Pedido</th>
-                    {!detalle?.unidad && <th style={thCentro}>Manitou</th>}
+                    {!detalle?.unidad && <th style={thCentro}>{familia.nombre}</th>}
                     {!detalle?.sistema && <th style={th}>Sistema</th>}
                     <th style={th}>Ítem</th>
                     <th style={th}>Repuesto</th>
@@ -484,7 +490,7 @@ export default function PresupuestoManitous() {
                 <thead>
                   <tr>
                     <th style={thCentro}>N°</th>
-                    {!detalle?.unidad && <th style={thCentro}>Manitou</th>}
+                    {!detalle?.unidad && <th style={thCentro}>{familia.nombre}</th>}
                     {!detalle?.sistema && <th style={th}>Sistema</th>}
                     <th style={th}>Ítem</th>
                     <th style={th}>Repuesto</th>
@@ -523,7 +529,7 @@ export default function PresupuestoManitous() {
           <div className="mt-2 text-muted" style={{ fontSize: "0.7rem" }}>
             {detalle?.tipo === "real"
               ? "Sin IVA. Lo pagado en las órdenes de pago; un pedido comprado en partes tiene un renglón por OP."
-              : "Sin IVA. Precio del proveedor elegido por el analista, por la cantidad de hoy en la Manitou."}
+              : `Sin IVA. Precio del proveedor elegido por el analista, por la cantidad de hoy en la ${familia.nombre}.`}
           </div>
         </Modal.Body>
       </Modal>

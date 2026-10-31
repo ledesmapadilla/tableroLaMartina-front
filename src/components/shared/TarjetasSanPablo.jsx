@@ -13,20 +13,26 @@ import TractorIcon from "./TractorIcon";
  * costado del título. Con `subtitulo` (10/10/2026, los responsables de cada
  * Manitou) va un renglón chico debajo del título. Con `etiqueta` ({ texto,
  * color }, 11/10/2026, el estado de cada Manitou) va una pastilla de color
- * al pie de la tarjeta. Con `avance` (21/10/2026, el de la reparación de
+ * al pie de la tarjeta; con `numero` (31/10/2026, su lugar en la espera) el
+ * número va al lado, sin negrita. Con `avance` (21/10/2026, el de la reparación de
  * cada Manitou, de 0 a 100) va una barra con el % arriba de todo (pedido
  * así: más visible). Con `fechaLimite`
  * (28/10/2026, "dd/mm/aaaa") va otro renglón chico debajo del subtítulo;
  * `fechaEtiqueta` cambia el "Fecha límite" de adelante y `fechaAbajo` la
  * lleva al pie de la tarjeta.
+ * `parejas` (31/10/2026, las tolvas): tarjetas más grandes, con el ícono y el
+ * título en proporción. Ningún título cambia la altura de su tarjeta, y el
+ * ícono y el título quedan a la misma altura en todas, con uno o dos renglones.
+ * `ajustadas` (31/10/2026, General de Manitous): menos margen a los costados,
+ * para que los títulos largos entren en dos renglones y las filas midan igual.
  */
-export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, iconoChico = false, children }) {
+export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, chicas = false, iconoChico = false, parejas = false, ajustadas = false, children }) {
   const navigate = useNavigate();
   const [hoveredCard, setHoveredCard] = useState(null);
   const gap = chicas ? "1rem" : "1.75rem";
   // `iconoChico` (28/10/2026, las Manitou) achica solo el ícono.
-  const caja = chicas ? "40px" : iconoChico ? "44px" : "64px";
-  const icono = chicas ? "1.3rem" : iconoChico ? "1.45rem" : "2.1rem";
+  const caja = parejas ? "54px" : chicas ? "40px" : iconoChico ? "44px" : "64px";
+  const icono = parejas ? "1.75rem" : chicas ? "1.3rem" : iconoChico ? "1.45rem" : "2.1rem";
 
   return (
     <div
@@ -47,12 +53,13 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
           return (
             <div
               key={t.id}
-              className={`d-flex ${apaisada ? "flex-row gap-3 p-2" : "flex-column p-3"} align-items-center justify-content-center text-center`}
+              className={`d-flex ${apaisada ? "flex-row gap-3 p-2" : `flex-column ${ajustadas ? "p-1" : parejas ? "p-2" : "p-3"}`} align-items-center justify-content-center text-center`}
               style={{
                 background: isHovered ? t.hoverBg : t.bg,
                 borderRadius: chicas ? "14px" : "20px",
                 width: `calc((100% - ${porFila - 1} * ${gap}) / ${porFila} * ${ancho} + ${ancho - 1} * ${gap})`,
                 aspectRatio: `${ancho} / ${alto}`,
+                ...((parejas || ajustadas) && { minHeight: 0 }),
                 boxShadow: isHovered
                   ? `0 20px 36px -8px rgba(0, 0, 0, 0.45), 0 0 20px ${t.accentColor}40`
                   : "0 10px 25px -4px rgba(0, 0, 0, 0.25)",
@@ -125,7 +132,11 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
               )}
               <h3
                 className="fw-bold mb-0 text-white"
-                style={{ fontSize: chicas ? "0.9rem" : "1.2rem", lineHeight: 1.25 }}
+                style={{
+                  fontSize: parejas ? "1.05rem" : chicas ? "0.9rem" : "1.2rem",
+                  lineHeight: 1.25,
+                  ...(parejas && !apaisada && { minHeight: "2.5em" }),
+                }}
               >
                 {t.titulo}
               </h3>
@@ -201,7 +212,7 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
               )}
               {t.etiqueta && (
                 <span
-                  className="fw-bold px-2 py-1 rounded-pill d-inline-flex align-items-center gap-1"
+                  className={`${t.etiqueta.numero ? "fw-normal" : "fw-bold"} px-2 py-1 rounded-pill d-inline-flex align-items-center gap-1`}
                   style={{
                     // Al pie de la tarjeta, sin correr el nombre del centro.
                     position: "absolute",
@@ -216,7 +227,7 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
                   }}
                 >
                   <i className="bi bi-circle-fill" style={{ fontSize: "0.45rem" }}></i>
-                  {t.etiqueta.texto}
+                  {t.etiqueta.numero ? `${t.etiqueta.texto} ${t.etiqueta.numero}` : t.etiqueta.texto}
                 </span>
               )}
             </div>

@@ -4,10 +4,10 @@ import Swal from "sweetalert2";
 import { Container, Table, Form } from "react-bootstrap";
 import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
-import { SISTEMAS_MANITOU, MANITOUS_DESPLEGADAS, seccionManitou, unidadManitouValida } from "../../utils/sistemasManitou";
+import { FAMILIA_MANITOU, useUnidadReparacion } from "../../utils/familiasReparacion";
 import { usePermisos } from "../../context/permisos";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
-import TractorIcon from "../shared/TractorIcon";
+import IconoFamilia from "../shared/IconoFamilia";
 import Error404 from "./Error404";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
@@ -19,7 +19,6 @@ import { opcionElegida } from "../compras/precioElegido";
 // Los mismos colores que la tabla de chequeo del sistema.
 const COLOR = "#1e293b";
 const COLOR_SUAVE = "#f1f5f9";
-const VERDE = "#047857";
 const ROJO = "#dc2626";
 const th = { ...thBase, backgroundColor: COLOR };
 const thCentro = { ...th, textAlign: "center" };
@@ -51,15 +50,17 @@ const estadoRepuesto = (r) =>
  * (San Pablo, grupo Manitou). Uno guardado se corrige en su renglón o se pide
  * desde ahí; uno pedido queda fijo y se sigue en Compras.
  */
-export default function RepuestosChequeoManitou() {
+export default function RepuestosChequeoManitou({ familia = FAMILIA_MANITOU }) {
   const { cosecha: param, unidad, sistema: idSistema, fila: idFila } = useParams();
+  const VERDE = familia.color;
+  const { valida, nombre } = useUnidadReparacion(familia, unidad);
   // General es la plantilla: ahí se cargan, corrigen y borran, y el back lo
   // copia a cada Manitou. En una Manitou, de lo copiado solo se cambia la
   // cantidad; ahí se cotiza y se pide, con el C.C. de la unidad (09/10/2026).
   const esGeneral = unidad === "general";
-  const raiz = `/reparaciones/sanpablo/${param}/manitous/${unidad}`;
+  const raiz = `/reparaciones/sanpablo/${param}/${familia.ruta}/${unidad}`;
   const cosecha = cosechaDeParam(param);
-  const sistema = unidadManitouValida(unidad) ? SISTEMAS_MANITOU.find((s) => s.id === idSistema) : null;
+  const sistema = valida ? familia.sistemas.find((s) => s.id === idSistema) : null;
   const { puede } = usePermisos();
   const sinEditar = !puede("sanpablo.ingresos", "editar");
 
@@ -78,11 +79,11 @@ export default function RepuestosChequeoManitou() {
   useEffect(() => {
     if (!sistema) return;
     api
-      .get(`/ingresos-sanpablo/chequeos?cosecha=${cosecha}&seccion=${seccionManitou(unidad)}&sistema=${idSistema}`)
+      .get(`/ingresos-sanpablo/chequeos?cosecha=${cosecha}&seccion=${familia.seccion(unidad)}&sistema=${idSistema}`)
       .then((data) => setFila((Array.isArray(data) ? data : []).find((f) => f._id === idFila) || null))
       .catch(() => setFila(null))
       .finally(() => setCargando(false));
-  }, [cosecha, unidad, idSistema, idFila, sistema]);
+  }, [cosecha, unidad, idSistema, idFila, sistema, familia]);
 
   useEffect(() => {
     api
@@ -204,7 +205,7 @@ export default function RepuestosChequeoManitou() {
       icon: "warning",
       title: "¿Borrar el repuesto?",
       text: esGeneral
-        ? `${r.nombre_repuesto}. Se borra también de las Manitou, salvo donde ya se pidió o se mandó a cotizar.`
+        ? `${r.nombre_repuesto}. Se borra también de las ${familia.plural}, salvo donde ya se pidió o se mandó a cotizar.`
         : r.nombre_repuesto,
       width: "320px",
       showCancelButton: true,
@@ -264,7 +265,7 @@ export default function RepuestosChequeoManitou() {
         disabled={guardando}
         className="btn btn-sm btn-outline-dark rounded-2 px-2 py-0"
         style={{ height: "24px", fontSize: "0.72rem", fontWeight: 600 }}
-        title={esGeneral ? "Guardar (se copia a las Manitou)" : "Guardar sin pedir"}
+        title={esGeneral ? `Guardar (se copia a las ${familia.plural})` : "Guardar sin pedir"}
       >
         Guardar
       </button>
@@ -312,7 +313,7 @@ export default function RepuestosChequeoManitou() {
           )}
         </td>
         {/* El C.C. es el de la Manitou; General no lleva. */}
-        {!esGeneral && <td style={tdCentro}>{unidad}</td>}
+        {!esGeneral && <td style={tdCentro}>{nombre}</td>}
         {/* General no muestra la urgencia (11/10/2026): sale Baja, la de
             REPUESTO_INIT, o la que ya tenía. */}
         {!esGeneral && (
@@ -337,7 +338,7 @@ export default function RepuestosChequeoManitou() {
           <Form.Control
             {...control}
             value={form.descripcion}
-            placeholder={soloCant ? "Salvedad de esta Manitou" : "Opcional"}
+            placeholder={soloCant ? `Salvedad de esta ${familia.nombre}` : "Opcional"}
             onChange={(e) => cambiar("descripcion", e.target.value)}
           />
         </td>
@@ -389,7 +390,7 @@ export default function RepuestosChequeoManitou() {
 
   // General no lleva C.C., estado, precios ni total: es la plantilla.
   const columnas = esGeneral ? 6 : 11;
-  const nombreUnidad = esGeneral ? "Manitous General" : `Manitou ${unidad}`;
+  const nombreUnidad = esGeneral ? familia.general : `${familia.nombre} ${nombre}`;
 
   // La planilla sigue la tabla: mismas columnas y mismo orden.
   const exportarExcel = () =>
@@ -432,7 +433,7 @@ export default function RepuestosChequeoManitou() {
             ])
             .concat(repuestos.length ? [["TOTAL", "", "", "", "", "", "", "", "", totalGeneral]] : []),
       hoja: "Repuestos",
-      archivo: `sanpablo_manitou_repuestos_${unidad}_${idSistema}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      archivo: `sanpablo_${familia.id}_repuestos_${nombre}_${idSistema}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
     });
 
   return (
@@ -449,7 +450,7 @@ export default function RepuestosChequeoManitou() {
     >
       <NavbarSanPablo
         icono={<i className="bi bi-box-seam"></i>}
-        volverA={MANITOUS_DESPLEGADAS.includes(unidad) ? `${raiz}#${idSistema}` : `${raiz}/${idSistema}`}
+        volverA={esGeneral ? `${raiz}/${idSistema}` : `${raiz}#${idSistema}`}
       />
 
       <Container
@@ -468,19 +469,19 @@ export default function RepuestosChequeoManitou() {
               width: "44px",
               height: "44px",
               borderRadius: "12px",
-              background: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
-              boxShadow: "0 6px 16px rgba(4, 120, 87, 0.35)",
+              background: familia.gradiente,
+              boxShadow: familia.sombra,
               flexShrink: 0,
             }}
           >
-            <TractorIcon size="1.6rem" color="#fff" />
+            <IconoFamilia familia={familia} size="1.6rem" />
           </div>
           <div style={{ minWidth: 0 }}>
             <div className="fw-bold" style={{ fontSize: "1.5rem", lineHeight: 1, color: VERDE, letterSpacing: "0.02em" }}>
               REPUESTOS · {(fila?.item || "").toUpperCase()}
             </div>
             <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
-              {esGeneral ? "General (plantilla)" : `Manitou ${unidad}`} · {sistema.titulo} · Cosecha {param}
+              {esGeneral ? "General (plantilla)" : `${familia.nombre} ${nombre}`} · {sistema.titulo} · Cosecha {param}
             </div>
           </div>
           <div className="ms-auto" />

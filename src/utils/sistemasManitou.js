@@ -8,7 +8,27 @@ export const SISTEMAS_MANITOU = [
   { id: "torre", titulo: "Torre", icono: "bi bi-arrows-angle-expand" },
   { id: "sistema-hidraulico", titulo: "Sistema hidráulico", icono: "bi bi-droplet-fill" },
   { id: "sistema-electrico", titulo: "Sistema eléctrico", icono: "bi bi-lightning-charge-fill" },
-  { id: "cabina", titulo: "Cabina y otros", icono: "bi bi-person-workspace" },
+  { id: "cabina", titulo: "Cabina, pintura, otros", icono: "bi bi-person-workspace" },
+];
+
+// La pastilla del estado en una tarjeta: en espera lleva el lugar que se le
+// puso ("En espera 2/6", 31/10/2026). `doc`: { estado, orden }; `total`:
+// las unidades de la familia.
+export const etiquetaEstado = (doc, total) => {
+  const estado = ESTADOS_TARJETA[doc?.estado];
+  if (!estado) return undefined;
+  return doc.orden ? { ...estado, numero: `${doc.orden}/${total}` } : estado;
+};
+
+// Las tarjetas de las tolvas (31/10/2026). Igual que en el back
+// (catalogos/tolvas.js).
+export const SISTEMAS_TOLVA = [
+  { id: "balde", titulo: "Balde", icono: "bi bi-bucket-fill" },
+  { id: "mastil", titulo: "Mástil", icono: "bi bi-arrows-vertical" },
+  { id: "cilindros", titulo: "Cilindros", icono: "bi bi-database-fill" },
+  { id: "perno-central", titulo: "Perno central", icono: "bi bi-nut-fill" },
+  { id: "sistema-hidraulico", titulo: "Sistema hidráulico", icono: "bi bi-droplet-fill" },
+  { id: "pintura", titulo: "Pintura", icono: "bi bi-paint-bucket" },
 ];
 
 // Las Manitous (09/10/2026). General es la plantilla: los ítems y los
@@ -20,6 +40,12 @@ export const UNIDADES_MANITOU = ["1100", "1101", "1102", "1103", "1104"];
 // La sección de los chequeos: "general" (la de la dirección) o el número.
 export const seccionManitou = (unidad) => (unidad === "general" ? "manitous-general" : `manitou-${unidad}`);
 export const unidadManitouValida = (unidad) => unidad === "general" || UNIDADES_MANITOU.includes(unidad);
+
+// Los colores de los círculos de la página de cada unidad, en sus tarjetas.
+export const ESTADOS_TARJETA = {
+  reparacion: { texto: "En reparación", color: "#ea580c" },
+  espera: { texto: "En espera", color: "#2563eb" },
+};
 
 // Las Manitou que abren todos los sistemas en una sola página, uno debajo
 // del otro, en lugar de una tarjeta por sistema (09/10/2026): todas las
@@ -41,10 +67,11 @@ export const avanceTarea = (f) => f.avance ?? (f.chequeado ? 100 : 0);
 // Cada sistema trae su avance (`parte`, de 0 a 1), que no depende de los
 // pesos de los sistemas, y cuántas tareas están al 100% (`hechas`); sin pesos
 // de sistemas cargados el total es null.
-// filasPorSistema: { [sistema]: filas }; pesos: { [sistema]: % }.
-export const avanceManitou = (filasPorSistema, pesos) => {
+// filasPorSistema: { [sistema]: filas }; pesos: { [sistema]: % }. `sistemas`:
+// los de la familia.
+export const avanceManitou = (filasPorSistema, pesos, sistemas = SISTEMAS_MANITOU) => {
   const conPesos = Boolean(pesos) && Object.keys(pesos).length > 0;
-  const porSistema = SISTEMAS_MANITOU.map((s) => {
+  const porSistema = sistemas.map((s) => {
     const filas = filasPorSistema[s.id] || [];
     const aplican = filas.filter((f) => !f.no_aplica);
     const hechas = aplican.filter((f) => avanceTarea(f) >= 100).length;

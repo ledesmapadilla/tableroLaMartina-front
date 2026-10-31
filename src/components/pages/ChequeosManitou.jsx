@@ -4,10 +4,11 @@ import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal } from "react-bootstrap";
 import { api } from "../../services/api";
 import { cosechaDeParam } from "../../utils/cosechas";
-import { SISTEMAS_MANITOU, seccionManitou, unidadManitouValida, fmtPct } from "../../utils/sistemasManitou";
+import { fmtPct } from "../../utils/sistemasManitou";
+import { FAMILIA_MANITOU, useUnidadReparacion } from "../../utils/familiasReparacion";
 import { usePermisos } from "../../context/permisos";
 import NavbarSanPablo from "../shared/NavbarSanPablo";
-import TractorIcon from "../shared/TractorIcon";
+import IconoFamilia from "../shared/IconoFamilia";
 import Error404 from "./Error404";
 import { campo, th as thBase, td, tdCentro } from "../compras/formato";
 import { Raya, BotonAccion } from "../compras/estilos";
@@ -22,7 +23,6 @@ import FiltroChequeoManitou from "../shared/FiltroChequeoManitou";
 
 // El slate de Mantenimiento, como los ingresos de San Pablo.
 const COLOR = "#1e293b";
-const VERDE = "#047857";
 const VERDE_OK = "#16a34a";
 
 // El estado de una fila sale de sus repuestos (09/10/2026), uno solo y
@@ -467,6 +467,9 @@ function ModalReparaciones({ fila, onHide, onGuardar, sinEditar, encabezado }) {
  * una cosecha (06/10/2026): ítem, OK, con problema y los repuestos,
  * que se piden a Compras desde la fila.
  *
+ * `familia` (31/10/2026): Manitou o Tolva, ver utils/familiasReparacion.js.
+ * Embebida, la página le pasa la unidad ya resuelta en `datosUnidad`.
+ *
  * Con `embebido` (09/10/2026) es una sección de la página de una Manitou
  * desplegada (ManitouGeneralSanPablo): sin barra ni pantalla propia, con el
  * sistema de `idSistema` y las filas y cotizaciones que ya trajo la página.
@@ -497,16 +500,22 @@ export default function ChequeosManitou({
   estadoIngreso,
   onEstadoIngreso,
   avance,
+  familia = FAMILIA_MANITOU,
+  datosUnidad,
 }) {
   const { cosecha: param, unidad, sistema: sistemaParam } = useParams();
+  const VERDE = familia.color;
   const idSistema = sistemaProp ?? sistemaParam;
   // General es la plantilla (ítems y repuestos); en cada Manitou se trabaja
   // con la copia (09/10/2026).
   const esGeneral = unidad === "general";
-  const seccion = seccionManitou(unidad);
-  const raiz = `/reparaciones/sanpablo/${param}/manitous/${unidad}`;
+  const seccion = familia.seccion(unidad);
+  const raiz = `/reparaciones/sanpablo/${param}/${familia.ruta}/${unidad}`;
+  // Embebida no se busca de nuevo la unidad: "general" no va a la base.
+  const propia = useUnidadReparacion(familia, datosUnidad ? "general" : unidad);
+  const { valida, nombre } = datosUnidad ?? propia;
   const cosecha = cosechaDeParam(param);
-  const sistema = unidadManitouValida(unidad) ? SISTEMAS_MANITOU.find((s) => s.id === idSistema) : null;
+  const sistema = valida ? familia.sistemas.find((s) => s.id === idSistema) : null;
   const navigate = useNavigate();
   const { puede } = usePermisos();
   const sinEditar = !puede("sanpablo.ingresos", "editar");
@@ -602,7 +611,7 @@ export default function ChequeosManitou({
       icon: "warning",
       title: "¿Borrar la tarea?",
       text: esGeneral
-        ? `${fila.item}. Se borra también de las Manitou, salvo donde tenga problemas o repuestos pedidos o mandados a cotizar.`
+        ? `${fila.item}. Se borra también de las ${familia.plural}, salvo donde tenga problemas o repuestos pedidos o mandados a cotizar.`
         : fila.repuestos?.length
           ? `${fila.item}. Los repuestos ya pedidos siguen en Compras.`
           : fila.item,
@@ -627,7 +636,7 @@ export default function ChequeosManitou({
   // La suma de los pesos de las tareas que aplican (21/10/2026), para el
   // encabezado de la columna Peso.
   const sumaPesos = filas.filter((f) => !f.no_aplica).reduce((t, f) => t + (Number(f.peso) || 0), 0);
-  const nombreUnidad = esGeneral ? "Manitous General" : `Manitou ${unidad}`;
+  const nombreUnidad = esGeneral ? familia.general : `${familia.nombre} ${nombre}`;
 
   // Las reparaciones de una fila (11/10/2026), solo en las Manitou: el +
   // abre el modal y, con alguna cargada, el ojo (que se abre aun sin
@@ -718,7 +727,7 @@ export default function ChequeosManitou({
   const exportarExcel = () =>
     exportarChequeoManitou({
       titulo: `Reparaciones San Pablo — ${nombreUnidad} · ${sistema.titulo} — Cosecha ${param}`,
-      archivo: `sanpablo_manitou_${unidad}_${idSistema}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      archivo: `sanpablo_${familia.id}_${nombre}_${idSistema}_${param}_${new Date().toISOString().slice(0, 10)}.xlsx`,
       secciones: [{ sistema, filas }],
       cotizaciones,
       general: esGeneral,
@@ -822,15 +831,15 @@ export default function ChequeosManitou({
               width: embebido ? "24px" : "44px",
               height: embebido ? "24px" : "44px",
               borderRadius: embebido ? "7px" : "12px",
-              background: "linear-gradient(135deg, #064e3b 0%, #047857 100%)",
-              boxShadow: "0 6px 16px rgba(4, 120, 87, 0.35)",
+              background: familia.gradiente,
+              boxShadow: familia.sombra,
               flexShrink: 0,
             }}
           >
             {embebido ? (
               <i className={sistema.icono} style={{ color: "#fff", fontSize: "0.8rem" }}></i>
             ) : (
-              <TractorIcon size="1.6rem" color="#fff" />
+              <IconoFamilia familia={familia} size="1.6rem" />
             )}
           </div>
           {embebido ? (
@@ -840,10 +849,10 @@ export default function ChequeosManitou({
           ) : (
             <div>
               <div className="fw-bold" style={{ fontSize: "1.5rem", lineHeight: 1, color: VERDE, letterSpacing: "0.02em" }}>
-                MANITOU · {sistema.titulo.toUpperCase()}
+                {familia.nombre.toUpperCase()} · {sistema.titulo.toUpperCase()}
               </div>
               <div className="text-secondary fw-semibold" style={{ fontSize: "0.82rem" }}>
-                {esGeneral ? "General (plantilla)" : `Manitou ${unidad}`} · Cosecha {param}
+                {esGeneral ? "General (plantilla)" : nombreUnidad} · Cosecha {param}
               </div>
             </div>
           )}
@@ -1018,10 +1027,10 @@ export default function ChequeosManitou({
                           deshabilitado={sinEditar}
                           titulo={
                             esGeneral
-                              ? "Cuánto pesa la tarea en el sistema (se copia a cada Manitou)"
+                              ? `Cuánto pesa la tarea en el sistema (se copia a cada ${familia.nombre})`
                               : f.pesoPropio
-                                ? "Cambiado en esta Manitou. Vacío vuelve al de General"
-                                : "El de General. Cambiarlo acá vale solo para esta Manitou"
+                                ? `Cambiado en esta ${familia.nombre}. Vacío vuelve al de General`
+                                : `El de General. Cambiarlo acá vale solo para esta ${familia.nombre}`
                           }
                           oculto={!esGeneral}
                         />
@@ -1144,8 +1153,8 @@ export default function ChequeosManitou({
                               sinEditar
                                 ? "Sin permiso para editar"
                                 : f.no_aplica
-                                  ? "No aplica a esta Manitou. Tocá para que vuelva a aplicar"
-                                  : "Marcar que no aplica a esta Manitou"
+                                  ? `No aplica a esta ${familia.nombre}. Tocá para que vuelva a aplicar`
+                                  : `Marcar que no aplica a esta ${familia.nombre}`
                             }
                           >
                             N/A

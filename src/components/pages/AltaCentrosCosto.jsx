@@ -97,6 +97,9 @@ export default function AltaCentrosCosto() {
   // El CC que se está editando, o null en un alta nueva.
   const [editando, setEditando] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  // Contar dónde está escrito el código y reescribirlo tarda unos segundos:
+  // mientras tanto no se puede volver a guardar, o se pregunta dos veces.
+  const [guardando, setGuardando] = useState(false);
   const setF = (k, v) => setFiltros((f) => ({ ...f, [k]: v }));
   const hayFiltros = Object.values(filtros).some((v) => v !== "");
 
@@ -196,6 +199,7 @@ export default function AltaCentrosCosto() {
     const datos = flotaEnEdicion
       ? { cc: limpio.cc, marca: limpio.marca, observaciones: limpio.observaciones }
       : limpio;
+    setGuardando(true);
     try {
       if (eraEdicion && limpio.cc !== editando.cc && !(await confirmarRenombre(editando, limpio.cc))) return;
       if (eraEdicion) await api.put(`/centros-costo/${editando._id}`, datos);
@@ -211,6 +215,8 @@ export default function AltaCentrosCosto() {
       });
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message });
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -431,7 +437,7 @@ export default function AltaCentrosCosto() {
           los de Compras. */}
       <Modal
         show={showModal}
-        onHide={cerrar}
+        onHide={() => !guardando && cerrar()}
         centered
         dialogClassName="modal-cc"
         contentClassName="border-0 shadow-lg rounded-4"
@@ -596,6 +602,7 @@ export default function AltaCentrosCosto() {
               variant="outline-secondary"
               size="sm"
               onClick={cerrar}
+              disabled={guardando}
               className="rounded-3 px-3 py-1"
               style={{ fontSize: "0.84rem" }}
             >
@@ -604,11 +611,12 @@ export default function AltaCentrosCosto() {
             <Button
               size="sm"
               type="submit"
+              disabled={guardando}
               className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
               style={{ backgroundColor: "#15803d", borderColor: "#15803d", fontSize: "0.84rem", fontWeight: 600 }}
             >
               <i className="bi bi-check-lg"></i>
-              <span>Guardar</span>
+              <span>{guardando ? "Guardando…" : "Guardar"}</span>
             </Button>
           </Modal.Footer>
         </Form>

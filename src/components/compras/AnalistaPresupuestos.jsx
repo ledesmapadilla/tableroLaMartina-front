@@ -9,11 +9,11 @@ import { subirArchivo, borrarArchivo } from '../../services/archivos'
 import { BORDO, th, thCentro, td, tdCentro, COLOR_NRO_SIMPLE } from './formato'
 import { Raya, BotonAccion, FiltroTexto, FiltroSelect } from './estilos'
 import { ESTADOS_PRESUPUESTO, fmtPresupuesto } from './presupuestos'
-import { SISTEMAS_MANITOU } from '../../utils/sistemasManitou'
+import { SISTEMAS_MANITOU, SISTEMAS_TOLVA } from '../../utils/sistemasManitou'
 import { opcionElegida } from './precioElegido'
 import { usePermisos } from '../../context/permisos'
 
-const tituloSistema = (id) => SISTEMAS_MANITOU.find((s) => s.id === id)?.titulo || id || ''
+const tituloSistema = (id) => [...SISTEMAS_MANITOU, ...SISTEMAS_TOLVA].find((s) => s.id === id)?.titulo || id || ''
 
 const fmtPrecio = (v) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(v)
