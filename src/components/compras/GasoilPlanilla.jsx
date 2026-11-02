@@ -81,15 +81,15 @@ const Solapa = ({ activa, color, onClick, titulo, icono }) => (
 // Un total al lado de los filtros, con la misma altura que ellos. Con borde
 // y letra del color; `relleno`, pintado entero (el saldo).
 const Total = ({ etiqueta, valor, color, titulo, relleno = false }) => (
-  <div className="d-flex flex-column" style={{ minWidth: '120px' }}>
-    <span className="fw-bold text-dark mb-1 text-center" style={{ fontSize: '0.72rem' }}>
+  <div className="d-flex flex-column" style={{ minWidth: '88px' }}>
+    <span className="fw-bold text-dark mb-1 text-center" style={{ fontSize: '0.66rem', whiteSpace: 'nowrap' }}>
       {etiqueta}
     </span>
     <div
       className="rounded-3 d-flex align-items-center justify-content-center px-2 fw-bold"
       style={{
-        height: '32px',
-        fontSize: '0.82rem',
+        height: '28px',
+        fontSize: '0.74rem',
         color: relleno ? '#fff' : color,
         backgroundColor: relleno ? color : '#fff',
         border: `1.5px solid ${color}`,
@@ -225,13 +225,12 @@ export default function GasoilPlanilla() {
   const totalConsumo = sumar(filas, consumoCuenta)
   const totalIngresosDias = sumar(filas, ingresoCuenta)
   const saldo = redondear((filaStock?.stockInicial || 0) + totalIngresosDias - totalConsumo)
-  // Los parciales (en la tarjeta de los filtros) son de las fechas elegidas,
-  // con la misma regla. Los ingresos de la solapa de consumos salen de sus
-  // mismos días (sin los filtros de proveedor y quién carga, que son de la
-  // otra solapa).
+  // Los parciales son de las fechas elegidas, con la misma regla: van al
+  // TOTAL del Excel (en pantalla ya no se muestran, 02/11/2026). Los
+  // ingresos de la solapa de consumos salen de sus mismos días (sin los
+  // filtros de proveedor y quién carga, que son de la otra solapa).
   const parcialConsumo = sumar(filasFiltradas, consumoCuenta)
   const parcialIngresos = sumar(filasFiltradas, ingresoCuenta)
-  const parcialDiferencia = redondear(parcialIngresos - parcialConsumo)
   const desdeStock = filaStock ? ` desde el stock inicial del ${fecha(filaStock.fecha)}` : ''
   // Un valor que no entra en la cuenta (del día del stock inicial o antes):
   // más suave, y al pasar el mouse, por qué.
@@ -405,6 +404,16 @@ export default function GasoilPlanilla() {
               taller no tiene. */}
           {solapa === 'consumos' && (
             <div className="d-flex align-items-end gap-2">
+              {/* El stock inicial, primero (02/11/2026): con él se lee la
+                  cuenta del saldo. Sin stock inicial no va. */}
+              {filaStock && (
+                <Total
+                  etiqueta="Stock inicial"
+                  valor={filaStock.stockInicial}
+                  color="#475569"
+                  titulo={`Stock inicial del ${fecha(filaStock.fecha)}`}
+                />
+              )}
               <Total
                 etiqueta="Total ingresos"
                 valor={totalIngresosDias}
@@ -469,30 +478,8 @@ export default function GasoilPlanilla() {
               </>
             )}
             {hayFiltros && <BotonLimpiar onClick={limpiar} />}
-            {/* Los parciales: ingresos, consumo y la diferencia de las fechas
-                elegidas (sin fechas, de todos los días). Pegados a la derecha. */}
-            {solapa === 'consumos' && (
-              <div className="d-flex align-items-end gap-2 ms-auto">
-                <Total
-                  etiqueta="Ingresos parcial"
-                  valor={parcialIngresos}
-                  color="#1d4ed8"
-                  titulo={`Ingresos de las fechas elegidas${desdeStock}`}
-                />
-                <Total
-                  etiqueta="Consumo parcial"
-                  valor={parcialConsumo}
-                  color={campo.color}
-                  titulo={`Consumo de las fechas elegidas${desdeStock}`}
-                />
-                <Total
-                  etiqueta="Diferencia parcial"
-                  valor={parcialDiferencia}
-                  color={parcialDiferencia < 0 ? '#dc2626' : '#334155'}
-                  titulo="Ingresos parcial − consumo parcial"
-                />
-              </div>
-            )}
+            {/* Los parciales de las fechas elegidas se sacaron de acá el
+                02/11/2026, a pedido: quedan solo en el TOTAL del Excel. */}
           </div>
         </Card>
 

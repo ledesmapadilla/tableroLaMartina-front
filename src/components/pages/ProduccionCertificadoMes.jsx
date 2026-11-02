@@ -2114,7 +2114,7 @@ function ProduccionCertificadoMes({
                 size="sm"
                 onClick={() => setCargandoGasoil(true)}
                 disabled={!puede("compras.gasoil", "editar")}
-                className="rounded-3 px-3 d-flex align-items-center gap-2"
+                className="rounded-3 px-3 d-flex align-items-center gap-2 me-3"
                 style={{
                   backgroundColor: "#7c3aed",
                   borderColor: "transparent",
@@ -2147,6 +2147,24 @@ function ProduccionCertificadoMes({
             >
               <i className={`bi bi-${cerrado ? "unlock-fill" : "lock-fill"}`}></i>
               <span>{cerrado ? "Permitir editar" : "Cerrar certificación"}</span>
+            </Button>
+            {/* Jornalizados (02/11/2026): la tabla aparte de este campo. */}
+            <Button
+              size="sm"
+              onClick={() => navigate(`/produccion/jornalizados/${establecimiento}`)}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-3"
+              style={{
+                backgroundColor: "#b91c1c",
+                borderColor: "transparent",
+                fontSize: "0.78rem",
+                height: "30px",
+                fontWeight: 600,
+              }}
+              title="Cargar y ver los jornalizados de este campo"
+            >
+              <i className="bi bi-person-badge-fill"></i>
+              <span>Jornalizados</span>
             </Button>
             {cerrado && fechaCierre && (
               <span className="text-muted" style={{ fontSize: "0.72rem" }}>

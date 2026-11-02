@@ -28,6 +28,7 @@ const SECCIONES = {
   lotes: 'Lotes',
   admisibles: 'Admisibles',
   descuentos: 'Descuentos',
+  jornalizados: 'Jornalizados',
   cambios: 'Cambios de certificación',
   'ingresos-sanpablo': 'Ingresos San Pablo',
   tractores: 'Tractores',

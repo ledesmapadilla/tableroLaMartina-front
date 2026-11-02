@@ -42,13 +42,16 @@ function ProduccionAltaPersonal() {
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ apellidoNombre: "", dni: "", legajo: "" });
+    reset({ apellido: "", nombre: "", dni: "", legajo: "" });
     setShowModal(true);
   };
 
   const abrirEditar = (p) => {
     setEditando(p._id);
-    setValue("apellidoNombre", p.apellidoNombre);
+    // Apellido y nombre por separado (02/11/2026). Uno sin separar (Motor
+    // Generador) trae todo en el apellido.
+    setValue("apellido", p.apellido || (p.nombre ? "" : p.apellidoNombre || ""));
+    setValue("nombre", p.nombre || "");
     setValue("dni", p.dni || "");
     setValue("legajo", p.legajo || "");
     setShowModal(true);
@@ -412,21 +415,43 @@ function ProduccionAltaPersonal() {
         <Form onSubmit={handleSubmit(onSubmit)}>
           <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Row className="g-3">
-              <Col md={12}>
+              {/* Apellido y nombre por separado (02/11/2026): en la lista y en
+                  todas las pantallas se ve "Apellido, Nombre", que lo arma el
+                  back. Al editar el nombre puede quedar vacío (Motor
+                  Generador va sin él). */}
+              <Col md={6}>
                 <Form.Label className="fw-semibold text-dark small mb-1">
-                  Apellido, Nombre <span className="text-danger">*</span>
+                  Apellido <span className="text-danger">*</span>
                 </Form.Label>
                 <Form.Control
                   className="rounded-3"
                   style={{ fontSize: "0.85rem" }}
-                  {...register("apellidoNombre", {
-                    required: "El apellido y nombre es requerido",
-                    maxLength: { value: 80, message: "Máximo 80 caracteres" },
+                  {...register("apellido", {
+                    required: "El apellido es requerido",
+                    maxLength: { value: 40, message: "Máximo 40 caracteres" },
                   })}
-                  isInvalid={!!errors.apellidoNombre}
+                  isInvalid={!!errors.apellido}
                 />
                 <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
-                  {errors.apellidoNombre?.message}
+                  {errors.apellido?.message}
+                </Form.Control.Feedback>
+              </Col>
+
+              <Col md={6}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Nombre {!editando && <span className="text-danger">*</span>}
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem" }}
+                  {...register("nombre", {
+                    required: editando ? false : "El nombre es requerido",
+                    maxLength: { value: 40, message: "Máximo 40 caracteres" },
+                  })}
+                  isInvalid={!!errors.nombre}
+                />
+                <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
+                  {errors.nombre?.message}
                 </Form.Control.Feedback>
               </Col>
 

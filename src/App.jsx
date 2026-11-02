@@ -64,6 +64,7 @@ const ProduccionInformesMenu = lazy(() => import("./components/pages/ProduccionI
 const ProduccionInformeMes = lazy(() => import("./components/pages/ProduccionInformeMes"));
 const ProduccionInformeTareasPersonal = lazy(() => import("./components/pages/ProduccionInformeTareasPersonal"));
 const ProduccionCertificadoMes = lazy(() => import("./components/pages/ProduccionCertificadoMes"));
+const ProduccionJornalizados = lazy(() => import("./components/pages/ProduccionJornalizados"));
 const ProduccionVariables = lazy(() => import("./components/pages/ProduccionVariables"));
 const ProduccionVariablesMenu = lazy(() => import("./components/pages/ProduccionVariablesMenu"));
 const ProduccionLotes = lazy(() => import("./components/pages/ProduccionLotes"));
@@ -417,6 +418,12 @@ function LayoutDesktop() {
                 path="/produccion/san-pablo/:anio/:mes/informes/tareas-personal"
                 element={<ProduccionInformeTareasPersonal establecimiento="san-pablo" />}
               />
+              {/* Jornalizados (02/11/2026): del botón rojo de la planilla de
+                  carga de datos, uno por campo. */}
+              <Route path="/produccion/jornalizados/caspinchango" element={<ProduccionJornalizados establecimiento="caspinchango" />} />
+              <Route path="/produccion/jornalizados/san-pablo" element={<ProduccionJornalizados establecimiento="san-pablo" />} />
+              <Route path="/produccion/jornalizados/caspinchango/resumen" element={<ProduccionJornalizados establecimiento="caspinchango" resumen />} />
+              <Route path="/produccion/jornalizados/san-pablo/resumen" element={<ProduccionJornalizados establecimiento="san-pablo" resumen />} />
               <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
               <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />

@@ -40,6 +40,8 @@ const REGLAS = [
   [/^\/produccion\/variables\/admisibles/, "produccion.admisibles"],
   [/^\/produccion\/variables/, GRUPO.produccionVariables],
   [/^\/produccion\/certificados\/\d+\/\d+\/planilla/, "produccion.certificacion"],
+  // Jornalizados se abre desde la planilla, con su mismo permiso (02/11/2026).
+  [/^\/produccion\/jornalizados/, "produccion.certificacion"],
   // El resumen por personal se abre desde la planilla (botón Resumen): lo ve
   // el que carga, aunque no tenga el informe del mes (24/09/2026).
   [/^\/produccion\/certificados\/\d+\/\d+\/informes\/resumen/, "produccion.certificacion"],

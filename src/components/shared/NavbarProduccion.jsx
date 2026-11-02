@@ -11,10 +11,10 @@ import { nombreEstablecimiento } from "../../utils/establecimientos";
  * en las altas, que son padrones de La Martina y se comparten entre los dos.
  */
 const establecimientoDe = (pathname) => {
-  if (pathname.startsWith("/produccion/san-pablo")) {
+  if (pathname.startsWith("/produccion/san-pablo") || pathname.startsWith("/produccion/jornalizados/san-pablo")) {
     return { nombre: "San Pablo", fondo: "#a13d3d", borde: "#ef4444" };
   }
-  if (pathname.startsWith("/produccion/certificados")) {
+  if (pathname.startsWith("/produccion/certificados") || pathname.startsWith("/produccion/jornalizados/caspinchango")) {
     // La clave de la URL sigue siendo caspinchango; el nombre sale del catálogo.
     return { nombre: nombreEstablecimiento("caspinchango"), fondo: "#2d6a4f", borde: "#6ee7b7" };
   }
