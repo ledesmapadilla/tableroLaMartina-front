@@ -213,9 +213,10 @@ function LayoutDesktop() {
   const esPublica = esRutaPublica(pathname);
   // Ya no hay sidebar (sacado el 15/09/2026): cada pantalla de Mantenimiento
   // vuelve a la principal con el logo o "General", y Altas y Salir están en
-  // la principal y en Mantenimiento. Los botones flotantes van solo en las
-  // tarjetas de Tractores y Camionetas (31/10/2026).
-  const conBotonesFlotantes = ["/tractores", "/tractores/", "/camionetas", "/camionetas/"].includes(pathname);
+  // la principal y en Mantenimiento. Los botones flotantes van en todas las
+  // pantallas de Tractores y Camionetas (02/11/2026; antes solo en las
+  // tarjetas de cada una).
+  const conBotonesFlotantes = /^\/(tractores|camionetas)(\/|$)/.test(pathname);
   // En las tarjetas de Reparaciones San Pablo, el de Reunión: todavía sin
   // pantalla, cae en el 404.
   const cosechaSanPablo = /^\/reparaciones\/sanpablo\/([^/]+)\/?$/.exec(pathname)?.[1];
