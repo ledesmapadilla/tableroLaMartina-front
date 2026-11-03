@@ -8,6 +8,7 @@ import { Raya, FiltroTexto, FiltroSelect } from './estilos'
 import { verHistorialPedido, conCreacion } from './detallePedido'
 import { opcionElegida } from './precioElegido'
 import { fmtNro } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 
 const fmtFecha = (f) =>
@@ -367,7 +368,7 @@ export default function GerenciaHistorial() {
                           }}
                           title="Ver el detalle del pedido"
                         >
-                          {fmtNro(f.nro_pedido, f._src, f.origen, f.servicio)}
+                          <NumeroPedido texto={fmtNro(f.nro_pedido, f._src, f.origen, f.servicio)} />
                         </button>
                         <div style={{ fontSize: '0.62rem', color: '#64748b' }}>
                           {f.accion?.fecha ? fmtFecha(f.accion.fecha) : <Raya />}

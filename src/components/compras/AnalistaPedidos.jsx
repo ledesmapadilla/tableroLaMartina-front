@@ -22,6 +22,7 @@ import {
 } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
 import { fmtNro } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 
 const URGENCIAS      = ['Baja', 'Media', 'Alta', 'Crítica']
@@ -732,7 +733,7 @@ export default function AnalistaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            ↳ {fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}
+                            ↳ <NumeroPedido texto={fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)} />
                           </button>
                         ) : (
                           <button
@@ -747,7 +748,7 @@ export default function AnalistaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}
+                            <NumeroPedido texto={fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)} />
                           </button>
                         )}
                         {item._agrupado && item._count > 1 && (

@@ -10,6 +10,7 @@ import { opcionesDePrecio, opcionMinima, opcionElegida } from './precioElegido'
 import { useMontoAutorizacion } from './montoAutorizacion'
 import { usePermisos } from '../../context/permisos'
 import { fmtNro } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 const esParaAnalisis = (e) => e === 'Para analisis' || e === 'En analisis' || e === 'Pedido' || e === 'Para revision'
 
@@ -871,7 +872,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                         e.currentTarget.style.backgroundColor = elegido ? BORDO_SUAVE : 'transparent'
                       }}
                     >
-                      {fmtNro(p.nro_pedido, p._src, p.origen, p.servicio)}
+                      <NumeroPedido texto={fmtNro(p.nro_pedido, p._src, p.origen, p.servicio)} />
                       {multiple && (
                         <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
                           ({(p.items || []).filter((i) => enVista(i)).length} ítems)
@@ -1079,7 +1080,7 @@ export default function AnalizarItem({ soloVer: soloVerProp = false }) {
                 <div className="mt-2 text-center" style={{ fontSize: '0.82rem', color: '#64748b' }}>
                   Total del pedido{' '}
                   <span className="fw-bold" style={{ color: BORDO }}>
-                    {pedidoSeleccionado ? fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen, pedidoSeleccionado.servicio) : ''}
+                    {pedidoSeleccionado ? <NumeroPedido texto={fmtNro(pedidoSeleccionado.nro_pedido, pedidoSeleccionado._src, pedidoSeleccionado.origen, pedidoSeleccionado.servicio)} /> : ''}
                   </span>
                   {filas.some((f) => f.elegida && !f.elegida.esMinima)
                     ? ', con proveedores elegidos a mano'

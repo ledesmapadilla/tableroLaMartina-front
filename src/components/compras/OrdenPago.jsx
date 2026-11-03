@@ -8,6 +8,7 @@ import { Raya, BotonAccion } from './estilos'
 import { opcionElegida } from './precioElegido'
 import { usePermisos } from '../../context/permisos'
 import { fmtNro } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 
 const fmtPrecio = (v) =>
@@ -391,7 +392,7 @@ export default function OrdenPago() {
                           e.currentTarget.style.backgroundColor = elegido ? BORDO_SUAVE : 'transparent'
                         }}
                       >
-                        {fmtNro(p.nro_pedido, p._src, p.origen, p.servicio)}
+                        <NumeroPedido texto={fmtNro(p.nro_pedido, p._src, p.origen, p.servicio)} />
                         {esMultiple(p) && (
                           <span className="ms-1 text-muted" style={{ fontSize: '0.72rem', fontWeight: 400 }}>
                             ({opItemCount(p)} ítems)
@@ -430,7 +431,7 @@ export default function OrdenPago() {
             <div className="d-flex align-items-center gap-2 mb-1">
               <span className="fw-bold" style={{ color: BORDO, fontSize: '0.82rem' }}>
                 Vista previa — pedido{' '}
-                {pedidoEnVista ? fmtNro(pedidoEnVista.nro_pedido, pedidoEnVista._src, pedidoEnVista.origen, pedidoEnVista.servicio) : ''}
+                {pedidoEnVista ? <NumeroPedido texto={fmtNro(pedidoEnVista.nro_pedido, pedidoEnVista._src, pedidoEnVista.origen, pedidoEnVista.servicio)} /> : ''}
               </span>
               <Button
                 size="sm"
@@ -663,7 +664,7 @@ export default function OrdenPago() {
                           : undefined
                       }
                     >
-                      <td style={tdCentro}>{fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}</td>
+                      <td style={tdCentro}><NumeroPedido texto={fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)} /></td>
                       <td style={tdCentro}>{item.fecha?.slice(0, 10).split('-').reverse().join('/')}</td>
                       <td style={{ ...td, fontWeight: 500 }}>{item.nombre_repuesto}</td>
                       <td style={tdCentro}>

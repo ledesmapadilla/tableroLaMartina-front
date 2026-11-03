@@ -10,6 +10,7 @@ import { verDetallePedido, verHistorialPedido, conCreacion } from './detallePedi
 import { Raya, BotonAccion, BotonLimpiar, FiltroTexto, FiltroSelect, OjoPedido, CeldaOP } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
 import { fmtNro } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 const URGENCIAS = ['Baja', 'Media', 'Alta', 'Crítica']
 // Los grupos salen del catálogo de equipos (utils/equipos.js).
@@ -295,9 +296,9 @@ export default function AnalistaPendientes() {
                         }}
                       >
                         {item._anidada ? (
-                          <span style={{ color: '#94a3b8' }}>↳ {fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)}</span>
+                          <span style={{ color: '#94a3b8' }}>↳ <NumeroPedido texto={fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)} /></span>
                         ) : (
-                          fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)
+                          <NumeroPedido texto={fmtNro(item.nro_pedido, item._src, item.origen, item.servicio)} />
                         )}
                         {item._agrupado && item._count > 1 && (
                           <OjoPedido abierto={abiertos.has(item._key)} onClick={() => alternarAbierto(item._key)} />

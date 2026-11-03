@@ -23,6 +23,7 @@ import {
 } from './estilos'
 import { useProveedorDeOP } from './proveedorOP'
 import { fmtNro as fmtNroPedido } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 const fmtNro = (n, origen, servicio) => fmtNroPedido(n, 'berdina', origen, servicio)
 
@@ -704,7 +705,7 @@ export default function BerdinaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            ↳ {fmtNro(item.nro_pedido, item.origen, item.servicio)}
+                            ↳ <NumeroPedido texto={fmtNro(item.nro_pedido, item.origen, item.servicio)} />
                           </button>
                         ) : (
                           <button
@@ -719,7 +720,7 @@ export default function BerdinaPedidos() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(item.nro_pedido, item.origen, item.servicio)}
+                            <NumeroPedido texto={fmtNro(item.nro_pedido, item.origen, item.servicio)} />
                           </button>
                         )}
                         {item._agrupado && item._count > 1 && (

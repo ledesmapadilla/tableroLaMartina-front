@@ -21,6 +21,9 @@ export const BORDO_SUAVE = '#fdeaee'
  */
 export const COLOR_NRO_MULTIPLE = BORDO
 export const COLOR_NRO_SIMPLE = '#3730a3'
+// La S de los pedidos de servicio (B-045-S): naranja, para que se distinga
+// del número en bordó o índigo (03/11/2026).
+export const COLOR_SERVICIO = '#ea580c'
 
 export const th = {
   backgroundColor: BORDO,

@@ -13,6 +13,7 @@ import { usePermisos } from '../../context/permisos'
 import { useAuth } from '../../context/AuthContext'
 import { sePuedeApurarFila, sePuedeApurar, apuroDeLaFila, itemsDeLaFila, cuando } from './apuro'
 import { fmtNro } from './nroPedido'
+import NumeroPedido from './NumeroPedido'
 
 const fmtPrecio = (n) =>
   n != null && n !== '' && !isNaN(n)
@@ -580,7 +581,7 @@ export default function Gerencia() {
                             }}
                             title="Ver el detalle del pedido"
                           >
-                            {fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)}
+                            <NumeroPedido texto={fmtNro(grupo.nro_pedido, grupo._src, grupo.origen, grupo.servicio)} />
                           </button>
                           {campana(grupo)}
                         </div>
