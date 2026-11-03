@@ -68,6 +68,57 @@ const avisar = (opciones) =>
 
 const soloFecha = (iso) => (iso || "").slice(0, 10);
 
+// Horómetro que no anda (03/11/2026). Devuelve, por parte, los motivos por los
+// que se sospecha; sin motivos el CC va normal. Se marca cuando:
+//  - entrada y salida son iguales;
+//  - la salida es la misma que la del parte anterior de ese CC (no avanzó de
+//    un día al siguiente);
+//  - el horómetro dio 1 hora y el total de horas del parte se aleja más de 3.
+// Sin alguno de los dos valores no hay con qué comparar y no se marca.
+const DIFERENCIA_MAXIMA_HS = 3;
+const vacioHorom = (v) => v === null || v === undefined || v === "";
+
+const motivosHorometro = (partes) => {
+  const motivos = new Map();
+  const sumar = (p, texto) => motivos.set(p._id, [...(motivos.get(p._id) || []), texto]);
+
+  const porCC = new Map();
+  for (const p of partes) {
+    const cc = p.cc?._id || p.cc;
+    if (!cc || vacioHorom(p.horomIngreso) || vacioHorom(p.horomSalida)) continue;
+    const entrada = Number(p.horomIngreso);
+    const salida = Number(p.horomSalida);
+
+    if (entrada === salida) sumar(p, "Marca lo mismo a la entrada y a la salida");
+
+    const horasCC = calcularHorasCC(entrada, salida);
+    const total = Number(p.totalHoras) || 0;
+    if (horasCC === 1 && Math.abs(total - horasCC) > DIFERENCIA_MAXIMA_HS) {
+      sumar(p, `Dio 1 hora contra ${total} hs de jornada`);
+    }
+
+    if (!porCC.has(cc)) porCC.set(cc, []);
+    porCC.get(cc).push(p);
+  }
+
+  // El orden es el de la máquina: por fecha y, en el mismo día, por la hora de
+  // entrada del parte.
+  for (const lista of porCC.values()) {
+    lista.sort(
+      (a, b) =>
+        soloFecha(a.fecha).localeCompare(soloFecha(b.fecha)) ||
+        (a.horaIngreso || "").localeCompare(b.horaIngreso || "")
+    );
+    for (let i = 1; i < lista.length; i++) {
+      const anterior = lista[i - 1];
+      if (Number(lista[i].horomSalida) === Number(anterior.horomSalida)) {
+        sumar(lista[i], `Repite la salida del parte del ${formatFecha(anterior.fecha)}`);
+      }
+    }
+  }
+  return motivos;
+};
+
 // Corte grueso entre los tres bloques de la planilla: el turno, lo que pasó en
 // el centro de costo y el detalle de la tarea. Va por clase porque index.css
 // pisa los bordes de th/td con !important.
@@ -1726,6 +1777,10 @@ function ProduccionCertificadoMes({
   // En pantalla va lo último arriba: `partes` viene ordenado de la fecha más
   // vieja a la más nueva (y dentro del día por orden de carga), así que se lo
   // da vuelta. El Excel lo reordena por su cuenta.
+  // Sobre todos los partes del período y no los filtrados: si no, filtrar por
+  // persona escondería el parte anterior de la máquina con el que se compara.
+  const horometroSospechoso = useMemo(() => motivosHorometro(partes), [partes]);
+
   const partesFiltrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return partes.filter((p) => {
@@ -2965,7 +3020,24 @@ function ProduccionCertificadoMes({
                       </>
                     )}
                     <td className={`fw-bold ${SEP}`} style={{ color: "#1b4332" }}>{p.totalHoras || "—"}</td>
-                    <td>{p.cc?.cc || "—"}</td>
+                    {/* Horómetro que puede no andar (ver motivosHorometro):
+                        el CC va en una pastilla roja con letras blancas, del
+                        alto del número, como el lote terminado (03/11/2026). */}
+                    {horometroSospechoso.has(p._id) ? (
+                      <td>
+                        <span
+                          className="px-2 rounded-pill fw-semibold"
+                          style={{ backgroundColor: "#dc2626", color: "#fff" }}
+                          title={`El horómetro puede no estar andando:\n- ${horometroSospechoso
+                            .get(p._id)
+                            .join("\n- ")}`}
+                        >
+                          {p.cc?.cc || "—"}
+                        </span>
+                      </td>
+                    ) : (
+                      <td>{p.cc?.cc || "—"}</td>
+                    )}
                     <td className="text-secondary">{p.horomIngreso ?? "—"}</td>
                     <td className="text-secondary">{p.horomSalida ?? "—"}</td>
                     <td className="fw-bold" style={{ color: "#1b4332" }}>{p.horasCC || "—"}</td>
