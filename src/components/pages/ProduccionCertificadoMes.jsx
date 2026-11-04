@@ -5,6 +5,7 @@ import { Container, Table, Button, Form, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import ModalIngresoGasoil from "../compras/ModalIngresoGasoil";
+import ModalGuiaTareas from "./ModalGuiaTareas";
 import { campoDeEstablecimiento } from "../compras/camposGasoil";
 import { usePermisos } from "../../context/permisos";
 import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
@@ -315,6 +316,42 @@ const desmalezadoFueraDeUnidad = ({ lote, tarea }, lotes, tareas) => {
   return null;
 };
 
+/**
+ * Varios lotes en un parte tienen que estar medidos en la misma unidad
+ * (04/11/2026): plantas con plantas, hectáreas con hectáreas. Devuelve
+ * `{ enPlantas, enHectareas }` si se mezclan, o null. Un lote sin medida o
+ * fuera del padrón no se controla. Es la misma regla de
+ * `lotesConMedidasMezcladas` en el backend.
+ */
+const lotesMezclados = (elegidos, lotes) => {
+  if (elegidos.length < 2) return null;
+  const enPlantas = [];
+  const enHectareas = [];
+  elegidos.forEach(({ lote }) => {
+    const delLote = lotes.find((l) => comparable(l.nombre) === comparable(lote));
+    if (!delLote) return;
+    if (delLote.plantas != null && delLote.hectareas == null) enPlantas.push(delLote.nombre);
+    if (delLote.hectareas != null && delLote.plantas == null) enHectareas.push(delLote.nombre);
+  });
+  return enPlantas.length && enHectareas.length ? { enPlantas, enHectareas } : null;
+};
+
+// El aviso de lotes mezclados: sugiere un parte por unidad.
+const avisarLotesMezclados = ({ enPlantas, enHectareas }) => {
+  const lista = (nombres) => nombres.map((n) => `<b>${escaparHtml(n)}</b>`).join(", ");
+  avisar({
+    icon: "error",
+    title: "Lotes con distinta unidad",
+    html: `
+      <div style="text-align:left;font-size:0.84rem;line-height:1.5">
+        <div>No se pueden poner juntos lotes en plantas y en hectáreas.</div>
+        <div style="margin-top:.4rem">Cargá la tarea en filas separadas, una por unidad:</div>
+        <div style="margin-top:.3rem">• Plantas: ${lista(enPlantas)}</div>
+        <div>• Hectáreas: ${lista(enHectareas)}</div>
+      </div>`,
+  });
+};
+
 // Días entre dos días ("AAAA-MM-DD"). Se comparan como mediodía UTC para que
 // no los mueva ningún horario de verano.
 const diasEntre = (desde, hasta) =>
@@ -605,6 +642,8 @@ function ProduccionCertificadoMes({
   const [filtroFecha, setFiltroFecha] = useState("");
   const [filtroPersona, setFiltroPersona] = useState("Todos");
   const [filtroTarea, setFiltroTarea] = useState("Todas");
+  // La guía de tareas (04/11/2026), del "?" al lado de Tarea en la carga.
+  const [verGuiaTareas, setVerGuiaTareas] = useState(false);
   const [filtroCC, setFiltroCC] = useState("Todos");
   const [filtroTurbo, setFiltroTurbo] = useState("Todos");
   // Arranca en "Todos": filtrar por un cliente escondería los partes del otro.
@@ -1153,6 +1192,20 @@ function ProduccionCertificadoMes({
       otrosLotes: f.otrosLotes.map((l, j) => (j === indice ? { ...l, ...cambios } : l)),
     }));
 
+  // Elegir un lote del formulario (-1 es el de Lote; los demás, los que se
+  // sumaron). Si con él quedan juntos lotes en plantas y en hectáreas, no se
+  // toma y se avisa al momento (04/11/2026). Al guardar se vuelve a controlar.
+  const elegirLote = (indice, valor) => {
+    const conCambio =
+      indice < 0
+        ? { ...form, lote: valor }
+        : { ...form, otrosLotes: form.otrosLotes.map((l, j) => (j === indice ? { ...l, lote: valor } : l)) };
+    const mezclados = lotesMezclados(lotesDelForm(conCambio), lotes);
+    if (mezclados) return avisarLotesMezclados(mezclados);
+    if (indice < 0) cambiar("lote", valor);
+    else cambiarOtroLote(indice, { lote: valor });
+  };
+
   // El círculo de un lote del formulario: -1 es el primero, el de Lote; los
   // demás son los que se sumaron. Terminado es el lote terminado: sin lote no
   // hay qué dar por terminado (24/09/2026). Desmarcar sí se puede.
@@ -1296,6 +1349,11 @@ function ProduccionCertificadoMes({
       });
       return;
     }
+
+    // Lotes en plantas y en hectáreas no van en el mismo parte (04/11/2026):
+    // no se guarda, y se sugiere un parte por unidad.
+    const mezclados = lotesMezclados(lotesElegidos, lotes);
+    if (mezclados) return avisarLotesMezclados(mezclados);
 
     // El desmalezado tiene que coincidir con la medida del lote: no se guarda.
     // Con varios lotes, cada uno.
@@ -2233,6 +2291,14 @@ function ProduccionCertificadoMes({
                 onCerrar={() => setCargandoGasoil(false)}
               />
             )}
+            {/* La guía de tareas: el "?" al lado de Tarea en la carga. */}
+            {verGuiaTareas && (
+              <ModalGuiaTareas
+                onCerrar={() => setVerGuiaTareas(false)}
+                opcionesTarea={opcionesTarea}
+                puedeAgregar={puede("altas.tareas", "editar")}
+              />
+            )}
           </div>
 
           <div className="d-flex align-items-center gap-2">
@@ -2478,7 +2544,7 @@ function ProduccionCertificadoMes({
                     libre
                     opciones={opcionesLote}
                     valor={form.lote}
-                    onChange={(v) => cambiar("lote", v)}
+                    onChange={(v) => elegirLote(-1, v)}
                     placeholder="Lote"
                     title="Los lotes se dan de alta en Variables › Lotes"
                     style={estiloCelda}
@@ -2529,7 +2595,7 @@ function ProduccionCertificadoMes({
                         libre
                         opciones={opcionesLote}
                         valor={l.lote}
-                        onChange={(v) => cambiarOtroLote(i, { lote: v })}
+                        onChange={(v) => elegirLote(i, v)}
                         placeholder="Lote"
                         style={estiloCelda}
                       />
@@ -2582,8 +2648,19 @@ function ProduccionCertificadoMes({
               </div>
 
               <div style={{ width: "185px" }}>
+                {/* El rótulo queda como estaba: el "?" va al costado sin
+                    agrandar el renglón (lineHeight 0). */}
                 <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
                   Tarea <span className="text-danger">*</span>
+                  <button
+                    type="button"
+                    className="btn btn-link p-0 border-0 align-middle"
+                    style={{ fontSize: "1.05rem", lineHeight: 0, color: "#1b4332", marginLeft: "1rem", verticalAlign: "middle", position: "relative", top: "-4px" }}
+                    title="Guía de tareas: qué tarea va para cada trabajo"
+                    onClick={() => setVerGuiaTareas(true)}
+                  >
+                    <i className="bi bi-question-circle-fill"></i>
+                  </button>
                 </label>
                 <SelectBuscador
                   opciones={opcionesTarea}
@@ -3050,7 +3127,14 @@ function ProduccionCertificadoMes({
                         En proceso va como cualquier otro dato. */}
                     {/* Con varios lotes en el día van todos, cada uno con su
                         estado (07/10/2026). */}
-                    <td className="text-secondary" style={AJUSTA}>
+                    {/* Una sola palabra va centrada; más de una, pegada a la
+                        izquierda para que entre todo (04/11/2026). */}
+                    <td
+                      className={`text-secondary ${
+                        /\s/.test(lotesDelParte(p).map((l) => l.lote.trim()).join(", ")) ? "text-start ps-2" : ""
+                      }`}
+                      style={AJUSTA}
+                    >
                       {lotesDelParte(p).length
                         ? lotesDelParte(p).map((l, i) => (
                             <span key={i}>
