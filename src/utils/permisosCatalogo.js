@@ -65,6 +65,13 @@ export const CATALOGO = [
   { seccion: "Producción", clave: "produccion.informeMes", label: "Tarjeta del mes › Informe del mes", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.contable", label: "Tarjeta del mes › Contable - Pagos", hoy: PERMISOS.produccionContable },
 
+  // Contable (05/11/2026): la tarjeta de la principal. "Editar" deja subir,
+  // reemplazar y quitar el Excel mensual. Nace con los mismos roles que
+  // Contable - Pagos.
+  { seccion: "Contable", clave: "contable.excel", label: "Excel mensual", hoy: PERMISOS.produccionContable },
+  // Qué tareas de Citrusvil equivalen a cada una de La Martina (05/11/2026).
+  { seccion: "Contable", clave: "contable.equivalencias", label: "Equivalencias de tareas", hoy: PERMISOS.produccionContable },
+
   // Altas (las que no son solo del superadmin)
   { seccion: "Altas", clave: "altas.centrosCosto", label: "Centros de costo", hoy: PERMISOS.comprasAnalista },
   { seccion: "Altas", clave: "altas.proveedores", label: "Proveedores", hoy: PERMISOS.comprasAnalista },
@@ -109,6 +116,7 @@ export const GRUPO = {
   produccionVariables: ["produccion.variables", "produccion.lotes", "produccion.admisibles"],
   produccionMes: ["produccion.certificacion", "produccion.informeMes", "produccion.contable"],
   produccionInformes: ["produccion.informeMes", "produccion.contable"],
+  contable: clavesDe("contable."),
 };
 
 /** Cómo se muestra cada rol. Por dentro siguen siendo los de siempre. */

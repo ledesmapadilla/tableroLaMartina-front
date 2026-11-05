@@ -42,6 +42,20 @@ const secciones = [
     accentColor: "#10b981",
     icono: "bi bi-graph-up-arrow",
   },
+  {
+    id: "contable",
+    titulo: "Contable",
+    subtitulo: "Pagos, liquidaciones y cuentas",
+    // Entra a la grilla de meses (la de los certificados); cada mes tiene su
+    // Excel mensual (05/11/2026).
+    ruta: "/contable",
+    permiso: GRUPO.contable,
+    // El cian de "Contable - Pagos" de los informes de Producción.
+    bg: "linear-gradient(135deg, #164e63 0%, #0e7490 100%)",
+    hoverBg: "linear-gradient(135deg, #083344 0%, #164e63 100%)",
+    accentColor: "#22d3ee",
+    icono: "bi bi-calculator-fill",
+  },
 ];
 
 function PaginaPrincipal() {
@@ -49,7 +63,8 @@ function PaginaPrincipal() {
   const { puede } = usePermisos();
   const [hoveredCard, setHoveredCard] = useState(null);
   // La grilla se arma con las tarjetas que se ven, no con las que hay: así
-  // quedan centradas sean una, dos o tres (utils/grillaTarjetas.js).
+  // quedan centradas sean una, dos, tres o cuatro (utils/grillaTarjetas.js).
+  // Las cuatro van en una sola fila: en dos no entran sin scroll.
   const visibles = secciones.filter((s) => !s.permiso || puede(s.permiso));
 
   return (
@@ -95,7 +110,7 @@ function PaginaPrincipal() {
 
       {/* Tarjetas */}
       <div className="flex-grow-1 d-flex align-items-center justify-content-center p-4">
-        <div style={{ ...grillaCentrada(visibles.length, { ancho: 346 }), gap: "1.75rem" }}>
+        <div style={{ ...grillaCentrada(visibles.length, { ancho: 300, maxColumnas: 4 }), gap: "1.75rem" }}>
           {visibles.map((s) => {
             const isHovered = hoveredCard === s.id;
             return (

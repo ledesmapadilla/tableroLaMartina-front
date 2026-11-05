@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Container } from "react-bootstrap";
+import { usePermisos } from "../../context/permisos";
 
 // El primer año con certificados. No se puede retroceder más allá.
 const ANIO_INICIAL = 2026;
@@ -37,7 +38,13 @@ const ddmm = (iso) => {
 function ProduccionCertificados({
   establecimiento = "caspinchango",
   base = "/produccion/certificados",
+  // Una tarjeta chica más en el encabezado, para lo que no es de un mes: hoy
+  // Equivalencias de tareas en Contable (05/11/2026). { titulo, icono,
+  // destino, permiso? }. Producción no la usa.
+  extra = null,
 }) {
+  const { puede } = usePermisos();
+  const verExtra = extra && (!extra.permiso || puede(extra.permiso));
   const navigate = useNavigate();
   const hoy = new Date();
   const [anio, setAnio] = useState(ANIO_INICIAL);
@@ -160,7 +167,7 @@ function ProduccionCertificados({
 
         {/* Tarjetas de los meses. Arrancan arriba: el sobrante de alto queda
             abajo y separa la última fila del footer. */}
-        <div className="flex-grow-1 d-flex align-items-start justify-content-center pb-4">
+        <div className="flex-grow-1 d-flex flex-column align-items-center pb-4">
           <div
             style={{
               display: "grid",
@@ -258,6 +265,42 @@ function ProduccionCertificados({
               );
             })}
           </div>
+
+          {/* La tarjeta de lo que no es de un mes (hoy Equivalencias de tareas
+              en Contable), abajo de los meses y centrada, con el estilo de la
+              de Variables en la entrada de Producción. */}
+          {verExtra && (
+            <div
+              className="d-flex align-items-center justify-content-center gap-2 px-4 mt-3 rounded-3"
+              style={{
+                background: hovered === "extra"
+                  ? "linear-gradient(135deg, #164e63 0%, #0e7490 100%)"
+                  : "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
+                color: "#fff",
+                height: "76px",
+                minWidth: "260px",
+                cursor: "pointer",
+                border: "2px solid rgba(255,255,255,0.3)",
+                boxShadow: hovered === "extra"
+                  ? "0 10px 20px rgba(0,0,0,0.35), 0 0 14px rgba(6,182,212,0.4)"
+                  : "0 4px 12px rgba(0,0,0,0.25)",
+                transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
+                transform: hovered === "extra" ? "scale(1.05)" : "scale(1)",
+                userSelect: "none",
+              }}
+              onClick={() => navigate(extra.destino)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && navigate(extra.destino)}
+              onMouseEnter={() => setHovered("extra")}
+              onMouseLeave={() => setHovered(null)}
+            >
+              <i className={extra.icono} style={{ fontSize: "1.4rem", color: "#67e8f9" }}></i>
+              <span className="fw-bold" style={{ fontSize: "1rem" }}>
+                {extra.titulo}
+              </span>
+            </div>
+          )}
         </div>
 
       </Container>

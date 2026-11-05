@@ -59,7 +59,11 @@ const ProduccionAltaPersonal = lazy(() => import("./components/pages/ProduccionA
 const ProduccionAltaTareas = lazy(() => import("./components/pages/ProduccionAltaTareas"));
 const ProduccionAltaClientes = lazy(() => import("./components/pages/ProduccionAltaClientes"));
 const ProduccionEstablecimientos = lazy(() => import("./components/pages/ProduccionEstablecimientos"));
-const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
+const ContableMes = lazy(() => import("./components/pages/ContableMes"));
+const ContableTabla = lazy(() => import("./components/pages/ContableTabla"));
+const ContableComparativa = lazy(() => import("./components/pages/ContableComparativa"));
+const ContableComparativaCampos = lazy(() => import("./components/pages/ContableComparativaCampos"));
+const ContableEquivalencias = lazy(() => import("./components/pages/ContableEquivalencias"));const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
 const ProduccionCertificadoMenu = lazy(() => import("./components/pages/ProduccionCertificadoMenu"));
 const ProduccionInformesMenu = lazy(() => import("./components/pages/ProduccionInformesMenu"));
 const ProduccionInformeMes = lazy(() => import("./components/pages/ProduccionInformeMes"));
@@ -126,6 +130,7 @@ const ReportarFallaCamioneta = lazy(() => import("./components/pages/ReportarFal
 import BotonTableroFlotante from "./components/shared/BotonTableroFlotante";
 import BotonReunionFlotante from "./components/shared/BotonReunionFlotante";
 import NavbarProduccion from "./components/shared/NavbarProduccion";
+import NavbarContable from "./components/shared/NavbarContable";
 
 // Las pantallas se bajan recién cuando se abren (27/09/2026): antes iban las
 // 78 en un solo JS de 1,5 MB que el navegador tenía que bajar y leer antes de
@@ -209,6 +214,8 @@ function LayoutDesktop() {
   const { pathname } = useLocation();
   // Producción es una sección independiente: se navega con su propio navbar
   const esProduccion = pathname === "/produccion" || pathname.startsWith("/produccion/");
+  // Contable también, con el suyo (05/11/2026).
+  const esContable = pathname === "/contable" || pathname.startsWith("/contable/");
   // Compras también es independiente: trae su propio Menu superior.
   const esCompras = pathname === "/compras" || pathname.startsWith("/compras/");
   // En las pantallas publicas (login, visitas) no va ninguna navegacion.
@@ -254,6 +261,7 @@ function LayoutDesktop() {
         )}
         <div className="layout-right">
           {esProduccion && <NavbarProduccion />}
+          {esContable && <NavbarContable />}
           {esCompras && !esPublica && <MenuCompras />}
           <main>
             <Suspense fallback={<CargandoPantalla />}>
@@ -330,6 +338,30 @@ function LayoutDesktop() {
               {/* Producción entra por los establecimientos: todo lo demás
                   cuelga de uno de ellos. */}
               <Route path="/produccion" element={<ProduccionEstablecimientos />} />
+              {/* Contable: la misma grilla de meses que los certificados de
+                  Producción (con los períodos de Berdina). Cada mes tiene su
+                  Excel mensual (05/11/2026). */}
+              <Route
+                path="/contable"
+                element={
+                  <ProduccionCertificados
+                    base="/contable"
+                    extra={{
+                      titulo: "Equivalencias tareas",
+                      icono: "bi bi-arrow-left-right",
+                      destino: "/contable/equivalencias",
+                      permiso: "contable.equivalencias",
+                    }}
+                  />
+                }
+              />
+              <Route path="/contable/equivalencias" element={<ContableEquivalencias />} />
+              {/* El mes: primero el Excel mensual, después su tabla. */}
+              <Route path="/contable/:anio/:mes" element={<ContableMes />} />
+              <Route path="/contable/:anio/:mes/tabla" element={<ContableTabla />} />
+              {/* La tabla del mes juntada por tarea de La Martina (05/11/2026). */}
+              <Route path="/contable/:anio/:mes/comparativa" element={<ContableComparativaCampos />} />
+              <Route path="/contable/:anio/:mes/comparativa/:campo" element={<ContableComparativa />} />
 
               {/* Variables es de todo Producción, no de un campo (18/09/2026):
                   es la tarjeta chica del medio en la entrada. Remuneración

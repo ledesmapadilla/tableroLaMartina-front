@@ -28,6 +28,11 @@ const REGLAS = [
   [/^\/compras\/altas\/centros-costo/, "altas.centrosCosto"],
   [/^\/compras\/?$/, GRUPO.compras],
 
+  // ── Contable ── (05/11/2026)
+  [/^\/contable\/equivalencias/, "contable.equivalencias"],
+  [/^\/contable\/\d+\/\d+/, "contable.excel"],
+  [/^\/contable/, GRUPO.contable],
+
   // ── Producción ──
   [/^\/produccion\/altas\/cc/, "altas.centrosCosto"],
   [/^\/produccion\/altas\/personal/, "altas.personal"],
