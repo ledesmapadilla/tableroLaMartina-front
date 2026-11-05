@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnotarVista } from "./utils/registroVistas";
 import { isMobile } from "./utils/device";
 
 // ── Compras ──
@@ -241,6 +242,8 @@ function LayoutDesktop() {
 
   return (
       <div className="app-wrapper">
+        {/* Cada pantalla que abre queda en el Registro de Altas › Usuarios. */}
+        {user && <AnotarVista />}
         {/* Los dos botones flotantes tienen su permiso en la tabla de Roles. */}
         {conBotonesFlotantes && puede("tablero.camionetas") && <BotonTableroFlotante />}
         {conBotonesFlotantes && puede("tablero.reunion") && (

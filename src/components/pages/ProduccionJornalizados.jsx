@@ -706,14 +706,21 @@ function PlanillaJornalizados({ establecimiento }) {
   }, [filas]);
 
   const cantidadProvisorios = filas.filter((f) => f.provisorio).length;
-  const filtradas = filas.filter((f) => {
-    const dia = soloFecha(f.fecha);
-    if (desde && dia < desde) return false;
-    if (hasta && dia > hasta) return false;
-    if (filtroPersona !== "Todos" && f.persona?._id !== filtroPersona) return false;
-    if (soloProvisorios && !f.provisorio) return false;
-    return true;
-  });
+  // Lo más nuevo arriba y, dentro del mismo día, por apellido (no por orden de carga).
+  const filtradas = filas
+    .filter((f) => {
+      const dia = soloFecha(f.fecha);
+      if (desde && dia < desde) return false;
+      if (hasta && dia > hasta) return false;
+      if (filtroPersona !== "Todos" && f.persona?._id !== filtroPersona) return false;
+      if (soloProvisorios && !f.provisorio) return false;
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        soloFecha(b.fecha).localeCompare(soloFecha(a.fecha)) ||
+        (a.persona?.apellidoNombre || "").localeCompare(b.persona?.apellidoNombre || "", "es", { sensitivity: "base" })
+    );
   const hayFiltro = Boolean(desde || hasta || soloProvisorios || filtroPersona !== "Todos");
   const totalHoras = Math.round(filtradas.reduce((s, f) => s + (f.totalHoras || 0), 0) * 100) / 100;
 

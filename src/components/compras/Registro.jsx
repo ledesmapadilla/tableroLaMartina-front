@@ -36,11 +36,22 @@ const SECCIONES = {
   colectivos: 'Colectivos',
   visitas: 'Visitas',
   archivos: 'Archivos',
+  // Las pantallas que se abren (05/11/2026): lo primero de la dirección.
+  '': 'Principal',
+  compras: 'Compras',
+  produccion: 'Producción',
+  colectivo: 'Colectivos',
+  reparaciones: 'Reparaciones',
+  pendientes: 'Pendientes de reunión',
+  inicio: 'Inicio',
 }
 const nombreSeccion = (s) => SECCIONES[s] || s || ''
 
-const ACCIONES = { alta: 'Alta', cambio: 'Cambio', baja: 'Baja', login: 'Entrada' }
-const COLOR_ACCION = { Alta: '#15803d', Cambio: '#1d4ed8', Baja: '#b91c1c', Entrada: '#475569' }
+// Qué hizo, dicho como se dice (05/11/2026; antes Alta, Cambio, Baja).
+const ACCIONES = { alta: 'Cargó', cambio: 'Editó', baja: 'Borró', login: 'Entró', vista: 'Miró' }
+const COLOR_ACCION = { Cargó: '#15803d', Editó: '#1d4ed8', Borró: '#b91c1c', Entró: '#475569', Miró: '#0e7490' }
+// Lo mismo para el título de un cambio en el detalle.
+const TIPO_CAMBIO = { alta: 'Alta', cambio: 'Cambio', baja: 'Baja' }
 
 /**
  * Qué hizo el renglón. Un PUT que crea o borra (las observaciones de gasoil,
@@ -49,15 +60,17 @@ const COLOR_ACCION = { Alta: '#15803d', Cambio: '#1d4ed8', Baja: '#b91c1c', Entr
  */
 const accionDe = (f) => {
   if (f.accion === 'login') return ACCIONES.login
+  if (f.accion === 'vista') return ACCIONES.vista
   const tipos = [...new Set((f.cambios || []).map((c) => c.tipo))]
   return ACCIONES[tipos.length === 1 ? tipos[0] : f.accion]
 }
 
 const resumenDe = (f) => {
   if (f.accion === 'login') return f.ok ? 'Entró al sistema' : 'Intento de entrar'
+  if (f.accion === 'vista') return f.pantalla || f.ruta
   if (!f.cambios?.length) return f.ruta.replace(/^\/api\//, '')
   return f.cambios
-    .map((c) => (c.tipo === 'cambio' ? `${c.modelo}: ${c.campos.map((x) => x.campo).join(', ')}` : `${ACCIONES[c.tipo]} de ${c.modelo.toLowerCase()}`))
+    .map((c) => (c.tipo === 'cambio' ? `${c.modelo}: ${c.campos.map((x) => x.campo).join(', ')}` : `${TIPO_CAMBIO[c.tipo]} de ${c.modelo.toLowerCase()}`))
     .join(' · ')
 }
 
@@ -107,6 +120,88 @@ const camposDeDoc = (texto) => {
   }
 }
 
+// Un número de la tabla del resumen: en gris si es cero.
+const Cuenta = ({ n, color }) =>
+  n ? <span style={{ fontWeight: 600, color }}>{n}</span> : <span style={{ color: '#cbd5e1' }}>0</span>
+
+/**
+ * Una fila por usuario (05/11/2026): cuántas veces entró, cuántas pantallas
+ * abrió, cuánto cargó, editó y borró, lo que no se pudo guardar y en qué
+ * secciones lo hizo. El ojo lleva a sus renglones.
+ */
+function ResumenUsuarios({ filas, cargando, onVer }) {
+  const total = (k) => filas.reduce((s, f) => s + (f[k] || 0), 0)
+  const tdTotal = { ...tdCentro, fontWeight: 700 }
+  return (
+    <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '900px' }}>
+      <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+        <tr>
+          <th style={th}>Usuario</th>
+          <th style={thCentro}>Entró</th>
+          <th style={thCentro}>Miró</th>
+          <th style={thCentro}>Cargó</th>
+          <th style={thCentro}>Editó</th>
+          <th style={thCentro}>Borró</th>
+          <th style={thCentro} title="Lo que intentó guardar y no se guardó, y las entradas con la contraseña mal">
+            No se guardó
+          </th>
+          <th style={th}>Dónde cargó, editó o borró</th>
+          <th style={thCentro}>Última vez</th>
+          <th style={thCentro}>Ver</th>
+        </tr>
+      </thead>
+      <tbody>
+        {filas.length === 0 ? (
+          <tr>
+            <td colSpan={10} className="text-center text-muted py-4" style={td}>
+              {cargando ? 'Cargando…' : 'No hay nada anotado en esas fechas'}
+            </td>
+          </tr>
+        ) : (
+          <>
+            {filas.map((f) => {
+              const ultima = f.ultima ? fechaHora(f.ultima) : null
+              return (
+                <tr key={f.usuario || 'sin-usuario'}>
+                  <td style={td}>
+                    <span style={{ fontWeight: 500 }}>{f.nombre || f.usuario || 'Sin usuario'}</span>
+                    {f.rol && <span className="text-muted"> · {nombreRol(f.rol)}</span>}
+                  </td>
+                  <td style={tdCentro}><Cuenta n={f.entradas} color={COLOR_ACCION['Entró']} /></td>
+                  <td style={tdCentro}><Cuenta n={f.vistas} color={COLOR_ACCION['Miró']} /></td>
+                  <td style={tdCentro}><Cuenta n={f.altas} color={COLOR_ACCION['Cargó']} /></td>
+                  <td style={tdCentro}><Cuenta n={f.cambios} color={COLOR_ACCION['Editó']} /></td>
+                  <td style={tdCentro}><Cuenta n={f.bajas} color={COLOR_ACCION['Borró']} /></td>
+                  <td style={tdCentro}><Cuenta n={f.errores + f.entradasFallidas} color="#b91c1c" /></td>
+                  <td style={{ ...td, maxWidth: '320px' }}>
+                    {f.secciones.length ? f.secciones.map((x) => `${nombreSeccion(x.seccion)} (${x.n})`).join(' · ') : <Raya />}
+                  </td>
+                  <td style={{ ...tdCentro, whiteSpace: 'nowrap' }}>{ultima ? `${ultima.fecha} ${ultima.hora}` : <Raya />}</td>
+                  <td style={tdCentro}>
+                    <div className="d-flex justify-content-center">
+                      <BotonAccion icono="bi-eye" titulo="Ver sus renglones" onClick={() => onVer(f)} />
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+            <tr>
+              <td style={{ ...td, fontWeight: 700 }}>TOTAL</td>
+              <td style={tdTotal}>{total('entradas')}</td>
+              <td style={tdTotal}>{total('vistas')}</td>
+              <td style={tdTotal}>{total('altas')}</td>
+              <td style={tdTotal}>{total('cambios')}</td>
+              <td style={tdTotal}>{total('bajas')}</td>
+              <td style={tdTotal}>{total('errores') + total('entradasFallidas')}</td>
+              <td style={td} colSpan={3}></td>
+            </tr>
+          </>
+        )}
+      </tbody>
+    </Table>
+  )
+}
+
 /**
  * El registro de cambios (25/10/2026): quién hizo qué y cuándo. Solo el
  * superadmin. Cada alta, cambio o baja del sistema, y cada intento de entrar;
@@ -126,6 +221,25 @@ export default function Registro() {
   const [seccion, setSeccion] = useState('')
   const [accion, setAccion] = useState('')
   const [detalle, setDetalle] = useState(null)
+  // El resumen por usuario (05/11/2026): qué hizo cada uno en esas fechas.
+  const [verResumen, setVerResumen] = useState(false)
+  const [resumen, setResumen] = useState([])
+  const [cargandoResumen, setCargandoResumen] = useState(false)
+
+  useEffect(() => {
+    if (!verResumen) return
+    let vigente = true
+    api
+      .get(`/registro/resumen?desde=${desde}&hasta=${hasta}`)
+      .then((r) => vigente && setResumen(Array.isArray(r) ? r : []))
+      .catch((err) => {
+        if (vigente) Swal.fire({ icon: 'error', title: 'No se pudo cargar el resumen', text: err.message })
+      })
+      .finally(() => vigente && setCargandoResumen(false))
+    return () => {
+      vigente = false
+    }
+  }, [verResumen, desde, hasta])
 
   useEffect(() => {
     let vigente = true
@@ -150,10 +264,12 @@ export default function Registro() {
   // Cambiar las fechas vuelve a pedir el registro.
   const cambiarDesde = (v) => {
     setCargando(true)
+    setCargandoResumen(true)
     setDesde(v || hoy(7))
   }
   const cambiarHasta = (v) => {
     setCargando(true)
+    setCargandoResumen(true)
     setHasta(v || hoy())
   }
 
@@ -203,12 +319,34 @@ export default function Registro() {
           <div className="d-flex flex-wrap align-items-end gap-2">
             <FiltroTexto etiqueta="Desde" ancho="150px" tipo="date" valor={desde} onChange={cambiarDesde} />
             <FiltroTexto etiqueta="Hasta" ancho="150px" tipo="date" valor={hasta} onChange={cambiarHasta} />
-            <FiltroSelect etiqueta="Usuario" ancho="190px" valor={usuario} vacio="Todos" onChange={setUsuario} opciones={opciones.usuarios} />
-            <FiltroSelect etiqueta="Sección" ancho="190px" valor={seccion} vacio="Todas" onChange={setSeccion} opciones={opciones.secciones} />
-            <FiltroSelect etiqueta="Acción" ancho="130px" valor={accion} vacio="Todas" onChange={setAccion} opciones={opciones.acciones} />
+            {!verResumen && (
+              <>
+                <FiltroSelect etiqueta="Usuario" ancho="190px" valor={usuario} vacio="Todos" onChange={setUsuario} opciones={opciones.usuarios} />
+                <FiltroSelect etiqueta="Sección" ancho="190px" valor={seccion} vacio="Todas" onChange={setSeccion} opciones={opciones.secciones} />
+                <FiltroSelect etiqueta="Acción" ancho="130px" valor={accion} vacio="Todas" onChange={setAccion} opciones={opciones.acciones} />
+              </>
+            )}
+            <button
+              type="button"
+              className="btn btn-sm fw-bold text-white"
+              style={{ backgroundColor: BORDO, fontSize: '0.78rem' }}
+              onClick={() => {
+                if (!verResumen) setCargandoResumen(true)
+                setVerResumen(!verResumen)
+              }}
+            >
+              <i className={`bi ${verResumen ? 'bi-list-ul' : 'bi-people'} me-1`}></i>
+              {verResumen ? 'Ver renglones' : 'Resumen por usuario'}
+            </button>
             <span className="ms-auto text-muted" style={{ fontSize: '0.75rem' }}>
-              {lista.length} {lista.length === 1 ? 'renglón' : 'renglones'}
-              {recortado && ' · se muestran los 2000 más nuevos: acortá las fechas'}
+              {verResumen ? (
+                `${resumen.length} ${resumen.length === 1 ? 'usuario' : 'usuarios'}`
+              ) : (
+                <>
+                  {lista.length} {lista.length === 1 ? 'renglón' : 'renglones'}
+                  {recortado && ' · se muestran los 2000 más nuevos: acortá las fechas'}
+                </>
+              )}
             </span>
           </div>
         </Card>
@@ -217,6 +355,18 @@ export default function Registro() {
           className="flex-grow-1 shadow-sm rounded-3 bg-white"
           style={{ minHeight: 0, overflowY: 'auto', overflowX: 'auto', border: '1px solid #cbd5e1' }}
         >
+          {verResumen ? (
+            <ResumenUsuarios
+              filas={resumen}
+              cargando={cargandoResumen}
+              onVer={(u) => {
+                setUsuario(u.nombre || u.usuario || 'Sin usuario')
+                setSeccion('')
+                setAccion('')
+                setVerResumen(false)
+              }}
+            />
+          ) : (
           <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%', minWidth: '900px' }}>
             <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
               <tr>
@@ -264,7 +414,7 @@ export default function Registro() {
                         )}
                       </td>
                       <td style={tdCentro}>
-                        {f.accion === 'login' ? (
+                        {f.accion === 'login' || f.accion === 'vista' ? (
                           <Raya />
                         ) : (
                           <BotonAccion icono="bi-eye" titulo="Ver el detalle" onClick={() => abrir(f._id)} />
@@ -276,6 +426,7 @@ export default function Registro() {
               )}
             </tbody>
           </Table>
+          )}
         </div>
       </Container>
 
@@ -286,7 +437,7 @@ export default function Registro() {
           style={{ backgroundColor: BORDO, color: '#fff', borderTopLeftRadius: '1rem', borderTopRightRadius: '1rem' }}
         >
           <Modal.Title className="fs-6 fw-bold text-white">
-            {detalle && `${accionDe(detalle)} en ${nombreSeccion(detalle.seccion)} · ${quien(detalle)}`}
+            {detalle && `${quien(detalle)} · ${accionDe(detalle)} en ${nombreSeccion(detalle.seccion)}`}
           </Modal.Title>
         </Modal.Header>
         {detalle && (
@@ -305,7 +456,7 @@ export default function Registro() {
               return (
                 <div key={i} className="mb-3">
                   <div className="fw-bold mb-1" style={{ color: BORDO }}>
-                    {ACCIONES[c.tipo]} de {c.modelo.toLowerCase()}
+                    {TIPO_CAMBIO[c.tipo]} de {c.modelo.toLowerCase()}
                   </div>
                   <Table className="mb-0 tabla-informe tabla-compras" style={{ width: '100%' }}>
                     <thead>
