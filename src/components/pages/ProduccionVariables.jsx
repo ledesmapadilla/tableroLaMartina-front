@@ -6,6 +6,7 @@ import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import { usePermisos } from "../../context/permisos";
 import { nombreEstablecimiento } from "../../utils/establecimientos";
+import { masNuevaPrimero } from "../../utils/altoRendimiento";
 import {
   CLIENTE_POR_DEFECTO,
   clienteDe,
@@ -174,7 +175,8 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
       mapa.get(id).push(p);
     }
     for (const lista of mapa.values()) {
-      lista.sort((a, b) => cuandoRige(b).localeCompare(cuandoRige(a)));
+      // Con la misma vigencia, la cargada última (masNuevaPrimero).
+      lista.sort((a, b) => cuandoRige(b).localeCompare(cuandoRige(a)) || masNuevaPrimero(a, b));
     }
     return mapa;
   }, [preciosDelCliente]);
@@ -190,6 +192,9 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
             tarea: t.tarea,
             unidad: t.unidad || "",
             empresa: t.empresa || "",
+            // La que cobra lo mismo que otra (07/11/2026): sus precios son los
+            // de esa, de solo lectura.
+            mismoPrecioQue: t.mismoPrecioQue ? tareas.find((o) => o._id === t.mismoPrecioQue) || null : null,
             vigente: historial[0] || null,
             historial,
           };
@@ -226,7 +231,8 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
   const opcionesTareas = useMemo(
     () =>
       tareas
-        .slice()
+        // Las que toman el precio de otra no se cargan: el precio va en la otra.
+        .filter((t) => !t.mismoPrecioQue)
         .sort((a, b) => a.tarea.localeCompare(b.tarea, "es", { sensitivity: "base" }))
         .map((t) => ({
           valor: t._id,
@@ -340,9 +346,7 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
         (p.tarea?._id || p.tarea) === idTarea &&
         mismoCliente(p, carga)
     );
-    const quedaVigente = anteriores.sort((a, b) =>
-      soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde))
-    )[0];
+    const quedaVigente = anteriores.sort(masNuevaPrimero)[0];
 
     const result = await Swal.fire({
       title: "¿Borrar este precio?",
@@ -781,7 +785,18 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                   return (
                     <tr key={f._id}>
                       <td className="text-muted">{idx + 1}</td>
-                      <td className="text-start fw-semibold text-dark">{f.tarea}</td>
+                      <td className="text-start fw-semibold text-dark">
+                        {f.tarea}
+                        {f.mismoPrecioQue && (
+                          <span
+                            className="ms-2 px-2 rounded-pill fw-normal"
+                            style={{ fontSize: "0.66rem", backgroundColor: "#e0f2fe", color: "#075985" }}
+                            title="Tiene el mismo precio que esa tarea: se carga allá y acá cambia solo"
+                          >
+                            = {f.mismoPrecioQue.tarea}
+                          </span>
+                        )}
+                      </td>
                       <td className="text-secondary">{f.unidad || raya}</td>
                       <td className="fw-bold" style={{ color: "#1b4332" }}>
                         {v ? formatPesos(v.neto) : raya}
@@ -816,11 +831,13 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                               mal tipeada se hace desde el historial. */}
                           <button
                             onClick={() => nuevoPrecioDesdeFila(f)}
-                            disabled={sinEditar}
+                            disabled={sinEditar || Boolean(f.mismoPrecioQue)}
                             className="btn btn-sm btn-outline-primary rounded-2 py-0 px-2"
                             style={{ height: "24px", fontSize: "0.72rem", fontWeight: 600 }}
                             title={
-                              sinEditar
+                              f.mismoPrecioQue
+                                ? `El precio se carga en «${f.mismoPrecioQue.tarea}»`
+                                : sinEditar
                                 ? "Sin permiso para editar"
                                 : v
                                 ? "Cargar un precio nuevo: el actual pasa al historial"
@@ -1208,6 +1225,11 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
             <i className="bi bi-clock-history" style={{ color: "#cbd5e1" }}></i>
             <span>
               {historialAbierto?.tarea} · {clienteSel}
+              {historialAbierto?.mismoPrecioQue && (
+                <span className="fw-normal ms-2" style={{ fontSize: "0.78rem", opacity: 0.8 }}>
+                  (= {historialAbierto.mismoPrecioQue.tarea})
+                </span>
+              )}
             </span>
           </Modal.Title>
         </Modal.Header>
@@ -1280,10 +1302,16 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                           setHistorialDe(null);
                           abrirEditar(h);
                         }}
-                        disabled={sinEditar}
+                        disabled={sinEditar || Boolean(h.heredadaDe)}
                         className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center rounded-2 p-0"
                         style={{ width: "24px", height: "24px" }}
-                        title={sinEditar ? "Sin permiso para editar" : "Editar esta carga"}
+                        title={
+                          h.heredadaDe
+                            ? `Es el precio de «${h.heredadaDe.tarea}»: se corrige allá`
+                            : sinEditar
+                            ? "Sin permiso para editar"
+                            : "Editar esta carga"
+                        }
                       >
                         <i className="bi bi-pencil" style={{ fontSize: "0.8rem" }}></i>
                       </button>
@@ -1293,10 +1321,16 @@ function ProduccionVariables({ establecimiento = "caspinchango" }) {
                         onClick={async () => {
                           if (await borrarCarga(h, historialAbierto.tarea)) setHistorialDe(null);
                         }}
-                        disabled={sinEditar}
+                        disabled={sinEditar || Boolean(h.heredadaDe)}
                         className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                         style={{ width: "24px", height: "24px" }}
-                        title={sinEditar ? "Sin permiso para editar" : "Borrar esta carga"}
+                        title={
+                          h.heredadaDe
+                            ? `Es el precio de «${h.heredadaDe.tarea}»: se borra allá`
+                            : sinEditar
+                            ? "Sin permiso para editar"
+                            : "Borrar esta carga"
+                        }
                       >
                         <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
                       </button>

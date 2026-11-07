@@ -112,7 +112,7 @@ export function calcularCertificado(partesFiltrados, variables, ajustes, estable
     const diasPorPersona = new Map();
     const anotarDia = (fila, dia) => {
       const lista = diasPorPersona.get(fila.idPersona) || [];
-      lista.push({ tarea: fila.tarea, cliente: fila.cliente, unidad: fila.unidad, ...dia });
+      lista.push({ tarea: fila.tarea, idTarea: fila.idTarea, cliente: fila.cliente, unidad: fila.unidad, ...dia });
       diasPorPersona.set(fila.idPersona, lista);
     };
 

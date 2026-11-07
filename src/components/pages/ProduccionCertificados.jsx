@@ -167,7 +167,13 @@ function ProduccionCertificados({
 
         {/* Tarjetas de los meses. Arrancan arriba: el sobrante de alto queda
             abajo y separa la última fila del footer. */}
-        <div className="flex-grow-1 d-flex flex-column align-items-center pb-4">
+        {/* Con la tarjeta de abajo (Contable) el alto no siempre alcanza: en
+            una notebook quedaba cortada (06/11/2026). Ahí los meses son más
+            bajos y, si igual no entra, esta parte hace scroll en vez de cortar. */}
+        <div
+          className="flex-grow-1 d-flex flex-column align-items-center pb-4"
+          style={verExtra ? { minHeight: 0, overflowY: "auto", overflowX: "hidden", paddingTop: "4px" } : undefined}
+        >
           <div
             style={{
               display: "grid",
@@ -202,7 +208,7 @@ function ProduccionCertificados({
                 style={{
                   background: fondo,
                   borderRadius: "16px",
-                  height: "140px",
+                  height: verExtra ? "120px" : "140px",
                   color: "#fff",
                   cursor: "pointer",
                   border: esMesActual

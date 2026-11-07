@@ -5,7 +5,7 @@ import Swal from "sweetalert2";
 import { api } from "../../services/api";
 import { usePermisos } from "../../context/permisos";
 import { leerExcelContable } from "../../utils/leerExcelContable";
-import { MESES, fechaHora, memoriaTablas } from "../../utils/contable";
+import { MESES, TIPOS_COMPARATIVA, fechaHora, memoriaTablas } from "../../utils/contable";
 
 // Lo que acepta el botón. Se controla también al elegir, porque el selector
 // de archivos deja cambiar el filtro a "Todos los archivos". La tabla sale
@@ -136,12 +136,13 @@ function ContableMes() {
     }
   };
 
-  const boton = { backgroundColor: "#0e7490", borderColor: "#0e7490", color: "#fff", fontSize: "0.9rem" };
-  // Las dos tarjetas del mes miden lo mismo.
+  const boton = { backgroundColor: "#0e7490", borderColor: "#0e7490", color: "#fff", fontSize: "0.82rem" };
+  // Las dos tarjetas del mes miden lo mismo, y lo justo para su contenido
+  // (06/11/2026: a la mitad del alto que tenían).
   const tarjeta = {
     width: "100%",
-    maxWidth: "380px",
-    borderRadius: "20px",
+    maxWidth: "270px",
+    borderRadius: "16px",
     border: "1px solid #cbd5e1",
     boxShadow: "0 8px 18px -6px rgba(0,0,0,0.15)",
   };
@@ -179,19 +180,20 @@ function ContableMes() {
         />
 
         {/* Las dos tarjetas del mes: el Excel y la comparativa. */}
-        <div className="flex-grow-1 d-flex align-items-center justify-content-center gap-4 flex-wrap">
+        <div className="flex-grow-1 d-flex align-items-center justify-content-center">
+        <div className="d-flex justify-content-center gap-4 flex-wrap" style={{ width: "100%" }}>
           <div
-            className="d-flex flex-column align-items-center text-center p-4 bg-white"
+            className="d-flex flex-column align-items-center text-center px-4 py-3 bg-white"
             style={{ ...tarjeta, alignSelf: "stretch" }}
           >
             <div
-              className="mb-3 d-flex align-items-center justify-content-center"
-              style={{ width: "66px", height: "66px", borderRadius: "18px", backgroundColor: "#ecfeff" }}
+              className="mb-2 d-flex align-items-center justify-content-center"
+              style={{ width: "40px", height: "40px", borderRadius: "12px", backgroundColor: "#ecfeff" }}
             >
-              <i className="bi bi-file-earmark-excel-fill" style={{ fontSize: "2.1rem", color: "#15803d" }}></i>
+              <i className="bi bi-file-earmark-excel-fill" style={{ fontSize: "1.3rem", color: "#15803d" }}></i>
             </div>
 
-            <span className="fw-bold mb-3" style={{ color: "#164e63", fontSize: "1.1rem" }}>
+            <span className="fw-bold mb-1" style={{ color: "#164e63", fontSize: "1rem" }}>
               Excel mensual
             </span>
 
@@ -202,25 +204,25 @@ function ContableMes() {
                 {/* Ya hay tabla: el único botón es para verla. Otro Excel
                     recién después de borrarla, desde la tabla: ahí este
                     botón vuelve a ser "Cargar Excel mensual". */}
-                <span className="fw-semibold text-break" style={{ color: "#164e63", fontSize: "0.92rem" }}>
+                <span className="fw-semibold text-break" style={{ color: "#164e63", fontSize: "0.85rem" }}>
                   {tabla?.origen || "Excel del mes"}
                 </span>
-                <span className="mt-1" style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                <span style={{ fontSize: "0.74rem", color: "#64748b" }}>
                   Armada {fechaHora(tabla?.fecha)}
                   {tabla?.cargadaPor ? ` por ${tabla.cargadaPor}` : ""}
                 </span>
-                <button className="btn d-flex align-items-center gap-2 px-4 mt-4" style={boton} onClick={verTabla}>
+                <button className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-2" style={boton} onClick={verTabla}>
                   <i className="bi bi-table"></i>
                   Mostrar tabla
                 </button>
               </>
             ) : archivo ? (
               <>
-                <span className="mb-3" style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                <span className="mb-1" style={{ fontSize: "0.8rem", color: "#64748b" }}>
                   «{archivo.nombre || "Excel del mes"}» todavía no pasó a la tabla.
                 </span>
                 <button
-                  className="btn d-flex align-items-center gap-2 px-4"
+                  className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-1"
                   style={boton}
                   onClick={pasarATabla}
                   disabled={!puedeEditar || trabajando}
@@ -231,11 +233,11 @@ function ContableMes() {
               </>
             ) : (
               <>
-                <span className="mb-3" style={{ fontSize: "0.85rem", color: "#64748b" }}>
+                <span className="mb-1" style={{ fontSize: "0.8rem", color: "#64748b" }}>
                   Todavía no se cargó el Excel de este mes.
                 </span>
                 <button
-                  className="btn d-flex align-items-center gap-2 px-4 py-2"
+                  className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-1"
                   style={boton}
                   onClick={() => input.current?.click()}
                   disabled={!puedeEditar || trabajando}
@@ -247,39 +249,47 @@ function ContableMes() {
             )}
           </div>
 
-          {/* La comparativa (05/11/2026): las tareas del mes juntadas por la
-              tarea de La Martina que les toca (Equivalencias de tareas). Sale
-              de la tabla: sin tabla no hay nada que comparar. */}
-          <div
-            className="d-flex flex-column align-items-center text-center p-4 bg-white"
-            style={{ ...tarjeta, alignSelf: "stretch" }}
-          >
+          {/* Las comparativas (05/11/2026): las tareas del mes juntadas por la
+              tarea de La Martina que les toca (Equivalencias de tareas). Salen
+              de la tabla: sin tabla no hay nada que comparar. Desde el
+              07/11/2026 son dos, cantidad y costos; por ahora hacen lo mismo. */}
+          {[
+            [TIPOS_COMPARATIVA.cantidad, "bi-bar-chart-line"],
+            [TIPOS_COMPARATIVA.costos, "bi-cash-stack"],
+          ].map(([t, ico]) => (
             <div
-              className="mb-3 d-flex align-items-center justify-content-center"
-              style={{ width: "66px", height: "66px", borderRadius: "18px", backgroundColor: "#ecfeff" }}
+              key={t.ruta}
+              className="d-flex flex-column align-items-center text-center px-4 py-3 bg-white"
+              style={{ ...tarjeta, alignSelf: "stretch" }}
             >
-              <i className="bi bi-bar-chart-line-fill" style={{ fontSize: "2.1rem", color: "#0e7490" }}></i>
+              <div
+                className="mb-2 d-flex align-items-center justify-content-center"
+                style={{ width: "40px", height: "40px", borderRadius: "12px", backgroundColor: t.colores.claro }}
+              >
+                <i className={`bi ${ico}`} style={{ fontSize: "1.3rem", color: t.colores.medio }}></i>
+              </div>
+
+              <span className="fw-bold mb-1" style={{ color: t.colores.oscuro, fontSize: "1rem" }}>
+                {t.titulo}
+              </span>
+
+              <span className="mb-auto" style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                {hayTabla || cargando
+                  ? "Las tareas del mes agrupadas por tarea de La Martina."
+                  : "Primero hay que cargar el Excel del mes."}
+              </span>
+              <button
+                className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-2"
+                style={{ ...boton, backgroundColor: t.colores.medio, borderColor: t.colores.medio }}
+                onClick={() => navigate(`/contable/${anio}/${mes}/${t.ruta}`)}
+                disabled={cargando || !hayTabla}
+              >
+                <i className={`bi ${ico}`}></i>
+                Mostrar comparativa
+              </button>
             </div>
-
-            <span className="fw-bold mb-3" style={{ color: "#164e63", fontSize: "1.1rem" }}>
-              Comparativa
-            </span>
-
-            <span className="mb-auto" style={{ fontSize: "0.85rem", color: "#64748b" }}>
-              {hayTabla || cargando
-                ? "Las tareas del mes agrupadas por tarea de La Martina."
-                : "Primero hay que cargar el Excel del mes."}
-            </span>
-            <button
-              className="btn d-flex align-items-center gap-2 px-4 mt-4"
-              style={boton}
-              onClick={() => navigate(`/contable/${anio}/${mes}/comparativa`)}
-              disabled={cargando || !hayTabla}
-            >
-              <i className="bi bi-bar-chart-line"></i>
-              Mostrar comparativa
-            </button>
-          </div>
+          ))}
+        </div>
         </div>
       </Container>
     </div>

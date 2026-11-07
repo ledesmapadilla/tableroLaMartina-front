@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import Swal from "sweetalert2";
 import { Container, Table, Button, Form, Modal, Row, Col, Card } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
@@ -28,8 +28,11 @@ function ProduccionAltaTareas() {
     handleSubmit,
     reset,
     setValue,
+    control,
     formState: { errors },
   } = useForm();
+  // Las tareas de "Mismo precio que" tienen que ir en la misma unidad.
+  const unidadElegida = (useWatch({ control, name: "unidad" }) || "").trim();
 
   const cargar = async () => {
     try {
@@ -47,7 +50,7 @@ function ProduccionAltaTareas() {
 
   const abrirNuevo = () => {
     setEditando(null);
-    reset({ tarea: "", unidad: "" });
+    reset({ tarea: "", unidad: "", mismoPrecioQue: "" });
     setShowModal(true);
   };
 
@@ -55,6 +58,7 @@ function ProduccionAltaTareas() {
     setEditando(t._id);
     setValue("tarea", t.tarea);
     setValue("unidad", t.unidad || "");
+    setValue("mismoPrecioQue", t.mismoPrecioQue || "");
     setShowModal(true);
   };
 
@@ -71,7 +75,7 @@ function ProduccionAltaTareas() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, mismoPrecioQue: data.mismoPrecioQue || null }),
       });
       if (res.ok) {
         cerrarModal();
@@ -103,7 +107,13 @@ function ProduccionAltaTareas() {
       cancelButtonText: "Cancelar",
     });
     if (result.isConfirmed) {
-      await fetch(`${API}/${t._id}`, { method: "DELETE" });
+      const res = await fetch(`${API}/${t._id}`, { method: "DELETE" });
+      if (!res.ok) {
+        // Por ejemplo, una tarea de la que otra toma el precio.
+        const err = await res.json().catch(() => ({}));
+        Swal.fire({ icon: "error", title: "No se pudo eliminar", text: err.error || "No se pudo eliminar" });
+        return;
+      }
       cargar();
       Swal.fire({ icon: "success", title: "Tarea eliminada", timer: 1200, showConfirmButton: false });
     }
@@ -404,6 +414,15 @@ function ProduccionAltaTareas() {
                       </td>
                       <td className="text-start ps-3 fw-semibold text-dark" style={{ wordBreak: "break-word" }}>
                         {t.tarea}
+                        {t.mismoPrecioQue && (
+                          <span
+                            className="ms-2 px-2 rounded-pill fw-normal"
+                            style={{ fontSize: "0.66rem", backgroundColor: "#e0f2fe", color: "#075985" }}
+                            title="Mismo precio que esa tarea (Variables › Remuneración)"
+                          >
+                            = {tareas.find((o) => o._id === t.mismoPrecioQue)?.tarea || "otra tarea"}
+                          </span>
+                        )}
                       </td>
                       <td className="text-secondary fw-medium">{t.unidad || "—"}</td>
                       <td>
@@ -496,6 +515,37 @@ function ProduccionAltaTareas() {
                 <Form.Control.Feedback type="invalid" style={{ fontSize: "0.78rem" }}>
                   {errors.unidad?.message}
                 </Form.Control.Feedback>
+              </Col>
+
+              {/* Mismo precio que otra (07/11/2026): no se le cargan precios,
+                  usa siempre los de esa. Solo las de la misma unidad y que no
+                  tomen a su vez el precio de otra. */}
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">Mismo precio que</Form.Label>
+                <Form.Select
+                  className="rounded-3"
+                  style={{ fontSize: "0.85rem", height: "38px" }}
+                  {...register("mismoPrecioQue")}
+                >
+                  <option value="">— Tiene precio propio —</option>
+                  {tareas
+                    .filter(
+                      (o) =>
+                        o._id !== editando &&
+                        !o.mismoPrecioQue &&
+                        (!unidadElegida || (o.unidad || "").trim() === unidadElegida)
+                    )
+                    .sort((a, b) => a.tarea.localeCompare(b.tarea, "es", { sensitivity: "base" }))
+                    .map((o) => (
+                      <option key={o._id} value={o._id}>
+                        {o.tarea}
+                      </option>
+                    ))}
+                </Form.Select>
+                <Form.Text style={{ fontSize: "0.72rem" }}>
+                  Si elegís una, esta tarea cobra siempre lo mismo que esa: el precio se carga solo en esa, en
+                  Variables › Remuneración, y acá cambia solo.
+                </Form.Text>
               </Col>
 
             </Row>

@@ -37,6 +37,25 @@ export const claveTarea = (texto) =>
  * clave de la URL, la de siempre del proyecto (Berdina sigue siendo
  * `caspinchango`). Los colores son los de la entrada de Producción.
  */
+/**
+ * Las dos comparativas del mes (07/11/2026): la de cantidades y la de costos.
+ * Por ahora hacen lo mismo; cada una con su tarjeta y su ruta.
+ */
+export const TIPOS_COMPARATIVA = {
+  // Cada una con su color, para que dentro de las páginas se distingan
+  // (07/11/2026): cantidad en el cian de Contable, costos en violeta.
+  cantidad: {
+    ruta: "comparativa",
+    titulo: "Comparativa cantidad tareas",
+    colores: { oscuro: "#164e63", medio: "#0e7490", claro: "#ecfeff", borde: "#a5f3fc", icono: "#67e8f9" },
+  },
+  costos: {
+    ruta: "comparativa-costos",
+    titulo: "Comparativa costos tarea",
+    colores: { oscuro: "#4c1d95", medio: "#6d28d9", claro: "#f5f3ff", borde: "#ddd6fe", icono: "#c4b5fd" },
+  },
+};
+
 export const CAMPOS_COMPARATIVA = [
   {
     id: "caspinchango",

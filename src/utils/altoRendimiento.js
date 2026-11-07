@@ -32,6 +32,17 @@ export const RETENCION = 0.205;
  * cliente, y si ese cliente no tiene precio para la tarea no hay importe. Un
  * parte o un precio sin cliente cuenta como de Citrusvil (ver clienteDe).
  */
+/**
+ * El orden de las cargas de una tarea y un cliente, de la que rige a la más
+ * vieja: la de vigencia más nueva y, si dos arrancan el mismo día, la que se
+ * cargó última (07/11/2026, regla general): la de fecha de carga más
+ * reciente y, con la misma fecha, la que se guardó después.
+ */
+export const masNuevaPrimero = (a, b) =>
+  soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde)) ||
+  soloFecha(b.fecha).localeCompare(soloFecha(a.fecha)) ||
+  String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
+
 export const precioVigente = (variables, idTarea, cliente, fecha) => {
   const delCliente = { cliente };
   const deLaTarea = variables.filter(
@@ -42,7 +53,7 @@ export const precioVigente = (variables, idTarea, cliente, fecha) => {
   const dia = soloFecha(fecha);
   const vigentes = deLaTarea
     .filter((v) => v.vigenciaDesde && soloFecha(v.vigenciaDesde) <= dia)
-    .sort((a, b) => soloFecha(b.vigenciaDesde).localeCompare(soloFecha(a.vigenciaDesde)));
+    .sort(masNuevaPrimero);
 
   const neto = vigentes[0]?.neto;
   if (!Number.isFinite(neto)) return null;

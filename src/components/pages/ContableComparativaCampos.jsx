@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Container } from "react-bootstrap";
-import { CAMPOS_COMPARATIVA, MESES } from "../../utils/contable";
+import { CAMPOS_COMPARATIVA, MESES, TIPOS_COMPARATIVA } from "../../utils/contable";
 
 /**
  * La entrada de la Comparativa de un mes (05/11/2026): una tarjeta por campo,
  * con los colores de la entrada de Producción. Cada una lleva a la tabla de
  * ese campo (ContableComparativa.jsx).
  */
-function ContableComparativaCampos() {
+function ContableComparativaCampos({ tipo = "cantidad" }) {
+  const { ruta, titulo: nombre, colores: col } = TIPOS_COMPARATIVA[tipo] || TIPOS_COMPARATIVA.cantidad;
   const { anio, mes } = useParams();
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(null);
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
-  const ir = (c) => navigate(`/contable/${anio}/${mes}/comparativa/${c.id}`);
+  const ir = (c) => navigate(`/contable/${anio}/${mes}/${ruta}/${c.id}`);
 
   return (
     <div
@@ -33,8 +34,9 @@ function ContableComparativaCampos() {
       >
         {/* Encabezado. El volver está en el navbar de Contable, arriba. */}
         <div className="d-flex align-items-center gap-2 mb-4">
-          <span className="fw-bold" style={{ color: "#164e63", fontSize: "1.05rem" }}>
-            Comparativa - {titulo}
+          <i className={`bi ${tipo === "costos" ? "bi-cash-stack" : "bi-bar-chart-line-fill"}`} style={{ color: col.medio, fontSize: "1.15rem" }}></i>
+          <span className="fw-bold" style={{ color: col.oscuro, fontSize: "1.05rem" }}>
+            {nombre} - {titulo}
           </span>
         </div>
 
@@ -88,7 +90,7 @@ function ContableComparativaCampos() {
                     {c.titulo}
                   </span>
                   <span className="mt-2 px-2" style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.72)" }}>
-                    Pagado por CTV y certificado en LM
+                    Pagado por Ctv y certificado en LM
                   </span>
                 </div>
               );

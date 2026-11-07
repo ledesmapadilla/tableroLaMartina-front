@@ -4,7 +4,6 @@ import Swal from "sweetalert2";
 import { api } from "../../services/api";
 import { usePermisos } from "../../context/permisos";
 import ModalListaTareas from "../shared/ModalListaTareas";
-import SelectBuscador from "../shared/SelectBuscador";
 import { exportarPlanilla } from "../../helpers/excel";
 
 // Las tareas de Citrusvil van con las unidades de La Martina (Altas › Tareas):
@@ -37,19 +36,19 @@ const conTareaLM = (eqs, tareaId, citrusvil, observaciones) => {
   return vacia(nueva) ? resto : [...resto, nueva];
 };
 
-/** Ctv → LM: la de Citrusvil pasa a la tarea de La Martina (o a ninguna). */
-const conTareaCtv = (eqs, nombre, tareaId) => {
-  const sinElla = eqs.map((e) =>
-    String(e.tarea) === String(tareaId) ? e : { ...e, citrusvil: (e.citrusvil || []).filter((c) => c !== nombre) }
-  );
-  let lista = sinElla;
-  if (tareaId) {
-    const ya = sinElla.find((e) => String(e.tarea) === String(tareaId));
-    lista = ya
-      ? sinElla.map((e) =>
-          e === ya && !(e.citrusvil || []).includes(nombre) ? { ...e, citrusvil: [...(e.citrusvil || []), nombre] } : e
-        )
-      : [...sinElla, { tarea: tareaId, citrusvil: [nombre], observaciones: "" }];
+/**
+ * Ctv → LM: la de Citrusvil queda en exactamente esas tareas de La Martina
+ * (puede ser más de una desde el 06/11/2026, o ninguna) y sale de las demás.
+ */
+const conTareaCtv = (eqs, nombre, tareaIds) => {
+  const van = new Set(tareaIds.map(String));
+  const lista = eqs.map((e) => {
+    const esta = (e.citrusvil || []).includes(nombre);
+    if (van.has(String(e.tarea))) return esta ? e : { ...e, citrusvil: [...(e.citrusvil || []), nombre] };
+    return esta ? { ...e, citrusvil: e.citrusvil.filter((c) => c !== nombre) } : e;
+  });
+  for (const id of van) {
+    if (!lista.some((e) => String(e.tarea) === id)) lista.push({ tarea: id, citrusvil: [nombre], observaciones: "" });
   }
   return lista.filter((e) => !vacia(e));
 };
@@ -57,7 +56,6 @@ const conTareaCtv = (eqs, nombre, tareaId) => {
 // El cian de Contable, para las solapas y el buscador.
 const COLOR = "#164e63";
 const COLOR_SUAVE = "#ecfeff";
-const COLORES_BUSCADOR = { marcada: COLOR_SUAVE, elegida: COLOR };
 
 // Las dos maneras de mirar la misma equivalencia (05/11/2026).
 const SOLAPAS = [
@@ -71,9 +69,9 @@ const SOLAPAS = [
  *
  * Una fila por cada tarea de La Martina (Altas › Tareas). Con el lápiz se
  * tildan las de Citrusvil que le corresponden: son todas las que aparecen en
- * "Detalle de tarea" de las tablas mensuales de Contable. Cada una de
- * Citrusvil va con una sola de La Martina: las que ya están con otra se ven
- * pero no se pueden tildar (el back lo controla igual).
+ * "Detalle de tarea" de las tablas mensuales de Contable. Una de Citrusvil
+ * puede estar en varias de La Martina (06/11/2026); lo que no se deja es que
+ * vaya en otra unidad.
  *
  * El botón "Tareas Citrusvil" abre su listado, donde se pueden agregar a las
  * que vienen de los Excel. Las de La Martina se dan de alta solo en
@@ -81,8 +79,8 @@ const SOLAPAS = [
  *
  * Dos solapas sobre las mismas equivalencias: "LM → Ctv", una fila por tarea
  * de La Martina con sus tareas de Citrusvil, y "Ctv → LM", una fila por tarea
- * de Citrusvil con la de La Martina que le toca. En la segunda el lápiz elige
- * (o cambia) esa tarea y el tacho la deja sin equivalencia.
+ * de Citrusvil con las de La Martina que le tocan. En la segunda el lápiz
+ * tilda esas tareas y el tacho la deja sin equivalencia.
  */
 function ContableEquivalencias() {
   const { puede } = usePermisos();
@@ -90,10 +88,10 @@ function ContableEquivalencias() {
   const [verCitrusvil, setVerCitrusvil] = useState(false);
   const [solapa, setSolapa] = useState("lm");
 
-  // El modal de la solapa Ctv → LM: la tarea de Citrusvil y la de La Martina
-  // elegida para ella.
+  // El modal de la solapa Ctv → LM: la tarea de Citrusvil y las de La
+  // Martina tildadas para ella.
   const [editandoCtv, setEditandoCtv] = useState(null);
-  const [elegidaLM, setElegidaLM] = useState("");
+  const [elegidasLM, setElegidasLM] = useState([]);
 
   const [tareas, setTareas] = useState([]);
   const [equivalencias, setEquivalencias] = useState([]);
@@ -130,11 +128,13 @@ function ContableEquivalencias() {
     };
   }, []);
 
-  // Tarea de La Martina → su equivalencia, y Citrusvil → en qué tarea está.
+  // Tarea de La Martina → su equivalencia, y Citrusvil → en qué tareas está
+  // (puede ser más de una).
   const porTarea = useMemo(() => new Map(equivalencias.map((e) => [String(e.tarea), e])), [equivalencias]);
-  const tareaDeCitrusvil = useMemo(() => {
+  const tareasDeCitrusvil = useMemo(() => {
     const m = new Map();
-    for (const e of equivalencias) for (const c of e.citrusvil || []) m.set(c, String(e.tarea));
+    for (const e of equivalencias)
+      for (const c of e.citrusvil || []) m.set(c, [...(m.get(c) || []), String(e.tarea)]);
     return m;
   }, [equivalencias]);
   const nombreTarea = useMemo(() => new Map(tareas.map((t) => [String(t._id), t.tarea])), [tareas]);
@@ -143,8 +143,8 @@ function ContableEquivalencias() {
   // que quedaron en alguna equivalencia aunque ya no estén en ningún lado.
   const unidadCitrusvil = useMemo(() => new Map(citrusvil.map((c) => [c.nombre, c.unidad])), [citrusvil]);
   const todasCitrusvil = useMemo(
-    () => [...new Set([...citrusvil.map((c) => c.nombre), ...tareaDeCitrusvil.keys()])].sort(ordenar),
-    [citrusvil, tareaDeCitrusvil]
+    () => [...new Set([...citrusvil.map((c) => c.nombre), ...tareasDeCitrusvil.keys()])].sort(ordenar),
+    [citrusvil, tareasDeCitrusvil]
   );
 
   const abrirEditar = (t) => {
@@ -228,7 +228,14 @@ function ContableEquivalencias() {
 
   const abrirEditarCtv = (c) => {
     setEditandoCtv(c);
-    setElegidaLM(tareaDeCitrusvil.get(c) || "");
+    setElegidasLM(tareasDeCitrusvil.get(c) || []);
+  };
+  // Destildar siempre se puede; tildar, solo con la misma unidad.
+  const tildarLM = (t) => {
+    const id = String(t._id);
+    if (elegidasLM.includes(id)) return setElegidasLM((ant) => ant.filter((x) => x !== id));
+    if (!mismaUnidad(editandoCtv, t)) return;
+    setElegidasLM((ant) => [...ant, id]);
   };
   const cerrarCtv = () => {
     setEditandoCtv(null);
@@ -236,9 +243,9 @@ function ContableEquivalencias() {
   const guardarCtv = (ev) => {
     ev.preventDefault();
     const nombre = editandoCtv;
-    const tarea = elegidaLM || null;
-    guardarPorDetras(conTareaCtv(equivalencias, nombre, tarea), () =>
-      api.put("/contable/equivalencias-ctv", { nombre, tarea })
+    const ids = [...elegidasLM];
+    guardarPorDetras(conTareaCtv(equivalencias, nombre, ids), () =>
+      api.put("/contable/equivalencias-ctv", { nombre, tareas: ids })
     );
     setEditandoCtv(null);
     Swal.fire({ icon: "success", title: "Guardado", timer: 1500, showConfirmButton: false, width: "300px" });
@@ -247,7 +254,7 @@ function ContableEquivalencias() {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "¿Quitar la equivalencia?",
-      text: `«${c}» queda sin tarea de La Martina. Esta acción no se puede deshacer.`,
+      text: `«${c}» queda sin tareas de La Martina. Esta acción no se puede deshacer.`,
       width: "320px",
       showCancelButton: true,
       confirmButtonText: "Sí, quitar",
@@ -257,8 +264,8 @@ function ContableEquivalencias() {
     });
     if (!isConfirmed) return;
     guardarPorDetras(
-      conTareaCtv(equivalencias, c, null),
-      () => api.put("/contable/equivalencias-ctv", { nombre: c, tarea: null }),
+      conTareaCtv(equivalencias, c, []),
+      () => api.put("/contable/equivalencias-ctv", { nombre: c, tareas: [] }),
       "No se pudo quitar"
     );
   };
@@ -313,14 +320,14 @@ function ContableEquivalencias() {
             { titulo: "Observaciones", ancho: 40 },
           ],
           filas: todasCitrusvil.map((c, i) => {
-            const idLM = tareaDeCitrusvil.get(c);
+            const ids = tareasDeCitrusvil.get(c) || [];
             return [
               i + 1,
               c,
               unidadCitrusvil.get(c) || "",
-              idLM ? nombreTarea.get(idLM) || "" : "",
-              idLM ? unidadTarea.get(idLM) || "" : "",
-              (idLM && porTarea.get(idLM)?.observaciones) || "",
+              ids.map((id) => nombreTarea.get(id) || "Tarea borrada").join("\n"),
+              ids.map((id) => unidadTarea.get(id) || "—").join("\n"),
+              ids.map((id) => porTarea.get(id)?.observaciones).filter(Boolean).join("\n"),
             ];
           }),
         });
@@ -329,7 +336,6 @@ function ContableEquivalencias() {
       Swal.fire({ icon: "error", title: "No se pudo exportar", text: err.message, width: "300px" });
     }
   };
-  const opcionesLM = tareas.map((t) => ({ valor: String(t._id), texto: t.tarea, detalle: t.unidad }));
 
   const borrar = async (t) => {
     const { isConfirmed } = await Swal.fire({
@@ -570,38 +576,42 @@ function ContableEquivalencias() {
                 </tr>
               ) : (
                 todasCitrusvil.map((c, i) => {
-                  const idLM = tareaDeCitrusvil.get(c);
+                  const ids = tareasDeCitrusvil.get(c) || [];
                   const unidadCtv = unidadCitrusvil.get(c);
-                  const unidadLM = idLM ? unidadTarea.get(idLM) : null;
-                  // Con la misma unidad de los dos lados es lo esperable; si
-                  // no, la de La Martina va en rojo para revisarla.
-                  const otraUnidad = idLM && unidadCtv && unidadLM && unidadCtv !== unidadLM;
+                  const obs = ids.map((id) => porTarea.get(id)?.observaciones).filter(Boolean);
                   return (
                     <tr key={c}>
                       <td style={{ ...td, textAlign: "center", color: "#64748b" }}>{i + 1}</td>
                       <td style={{ ...td, fontWeight: 600 }}>{c}</td>
                       <td style={{ ...td, textAlign: "center" }}>{unidadCtv || raya}</td>
                       <td style={td}>
-                        {idLM ? (
-                          <span>
-                            {nombreTarea.get(idLM) || "Tarea borrada"}
-                            {unidadLM && (
-                              <span
-                                className="ms-1"
-                                style={{ color: otraUnidad ? "#dc2626" : "#94a3b8", fontWeight: otraUnidad ? 700 : 400 }}
-                                title={otraUnidad ? "No es la misma unidad que la de Citrusvil" : undefined}
-                              >
-                                ({unidadLM})
-                              </span>
-                            )}
-                          </span>
-                        ) : (
-                          raya
-                        )}
+                        {/* Puede tener varias: una por renglón, con su unidad
+                            (en rojo si no es la de Citrusvil, para revisarla). */}
+                        {ids.length
+                          ? ids.map((id) => {
+                              const unidadLM = unidadTarea.get(id);
+                              const otraUnidad = unidadCtv && unidadLM && unidadCtv !== unidadLM;
+                              return (
+                                <div key={id} className="d-flex align-items-start gap-1">
+                                  <i className="bi bi-check2" style={{ color: "#0e7490" }}></i>
+                                  <span>
+                                    {nombreTarea.get(id) || "Tarea borrada"}
+                                    {unidadLM && (
+                                      <span
+                                        className="ms-1"
+                                        style={{ color: otraUnidad ? "#dc2626" : "#94a3b8", fontWeight: otraUnidad ? 700 : 400 }}
+                                        title={otraUnidad ? "No es la misma unidad que la de Citrusvil" : undefined}
+                                      >
+                                        ({unidadLM})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          : raya}
                       </td>
-                      <td style={{ ...td, whiteSpace: "pre-wrap" }}>
-                        {(idLM && porTarea.get(idLM)?.observaciones) || raya}
-                      </td>
+                      <td style={{ ...td, whiteSpace: "pre-wrap" }}>{obs.length ? obs.join("\n") : raya}</td>
                       <td style={td}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
                           <button
@@ -615,10 +625,10 @@ function ContableEquivalencias() {
                           </button>
                           <button
                             onClick={() => quitarCtv(c)}
-                            disabled={sinEditar || !idLM}
+                            disabled={sinEditar || !ids.length}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                             style={{ width: "24px", height: "24px" }}
-                            title={sinEditar ? "Sin permiso para editar" : !idLM ? "No tiene equivalencia" : "Borrar"}
+                            title={sinEditar ? "Sin permiso para editar" : !ids.length ? "No tiene equivalencia" : "Borrar"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
                           </button>
@@ -670,8 +680,8 @@ function ContableEquivalencias() {
                 style={{ maxHeight: "45vh", overflowY: "auto", fontSize: "0.8rem" }}
               >
                 {todasCitrusvil.map((c) => {
-                  const otra = tareaDeCitrusvil.get(c);
-                  const deOtra = otra && otra !== String(editando?._id);
+                  // Ya no se bloquea: se avisa en qué otras tareas está.
+                  const otras = (tareasDeCitrusvil.get(c) || []).filter((id) => id !== String(editando?._id));
                   return (
                     <Form.Check
                       key={c}
@@ -679,19 +689,18 @@ function ContableEquivalencias() {
                       type="checkbox"
                       className="my-1"
                       checked={tildadas.includes(c)}
-                      disabled={deOtra}
                       onChange={() => tildar(c)}
                       label={
-                        <span style={{ color: deOtra ? "#94a3b8" : "#1e293b" }}>
+                        <span style={{ color: "#1e293b" }}>
                           {c}
                           {unidadCitrusvil.get(c) && (
                             <span className="ms-1" style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
                               [{unidadCitrusvil.get(c)}]
                             </span>
                           )}
-                          {deOtra && (
-                            <span className="ms-1" style={{ fontSize: "0.72rem" }}>
-                              (en {nombreTarea.get(otra) || "otra tarea"})
+                          {otras.length > 0 && (
+                            <span className="ms-1" style={{ fontSize: "0.72rem", color: "#0e7490" }}>
+                              (también en {otras.map((id) => nombreTarea.get(id) || "otra tarea").join(", ")})
                             </span>
                           )}
                         </span>
@@ -763,27 +772,36 @@ function ContableEquivalencias() {
         <Form onSubmit={guardarCtv}>
           <Modal.Body className="p-4" style={{ overflow: "visible" }}>
             <Form.Label className="fw-semibold text-dark small mb-1">
-              Tarea La Martina
+              Tareas La Martina
               {unidadCitrusvil.get(editandoCtv) && (
                 <span className="ms-1 fw-normal" style={{ color: "#94a3b8" }}>
                   (la de Citrusvil va en {unidadCitrusvil.get(editandoCtv)})
                 </span>
               )}
             </Form.Label>
-            <SelectBuscador
-              opciones={opcionesLM}
-              colores={COLORES_BUSCADOR}
-              valor={elegidaLM}
-              onChange={(v) => {
-                // Con otra unidad no se toma: avisa y queda la que estaba.
-                if (v && !mismaUnidad(editandoCtv, tareas.find((t) => String(t._id) === v))) return;
-                setElegidaLM(v || "");
-              }}
-              vacio="Sin equivalencia"
-              placeholder="Sin equivalencia"
-              className="rounded-3"
-              style={{ fontSize: "0.85rem", height: "36px" }}
-            />
+            {/* Se pueden tildar varias (06/11/2026); con otra unidad, avisa. */}
+            <div className="rounded-3 border px-2 py-1" style={{ maxHeight: "45vh", overflowY: "auto", fontSize: "0.8rem" }}>
+              {tareas.map((t) => (
+                <Form.Check
+                  key={t._id}
+                  id={`lm-${t._id}`}
+                  type="checkbox"
+                  className="my-1"
+                  checked={elegidasLM.includes(String(t._id))}
+                  onChange={() => tildarLM(t)}
+                  label={
+                    <span style={{ color: "#1e293b" }}>
+                      {t.tarea}
+                      {t.unidad && (
+                        <span className="ms-1" style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                          [{t.unidad}]
+                        </span>
+                      )}
+                    </span>
+                  }
+                />
+              ))}
+            </div>
           </Modal.Body>
           <Modal.Footer
             className="bg-light border-0 py-2.5 px-4"

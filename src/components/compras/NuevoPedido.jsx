@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Container, Card, Table, Button, Form, Row, Col } from 'react-bootstrap'
+import { Container, Card, Table, Button, Form, Row, Col, Spinner } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, BORDO_SUAVE, campo, th, thCentro, td, tdCentro } from './formato'
@@ -45,6 +45,9 @@ export default function NuevoPedido() {
   // es lo que se ve en la fila del pedido en lugar de "Varios".
   const [titulo, setTitulo] = useState('')
   const [servicio, setServicio] = useState(false)
+  // Mientras se guarda, el botón lo dice y no se puede volver a tocar
+  // (06/11/2026): la base tarda y sin señal parecía colgado.
+  const [guardando, setGuardando] = useState(false)
   const [itemForm, setItemForm] = useState(ITEM_INIT)
   const [items, setItems] = useState([])
   const [editingId, setEditingId] = useState(null)
@@ -160,6 +163,8 @@ export default function NuevoPedido() {
       Swal.fire({ icon: 'warning', title: 'Fecha inválida', text: 'La fecha del pedido no puede ser posterior a hoy.' })
       return
     }
+    if (guardando) return
+    setGuardando(true)
     try {
       const solicita = getNombreUsuario()
       // _tmpId es de la pantalla —identifica la fila mientras se arma el
@@ -180,6 +185,7 @@ export default function NuevoPedido() {
       navigate('/compras/berdina/pedidos')
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Error', text: err.message })
+      setGuardando(false)
     }
   }
 
@@ -559,14 +565,14 @@ export default function NuevoPedido() {
           <Button
             size="sm"
             onClick={guardar}
-            disabled={items.length === 0}
+            disabled={items.length === 0 || guardando}
             className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
             style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
           >
-            <i className="bi bi-check-lg"></i>
+            {guardando ? <Spinner animation="border" size="sm" /> : <i className="bi bi-check-lg"></i>}
             <span>
-              Guardar pedido
-              {items.length > 0 ? ` (${items.length} ítem${items.length !== 1 ? 's' : ''})` : ''}
+              {guardando ? 'Guardando…' : 'Guardar pedido'}
+              {!guardando && items.length > 0 ? ` (${items.length} ítem${items.length !== 1 ? 's' : ''})` : ''}
             </span>
           </Button>
         </div>

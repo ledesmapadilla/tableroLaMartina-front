@@ -362,6 +362,9 @@ function LayoutDesktop() {
               {/* La tabla del mes juntada por tarea de La Martina (05/11/2026). */}
               <Route path="/contable/:anio/:mes/comparativa" element={<ContableComparativaCampos />} />
               <Route path="/contable/:anio/:mes/comparativa/:campo" element={<ContableComparativa />} />
+              <Route path="/contable/:anio/:mes/comparativa-costos" element={<ContableComparativaCampos key="costos" tipo="costos" />} />
+              <Route path="/contable/:anio/:mes/comparativa-costos/:campo" element={<ContableComparativa key="costos" tipo="costos" />} />
+              <Route path="/contable/:anio/:mes/comparativa-costos/:campo/graficos" element={<ContableComparativa key="costos-graficos" tipo="costos" graficos />} />
 
               {/* Variables es de todo Producción, no de un campo (18/09/2026):
                   es la tarjeta chica del medio en la entrada. Remuneración
