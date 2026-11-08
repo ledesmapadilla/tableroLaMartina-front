@@ -13,6 +13,98 @@ import { MESES, TIPOS_COMPARATIVA, fechaHora, memoriaTablas } from "../../utils/
 const EXTENSIONES = [".xlsx", ".xlsm"];
 const esExcel = (nombre = "") => EXTENSIONES.some((ext) => nombre.toLowerCase().endsWith(ext));
 
+const escapar = (s) =>
+  String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// Los problemas que encontró la revisión del Excel, de lo más grave a lo menos.
+const NIVELES = [
+  { nivel: "error", titulo: "Sin esto no se puede armar la tabla", color: "#b91c1c", fondo: "#fef2f2", icono: "bi-x-octagon-fill" },
+  { nivel: "aviso", titulo: "Afecta las cuentas o las comparativas", color: "#b45309", fondo: "#fffbeb", icono: "bi-exclamation-triangle-fill" },
+  { nivel: "info", titulo: "Advertencias (no frenan la carga)", color: "#0e7490", fondo: "#ecfeff", icono: "bi-info-circle-fill" },
+];
+const FRENAN = new Set(["error", "aviso"]);
+
+/** La lista de problemas agrupada por nivel, para el html de un Swal. */
+const htmlProblemas = (problemas, nombre, pie) =>
+  `<div style="text-align:left;font-size:0.82rem">` +
+  (nombre ? `<div style="color:#64748b;margin-bottom:8px">${escapar(nombre)}</div>` : "") +
+  NIVELES.map((n) => {
+    const del = problemas.filter((p) => p.nivel === n.nivel);
+    if (!del.length) return "";
+    return (
+      `<div style="background:${n.fondo};border-radius:10px;padding:8px 10px;margin-bottom:8px">` +
+      `<div style="color:${n.color};font-weight:700;margin-bottom:4px"><i class="bi ${n.icono}"></i> ${n.titulo}</div>` +
+      `<ul style="margin:0;padding-left:18px;color:#334155">` +
+      del.map((p) => `<li style="margin-bottom:4px">${escapar(p.texto)}</li>`).join("") +
+      `</ul></div>`
+    );
+  }).join("") +
+  (pie ? `<div style="color:#334155;font-weight:600">${pie}</div>` : "") +
+  `</div>`;
+
+/**
+ * Muestra lo que encontró la revisión del Excel (utils/leerExcelContable.js,
+ * 08/11/2026). Lo que entra en las cuentas o las comparativas frena la carga:
+ * se corrige el Excel y se vuelve a subir; el programa no arregla nada por su
+ * cuenta (pedido del usuario). Las advertencias solas no frenan: se muestran
+ * después de cargar (avisarDespues). → true si se puede cargar.
+ */
+const revisar = async ({ problemas }, nombre) => {
+  if (!problemas.some((p) => FRENAN.has(p.nivel))) return true;
+  await Swal.fire({
+    icon: "error",
+    title: "Hay que corregir el Excel",
+    html: htmlProblemas(problemas, nombre, "Corregí el Excel y volvé a cargarlo. No se guardó nada."),
+    width: "min(640px, 95vw)",
+    confirmButtonText: "Entendido",
+    confirmButtonColor: "#1e293b",
+  });
+  return false;
+};
+
+/**
+ * Después de cargar: las advertencias, si hubo, y las unidades de Citrusvil
+ * nuevas, que hay que decir a cuál de La Martina equivalen (08/11/2026).
+ * → true si el usuario eligió ir a Equivalencias.
+ */
+const avisarDespues = async ({ problemas }, nombre) => {
+  if (problemas.length) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Tabla armada, con advertencias",
+      html: htmlProblemas(problemas, nombre, "Se cargó igual: nada de esto cambia las cuentas."),
+      width: "min(640px, 95vw)",
+      confirmButtonText: "Entendido",
+      confirmButtonColor: "#1e293b",
+    });
+  }
+  const unidades = await api.get("/contable/unidades").catch(() => null);
+  const nuevas = Array.isArray(unidades?.nuevas) ? unidades.nuevas : [];
+  if (!nuevas.length) return false;
+  const lista = nuevas
+    .map((u) => {
+      const tareas = u.tareas.slice(0, 3).map((t) => `«${escapar(t)}»`).join(", ");
+      return `<li style="margin-bottom:4px"><b>${escapar(u.unidad)}</b>${tareas ? ` — ${tareas}${u.tareas.length > 3 ? " y otras" : ""}` : ""}</li>`;
+    })
+    .join("");
+  const { isConfirmed } = await Swal.fire({
+    icon: "question",
+    title: nuevas.length === 1 ? "Hay una unidad nueva" : "Hay unidades nuevas",
+    html:
+      `<div style="text-align:left;font-size:0.82rem">` +
+      `<ul style="margin:0 0 8px;padding-left:18px;color:#334155">${lista}</ul>` +
+      `<div style="color:#334155">Hay que decir a qué unidad de La Martina equivale${nuevas.length === 1 ? "" : " cada una"}: hasta entonces esas tareas no se pueden unir en Equivalencias.</div>` +
+      `</div>`,
+    width: "min(480px, 95vw)",
+    showCancelButton: true,
+    confirmButtonText: "Ir a Equivalencias",
+    cancelButtonText: "Después",
+    confirmButtonColor: "#1e293b",
+    cancelButtonColor: "#64748b",
+  });
+  return isConfirmed;
+};
+
 /**
  * La tarjeta de un mes de Contable (05/11/2026): el paso de subir el Excel
  * mensual, antes de la tabla (ContableTabla.jsx).
@@ -22,9 +114,6 @@ const esExcel = (nombre = "") => EXTENSIONES.some((ext) => nombre.toLowerCase().
  * lugar en Cloudinary. Una tabla no se pisa: si el mes ya tiene, para subir
  * otro Excel primero hay que borrarla (desde la tabla). El back lo controla
  * igual.
- *
- * `archivo` es el Excel que se guardó en Cloudinary el 05/11/2026, antes de
- * esto (octubre): se pasa a la tabla y se borra.
  */
 function ContableMes() {
   const { anio, mes } = useParams();
@@ -37,19 +126,17 @@ function ContableMes() {
   const clave = `${anio}/${mes}`;
   const enMemoria = memoriaTablas.get(clave);
 
-  const [archivo, setArchivo] = useState(null);
   const [tabla, setTabla] = useState(enMemoria?.filas.length ? enMemoria.tabla || {} : null);
   const [cargando, setCargando] = useState(!enMemoria);
   const [trabajando, setTrabajando] = useState(false);
 
-  const rutaExcel = `/contable/excel/${anio}/${mes}`;
   const rutaFilas = `/contable/filas/${anio}/${mes}`;
   const rutaEstado = `/contable/estado/${anio}/${mes}`;
   const titulo = `${MESES[Number(mes) - 1] || ""} ${anio}`;
   const verTabla = () => navigate(`/contable/${anio}/${mes}/tabla`);
   const hayTabla = Boolean(tabla);
 
-  // Un solo pedido y sin las filas: si hay tabla y si quedó un Excel viejo.
+  // Un solo pedido y sin las filas: si hay tabla.
   // Antes traía la tabla entera solo para saber si existía (05/11/2026).
   useEffect(() => {
     let vigente = true;
@@ -69,7 +156,6 @@ function ContableMes() {
           memoriaTablas.delete(clave);
         }
         if (!vigente) return;
-        setArchivo(datos?.archivo || null);
         setTabla(datos?.tabla || null);
       })
       .catch(() => {})
@@ -79,15 +165,22 @@ function ContableMes() {
     };
   }, [rutaEstado, rutaFilas, clave]);
 
-  /** Avisa que la tabla quedó armada y entra a verla. */
-  const listo = () => {
-    Swal.fire({
-      icon: "success",
-      title: "Tabla armada",
-      timer: 1500,
-      showConfirmButton: false,
-      width: "300px",
-    });
+  /**
+   * La tabla quedó armada: muestra las advertencias y las unidades nuevas, si
+   * hay, y entra a verla (o a Equivalencias, si eligió cargar las unidades).
+   */
+  const listo = async (leido, nombre) => {
+    const sinNada = !leido.problemas.length;
+    if (sinNada) {
+      Swal.fire({
+        icon: "success",
+        title: "Tabla armada",
+        timer: 1500,
+        showConfirmButton: false,
+        width: "300px",
+      });
+    }
+    if (await avisarDespues(leido, nombre)) return navigate("/contable/equivalencias");
     verTabla();
   };
 
@@ -107,31 +200,17 @@ function ContableMes() {
     }
     setTrabajando(true);
     try {
-      // Si no es la planilla, avisa y no se guarda nada.
-      const leidas = await leerExcelContable(await file.arrayBuffer());
-      await api.put(rutaFilas, { filas: leidas, origen: file.name });
-      listo();
+      // Si encuentra problemas que frenan la carga los muestra y no se guarda
+      // nada; las advertencias se muestran después de cargar.
+      const leido = await leerExcelContable(await file.arrayBuffer());
+      if (!(await revisar(leido, file.name))) {
+        setTrabajando(false);
+        return;
+      }
+      await api.put(rutaFilas, { filas: leido.filas, origen: file.name });
+      await listo(leido, file.name);
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo cargar", text: err.message, width: "300px" });
-      setTrabajando(false);
-    }
-  };
-
-  // El Excel de octubre, que quedó en Cloudinary: se baja, se lee igual que
-  // al subirlo y se borra de ahí.
-  const pasarATabla = async () => {
-    if (!archivo?.url) return;
-    setTrabajando(true);
-    try {
-      const res = await fetch(archivo.url);
-      if (!res.ok) throw new Error("No se pudo bajar el Excel.");
-      const leidas = await leerExcelContable(await res.arrayBuffer());
-      await api.put(rutaFilas, { filas: leidas, origen: archivo.nombre });
-      // Ya está en la tabla: el archivo sale de Cloudinary.
-      await api.delete(rutaExcel).catch(() => {});
-      listo();
-    } catch (err) {
-      Swal.fire({ icon: "error", title: "No se pudo leer", text: err.message, width: "300px" });
       setTrabajando(false);
     }
   };
@@ -224,21 +303,6 @@ function ContableMes() {
                 <button className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-2" style={boton} onClick={verTabla}>
                   <i className="bi bi-table"></i>
                   Mostrar tabla
-                </button>
-              </>
-            ) : archivo ? (
-              <>
-                <span className="mb-1" style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                  «{archivo.nombre || "Excel del mes"}» todavía no pasó a la tabla.
-                </span>
-                <button
-                  className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-1"
-                  style={boton}
-                  onClick={pasarATabla}
-                  disabled={!puedeEditar || trabajando}
-                >
-                  {icono("bi bi-table")}
-                  Pasar el Excel a la tabla
                 </button>
               </>
             ) : (

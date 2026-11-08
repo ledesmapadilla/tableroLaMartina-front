@@ -96,7 +96,9 @@ const COLOR_COSTOS = "#0e7490";
  * Las filas del mes juntadas por almacén y por la tarea de La Martina que le
  * toca a cada tarea de Citrusvil (Equivalencias de tareas). Suma cantidad y
  * subtotal; el precio unitario es subtotal / cantidad, que con una sola
- * tarifa es esa misma y con varias es el promedio pesado.
+ * tarifa es esa misma y con varias es el promedio pesado. El subtotal de cada
+ * fila es Cant. × Precio unitario del Excel, calculado al cargarlo
+ * (08/11/2026), no el Subtotal que trae el Excel.
  *
  * Una de Citrusvil sin equivalencia queda con su propio nombre, marcada.
  */

@@ -25,6 +25,12 @@ const raya = <span style={{ color: "#cbd5e1" }}>—</span>;
 
 const ordenar = (a, b) => a.localeCompare(b, "es");
 
+/** Las unidades de la respuesta de /contable/equivalencias, siempre con las dos listas. */
+const conUnidades = (d) => ({
+  nuevas: Array.isArray(d?.unidades?.nuevas) ? d.unidades.nuevas : [],
+  cargadas: Array.isArray(d?.unidades?.cargadas) ? d.unidades.cargadas : [],
+});
+
 // Cómo quedan las equivalencias después de cada cambio, para mostrarlo en
 // pantalla sin esperar a la base (05/11/2026: guardar tardaba segundos). Son
 // las mismas reglas que aplica el back.
@@ -103,6 +109,11 @@ function ContableEquivalencias() {
   const [citrusvil, setCitrusvil] = useState([]);
   // Las equivalencias solo para la Comparativa de costos: [{ nombre, tareas }].
   const [costos, setCostos] = useState([]);
+  // Las unidades de Citrusvil que no se reconocían (08/11/2026): las nuevas,
+  // que hay que decir a cuál de La Martina equivalen, y las ya cargadas.
+  const [unidades, setUnidades] = useState({ nuevas: [], cargadas: [] });
+  const [eleccionUnidad, setEleccionUnidad] = useState({}); // forma → unidad elegida
+  const [guardandoUnidad, setGuardandoUnidad] = useState(null);
   const [cargando, setCargando] = useState(true);
 
   // El modal de editar: la tarea de La Martina, lo tildado y las observaciones.
@@ -115,6 +126,7 @@ function ContableEquivalencias() {
       setEquivalencias(Array.isArray(d?.equivalencias) ? d.equivalencias : []);
       setCitrusvil(Array.isArray(d?.citrusvil) ? d.citrusvil : []);
       setCostos(Array.isArray(d?.costos) ? d.costos : []);
+      setUnidades(conUnidades(d));
     });
 
   useEffect(() => {
@@ -130,6 +142,7 @@ function ContableEquivalencias() {
         setEquivalencias(Array.isArray(d?.equivalencias) ? d.equivalencias : []);
         setCitrusvil(Array.isArray(d?.citrusvil) ? d.citrusvil : []);
         setCostos(Array.isArray(d?.costos) ? d.costos : []);
+        setUnidades(conUnidades(d));
       })
       .finally(() => vigente && setCargando(false));
     return () => {
@@ -153,6 +166,7 @@ function ContableEquivalencias() {
   // Las de Citrusvil (de los Excel y agregadas, con su unidad) y también las
   // que quedaron en alguna equivalencia aunque ya no estén en ningún lado.
   const unidadCitrusvil = useMemo(() => new Map(citrusvil.map((c) => [c.nombre, c.unidad])), [citrusvil]);
+  const unidadNueva = useMemo(() => new Set(citrusvil.filter((c) => c.unidadNueva).map((c) => c.nombre)), [citrusvil]);
   const todasCitrusvil = useMemo(
     () =>
       [...new Set([...citrusvil.map((c) => c.nombre), ...tareasDeCitrusvil.keys(), ...costosDe.keys()])].sort(ordenar),
@@ -176,6 +190,18 @@ function ContableEquivalencias() {
    */
   const mismaUnidad = (ctv, tareaLM) => {
     const uCtv = unidadCitrusvil.get(ctv);
+    // Una unidad que no se reconoce (08/11/2026): primero hay que decir a
+    // cuál de La Martina equivale, arriba. El back lo controla igual.
+    if (unidadNueva.has(ctv)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Unidad nueva",
+        text: `«${ctv}» va en «${uCtv}», una unidad nueva: primero decí a qué unidad de La Martina equivale, arriba en Unidades nuevas de Citrusvil.`,
+        width: "340px",
+        confirmButtonColor: "#1e293b",
+      });
+      return false;
+    }
     const uLM = tareaLM?.unidad;
     if (!uCtv || !uLM || uCtv === uLM) return true;
     Swal.fire({
@@ -226,6 +252,34 @@ function ContableEquivalencias() {
   const borrarCitrusvil = async (fila) => {
     await api.delete(`/contable/tareas-citrusvil/${fila.id}`);
     await traer();
+  };
+
+  /** Guarda a qué unidad de La Martina equivale una unidad nueva de Citrusvil. */
+  const guardarUnidad = async (forma) => {
+    const unidad = eleccionUnidad[forma];
+    if (!unidad) return;
+    setGuardandoUnidad(forma);
+    try {
+      await api.put("/contable/unidades", { forma, unidad });
+      await traer();
+      Swal.fire({ icon: "success", title: "Guardado", timer: 1500, showConfirmButton: false, width: "300px" });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
+    } finally {
+      setGuardandoUnidad(null);
+    }
+  };
+  /** La unidad vuelve a quedar sin equivalencia (se puede volver a cargar). */
+  const sacarUnidad = async (u) => {
+    setGuardandoUnidad(u.forma);
+    try {
+      await api.delete(`/contable/unidades/${u._id}`);
+      await traer();
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo sacar", text: err.message, width: "300px" });
+    } finally {
+      setGuardandoUnidad(null);
+    }
   };
 
   const filasCitrusvil = citrusvil.map((c) => ({
@@ -465,6 +519,91 @@ function ContableEquivalencias() {
             sinEditar={sinEditar}
           />
         </div>
+
+        {/* Unidades de Citrusvil (08/11/2026): una unidad nueva del Excel se
+            deja cargar y acá se dice a cuál de La Martina equivale. Hasta
+            entonces esas tareas no se pueden unir. Las ya cargadas, abajo,
+            con la cruz para sacarlas. */}
+        {(unidades.nuevas.length > 0 || unidades.cargadas.length > 0) && (
+          <div
+            className="d-flex flex-column gap-2 bg-white shadow-sm rounded-3 px-3 py-2 mb-3 flex-shrink-0 align-self-start"
+            style={{ border: `1px solid ${unidades.nuevas.length ? "#fcd34d" : "#cbd5e1"}`, maxWidth: "100%" }}
+          >
+            {unidades.nuevas.length > 0 && (
+              <>
+                <div className="d-flex align-items-center gap-2" style={{ fontSize: "0.8rem", color: "#92400e", fontWeight: 700 }}>
+                  <i className="bi bi-exclamation-triangle-fill" style={{ color: "#d97706" }}></i>
+                  Unidades nuevas de Citrusvil
+                  <span className="fw-normal" style={{ color: "#64748b" }}>
+                    · decí a qué unidad de La Martina equivale cada una
+                  </span>
+                </div>
+                {unidades.nuevas.map((u) => (
+                  <div key={u.forma} className="d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: "0.78rem" }}>
+                    <span className="fw-bold" style={{ color: COLOR, minWidth: "60px" }}>
+                      {u.unidad}
+                    </span>
+                    <span style={{ color: "#94a3b8" }}>=</span>
+                    <Form.Select
+                      size="sm"
+                      value={eleccionUnidad[u.forma] || ""}
+                      onChange={(e) => setEleccionUnidad((ant) => ({ ...ant, [u.forma]: e.target.value }))}
+                      disabled={sinEditar || guardandoUnidad === u.forma}
+                      style={{ width: "130px", fontSize: "0.78rem" }}
+                    >
+                      <option value="">Elegí…</option>
+                      {UNIDADES_LA_MARTINA.map((x) => (
+                        <option key={x} value={x}>
+                          {x}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Button
+                      size="sm"
+                      onClick={() => guardarUnidad(u.forma)}
+                      disabled={sinEditar || !eleccionUnidad[u.forma] || guardandoUnidad === u.forma}
+                      style={{ backgroundColor: COLOR, borderColor: COLOR, fontSize: "0.74rem" }}
+                    >
+                      Guardar
+                    </Button>
+                    <span style={{ color: "#64748b", fontSize: "0.72rem" }}>
+                      {u.tareas.slice(0, 3).join(", ")}
+                      {u.tareas.length > 3 ? ` y ${u.tareas.length - 3} más` : ""}
+                    </span>
+                  </div>
+                ))}
+              </>
+            )}
+            {unidades.cargadas.length > 0 && (
+              <div className="d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: "0.74rem", color: "#475569" }}>
+                <span className="fw-semibold" style={{ color: COLOR }}>
+                  Unidades de Citrusvil cargadas:
+                </span>
+                {unidades.cargadas.map((u) => (
+                  <span
+                    key={u._id}
+                    className="d-inline-flex align-items-center gap-1 px-2 rounded-pill"
+                    style={{ backgroundColor: COLOR_SUAVE, border: "1px solid #a5f3fc" }}
+                  >
+                    {u.forma} = {u.unidad}
+                    {!sinEditar && (
+                      <button
+                        type="button"
+                        className="btn btn-link p-0"
+                        onClick={() => sacarUnidad(u)}
+                        disabled={guardandoUnidad === u.forma}
+                        title="Sacar la equivalencia de esta unidad"
+                        style={{ fontSize: "0.8rem", color: "#64748b", lineHeight: 1 }}
+                      >
+                        <i className="bi bi-x"></i>
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Las solapas, pegadas arriba de la tabla (como las de Ingresos de
             escaleras). */}
