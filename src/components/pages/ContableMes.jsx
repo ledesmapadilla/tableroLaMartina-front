@@ -137,7 +137,7 @@ function ContableMes() {
   };
 
   const boton = { backgroundColor: "#0e7490", borderColor: "#0e7490", color: "#fff", fontSize: "0.82rem" };
-  // Las dos tarjetas del mes miden lo mismo, y lo justo para su contenido
+  // Las tarjetas del mes miden lo mismo, y lo justo para su contenido
   // (06/11/2026: a la mitad del alto que tenían).
   const tarjeta = {
     width: "100%",
@@ -179,21 +179,31 @@ function ContableMes() {
           style={{ display: "none" }}
         />
 
-        {/* Las dos tarjetas del mes: el Excel y la comparativa. */}
+        {/* Las tarjetas del mes (07/11/2026): el Excel arriba, en el medio, y
+            abajo las dos comparativas. */}
         <div className="flex-grow-1 d-flex align-items-center justify-content-center">
-        <div className="d-flex justify-content-center gap-4 flex-wrap" style={{ width: "100%" }}>
+        <div className="d-flex flex-column align-items-center gap-4" style={{ width: "100%" }}>
+          <div className="d-flex justify-content-center" style={{ width: "100%" }}>
+          {/* Destacada (07/11/2026): es la que hay que cargar primero. Borde
+              verde grueso, franja arriba, un poco más grande y más sombra. */}
           <div
-            className="d-flex flex-column align-items-center text-center px-4 py-3 bg-white"
-            style={{ ...tarjeta, alignSelf: "stretch" }}
+            className="d-flex flex-column align-items-center text-center px-4 pb-3 bg-white overflow-hidden"
+            style={{
+              ...tarjeta,
+              maxWidth: "320px",
+              border: "2px solid #15803d",
+              boxShadow: "0 12px 26px -8px rgba(21,128,61,0.35)",
+            }}
           >
+            <div className="mb-3" style={{ height: "6px", backgroundColor: "#15803d", alignSelf: "stretch", margin: "0 -1.5rem" }}></div>
             <div
               className="mb-2 d-flex align-items-center justify-content-center"
-              style={{ width: "40px", height: "40px", borderRadius: "12px", backgroundColor: "#ecfeff" }}
+              style={{ width: "48px", height: "48px", borderRadius: "14px", backgroundColor: "#dcfce7" }}
             >
-              <i className="bi bi-file-earmark-excel-fill" style={{ fontSize: "1.3rem", color: "#15803d" }}></i>
+              <i className="bi bi-file-earmark-excel-fill" style={{ fontSize: "1.6rem", color: "#15803d" }}></i>
             </div>
 
-            <span className="fw-bold mb-1" style={{ color: "#164e63", fontSize: "1rem" }}>
+            <span className="fw-bold mb-1" style={{ color: "#14532d", fontSize: "1.1rem" }}>
               Excel mensual
             </span>
 
@@ -248,15 +258,18 @@ function ContableMes() {
               </>
             )}
           </div>
+          </div>
 
+          <div className="d-flex justify-content-center gap-4 flex-wrap" style={{ width: "100%" }}>
           {/* Las comparativas (05/11/2026): las tareas del mes juntadas por la
               tarea de La Martina que les toca (Equivalencias de tareas). Salen
               de la tabla: sin tabla no hay nada que comparar. Desde el
               07/11/2026 son dos, cantidad y costos; por ahora hacen lo mismo. */}
           {[
-            [TIPOS_COMPARATIVA.cantidad, "bi-bar-chart-line"],
-            [TIPOS_COMPARATIVA.costos, "bi-cash-stack"],
-          ].map(([t, ico]) => (
+            // El texto de cada una (07/11/2026, pedido del usuario).
+            [TIPOS_COMPARATIVA.cantidad, "bi-bar-chart-line", "Comparación de tareas con precios Citrusvil."],
+            [TIPOS_COMPARATIVA.costos, "bi-cash-stack", "Comparación pagado vs. gastado."],
+          ].map(([t, ico, texto]) => (
             <div
               key={t.ruta}
               className="d-flex flex-column align-items-center text-center px-4 py-3 bg-white"
@@ -274,9 +287,7 @@ function ContableMes() {
               </span>
 
               <span className="mb-auto" style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                {hayTabla || cargando
-                  ? "Las tareas del mes agrupadas por tarea de La Martina."
-                  : "Primero hay que cargar el Excel del mes."}
+                {hayTabla || cargando ? texto : "Primero hay que cargar el Excel del mes."}
               </span>
               <button
                 className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-2"
@@ -289,6 +300,7 @@ function ContableMes() {
               </button>
             </div>
           ))}
+          </div>
         </div>
         </div>
       </Container>

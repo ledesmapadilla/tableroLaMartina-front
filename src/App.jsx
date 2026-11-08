@@ -70,6 +70,7 @@ const ProduccionInformeMes = lazy(() => import("./components/pages/ProduccionInf
 const ProduccionInformeTareasPersonal = lazy(() => import("./components/pages/ProduccionInformeTareasPersonal"));
 const ProduccionCertificadoMes = lazy(() => import("./components/pages/ProduccionCertificadoMes"));
 const ProduccionJornalizados = lazy(() => import("./components/pages/ProduccionJornalizados"));
+const ProduccionReporteMensual = lazy(() => import("./components/pages/ProduccionReporteMensual"));
 const ProduccionVariables = lazy(() => import("./components/pages/ProduccionVariables"));
 const ProduccionVariablesMenu = lazy(() => import("./components/pages/ProduccionVariablesMenu"));
 const ProduccionLotes = lazy(() => import("./components/pages/ProduccionLotes"));
@@ -347,7 +348,7 @@ function LayoutDesktop() {
                   <ProduccionCertificados
                     base="/contable"
                     extra={{
-                      titulo: "Equivalencias tareas",
+                      titulo: "Equivalencias tareas/variables",
                       icono: "bi bi-arrow-left-right",
                       destino: "/contable/equivalencias",
                       permiso: "contable.equivalencias",
@@ -365,6 +366,7 @@ function LayoutDesktop() {
               <Route path="/contable/:anio/:mes/comparativa-costos" element={<ContableComparativaCampos key="costos" tipo="costos" />} />
               <Route path="/contable/:anio/:mes/comparativa-costos/:campo" element={<ContableComparativa key="costos" tipo="costos" />} />
               <Route path="/contable/:anio/:mes/comparativa-costos/:campo/graficos" element={<ContableComparativa key="costos-graficos" tipo="costos" graficos />} />
+              <Route path="/contable/:anio/:mes/comparativa-costos/:campo/costos" element={<ContableComparativa key="costos-resultado" tipo="costos" resultado />} />
 
               {/* Variables es de todo Producción, no de un campo (18/09/2026):
                   es la tarjeta chica del medio en la entrada. Remuneración
@@ -439,6 +441,11 @@ function LayoutDesktop() {
                   />
                 }
               />
+              {/* Reporte mensual por tarea (07/11/2026), del botón de la planilla. */}
+              <Route
+                path="/produccion/san-pablo/:anio/:mes/reporte-mensual"
+                element={<ProduccionReporteMensual establecimiento="san-pablo" />}
+              />
               <Route
                 path="/produccion/san-pablo/:anio/:mes/informes"
                 element={<ProduccionInformesMenu base="/produccion/san-pablo" />}
@@ -465,6 +472,7 @@ function LayoutDesktop() {
               <Route path="/produccion/certificados" element={<ProduccionCertificados />} />
               <Route path="/produccion/certificados/:anio/:mes" element={<ProduccionCertificadoMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/planilla" element={<ProduccionCertificadoMes />} />
+              <Route path="/produccion/certificados/:anio/:mes/reporte-mensual" element={<ProduccionReporteMensual />} />
               <Route path="/produccion/certificados/:anio/:mes/informes" element={<ProduccionInformesMenu />} />
               <Route path="/produccion/certificados/:anio/:mes/informes/mes" element={<ProduccionInformeMes />} />
               <Route path="/produccion/certificados/:anio/:mes/informes/resumen" element={<ProduccionInformeMes soloPersonal />} />

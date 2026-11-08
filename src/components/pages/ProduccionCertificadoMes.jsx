@@ -2279,6 +2279,25 @@ function ProduccionCertificadoMes({
               <i className="bi bi-person-badge-fill"></i>
               <span>Jornalizados</span>
             </Button>
+            {/* Reporte mensual (07/11/2026): los partes del período por tarea. */}
+            <Button
+              size="sm"
+              onClick={() => navigate(pathname.replace(/\/planilla$/, "/reporte-mensual"))}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              style={{
+                backgroundColor: "#1b4332",
+                borderColor: "transparent",
+                fontSize: "0.78rem",
+                height: "30px",
+                fontWeight: 600,
+              }}
+              title="Los partes del período separados por tarea"
+            >
+              <i className="bi bi-journal-text"></i>
+              <span>Reporte mensual</span>
+            </Button>
+
             {cerrado && fechaCierre && (
               <span className="text-muted" style={{ fontSize: "0.72rem" }}>
                 Cerrada el {formatFecha(fechaCierre)}

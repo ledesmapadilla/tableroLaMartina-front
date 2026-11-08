@@ -13,8 +13,9 @@ export async function nuevoWorkbook() {
   return new ExcelJS.Workbook();
 }
 
-// Dispara la descarga del workbook ya armado.
-async function descargar(wb, archivo) {
+// Dispara la descarga del workbook ya armado. Exportada para los informes que
+// arman su planilla con `nuevoWorkbook` (07/11/2026).
+export async function descargar(wb, archivo) {
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

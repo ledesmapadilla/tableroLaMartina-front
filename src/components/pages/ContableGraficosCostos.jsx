@@ -44,10 +44,11 @@ const porcentaje = (n) =>
 const nf = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
 const cantidad = (n) => (n === null || n === undefined ? null : n.toLocaleString("es-AR", { maximumFractionDigits: 3 }));
 
-// Las dos vistas: qué se compara en cada una.
+// Las dos vistas: qué se compara en cada una. Total del mes primero: es la
+// que se abre al entrar (07/11/2026).
 const VISTAS = [
-  ["tarifas", "Tarifas", "bi-tag"],
   ["mes", "Total del mes", "bi-calendar3"],
+  ["tarifas", "Tarifas", "bi-tag"],
 ];
 const colorDif = (v) => (v > 0.005 ? VERDE : v < -0.005 ? ROJO : undefined);
 // El nombre en renglones, cortando entre palabras. Lo que no entra en
@@ -287,7 +288,7 @@ function TortaDiferencias({ tareas, col }) {
 function ContableGraficosCostos({ titulo, filas, cargando, colores: col, fechas }) {
   const idSwitch = useId();
   const [porcentajeElegido, setEnPorcentaje] = useState(false);
-  const [vista, setVista] = useState("tarifas");
+  const [vista, setVista] = useState("mes");
   const esMes = vista === "mes";
   // En el total del mes va siempre en pesos, sin switch (07/11/2026).
   const enPorcentaje = porcentajeElegido && !esMes;

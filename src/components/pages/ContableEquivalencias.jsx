@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { api } from "../../services/api";
 import { usePermisos } from "../../context/permisos";
 import ModalListaTareas from "../shared/ModalListaTareas";
+import PrecioConHistorial from "../shared/PrecioConHistorial";
 import { exportarPlanilla } from "../../helpers/excel";
 
 // Las tareas de Citrusvil van con las unidades de La Martina (Altas › Tareas):
@@ -92,10 +93,16 @@ function ContableEquivalencias() {
   // Martina tildadas para ella.
   const [editandoCtv, setEditandoCtv] = useState(null);
   const [elegidasLM, setElegidasLM] = useState([]);
+  // La de costos (07/11/2026): si en la Comparativa de costos va con otras
+  // tareas de La Martina, y cuáles.
+  const [distintaCostos, setDistintaCostos] = useState(false);
+  const [elegidasCostos, setElegidasCostos] = useState([]);
 
   const [tareas, setTareas] = useState([]);
   const [equivalencias, setEquivalencias] = useState([]);
   const [citrusvil, setCitrusvil] = useState([]);
+  // Las equivalencias solo para la Comparativa de costos: [{ nombre, tareas }].
+  const [costos, setCostos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   // El modal de editar: la tarea de La Martina, lo tildado y las observaciones.
@@ -107,6 +114,7 @@ function ContableEquivalencias() {
     api.get("/contable/equivalencias").then((d) => {
       setEquivalencias(Array.isArray(d?.equivalencias) ? d.equivalencias : []);
       setCitrusvil(Array.isArray(d?.citrusvil) ? d.citrusvil : []);
+      setCostos(Array.isArray(d?.costos) ? d.costos : []);
     });
 
   useEffect(() => {
@@ -121,6 +129,7 @@ function ContableEquivalencias() {
         setTareas([...arr].sort((a, b) => ordenar(a.tarea || "", b.tarea || "")));
         setEquivalencias(Array.isArray(d?.equivalencias) ? d.equivalencias : []);
         setCitrusvil(Array.isArray(d?.citrusvil) ? d.citrusvil : []);
+        setCostos(Array.isArray(d?.costos) ? d.costos : []);
       })
       .finally(() => vigente && setCargando(false));
     return () => {
@@ -138,13 +147,16 @@ function ContableEquivalencias() {
     return m;
   }, [equivalencias]);
   const nombreTarea = useMemo(() => new Map(tareas.map((t) => [String(t._id), t.tarea])), [tareas]);
+  // Citrusvil → las tareas de La Martina con las que va en costos (si tiene).
+  const costosDe = useMemo(() => new Map(costos.map((c) => [c.nombre, (c.tareas || []).map(String)])), [costos]);
 
   // Las de Citrusvil (de los Excel y agregadas, con su unidad) y también las
   // que quedaron en alguna equivalencia aunque ya no estén en ningún lado.
   const unidadCitrusvil = useMemo(() => new Map(citrusvil.map((c) => [c.nombre, c.unidad])), [citrusvil]);
   const todasCitrusvil = useMemo(
-    () => [...new Set([...citrusvil.map((c) => c.nombre), ...tareasDeCitrusvil.keys()])].sort(ordenar),
-    [citrusvil, tareasDeCitrusvil]
+    () =>
+      [...new Set([...citrusvil.map((c) => c.nombre), ...tareasDeCitrusvil.keys(), ...costosDe.keys()])].sort(ordenar),
+    [citrusvil, tareasDeCitrusvil, costosDe]
   );
 
   const abrirEditar = (t) => {
@@ -229,6 +241,27 @@ function ContableEquivalencias() {
   const abrirEditarCtv = (c) => {
     setEditandoCtv(c);
     setElegidasLM(tareasDeCitrusvil.get(c) || []);
+    setElegidasCostos(costosDe.get(c) || []);
+    setDistintaCostos(costosDe.has(c));
+  };
+  const tildarCostos = (t) => {
+    const id = String(t._id);
+    if (elegidasCostos.includes(id)) return setElegidasCostos((ant) => ant.filter((x) => x !== id));
+    if (!mismaUnidad(editandoCtv, t)) return;
+    setElegidasCostos((ant) => [...ant, id]);
+  };
+  /**
+   * La de costos se guarda aparte y solo si cambió. Se ve enseguida; si el
+   * back la rechaza, avisa y vuelve a traer lo guardado.
+   */
+  const guardarCostos = (nombre, ids) => {
+    const antes = costosDe.get(nombre) || [];
+    if (antes.length === ids.length && antes.every((id) => ids.includes(id))) return;
+    setCostos((ant) => [...ant.filter((c) => c.nombre !== nombre), ...(ids.length ? [{ nombre, tareas: ids }] : [])]);
+    api.put("/contable/equivalencias-costos", { nombre, tareas: ids }).catch((err) => {
+      Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
+      traer().catch(() => {});
+    });
   };
   // Destildar siempre se puede; tildar, solo con la misma unidad.
   const tildarLM = (t) => {
@@ -247,6 +280,8 @@ function ContableEquivalencias() {
     guardarPorDetras(conTareaCtv(equivalencias, nombre, ids), () =>
       api.put("/contable/equivalencias-ctv", { nombre, tareas: ids })
     );
+    // Sin tildar "distinta en costos", o sin ninguna elegida, va con la de siempre.
+    guardarCostos(nombre, distintaCostos ? [...elegidasCostos] : []);
     setEditandoCtv(null);
     Swal.fire({ icon: "success", title: "Guardado", timer: 1500, showConfirmButton: false, width: "300px" });
   };
@@ -254,7 +289,7 @@ function ContableEquivalencias() {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "¿Quitar la equivalencia?",
-      text: `«${c}» queda sin tareas de La Martina. Esta acción no se puede deshacer.`,
+      text: `«${c}» queda sin tareas de La Martina (también la de costos). Esta acción no se puede deshacer.`,
       width: "320px",
       showCancelButton: true,
       confirmButtonText: "Sí, quitar",
@@ -268,6 +303,7 @@ function ContableEquivalencias() {
       () => api.put("/contable/equivalencias-ctv", { nombre: c, tareas: [] }),
       "No se pudo quitar"
     );
+    guardarCostos(c, []);
   };
   const unidadTarea = new Map(tareas.map((t) => [String(t._id), t.unidad]));
 
@@ -317,6 +353,7 @@ function ContableEquivalencias() {
             { titulo: "Unidades", ancho: 12 },
             { titulo: "Tarea La Martina", ancho: 38 },
             { titulo: "Unidad La Martina", ancho: 16 },
+            { titulo: "Tarea LM en costos", ancho: 38 },
             { titulo: "Observaciones", ancho: 40 },
           ],
           filas: todasCitrusvil.map((c, i) => {
@@ -327,6 +364,9 @@ function ContableEquivalencias() {
               unidadCitrusvil.get(c) || "",
               ids.map((id) => nombreTarea.get(id) || "Tarea borrada").join("\n"),
               ids.map((id) => unidadTarea.get(id) || "—").join("\n"),
+              costosDe.has(c)
+                ? costosDe.get(c).map((id) => nombreTarea.get(id) || "Tarea borrada").join("\n")
+                : "La misma",
               ids.map((id) => porTarea.get(id)?.observaciones).filter(Boolean).join("\n"),
             ];
           }),
@@ -397,6 +437,33 @@ function ContableEquivalencias() {
             <i className="bi bi-file-earmark-excel-fill"></i>
             <span>Excel</span>
           </Button>
+        </div>
+
+        {/* Gasoil y dólar (07/11/2026): cada uno con su precio vigente, su
+            fecha y su historial. */}
+        <div
+          className="d-flex flex-column gap-2 bg-white shadow-sm rounded-3 px-3 py-2 mb-3 flex-shrink-0 align-self-start"
+          style={{ border: "1px solid #cbd5e1" }}
+        >
+          <PrecioConHistorial
+            titulo="Gasoil"
+            nombre="gasoil"
+            icono="bi-fuel-pump-fill"
+            ruta="/contable/gasoil"
+            unidad="por litro"
+            color={COLOR}
+            sinEditar={sinEditar}
+          />
+          <PrecioConHistorial
+            titulo="$/dólar"
+            subtitulo="oficial, venta"
+            nombre="dólar"
+            icono="bi-currency-dollar"
+            ruta="/contable/dolar"
+            unidad="por dólar"
+            color={COLOR}
+            sinEditar={sinEditar}
+          />
         </div>
 
         {/* Las solapas, pegadas arriba de la tabla (como las de Ingresos de
@@ -563,6 +630,8 @@ function ContableEquivalencias() {
                 <th style={{ ...th, width: "30%" }}>Tarea Citrusvil</th>
                 <th style={{ ...th, width: "80px", textAlign: "center" }}>Unidades</th>
                 <th style={{ ...th, width: "24%" }}>Tarea La Martina</th>
+                {/* La de la Comparativa de costos, si no es la misma (07/11/2026). */}
+                <th style={{ ...th, width: "18%" }}>LM en costos</th>
                 <th style={th}>Observaciones</th>
                 <th style={{ ...th, width: "70px", textAlign: "center" }}>Acciones</th>
               </tr>
@@ -570,7 +639,7 @@ function ContableEquivalencias() {
             <tbody>
               {cargando || !todasCitrusvil.length ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={7} className="text-center text-muted py-4" style={td}>
                     {cargando ? "Cargando…" : "Todavía no hay tareas de Citrusvil"}
                   </td>
                 </tr>
@@ -611,6 +680,18 @@ function ContableEquivalencias() {
                             })
                           : raya}
                       </td>
+                      <td style={td}>
+                        {costosDe.has(c) ? (
+                          costosDe.get(c).map((id) => (
+                            <div key={id} className="d-flex align-items-start gap-1">
+                              <i className="bi bi-cash-stack" style={{ color: "#7c3aed" }}></i>
+                              <span style={{ fontWeight: 600 }}>{nombreTarea.get(id) || "Tarea borrada"}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <span style={{ color: "#94a3b8" }}>La misma</span>
+                        )}
+                      </td>
                       <td style={{ ...td, whiteSpace: "pre-wrap" }}>{obs.length ? obs.join("\n") : raya}</td>
                       <td style={td}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
@@ -625,10 +706,10 @@ function ContableEquivalencias() {
                           </button>
                           <button
                             onClick={() => quitarCtv(c)}
-                            disabled={sinEditar || !ids.length}
+                            disabled={sinEditar || (!ids.length && !costosDe.has(c))}
                             className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center rounded-2 p-0"
                             style={{ width: "24px", height: "24px" }}
-                            title={sinEditar ? "Sin permiso para editar" : !ids.length ? "No tiene equivalencia" : "Borrar"}
+                            title={sinEditar ? "Sin permiso para editar" : !ids.length && !costosDe.has(c) ? "No tiene equivalencia" : "Borrar"}
                           >
                             <i className="bi bi-trash" style={{ fontSize: "0.8rem" }}></i>
                           </button>
@@ -779,8 +860,13 @@ function ContableEquivalencias() {
                 </span>
               )}
             </Form.Label>
-            {/* Se pueden tildar varias (06/11/2026); con otra unidad, avisa. */}
-            <div className="rounded-3 border px-2 py-1" style={{ maxHeight: "45vh", overflowY: "auto", fontSize: "0.8rem" }}>
+            {/* Se pueden tildar varias (06/11/2026); con otra unidad, avisa.
+                Con la lista de costos abierta, las dos más bajas: así Guardar
+                sigue entrando en la pantalla. */}
+            <div
+              className="rounded-3 border px-2 py-1"
+              style={{ maxHeight: distintaCostos ? "24vh" : "45vh", overflowY: "auto", fontSize: "0.8rem" }}
+            >
               {tareas.map((t) => (
                 <Form.Check
                   key={t._id}
@@ -802,6 +888,44 @@ function ContableEquivalencias() {
                 />
               ))}
             </div>
+
+            {/* La de la Comparativa de costos (07/11/2026): sin tildar, va con
+                las mismas de arriba. */}
+            <Form.Check
+              type="switch"
+              id="distinta-costos"
+              className="mt-3 mb-1 small fw-semibold text-dark"
+              checked={distintaCostos}
+              onChange={(e) => setDistintaCostos(e.target.checked)}
+              label="En la comparativa de costos va con otra tarea"
+            />
+            {distintaCostos && (
+              <div
+                className="rounded-3 border px-2 py-1"
+                style={{ maxHeight: "24vh", overflowY: "auto", fontSize: "0.8rem", borderColor: "#c4b5fd" }}
+              >
+                {tareas.map((t) => (
+                  <Form.Check
+                    key={t._id}
+                    id={`costos-${t._id}`}
+                    type="checkbox"
+                    className="my-1"
+                    checked={elegidasCostos.includes(String(t._id))}
+                    onChange={() => tildarCostos(t)}
+                    label={
+                      <span style={{ color: "#1e293b" }}>
+                        {t.tarea}
+                        {t.unidad && (
+                          <span className="ms-1" style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                            [{t.unidad}]
+                          </span>
+                        )}
+                      </span>
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </Modal.Body>
           <Modal.Footer
             className="bg-light border-0 py-2.5 px-4"
