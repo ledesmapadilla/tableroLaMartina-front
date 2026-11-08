@@ -13,6 +13,39 @@ import { MESES, TIPOS_COMPARATIVA, fechaHora, memoriaTablas } from "../../utils/
 const EXTENSIONES = [".xlsx", ".xlsm"];
 const esExcel = (nombre = "") => EXTENSIONES.some((ext) => nombre.toLowerCase().endsWith(ext));
 
+// El encabezado del Excel mensual, tal cual viene en el de octubre de 2026
+// (hoja "Otras tareas - ctv"). Es lo que muestra el aviso antes de elegir el
+// archivo (08/11/2026).
+const ENCABEZADO_EXCEL = [
+  "Documento compras",
+  "Orden de Trabajo",
+  "Fecha/Hora creación",
+  "Denominación almacén",
+  "Contratista",
+  "Número de servicio",
+  "Detalle de tarea",
+  "Cant.",
+  "Unidad medida base",
+  "Precio unitario",
+  "Subtotal",
+  "Orden de control",
+  "Centro de coste",
+  "Centro de costo",
+  "Activo Fijo",
+];
+const COLUMNA_ALMACEN = ENCABEZADO_EXCEL.indexOf("Denominación almacén");
+// Las que no pueden faltar: sin ellas (o con otro título) la carga se frena
+// (utils/leerExcelContable.js). Van destacadas en el aviso.
+const OBLIGATORIAS_EXCEL = new Set([
+  "Fecha/Hora creación",
+  "Denominación almacén",
+  "Detalle de tarea",
+  "Cant.",
+  "Unidad medida base",
+  "Precio unitario",
+]);
+const COLOR_OBLIGATORIA = "#fde047";
+
 const escapar = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -41,6 +74,50 @@ const htmlProblemas = (problemas, nombre, pie) =>
   }).join("") +
   (pie ? `<div style="color:#334155;font-weight:600">${pie}</div>` : "") +
   `</div>`;
+
+/**
+ * Antes de elegir el Excel (08/11/2026): el encabezado que tiene que traer,
+ * con San Pablo y Berdina de ejemplo en el almacén. → true si aceptó.
+ */
+const avisoAntesDeElegir = async () => {
+  const th =
+    "background:#1b4332;color:#fff;font-weight:normal;padding:4px 6px;border:1px solid #2d6a4f;white-space:nowrap;font-size:0.7rem";
+  const td = "padding:3px 6px;border:1px solid #e2e8f0;white-space:nowrap;font-size:0.72rem;color:#94a3b8;text-align:center";
+  const tdAlmacen = "padding:3px 6px;border:1px solid #e2e8f0;white-space:nowrap;font-size:0.72rem;color:#1b4332;font-weight:700";
+  const fila = (almacen) =>
+    "<tr>" +
+    ENCABEZADO_EXCEL.map((_, i) =>
+      i === COLUMNA_ALMACEN ? `<td style="${tdAlmacen}">${escapar(almacen)}</td>` : `<td style="${td}">…</td>`
+    ).join("") +
+    "</tr>";
+  const html =
+    `<div style="text-align:left;font-size:0.82rem;color:#334155">` +
+    `<p style="margin:0 0 8px">Los títulos de las columnas tienen que ser <b>estos, escritos textualmente</b>, en una sola fila de encabezado. El orden de las columnas puede cambiar.</p>` +
+    `<div style="overflow-x:auto;border-radius:8px;border:1px solid #cbd5e1">` +
+    `<table style="border-collapse:collapse;width:max-content;min-width:100%">` +
+    `<thead><tr>${ENCABEZADO_EXCEL.map((t) =>
+      OBLIGATORIAS_EXCEL.has(t)
+        ? `<th style="${th};color:${COLOR_OBLIGATORIA}">${escapar(t)} *</th>`
+        : `<th style="${th}">${escapar(t)}</th>`
+    ).join("")}</tr></thead>` +
+    `<tbody>${fila("San Pablo")}${fila("Berdina")}</tbody>` +
+    `</table></div>` +
+    `<p style="margin:8px 0 0"><span style="background:#1b4332;color:${COLOR_OBLIGATORIA};padding:1px 6px;border-radius:4px">Las marcadas con *</span> son obligatorias: si falta alguna, o viene con otro título, el Excel no se carga.</p>` +
+    `<p style="margin:6px 0 0">En <b>Denominación almacén</b> va <b>San Pablo</b> o <b>Berdina</b>. También puede decir <b>Caspinchango</b>, que es el mismo lugar que Berdina: el programa lo toma como Berdina.</p>` +
+    `</div>`;
+  const { isConfirmed } = await Swal.fire({
+    icon: "info",
+    title: "Antes de cargar el Excel",
+    html,
+    width: "min(900px, 95vw)",
+    showCancelButton: true,
+    confirmButtonText: "Aceptar y elegir el Excel",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#1e293b",
+    cancelButtonColor: "#64748b",
+  });
+  return isConfirmed;
+};
 
 /**
  * Muestra lo que encontró la revisión del Excel (utils/leerExcelContable.js,
@@ -313,7 +390,11 @@ function ContableMes() {
                 <button
                   className="btn btn-sm d-flex align-items-center gap-2 px-3 mt-1"
                   style={boton}
-                  onClick={() => input.current?.click()}
+                  // Primero el aviso con el encabezado; al aceptar, recién se
+                  // elige el archivo (08/11/2026).
+                  onClick={async () => {
+                    if (await avisoAntesDeElegir()) input.current?.click();
+                  }}
                   disabled={!puedeEditar || trabajando}
                 >
                   {icono("bi bi-upload")}

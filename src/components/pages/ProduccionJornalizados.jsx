@@ -29,7 +29,14 @@ const FORM_VACIO = {
   horaEgreso2: "",
   tarea: "",
   provisorio: false,
+  // Colchón de horas (08/11/2026), el mismo círculo de la planilla de partes:
+  // cuenta las horas del total del día.
+  colchonHs: false,
 };
+
+// El total de un jornalizado con Colch. Hs.: fondo amarillo y letra roja solo
+// detrás del número, como en la planilla de partes.
+const ESTILO_COLCHON = { color: "#dc2626", fontWeight: 700, backgroundColor: "#fef08a" };
 
 // El rojo del botón que trae acá.
 const ROJO = "#b91c1c";
@@ -724,6 +731,7 @@ function PlanillaJornalizados({ establecimiento }) {
   const hayFiltro = Boolean(desde || hasta || soloProvisorios || filtroPersona !== "Todos");
   const totalHoras = Math.round(filtradas.reduce((s, f) => s + (f.totalHoras || 0), 0) * 100) / 100;
 
+
   const cambiar = (campoForm, valor) => setForm((f) => ({ ...f, [campoForm]: valor }));
   const seSolapan = !form.provisorio && tramosSeSolapan(form);
   const totalForm = calcularHoras(form.horaIngreso, form.horaEgreso) + calcularHoras(form.horaIngreso2, form.horaEgreso2);
@@ -780,6 +788,9 @@ function PlanillaJornalizados({ establecimiento }) {
     if (!form.provisorio) {
       falta.push(!tieneTramoCompleto(form) && "un horario completo (entrada y salida)");
       falta.push(!form.tarea.trim() && "la tarea realizada");
+    } else if (form.colchonHs) {
+      // Con Colch. Hs. la tarea realizada va siempre (08/11/2026).
+      falta.push(!form.tarea.trim() && "la tarea realizada (con Colch. Hs. es obligatoria)");
     }
     const faltan = falta.filter(Boolean);
     if (faltan.length) {
@@ -854,6 +865,7 @@ function PlanillaJornalizados({ establecimiento }) {
       tarea: f.tarea || "",
       // Sigue en provisorio hasta que se apague el botón.
       provisorio: Boolean(f.provisorio),
+      colchonHs: Boolean(f.colchonHs),
     });
     refPersona.current?.focus();
   };
@@ -1069,6 +1081,42 @@ function PlanillaJornalizados({ establecimiento }) {
                 >
                   {totalForm ? nfHoras.format(totalForm) : "—"}
                 </div>
+                {/* Colch. Hs. (08/11/2026): cuenta las horas del total. Se
+                    prende y se apaga tocándolo. Solo en Berdina. */}
+                {establecimiento !== "san-pablo" && (
+                <div className="mt-1">
+                  {rotulo(
+                    <span className="d-block text-center fw-semibold" style={{ color: form.colchonHs ? "#dc2626" : "#64748b" }}>
+                      Colch. Hs.
+                    </span>
+                  )}
+                  <div className="d-flex align-items-center justify-content-center" style={{ height: "24px" }}>
+                    <button
+                      type="button"
+                      onClick={() => cambiar("colchonHs", !form.colchonHs)}
+                      // Enter en el círculo no tiene que guardar.
+                      onKeyDown={(e) => e.stopPropagation()}
+                      aria-pressed={form.colchonHs}
+                      title={
+                        form.colchonHs
+                          ? "Colchón de horas: cuenta las horas del total. La tarea realizada es obligatoria. Tocar para apagarlo."
+                          : "Marcar como colchón de horas: cuenta las horas del total"
+                      }
+                      className="p-0 d-flex align-items-center justify-content-center"
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        border: `2px solid ${form.colchonHs ? "#dc2626" : "#94a3b8"}`,
+                        backgroundColor: form.colchonHs ? "#fef08a" : "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {form.colchonHs && <i className="bi bi-check-lg" style={{ fontSize: "0.75rem", color: "#dc2626", lineHeight: 1 }}></i>}
+                    </button>
+                  </div>
+                </div>
+                )}
               </div>
 
               <div style={{ alignSelf: "stretch", borderLeft: "7px solid #cbd5e1", margin: "0 2px" }} />
@@ -1249,8 +1297,16 @@ function PlanillaJornalizados({ establecimiento }) {
                       <td style={{ ...td, color: "#64748b" }}>{f.horaEgreso || <Raya />}</td>
                       <td style={{ ...td, color: "#64748b" }}>{f.horaIngreso2 || <Raya />}</td>
                       <td style={{ ...td, color: "#64748b" }}>{f.horaEgreso2 || <Raya />}</td>
-                      <td style={{ ...td, fontWeight: 700, color: "#1b4332" }}>
-                        {f.totalHoras ? nfHoras.format(f.totalHoras) : <Raya />}
+                      <td style={{ ...td, fontWeight: 700, color: "#1b4332" }} title={f.colchonHs ? "Colch. Hs.: colchón de horas" : undefined}>
+                        {f.colchonHs ? (
+                          <span className="px-2 rounded-2" style={ESTILO_COLCHON}>
+                            {f.totalHoras ? nfHoras.format(f.totalHoras) : "—"}
+                          </span>
+                        ) : f.totalHoras ? (
+                          nfHoras.format(f.totalHoras)
+                        ) : (
+                          <Raya />
+                        )}
                       </td>
                       {/* La tarea se lee entera con el ojo. */}
                       <td style={td}>

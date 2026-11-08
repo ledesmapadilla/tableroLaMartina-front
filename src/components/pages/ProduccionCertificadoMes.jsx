@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
-import { Container, Table, Button, Form, Card } from "react-bootstrap";
+import { Container, Table, Button, Form, Card, Modal } from "react-bootstrap";
 import { nuevoWorkbook } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import ModalIngresoGasoil from "../compras/ModalIngresoGasoil";
@@ -55,6 +55,9 @@ const FORM_VACIO = {
   // El ayudamemoria de la mañana (30/09/2026): se guarda con lo que se sabe
   // hasta ahí, sin validar, y se completa al terminar la jornada.
   provisorio: false,
+  // Colchón de horas (08/11/2026): el círculo "Colch. Hs.", solo en Horas La
+  // Martina. Prendido, las observaciones son obligatorias.
+  colchonHs: false,
 };
 
 // Los avisos de esta pantalla van chicos: la carga es rápida y repetitiva, y
@@ -286,6 +289,14 @@ const comparable = (valor) =>
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+
+// La tarea del círculo "Colch. Hs." (08/11/2026), por el nombre: "Horas La
+// Martina" escrita de cualquier manera. El back controla lo mismo.
+const esHorasLaMartina = (nombre) => comparable(nombre) === "horaslamartina";
+
+// La cantidad de un parte con Colch. Hs.: fondo amarillo y letra roja solo
+// detrás del número, no en toda la celda, como el resto de los destacados.
+const ESTILO_COLCHON = { color: "#dc2626", fontWeight: 700, backgroundColor: "#fef08a" };
 
 /**
  * El desmalezado va con la unidad en la que está medido el lote (23/09/2026):
@@ -1306,6 +1317,9 @@ function ProduccionCertificadoMes({
       if (!form.provisorio && pideCantidad && (form.cantidad === "" || form.cantidad === null)) {
         falta.push("la cantidad");
       }
+      // Con Colch. Hs. las observaciones no pueden faltar, ni en un
+      // provisorio (08/11/2026).
+      if (conColchon && !(form.observacion || "").trim()) falta.push("las observaciones (con Colch. Hs. son obligatorias)");
     }
     if (falta.length) {
       avisar({
@@ -1460,6 +1474,9 @@ function ProduccionCertificadoMes({
       ...delForm,
       ...segunFecha,
       ...(usoInterno ? { provisorio: false } : {}),
+      // Si se prendió con Horas La Martina y después se cambió la tarea, no
+      // queda guardado.
+      colchonHs: !usoInterno && conColchon,
       terminado: conEstadoDelLote(form.terminado),
       // Con un solo lote va por `lote` como siempre; con varios, la lista.
       lotes:
@@ -1605,6 +1622,7 @@ function ProduccionCertificadoMes({
       // Sigue en provisorio hasta que se apague el botón: ahí vuelven todas
       // las validaciones.
       provisorio: Boolean(p.provisorio),
+      colchonHs: Boolean(p.colchonHs),
     });
     refPersona.current?.focus();
   };
@@ -1955,6 +1973,11 @@ function ProduccionCertificadoMes({
     );
   };
   const estadoEnForm = llevaEstado(tareas.find((t) => t._id === form.tarea)?.tarea);
+  // Colch. Hs. (08/11/2026) es solo de Berdina: en San Pablo no hay círculo
+  // ni box. El círculo, solo con Horas La Martina.
+  const conColchonHs = establecimiento !== "san-pablo";
+  const colchonEnForm = conColchonHs && esHorasLaMartina(tareas.find((t) => t._id === form.tarea)?.tarea);
+  const conColchon = colchonEnForm && Boolean(form.colchonHs);
   const variosLotesEnForm = estadoEnForm && form.otrosLotes.length > 0;
 
   // La cantidad es obligatoria salvo en las tareas exentas (desmalezado y
@@ -2175,25 +2198,97 @@ function ProduccionCertificadoMes({
   // Abre el resumen por personal del mismo mes, el del Informe del mes
   // (24/09/2026). Cuadrado y del doble de alto que Excel, que va debajo. La
   // ruta sale de la de la planilla, así sirve para los dos campos.
+  // ── Colch. Hs. (08/11/2026) ──
+  // La suma de las horas de colchón del período, de los dos lados: los partes
+  // de Horas La Martina marcados (su cantidad) y los jornalizados marcados (su
+  // total de horas). El box al lado de Resumen la muestra y abre el detalle.
+  const [jornalizadosColchon, setJornalizadosColchon] = useState([]);
+  const [verColchon, setVerColchon] = useState(false);
+  useEffect(() => {
+    if (!conColchonHs || !periodo.desde || !periodo.hasta) return;
+    let vigente = true;
+    fetch(`/api/jornalizados?${qEstab}&desde=${periodo.desde}&hasta=${periodo.hasta}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((lista) => vigente && setJornalizadosColchon((Array.isArray(lista) ? lista : []).filter((j) => j.colchonHs)))
+      .catch(() => vigente && setJornalizadosColchon([]));
+    return () => {
+      vigente = false;
+    };
+  }, [conColchonHs, qEstab, periodo.desde, periodo.hasta, verColchon]);
+
+  const registrosColchon = useMemo(
+    () =>
+      [
+        ...partes
+          .filter((p) => p.colchonHs)
+          .map((p) => ({
+            id: `p-${p._id}`,
+            fecha: soloFecha(p.fecha),
+            persona: p.persona?._id || "sin-persona",
+            nombre: p.persona?.apellidoNombre || "(sin persona)",
+            origen: "Parte",
+            horas: Number(p.cantidad) || 0,
+            texto: p.observacion || "",
+          })),
+        ...jornalizadosColchon.map((j) => ({
+          id: `j-${j._id}`,
+          fecha: soloFecha(j.fecha),
+          persona: j.persona?._id || "sin-persona",
+          nombre: j.persona?.apellidoNombre || "(sin persona)",
+          origen: "Jornalizado",
+          horas: Number(j.totalHoras) || 0,
+          texto: j.tarea || "",
+        })),
+      ].sort((a, b) => a.fecha.localeCompare(b.fecha) || a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" })),
+    [partes, jornalizadosColchon]
+  );
+  const redondearHs = (n) => Math.round(n * 100) / 100;
+  const horasColchon = redondearHs(registrosColchon.reduce((a, r) => a + r.horas, 0));
+  const botonColchon = (
+    <button
+      type="button"
+      onClick={() => setVerColchon(true)}
+      // Enter en el botón no tiene que guardar el parte de la fila.
+      onKeyDown={(e) => e.stopPropagation()}
+      className="btn rounded-2 p-0 d-flex flex-column align-items-center justify-content-center"
+      style={{
+        backgroundColor: "#fef08a",
+        border: "1px solid #dc2626",
+        color: "#dc2626",
+        fontSize: "0.6rem",
+        width: "60px",
+        height: "24px",
+        fontWeight: 700,
+        lineHeight: 1,
+      }}
+      title="Horas de colchón del período (partes y jornalizados): ver el resumen"
+    >
+      <span>Colch. Hs.</span>
+      <span style={{ fontSize: "0.68rem" }}>{nfDesvio.format(horasColchon)}</span>
+    </button>
+  );
+
   const botonResumen = (
     <Button
       size="sm"
       onClick={() => navigate(pathname.replace(/\/planilla\/?$/, "/informes/resumen"))}
       // Enter en el botón no tiene que guardar el parte de la fila.
       onKeyDown={(e) => e.stopPropagation()}
-      className="rounded-3 p-0 d-flex flex-column align-items-center justify-content-center"
+      className={`${conColchonHs ? "rounded-2" : "rounded-3"} p-0 d-flex flex-column align-items-center justify-content-center`}
       style={{
         backgroundColor: "#1d4ed8",
         borderColor: "#1d4ed8",
-        fontSize: "0.72rem",
+        fontSize: conColchonHs ? "0.68rem" : "0.72rem",
         width: "60px",
-        height: "60px",
+        // En Berdina 34 de alto (08/11/2026): arriba va Colch. Hs. y entre los
+        // dos ocupan los 60 x 60 de siempre. En San Pablo, sin colchón, 60.
+        height: conColchonHs ? "34px" : "60px",
         fontWeight: 600,
-        lineHeight: 1.1,
+        lineHeight: conColchonHs ? 1 : 1.1,
       }}
       title="Ver el resumen por personal del mes"
     >
-      <i className="bi bi-people-fill" style={{ fontSize: "1.1rem" }}></i>
+      <i className="bi bi-people-fill" style={{ fontSize: conColchonHs ? "0.85rem" : "1.1rem" }}></i>
       <span>Resumen</span>
     </Button>
   );
@@ -2310,6 +2405,62 @@ function ProduccionCertificadoMes({
                 onCerrar={() => setCargandoGasoil(false)}
               />
             )}
+            {/* El resumen de Colch. Hs. (08/11/2026): solo la tabla día por día, con
+                el total al pie. */}
+            <Modal show={verColchon} onHide={() => setVerColchon(false)} size="lg" scrollable centered>
+              <Modal.Header closeButton style={{ backgroundColor: "#1b4332", color: "#fff" }}>
+                <Modal.Title style={{ fontSize: "1rem", fontWeight: 700 }}>
+                  Colch. Hs. — {titulo}
+                  {periodo.desde && (
+                    <span className="fw-normal ms-2" style={{ fontSize: "0.78rem", opacity: 0.8 }}>
+                      del {formatFecha(periodo.desde)} al {formatFecha(periodo.hasta)}
+                    </span>
+                  )}
+                </Modal.Title>
+              </Modal.Header>
+              <Modal.Body style={{ backgroundColor: "#f8f9fa", fontSize: "0.78rem" }}>
+                {registrosColchon.length === 0 ? (
+                  <div className="text-center text-muted py-4">No hay horas de colchón en este período.</div>
+                ) : (
+                    <div className="bg-white rounded-3" style={{ border: "1px solid #e2e8f0", overflow: "clip" }}>
+                      <Table size="sm" className="mb-0 tabla-informe text-center align-middle">
+                        <thead>
+                          <tr>
+                            <th style={{ width: "1%" }}>Fecha</th>
+                            <th className="text-start" style={{ width: "1%" }}>Personal</th>
+                            <th style={{ width: "1%" }}>De</th>
+                            <th style={{ width: "1%" }}>Horas</th>
+                            <th className="text-start">Observaciones / tarea realizada</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {registrosColchon.map((r) => (
+                            <tr key={r.id}>
+                              <td style={{ whiteSpace: "nowrap" }}>{formatFecha(r.fecha)}</td>
+                              <td className="text-start" style={{ whiteSpace: "nowrap" }}>{r.nombre}</td>
+                              <td>{r.origen}</td>
+                              <td className="fw-semibold">{nfDesvio.format(r.horas)}</td>
+                              <td className="text-start" style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                                {r.texto || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="fila-total">
+                            <td className="text-start fw-bold" style={{ color: "#1b4332" }} colSpan={3}>TOTAL</td>
+                            <td className="fw-bold">{nfDesvio.format(horasColchon)}</td>
+                            <td></td>
+                          </tr>
+                        </tbody>
+                      </Table>
+                    </div>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="outline-secondary" size="sm" onClick={() => setVerColchon(false)}>
+                  Cerrar
+                </Button>
+              </Modal.Footer>
+            </Modal>
             {/* La guía de tareas: el "?" al lado de Tarea en la carga. */}
             {verGuiaTareas && (
               <ModalGuiaTareas
@@ -2367,6 +2518,7 @@ function ProduccionCertificadoMes({
               modificar partes. Use <span className="fw-semibold">Permitir editar</span> para reabrirla.
             </span>
             <div className="ms-auto d-flex flex-column align-items-end gap-1">
+              {conColchonHs && botonColchon}
               {botonResumen}
               {botonExcel}
             </div>
@@ -2550,8 +2702,13 @@ function ProduccionCertificadoMes({
                 <Form.Control type="number" value={form.combTurbo} onChange={(e) => cambiar("combTurbo", e.target.value)} style={estiloCelda} />
               </div>
 
-              {/* Pegado a la derecha, justo arriba de Excel. */}
-              <div className="ms-auto">{botonResumen}</div>
+              {/* Pegado a la derecha, justo arriba de Excel. Colch. Hs. va
+                  arriba de Resumen, en la misma columna (08/11/2026): al
+                  lado no entraba en San Pablo, que tiene dos horarios más. */}
+              <div className="ms-auto d-flex flex-column" style={{ gap: "2px" }}>
+                {conColchonHs && botonColchon}
+                {botonResumen}
+              </div>
             </div>
 
             {/* Fila 2: el resto de los datos del parte */}
@@ -2659,8 +2816,20 @@ function ProduccionCertificadoMes({
               )}
 
               <div style={{ width: "150px" }}>
-                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>Observaciones</label>
-                <Form.Control list="obs-usadas" value={form.observacion} onChange={(e) => cambiar("observacion", e.target.value)} style={estiloCelda} />
+                <label className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
+                  Observaciones {conColchon && <span className="text-danger">*</span>}
+                </label>
+                <Form.Control
+                  list="obs-usadas"
+                  value={form.observacion}
+                  onChange={(e) => cambiar("observacion", e.target.value)}
+                  title={conColchon ? "Con Colch. Hs. las observaciones son obligatorias" : undefined}
+                  style={{
+                    ...estiloCelda,
+                    // En rojo mientras falten con Colch. Hs. (08/11/2026).
+                    borderColor: conColchon && !(form.observacion || "").trim() ? "#dc2626" : undefined,
+                  }}
+                />
                 <datalist id="obs-usadas">
                   {observacionesUsadas.map((o) => <option key={o} value={o} />)}
                 </datalist>
@@ -2777,6 +2946,44 @@ function ProduccionCertificadoMes({
                 >
                   Cancelar
                 </Button>
+              )}
+
+              {/* Colch. Hs. (08/11/2026): solo con Horas La Martina, a la
+                  derecha de Agregar. Se prende y se apaga tocándolo. */}
+              {colchonEnForm && (
+                <div className="ms-2" style={{ width: "62px" }}>
+                  <label
+                    className="d-block fw-semibold text-center"
+                    style={{ fontSize: "0.7rem", color: form.colchonHs ? "#dc2626" : "#64748b" }}
+                  >
+                    Colch. Hs.
+                  </label>
+                  <div className="d-flex align-items-center justify-content-center" style={{ height: "30px" }}>
+                    <button
+                      type="button"
+                      onClick={() => cambiar("colchonHs", !form.colchonHs)}
+                      // Enter en el círculo no tiene que guardar el parte.
+                      onKeyDown={(e) => e.stopPropagation()}
+                      aria-pressed={form.colchonHs}
+                      title={
+                        form.colchonHs
+                          ? "Colchón de horas: prendido (las observaciones son obligatorias). Tocar para apagarlo."
+                          : "Marcar como colchón de horas"
+                      }
+                      className="p-0 d-flex align-items-center justify-content-center"
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        border: `2px solid ${form.colchonHs ? "#dc2626" : "#94a3b8"}`,
+                        backgroundColor: form.colchonHs ? "#fef08a" : "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {form.colchonHs && <i className="bi bi-check-lg" style={{ fontSize: "0.75rem", color: "#dc2626", lineHeight: 1 }}></i>}
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* Pegado a la derecha, a la altura de Agregar. */}
@@ -3199,21 +3406,31 @@ function ProduccionCertificadoMes({
                     <td
                       className="fw-semibold"
                       style={
-                        enAltoRendimiento.has(p._id)
+                        p.colchonHs
+                          ? undefined
+                          : enAltoRendimiento.has(p._id)
                           ? { color: "#b45309", fontWeight: 700 }
                           : p.repartido
                           ? { color: "#15803d" }
                           : undefined
                       }
                       title={
-                        enAltoRendimiento.has(p._id)
+                        p.colchonHs
+                          ? "Colch. Hs.: colchón de horas"
+                          : enAltoRendimiento.has(p._id)
                           ? "Día de alto rendimiento: se paga con el neto alto Rto."
                           : p.repartido
                           ? "Repartida al terminar el lote, según las horas de la jornada"
                           : undefined
                       }
                     >
-                      {p.cantidad ?? "—"}
+                      {p.colchonHs ? (
+                        <span className="px-2 rounded-2" style={ESTILO_COLCHON}>
+                          {p.cantidad ?? "—"}
+                        </span>
+                      ) : (
+                        p.cantidad ?? "—"
+                      )}
                     </td>
                     <td className="text-secondary">{p.tarea?.unidad || "—"}</td>
                     <td>
