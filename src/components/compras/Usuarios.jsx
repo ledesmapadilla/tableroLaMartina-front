@@ -5,7 +5,7 @@ import Swal from 'sweetalert2'
 import { api } from '../../services/api'
 import { BORDO, campo, th, thCentro, td, tdCentro } from './formato'
 import { Raya, BotonAccion, Buscador } from './estilos'
-import { NOMBRES_ROL, nombreRol } from '../../utils/permisosCatalogo'
+import { NOMBRES_ROL, nombreRol, registrarRoles } from '../../utils/permisosCatalogo'
 
 const FORM_INIT = { nombre: '', usuario: '', password: '', rol: 'solicitante' }
 
@@ -19,6 +19,48 @@ export default function Usuarios() {
 
   const cargar = () => api.get('/usuarios').then(setUsuarios).catch(() => {})
   useEffect(() => { cargar() }, [])
+
+  // Los roles nuevos (07/11/2026), los creados con Nuevo rol: van en el
+  // desplegable de rol junto a los fijos.
+  const [rolesNuevos, setRolesNuevos] = useState([])
+  const cargarRoles = () =>
+    api
+      .get('/roles')
+      .then((lista) => {
+        const nuevos = (Array.isArray(lista) ? lista : []).filter((r) => r.personalizado)
+        registrarRoles(nuevos)
+        setRolesNuevos(nuevos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')))
+      })
+      .catch(() => {})
+  useEffect(() => { cargarRoles() }, [])
+  const opcionesRol = [
+    ...Object.entries(NOMBRES_ROL),
+    ...rolesNuevos.map((r) => [r.rol, r.nombre]),
+  ]
+
+  // El modal de Nuevo rol: solo el nombre. Nace sin nada, como celular o
+  // supervisor, y los permisos se tildan en Roles.
+  const [nuevoRol, setNuevoRol] = useState(null)
+  const [creandoRol, setCreandoRol] = useState(false)
+  const crearRol = async (e) => {
+    e.preventDefault()
+    const nombre = nuevoRol.nombre.trim()
+    if (!nombre) return
+    setCreandoRol(true)
+    try {
+      const r = await api.post('/roles', { nombre })
+      registrarRoles([r])
+      setNuevoRol(null)
+      await cargarRoles()
+      Swal.fire({ icon: 'success', title: 'Rol creado', text: 'Ahora elegí qué ve y qué edita.', timer: 1500, showConfirmButton: false, width: '300px' })
+      // A la pantalla Roles, con el rol nuevo elegido.
+      navigate('/compras/altas/usuarios/roles', { state: { rol: r.rol } })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo crear el rol', text: err.message, width: '300px' })
+    } finally {
+      setCreandoRol(false)
+    }
+  }
 
   const abrirNuevo = () => {
     setForm(FORM_INIT)
@@ -155,6 +197,17 @@ export default function Usuarios() {
             >
               <i className="bi bi-shield-lock"></i>
               <span>Roles</span>
+            </Button>
+            {/* Nuevo rol (07/11/2026): se crea acá y se configura en Roles. */}
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              onClick={() => setNuevoRol({ nombre: '' })}
+              className="rounded-3 px-3 py-1 d-flex align-items-center gap-2"
+              style={{ fontSize: '0.82rem', fontWeight: 600, color: BORDO, borderColor: BORDO }}
+            >
+              <i className="bi bi-shield-plus"></i>
+              <span>Nuevo rol</span>
             </Button>
             <Button
               size="sm"
@@ -296,7 +349,7 @@ export default function Usuarios() {
                   value={form.rol}
                   onChange={(e) => setForm({ ...form, rol: e.target.value })}
                 >
-                  {Object.entries(NOMBRES_ROL).map(([valor, nombre]) => (
+                  {opcionesRol.map(([valor, nombre]) => (
                     <option key={valor} value={valor}>
                       {nombre}
                     </option>
@@ -326,6 +379,70 @@ export default function Usuarios() {
             >
               <i className="bi bi-check-lg"></i>
               <span>Guardar</span>
+            </Button>
+          </Modal.Footer>
+        </Form>
+      </Modal>
+
+      {/* Modal Nuevo rol (07/11/2026) */}
+      <Modal show={Boolean(nuevoRol)} onHide={() => setNuevoRol(null)} centered contentClassName="border-0 shadow-lg rounded-4">
+        <Modal.Header
+          closeButton
+          closeVariant="white"
+          style={{
+            backgroundColor: BORDO,
+            color: '#fff',
+            borderTopLeftRadius: '1rem',
+            borderTopRightRadius: '1rem',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <i className="bi bi-shield-plus" style={{ color: '#f59e0b' }}></i>
+            <span>Nuevo rol</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Form onSubmit={crearRol}>
+          <Modal.Body className="p-4">
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Label className="fw-semibold text-dark small mb-1">
+                  Nombre <span className="text-danger">*</span>
+                </Form.Label>
+                <Form.Control
+                  className="rounded-3"
+                  style={campo}
+                  value={nuevoRol?.nombre || ''}
+                  onChange={(e) => setNuevoRol((r) => ({ ...r, nombre: e.target.value }))}
+                  maxLength={40}
+                  autoFocus
+                  required
+                />
+              </Col>
+            </Row>
+          </Modal.Body>
+          <Modal.Footer
+            className="bg-light border-0 py-2 px-4"
+            style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}
+          >
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              onClick={() => setNuevoRol(null)}
+              className="rounded-3 px-3 py-1"
+              style={{ fontSize: '0.84rem' }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              type="submit"
+              disabled={creandoRol || !nuevoRol?.nombre.trim()}
+              className="rounded-3 px-3 py-1 shadow-sm d-flex align-items-center gap-1"
+              style={{ backgroundColor: '#15803d', borderColor: '#15803d', fontSize: '0.84rem', fontWeight: 600 }}
+            >
+              <i className="bi bi-check-lg"></i>
+              <span>Crear rol</span>
             </Button>
           </Modal.Footer>
         </Form>

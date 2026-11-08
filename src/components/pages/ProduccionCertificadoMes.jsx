@@ -2284,7 +2284,7 @@ function ProduccionCertificadoMes({
               size="sm"
               onClick={() => navigate(pathname.replace(/\/planilla$/, "/reporte-mensual"))}
               onKeyDown={(e) => e.stopPropagation()}
-              className="rounded-3 px-3 d-flex align-items-center gap-2"
+              className="rounded-3 px-3 d-flex align-items-center gap-2 ms-3"
               style={{
                 backgroundColor: "#1b4332",
                 borderColor: "transparent",

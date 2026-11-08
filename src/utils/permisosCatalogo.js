@@ -131,7 +131,21 @@ export const NOMBRES_ROL = {
   supervisor: "Supervisor",
 };
 
-export const nombreRol = (rol) => NOMBRES_ROL[rol] || rol || "";
+// Los nombres de los roles nuevos (07/11/2026, Altas › Usuarios › Nuevo rol):
+// viven en la base, así que los anota quien trae /roles (Usuarios, Roles).
+const NOMBRES_NUEVOS = {};
+export const registrarRoles = (lista = []) => {
+  for (const r of lista) if (r?.personalizado && r.nombre) NOMBRES_NUEVOS[r.rol] = r.nombre;
+};
+
+// Un rol nuevo que todavía no se anotó se ve por su clave, más legible:
+// "encargado-de-riego" → "Encargado de riego".
+const legible = (rol) => {
+  const t = String(rol || "").replace(/-/g, " ");
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "";
+};
+
+export const nombreRol = (rol) => NOMBRES_ROL[rol] || NOMBRES_NUEVOS[rol] || legible(rol);
 
 /** Los que se configuran en Roles: el superadmin puede todo. */
 export const ROLES_CONFIGURABLES = ROLES.filter((r) => r !== "superadmin");

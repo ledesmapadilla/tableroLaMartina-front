@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Container, Table, Button } from 'react-bootstrap'
 import Swal from 'sweetalert2'
 import { api } from '../../services/api'
@@ -8,6 +9,7 @@ import {
   SECCIONES_PERMISOS,
   ROLES_CONFIGURABLES,
   nombreRol,
+  registrarRoles,
   resolverPermisos,
 } from '../../utils/permisosCatalogo'
 
@@ -40,9 +42,16 @@ const Cruz = ({ activa, onClick, titulo }) => (
  * utils/permisosCatalogo.js) y dos columnas, Ver y Editar. Tocar una casilla
  * pone o saca la cruz; los cambios se guardan juntos con el botón. Editar
  * implica ver: marcar Editar marca Ver y sacar Ver saca Editar.
+ *
+ * Además de los fijos, los roles nuevos (07/11/2026), creados desde
+ * Altas › Usuarios › Nuevo rol: van al final y se pueden borrar si no tienen
+ * usuarios. Desde Nuevo rol se llega acá con el rol nuevo ya elegido.
  */
 export default function Roles() {
-  const [rol, setRol] = useState('solicitante')
+  const location = useLocation()
+  const [rol, setRol] = useState(() => location.state?.rol || 'solicitante')
+  // Los roles nuevos: [{ rol, nombre }].
+  const [nuevos, setNuevos] = useState([])
   // Lo guardado en la base, por rol.
   const [guardadosPorRol, setGuardadosPorRol] = useState({})
   // Los permisos del rol elegido mientras se editan; null si no se tocó nada.
@@ -57,6 +66,9 @@ export default function Roles() {
       .then(([roles, us]) => {
         if (!vigente) return
         setGuardadosPorRol(Object.fromEntries((roles || []).map((r) => [r.rol, r.permisos || {}])))
+        const lista = (roles || []).filter((r) => r.personalizado)
+        registrarRoles(lista)
+        setNuevos(lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')))
         setUsuarios(Array.isArray(us) ? us : [])
       })
       .catch((err) => {
@@ -108,6 +120,45 @@ export default function Roles() {
       return { ...base, [clave]: nuevo }
     })
 
+  const todos = [...ROLES_CONFIGURABLES, ...nuevos.map((r) => r.rol)]
+  const esNuevo = nuevos.some((r) => r.rol === rol)
+
+  // Borrar un rol nuevo: solo sin usuarios (el back también lo controla).
+  const borrarRol = async () => {
+    const conUsuarios = nombresDe(rol)
+    if (conUsuarios.length) {
+      Swal.fire({
+        icon: 'info',
+        title: 'El rol tiene usuarios',
+        text: `Primero pasá a otro rol a ${conUsuarios.join(', ')}.`,
+        width: '320px',
+        confirmButtonColor: '#1e293b',
+      })
+      return
+    }
+    const { isConfirmed } = await Swal.fire({
+      icon: 'warning',
+      title: '¿Borrar el rol?',
+      text: `Se borra «${nombreRol(rol)}» con sus permisos. Esta acción no se puede deshacer.`,
+      width: '320px',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, borrar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+    })
+    if (!isConfirmed) return
+    try {
+      await api.delete(`/roles/${rol}`)
+      setNuevos((n) => n.filter((r) => r.rol !== rol))
+      setEdicion(null)
+      setRol('solicitante')
+      Swal.fire({ icon: 'success', title: 'Rol borrado', timer: 1500, showConfirmButton: false, width: '300px' })
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'No se pudo borrar', text: err.message, width: '300px' })
+    }
+  }
+
   const guardar = async () => {
     setGuardando(true)
     try {
@@ -156,7 +207,7 @@ export default function Roles() {
 
         {/* Los roles, con quién tiene cada uno. */}
         <div className="d-flex flex-wrap gap-2 mb-3 flex-shrink-0">
-          {ROLES_CONFIGURABLES.map((r) => {
+          {todos.map((r) => {
             const elegido = r === rol
             const nombres = nombresDe(r)
             return (
@@ -251,11 +302,26 @@ export default function Roles() {
         </div>
 
         <div className="d-flex align-items-center justify-content-end gap-2 mt-3 flex-shrink-0">
+          {/* Solo los roles nuevos se borran. */}
+          {esNuevo && (
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={borrarRol}
+              disabled={guardando}
+              className="rounded-3 px-3 py-1 d-flex align-items-center gap-1"
+              style={{ fontSize: '0.84rem' }}
+            >
+              <i className="bi bi-trash"></i>
+              <span>Borrar rol</span>
+            </Button>
+          )}
           {hayCambios && (
             <span className="me-auto" style={{ fontSize: '0.8rem', color: '#b45309' }}>
               <i className="bi bi-exclamation-circle me-1"></i>Hay cambios sin guardar
             </span>
           )}
+          {!hayCambios && <span className="me-auto"></span>}
           <Button
             variant="outline-secondary"
             size="sm"
