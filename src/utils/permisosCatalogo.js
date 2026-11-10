@@ -62,6 +62,10 @@ export const CATALOGO = [
   { seccion: "Producción", clave: "produccion.lotes", label: "Variables › Lotes", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.admisibles", label: "Variables › Valores admisibles", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.certificacion", label: "Tarjeta del mes › Datos certificación", hoy: PERMISOS.produccion },
+  // La guía de tareas (el "?" al lado de Tarea en la carga de partes),
+  // 10/11/2026: "Editar" deja agregar, cambiar y borrar renglones. Nace con
+  // el Encargado de taller, que es quien da de alta los trabajos en el campo.
+  { seccion: "Producción", clave: "produccion.guiaTareas", label: "Tarjeta del mes › Guía de tareas (?)", hoy: PERMISOS.mantenimiento },
   { seccion: "Producción", clave: "produccion.informeMes", label: "Tarjeta del mes › Informe del mes", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.contable", label: "Tarjeta del mes › Contable - Pagos", hoy: PERMISOS.produccionContable },
 

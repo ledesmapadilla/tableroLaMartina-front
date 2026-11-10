@@ -2473,7 +2473,7 @@ function ProduccionCertificadoMes({
               <ModalGuiaTareas
                 onCerrar={() => setVerGuiaTareas(false)}
                 opcionesTarea={opcionesTarea}
-                puedeAgregar={puede("altas.tareas", "editar")}
+                puedeAgregar={puede("altas.tareas", "editar") || puede("produccion.guiaTareas", "editar")}
               />
             )}
           </div>

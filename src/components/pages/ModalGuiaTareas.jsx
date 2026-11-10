@@ -8,7 +8,8 @@ import SelectBuscador from "../shared/SelectBuscador";
  * Guía de tareas (04/11/2026): el "?" al lado de Tarea en la planilla de
  * carga. Dice qué tarea del padrón va para cada trabajo, así se usa una que
  * ya existe en vez de dar de alta otra. Agregar, editar y borrar piden el
- * mismo permiso que dar de alta una tarea (altas.tareas). Se monta solo
+ * mismo permiso que dar de alta una tarea (altas.tareas) o el de la guía
+ * (produccion.guiaTareas, 10/11/2026, que tiene el Encargado de taller). Se monta solo
  * mientras está abierto.
  */
 const VERDE = "#1b4332";
