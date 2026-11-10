@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button, Card, Container, Form, Spinner, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { descargar, nuevoWorkbook } from "../../helpers/excel";
+import { CLIENTE_POR_DEFECTO, claveCliente, clienteDe, useClientes } from "../../utils/clientes";
 
 /**
  * Reporte mensual (07/11/2026), del botón al lado de Jornalizados en la
@@ -36,6 +37,8 @@ const th = {
 const td = { fontSize: "0.7rem", padding: "1px 5px", verticalAlign: "middle", textAlign: "center" };
 const raya = <span style={{ color: "#cbd5e1" }}>—</span>;
 const SIN_TAREA = "Sin tarea";
+// El valor del filtro de cliente que trae todos los partes.
+const TODOS = "";
 
 const soloFecha = (f) => String(f || "").slice(0, 10);
 const fechaCorta = (f) => {
@@ -67,6 +70,10 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
   const [rango, setRango] = useState(null);
   // No se pudo traer el período: no hay nada que esperar.
   const [sinPeriodo, setSinPeriodo] = useState(false);
+  // El filtro de cliente (10/11/2026): arranca en Citrusvil. Un parte sin
+  // cliente cuenta como Citrusvil, igual que en la planilla.
+  const [cliente, setCliente] = useState(CLIENTE_POR_DEFECTO);
+  const { activos: clientesActivos } = useClientes();
 
   const campo = establecimiento === "san-pablo" ? "San Pablo" : "Berdina";
   const titulo = `${campo} - ${MESES[Number(mes) - 1] || ""} ${anio}`;
@@ -119,11 +126,22 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
   }, [claveRango, q]);
   const cargando = !sinPeriodo && (!claveRango ? !rango : partes.clave !== claveRango);
 
+  // Las opciones del filtro de cliente: los del padrón y los que aparecen en
+  // los partes del rango (un cliente inactivo con partes también se puede ver).
+  const opcionesCliente = useMemo(() => {
+    const lista = [...clientesActivos];
+    for (const c of [CLIENTE_POR_DEFECTO, ...partes.lista.map(clienteDe)]) {
+      if (!lista.some((x) => claveCliente(x) === claveCliente(c))) lista.push(c);
+    }
+    return lista.sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+  }, [clientesActivos, partes]);
+
   // [{ tarea, unidad, dias: [{ fecha, lote, cantidad }], total, conCantidad }]
   const grupos = useMemo(() => {
     const porTarea = new Map();
     for (const p of partes.lista) {
       if (p.persona?.usoInterno) continue;
+      if (cliente !== TODOS && claveCliente(clienteDe(p)) !== claveCliente(cliente)) continue;
       const nombre = p.tarea?.tarea || SIN_TAREA;
       const clave = p.tarea?._id || SIN_TAREA;
       let g = porTarea.get(clave);
@@ -159,7 +177,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
               : a.tarea.localeCompare(b.tarea, "es", { sensitivity: "base" })
         )
     );
-  }, [partes]);
+  }, [partes, cliente]);
 
   /**
    * El Excel igual que la pantalla (07/11/2026): cada tarea con su renglón de
@@ -184,7 +202,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
 
       ws.mergeCells(2, 1, 2, N);
       const sub = ws.getCell("A2");
-      sub.value = `${rango?.desde ? `Del ${fechaCorta(rango.desde)} al ${fechaCorta(rango.hasta)}${esPeriodo ? " (período de la certificación)" : ""} · ` : ""}Fecha de emisión: ${new Date().toLocaleDateString("es-AR")}`;
+      sub.value = `${rango?.desde ? `Del ${fechaCorta(rango.desde)} al ${fechaCorta(rango.hasta)}${esPeriodo ? " (período de la certificación)" : ""} · ` : ""}Cliente: ${cliente || "Todos"} · Fecha de emisión: ${new Date().toLocaleDateString("es-AR")}`;
       sub.font = { italic: true, size: 10, color: { argb: "FF64748B" } };
       sub.alignment = { horizontal: "center", vertical: "middle" };
       ws.addRow([]);
@@ -298,6 +316,29 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
                 />
               </div>
             ))}
+            <div>
+              <Form.Label className="fw-semibold text-dark mb-1" style={{ fontSize: "0.74rem" }}>
+                Cliente
+              </Form.Label>
+              <Form.Select
+                size="sm"
+                value={cliente}
+                onChange={(e) => setCliente(e.target.value)}
+                style={{
+                  width: "160px",
+                  fontSize: "0.78rem",
+                  // Distinto de Citrusvil: se marca, como un filtro activo.
+                  ...(claveCliente(cliente) !== claveCliente(CLIENTE_POR_DEFECTO) ? { color: "#dc2626", fontWeight: 700 } : {}),
+                }}
+              >
+                {opcionesCliente.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value={TODOS}>Todos</option>
+              </Form.Select>
+            </div>
             {rango && !esPeriodo && (
               <Button
                 size="sm"
@@ -350,7 +391,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
               ) : !grupos.length ? (
                 <tr>
                   <td colSpan={5} className="text-center text-muted py-4" style={td}>
-                    No hay partes cargados en este período
+                    No hay partes cargados en este período{cliente ? ` para ${cliente}` : ""}
                   </td>
                 </tr>
               ) : (

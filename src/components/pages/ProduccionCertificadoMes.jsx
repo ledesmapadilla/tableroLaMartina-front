@@ -9,7 +9,10 @@ import ModalGuiaTareas from "./ModalGuiaTareas";
 import { campoDeEstablecimiento } from "../compras/camposGasoil";
 import { usePermisos } from "../../context/permisos";
 import { partesEnAltoRendimiento } from "../../utils/altoRendimiento";
-import { CLIENTE_POR_DEFECTO, useClientes, opcionesDeClientes } from "../../utils/clientes";
+import { CLIENTE_POR_DEFECTO, claveCliente, useClientes, opcionesDeClientes } from "../../utils/clientes";
+
+// El cliente de los lotes que empiezan con "Country Altos San Pablo" (10/11/2026).
+const CLIENTE_COUNTRY = "Altos de San Pablo";
 import { guardarConReglaHorometro, etiquetaFuente } from "../../utils/horometro";
 import { useSinGuardar } from "../../utils/sinGuardar";
 import {
@@ -1215,6 +1218,10 @@ function ProduccionCertificadoMes({
     if (mezclados) return avisarLotesMezclados(mezclados);
     if (indice < 0) cambiar("lote", valor);
     else cambiarOtroLote(indice, { lote: valor });
+    // Los lotes del country ("Country Altos San Pablo(etapa ...)") son del
+    // cliente Altos de San Pablo: al elegir uno, el cliente se pone solo
+    // (10/11/2026). Se puede cambiar a mano después.
+    if (claveCliente(valor).startsWith("country altos san pablo")) cambiar("cliente", CLIENTE_COUNTRY);
   };
 
   // El círculo de un lote del formulario: -1 es el primero, el de Lote; los
