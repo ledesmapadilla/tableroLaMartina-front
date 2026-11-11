@@ -59,6 +59,19 @@ const formatoCant = (v) => (Number.isInteger(Math.round(v * 1000) / 1000) ? "#,#
 // no deja de ser entera.
 const redondear = (v) => (typeof v === "number" ? Math.round(v * 1000) / 1000 : v);
 const cantidad = (n) => (n === null || n === undefined ? null : n.toLocaleString("es-AR", { maximumFractionDigits: 3 }));
+// El texto de Personal y Observaciones de un renglón (11/11/2026). Un renglón
+// junta a todas las personas del día y lote: los nombres van ordenados y
+// separados por coma; con más de una persona, cada observación lleva el
+// nombre de quien la tiene para saber de qué parte es. Las repetidas, una vez.
+const conTextos = (d) => {
+  const varios = d.personas.length > 1;
+  const obs = [...new Set(d.obs.map((o) => (varios && o.quien ? `${o.quien}: ${o.obs}` : o.obs)))];
+  return {
+    ...d,
+    personal: [...d.personas].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })).join(", "),
+    observaciones: obs.join(" · "),
+  };
+};
 
 function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
   const { anio, mes } = useParams();
@@ -152,7 +165,22 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
       const f = soloFecha(p.fecha);
       const lote = lotesTexto(p);
       const claveDia = `${f}|${lote}`;
-      const d = g.dias.get(claveDia) || { clave: claveDia, fecha: f, lote, cantidad: null };
+      const d = g.dias.get(claveDia) || { clave: claveDia, fecha: f, lote, cantidad: null, personas: [], obs: [] };
+      // Personal y Observaciones (11/11/2026): quiénes trabajaron ese día y
+      // lote, y lo que se anotó en cada parte. Solo el apellido; quien no lo
+      // tiene cargado aparte (Motor Generador) va con lo que está antes de la
+      // coma de "Apellido, Nombre".
+      const quien = String(p.persona?.apellido || String(p.persona?.apellidoNombre || "").split(",")[0]).trim();
+      // Se cuenta por persona, no por apellido: dos con el mismo apellido van
+      // las dos.
+      const idPersona = String(p.persona?._id || quien);
+      d.ids = d.ids || new Set();
+      if (quien && !d.ids.has(idPersona)) {
+        d.ids.add(idPersona);
+        d.personas.push(quien);
+      }
+      const obs = String(p.observacion || "").trim();
+      if (obs) d.obs.push({ quien, obs });
       if (p.cantidad !== null && p.cantidad !== undefined && p.cantidad !== "") {
         d.cantidad = (d.cantidad || 0) + Number(p.cantidad);
         g.total += Number(p.cantidad);
@@ -164,7 +192,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
       [...porTarea.values()]
         .map((g) => ({
           ...g,
-          dias: [...g.dias.values()].sort(
+          dias: [...g.dias.values()].map(conTextos).sort(
             (a, b) => a.fecha.localeCompare(b.fecha) || a.lote.localeCompare(b.lote, "es", { numeric: true })
           ),
         }))
@@ -179,6 +207,14 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
     );
   }, [partes, cliente]);
 
+  // El ancho de Lote (11/11/2026): la mitad del lote más largo, para que un
+  // renglón con muchos lotes ocupe dos líneas como mucho. Nunca menos que antes.
+  const largoLote = useMemo(
+    () => Math.max(0, ...grupos.flatMap((g) => g.dias.map((d) => (d.lote || "").length))),
+    [grupos]
+  );
+  const anchoLote = Math.ceil(largoLote / 2) + 2;
+
   /**
    * El Excel igual que la pantalla (07/11/2026): cada tarea con su renglón de
    * título verde claro, los días adentro y el "Total <tarea>" a la derecha,
@@ -188,7 +224,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
     try {
       const wb = await nuevoWorkbook();
       const ws = wb.addWorksheet("Reporte mensual");
-      const N = 5;
+      const N = 7;
       const fino = { style: "thin", color: { argb: "FFE2E8F0" } };
       const bordes = { top: fino, bottom: fino, left: fino, right: fino };
       const grueso = { style: "medium", color: { argb: "FF1B4332" } };
@@ -207,7 +243,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
       sub.alignment = { horizontal: "center", vertical: "middle" };
       ws.addRow([]);
 
-      const enc = ws.addRow(["Fecha", "Tarea", "Lote", "Cant.", "Unidad"]);
+      const enc = ws.addRow(["Fecha", "Tarea", "Lote", "Cant.", "Unidad", "Personal", "Observaciones"]);
       enc.height = 20;
       enc.eachCell((c) => {
         c.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -227,16 +263,31 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
         ct.border = { ...bordes, top: { style: "medium", color: { argb: sinTarea ? "FFD97706" : "FF1B4332" } } };
 
         for (const d of g.dias) {
-          const fila = ws.addRow([fechaCorta(d.fecha), g.tarea, d.lote || "—", redondear(d.cantidad) ?? "—", g.unidad || "—"]);
+          const fila = ws.addRow([
+            fechaCorta(d.fecha),
+            g.tarea,
+            d.lote || "—",
+            redondear(d.cantidad) ?? "—",
+            g.unidad || "—",
+            d.personal || "—",
+            d.observaciones || "",
+          ]);
           fila.eachCell({ includeEmpty: true }, (c, nro) => {
-            c.alignment = { horizontal: nro === 2 ? "left" : "center", vertical: "middle" };
+            // Tarea, Personal y Observaciones a la izquierda; las dos últimas
+            // con ajuste de texto, que pueden ser largas.
+            c.alignment =
+              nro >= 6
+                ? { horizontal: "left", vertical: "middle", wrapText: true }
+                : nro === 3
+                  ? { horizontal: "center", vertical: "middle", wrapText: true }
+                : { horizontal: nro === 2 ? "left" : "center", vertical: "middle" };
             c.border = bordes;
             if (nro === 4 && typeof c.value === "number") c.numFmt = formatoCant(c.value);
           });
         }
 
         // El total: el rótulo a la derecha, pegado a los valores.
-        const filaTotal = ws.addRow([`Total ${g.tarea}`, "", "", g.conCantidad ? redondear(g.total) : "—", g.unidad || "—"]);
+        const filaTotal = ws.addRow([`Total ${g.tarea}`, "", "", g.conCantidad ? redondear(g.total) : "—", g.unidad || "—", "", ""]);
         ws.mergeCells(filaTotal.number, 1, filaTotal.number, 3);
         filaTotal.eachCell({ includeEmpty: true }, (c, nro) => {
           c.font = { bold: true, color: { argb: nro === 1 ? "FF1B4332" : "FF000000" } };
@@ -247,7 +298,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
         });
       }
 
-      ws.columns = [{ width: 14 }, { width: 42 }, { width: 14 }, { width: 12 }, { width: 12 }];
+      ws.columns = [{ width: 14 }, { width: 42 }, { width: Math.max(14, anchoLote) }, { width: 12 }, { width: 12 }, { width: 22 }, { width: 50 }];
       await descargar(wb, `Reporte mensual ${titulo}.xlsx`);
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo exportar", text: err.message, width: "300px" });
@@ -268,7 +319,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
       <Container
         fluid
         className="px-4 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "900px", width: "100%", margin: "0 auto", minHeight: 0 }}
+        style={{ maxWidth: "1300px", width: "100%", margin: "0 auto", minHeight: 0 }}
       >
         {/* Encabezado: título, período y Excel. */}
         <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
@@ -376,21 +427,23 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
               <tr>
                 <th style={{ ...th, width: "110px" }}>Fecha</th>
                 <th style={{ ...th, textAlign: "left" }}>Tarea</th>
-                <th style={{ ...th, width: "90px" }}>Lote</th>
+                <th style={{ ...th, width: `max(90px, ${anchoLote}ch)` }}>Lote</th>
                 <th style={{ ...th, width: "100px" }}>Cant.</th>
                 <th style={{ ...th, width: "90px" }}>Unidad</th>
+                <th style={{ ...th, textAlign: "left", width: "13%" }}>Personal</th>
+                <th style={{ ...th, textAlign: "left", width: "30%" }}>Observaciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
                 <tr>
-                  <td colSpan={5} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={7} className="text-center text-muted py-4" style={td}>
                     <Spinner animation="border" size="sm" style={{ color: COLOR }} />
                   </td>
                 </tr>
               ) : !grupos.length ? (
                 <tr>
-                  <td colSpan={5} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={7} className="text-center text-muted py-4" style={td}>
                     No hay partes cargados en este período{cliente ? ` para ${cliente}` : ""}
                   </td>
                 </tr>
@@ -412,7 +465,7 @@ function GrupoTarea({ g }) {
     <>
       <tr>
         <td
-          colSpan={5}
+          colSpan={7}
           style={{
             ...td,
             textAlign: "left",
@@ -434,6 +487,8 @@ function GrupoTarea({ g }) {
           <td style={td}>{d.lote || raya}</td>
           <td style={td}>{cantidad(d.cantidad) ?? raya}</td>
           <td style={td}>{g.unidad || raya}</td>
+          <td style={{ ...td, textAlign: "left" }}>{d.personal || raya}</td>
+          <td style={{ ...td, textAlign: "left" }}>{d.observaciones}</td>
         </tr>
       ))}
       <tr className="fila-total">
@@ -443,6 +498,7 @@ function GrupoTarea({ g }) {
         </td>
         <td style={{ ...td, fontWeight: 700 }}>{g.conCantidad ? cantidad(g.total) : raya}</td>
         <td style={{ ...td, fontWeight: 700 }}>{g.unidad || raya}</td>
+        <td colSpan={2} style={td}></td>
       </tr>
     </>
   );

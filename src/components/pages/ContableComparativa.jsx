@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button, Card, Container, Modal, Spinner, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { api } from "../../services/api";
+import { usePermisos } from "../../context/permisos";
 import { CAMPOS_COMPARATIVA, MESES, TIPOS_COMPARATIVA, claveTarea, memoriaTablas } from "../../utils/contable";
 import Error404 from "./Error404";
 import ContableGraficosCostos from "./ContableGraficosCostos";
@@ -386,6 +387,10 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   // La fila de la Comparativa cuyo historial se está mirando (07/11/2026).
   const [historial, setHistorial] = useState(null);
   const navigate = useNavigate();
+  // El botón Costos se ve solo con "Ver" en Contable › Comparativa costos
+  // tarea › Costos (Altas › Usuarios › Roles, 11/11/2026).
+  const { puede } = usePermisos();
+  const verCostos = puede("contable.costos", "ver");
   const [solapa, setSolapa] = useState(graficos || resultado ? "comp" : "ctv");
   // El precio del gasoil con su fecha (Equivalencias tareas/variables), para
   // la página Costos. Del más nuevo al más viejo.
@@ -949,8 +954,8 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
             </Button>
           )}
           {/* Costos (07/11/2026): lo pagado por Ctv menos el personal y el
-              gasoil de LM, por tarea. */}
-          {esCostos && (
+              gasoil de LM, por tarea. Solo para quien la ve (Roles). */}
+          {esCostos && verCostos && (
             <Button
               size="sm"
               onClick={() =>

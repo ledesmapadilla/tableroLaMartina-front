@@ -30,6 +30,8 @@ const REGLAS = [
 
   // ── Contable ── (05/11/2026)
   [/^\/contable\/equivalencias/, "contable.equivalencias"],
+  // La página Costos (11/11/2026), con permiso propio.
+  [/^\/contable\/\d+\/\d+\/comparativa-costos\/[^/]+\/costos/, "contable.costos"],
   [/^\/contable\/\d+\/\d+/, "contable.excel"],
   [/^\/contable/, GRUPO.contable],
 

@@ -75,6 +75,9 @@ export const CATALOGO = [
   { seccion: "Contable", clave: "contable.excel", label: "Excel mensual", hoy: PERMISOS.produccionContable },
   // Qué tareas de Citrusvil equivalen a cada una de La Martina (05/11/2026).
   { seccion: "Contable", clave: "contable.equivalencias", label: "Equivalencias de tareas", hoy: PERMISOS.produccionContable },
+  // La página Costos, el botón de la Comparativa costos tarea (11/11/2026):
+  // solo se mira, así que lo que cuenta es "Ver". Nace con los de Contable.
+  { seccion: "Contable", clave: "contable.costos", label: "Comparativa costos tarea › Costos", hoy: PERMISOS.produccionContable },
 
   // Altas (las que no son solo del superadmin)
   { seccion: "Altas", clave: "altas.centrosCosto", label: "Centros de costo", hoy: PERMISOS.comprasAnalista },
