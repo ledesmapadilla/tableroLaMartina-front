@@ -220,10 +220,36 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
    * título verde claro, los días adentro y el "Total <tarea>" a la derecha,
    * pegado a los valores, con la línea gruesa arriba como la fila de total.
    */
+  /**
+   * Las solapas del Excel (12/11/2026): "General" con todas las tareas, como
+   * antes, y después una por tarea con el mismo formato y solo esa tarea.
+   */
   const exportarExcel = async () => {
     try {
       const wb = await nuevoWorkbook();
-      const ws = wb.addWorksheet("Reporte mensual");
+      armarHoja(wb.addWorksheet("General"), grupos, "");
+      // El nombre de una solapa: hasta 31 caracteres, sin : \ / ? * [ ] y sin
+      // repetirse (Excel no distingue mayúsculas).
+      const usados = new Set(["general"]);
+      for (const g of grupos) {
+        const base = String(g.tarea).replace(/[:\\/?*[\]]/g, "-").trim().slice(0, 31) || "Tarea";
+        let nombreHoja = base;
+        for (let n = 2; usados.has(nombreHoja.toLowerCase()); n++) {
+          const sufijo = ` (${n})`;
+          nombreHoja = base.slice(0, 31 - sufijo.length) + sufijo;
+        }
+        usados.add(nombreHoja.toLowerCase());
+        armarHoja(wb.addWorksheet(nombreHoja), [g], g.tarea);
+      }
+      await descargar(wb, `Reporte mensual ${titulo}.xlsx`);
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo exportar", text: err.message, width: "300px" });
+    }
+  };
+
+  // Una hoja del Excel con las tareas de `lista`; `deTarea` va en el título
+  // de las solapas de una sola tarea.
+  const armarHoja = (ws, lista, deTarea) => {
       const N = 7;
       const fino = { style: "thin", color: { argb: "FFE2E8F0" } };
       const bordes = { top: fino, bottom: fino, left: fino, right: fino };
@@ -231,7 +257,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
 
       ws.mergeCells(1, 1, 1, N);
       const t = ws.getCell("A1");
-      t.value = `Reporte mensual — ${titulo}`;
+      t.value = `Reporte mensual — ${titulo}${deTarea ? ` — ${deTarea}` : ""}`;
       t.font = { bold: true, size: 14, color: { argb: "FF1B4332" } };
       t.alignment = { horizontal: "center", vertical: "middle" };
       ws.getRow(1).height = 24;
@@ -251,7 +277,7 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
         c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1B4332" } };
       });
 
-      for (const g of grupos) {
+      for (const g of lista) {
         const sinTarea = g.tarea === SIN_TAREA;
         // El título de la tarea, cruzando todas las columnas.
         const filaTitulo = ws.addRow([g.tarea]);
@@ -298,11 +324,10 @@ function ProduccionReporteMensual({ establecimiento = "caspinchango" }) {
         });
       }
 
-      ws.columns = [{ width: 14 }, { width: 42 }, { width: Math.max(14, anchoLote) }, { width: 12 }, { width: 12 }, { width: 22 }, { width: 50 }];
-      await descargar(wb, `Reporte mensual ${titulo}.xlsx`);
-    } catch (err) {
-      Swal.fire({ icon: "error", title: "No se pudo exportar", text: err.message, width: "300px" });
-    }
+      // El ancho de Lote, por los lotes de esta hoja.
+      const largo = Math.max(0, ...lista.flatMap((g) => g.dias.map((d) => (d.lote || "").length)));
+      const lote = deTarea ? Math.ceil(largo / 2) + 2 : anchoLote;
+      ws.columns = [{ width: 14 }, { width: 42 }, { width: Math.max(14, lote) }, { width: 12 }, { width: 12 }, { width: 22 }, { width: 50 }];
   };
 
   return (

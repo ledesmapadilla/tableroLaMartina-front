@@ -496,9 +496,9 @@ function ContableGraficosCostos({ titulo, filas, cargando, colores: col, fechas 
                                 : undefined
                           }
                         >
-                          {t.variosPreciosLM && t.precioLM !== null && <span style={{ color: "#64748b" }}>≈ </span>}
                           <span style={t.precioLMVariables ? { color: "#64748b", fontStyle: "italic" } : undefined}>
-                            {pesos(t.precioLM) ?? raya}
+                            {/* El promedio, entre paréntesis con el ≈ adentro (12/11/2026). */}
+                            {t.variosPreciosLM && t.precioLM !== null ? `(≈ ${pesos(t.precioLM)})` : pesos(t.precioLM) ?? raya}
                           </span>
                           {t.precioLMVariables && (
                             <span className="ms-1" style={{ fontSize: "0.6rem", color: "#94a3b8" }}>
@@ -667,8 +667,10 @@ function ContableGraficosCostos({ titulo, filas, cargando, colores: col, fechas 
                         </>
                       ) : (
                         <>
-                          Ctv {pesos(encima.precio)} · LM {encima.variosPreciosLM ? "≈ " : ""}
-                          {pesos(encima.precioLM)}
+                          Ctv {pesos(encima.precio)} · LM{" "}
+                          {encima.variosPreciosLM && encima.precioLM !== null && encima.precioLM !== undefined
+                            ? `(≈ ${pesos(encima.precioLM)})`
+                            : pesos(encima.precioLM)}
                           {encima.precioLMVariables ? " (de Variables, sin partes)" : ""}
                         </>
                       )}

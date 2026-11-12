@@ -12,6 +12,8 @@ import { calcularAjustes, calcularCertificado } from "../../utils/certificado";
 import { precioVigente } from "../../utils/altoRendimiento";
 import { exportarPlanilla } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
+import AyudaColumna from "../shared/AyudaColumna";
+import { ayudasComparativa } from "../../utils/ayudaComparativa";
 
 const TH = {
   backgroundColor: "#164e63",
@@ -315,7 +317,9 @@ const compararGrupos = (gruposCTV, gruposLM, cruce = new Map(), nombres = new Ma
     }
     f.cantCTV = (f.cantCTV || 0) + g.cantidad;
     f.subCTV = (f.subCTV || 0) + g.subtotal;
-    if (g.precio !== null) f.precio = g.precio;
+    // Con varios grupos en la fila (dos almacenes o el cruce de costos), el
+    // precio es el ponderado de todos: subtotal / cantidad (12/11/2026).
+    f.precio = f.cantCTV ? f.subCTV / f.cantCTV : f.precio ?? g.precio;
     if (g.sinEquivalencia) f.sinEquivalencia = true;
     f.filasCtv.push(...(g.filas || []));
     if (g.idLM) f.grupoLM = destino || String(g.idLM);
@@ -365,7 +369,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   // precios con los mismos números de la solapa Comparativa.
   const location = useLocation();
   const [rangoInicial] = useState(() => location.state?.rango || null);
-  // Cantidad tareas o costos tarea (07/11/2026): por ahora lo mismo.
+  // Volumétrica (antes cantidad tareas) o costos tarea (07/11/2026): por ahora lo mismo.
   const { titulo: nombre, colores: col } = TIPOS_COMPARATIVA[tipo] || TIPOS_COMPARATIVA.cantidad;
   // Los encabezados de las tablas, con el color de esta comparativa.
   const th = { ...TH, backgroundColor: col.oscuro };
@@ -555,10 +559,20 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   );
   const grupos = useMemo(() => agrupar(filasCampo, laMartinaDe, tareaLM), [filasCampo, laMartinaDe, tareaLM]);
 
-  // El precio de Ctv de cada tarea de La Martina en este campo.
+  // El precio de Ctv de cada tarea de La Martina en este campo. Si está en
+  // más de un almacén, el ponderado de todos: subtotal / cantidad (12/11/2026).
   const preciosCTV = useMemo(() => {
+    const suma = new Map();
+    for (const g of grupos) {
+      if (!g.idLM) continue;
+      const id = String(g.idLM);
+      const s = suma.get(id) || { cantidad: 0, subtotal: 0 };
+      s.cantidad += g.cantidad;
+      s.subtotal += g.subtotal;
+      suma.set(id, s);
+    }
     const m = new Map();
-    for (const g of grupos) if (g.idLM && g.precio !== null) m.set(String(g.idLM), g.precio);
+    for (const [id, s] of suma) if (s.cantidad) m.set(id, s.subtotal / s.cantidad);
     return m;
   }, [grupos]);
   const gruposLM = useMemo(
@@ -570,6 +584,13 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   // (Variables de remuneración de ese campo), y la Comparativa también
   // (07/11/2026): cuánto paga Ctv contra cuánto gasta LM.
   const esCostos = tipo === "costos";
+  // La volumétrica va sin plata (12/11/2026): solo cantidades en las tres
+  // solapas, los detalles, el historial y el Excel. Lo que se sacó está
+  // anotado en _claude/volumetrica-sin-plata.md; para volver a ponerlo,
+  // `conPlata = true`.
+  const conPlata = esCostos;
+  // El ayudamemoria de cada columna (ⓘ en los encabezados, 12/11/2026).
+  const ayudas = useMemo(() => ayudasComparativa({ esCostos }), [esCostos]);
   const gruposLMPersonal = useMemo(
     () =>
       esCostos && lm && campo
@@ -765,6 +786,8 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
 
   // Lo de la solapa abierta.
   const esLM = solapa === "lm";
+  // La tabla de las solapas Ctv y LM es la misma: la ayuda, la de la que está abierta.
+  const ayudaSolapa = esLM ? ayudas.lm : ayudas.ctv;
   const esComp = solapa === "comp";
   const activos = esComp ? gruposComp : esLM ? (esCostos ? gruposLMCostos : gruposLM) : grupos;
   // De dónde salen los precios de la tabla, arriba a la derecha de las solapas.
@@ -806,41 +829,46 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
     try {
       if (esComp) {
         await exportarPlanilla({
-          titulo: `${nombre} — ${tituloCampo}${fechasLM} — ${rotuloPrecios}`,
+          titulo: `${nombre} — ${tituloCampo}${fechasLM}${conPlata ? ` — ${rotuloPrecios}` : ""}`,
           hoja: "Comparativa",
           archivo: `${nombre} ${tituloCampo}.xlsx`,
           columnas: [
             { titulo: "Detalle de tarea", ancho: 40, negrita: true },
             { titulo: "Unidad", ancho: 12 },
-            { titulo: "Precio unitario Ctv", ancho: 18, moneda: true },
+            ...(conPlata ? [{ titulo: "Precio unitario Ctv", ancho: 18, moneda: true }] : []),
             ...(esCostos ? [{ titulo: "Precio unitario LM", ancho: 18, moneda: true }] : []),
             { titulo: "Cant. pagado Ctv", ancho: 12 },
             { titulo: cantLMTitulo, ancho: 12 },
             { titulo: "Dif. cant.", ancho: 12 },
-            { titulo: "Subtotal Ctv", ancho: 18, moneda: true },
-            { titulo: "Subtotal LM", ancho: 18, moneda: true },
-            { titulo: "Diferencia", ancho: 18, moneda: true },
+            ...(conPlata
+              ? [
+                  { titulo: "Subtotal Ctv", ancho: 18, moneda: true },
+                  { titulo: "Subtotal LM", ancho: 18, moneda: true },
+                  { titulo: "Diferencia", ancho: 18, moneda: true },
+                ]
+              : []),
           ],
           filas: [
             ...visibles.map((g) => [
               g.sinEquivalencia ? `${g.tarea} (sin equivalencia)` : g.tarea,
               g.unidad,
-              g.precio ?? "-",
+              ...(conPlata ? [g.precio ?? "-"] : []),
               ...(esCostos ? [g.precioLM ?? "-"] : []),
               g.cantCTV ?? "-",
               g.cantLM ?? "-",
               g.difCant ?? "-",
-              g.subCTV ?? "-",
-              g.subLM ?? "-",
-              g.dif ?? "-",
+              ...(conPlata ? [g.subCTV ?? "-", g.subLM ?? "-", g.dif ?? "-"] : []),
             ]),
-            ["TOTAL", "", "", ...(esCostos ? [""] : []), "", "", "", totalComp.subCTV, totalComp.subLM, totalComp.dif],
+            // Sin plata no hay total: las cantidades son de unidades distintas.
+            ...(conPlata
+              ? [["TOTAL", "", "", ...(esCostos ? [""] : []), "", "", "", totalComp.subCTV, totalComp.subLM, totalComp.dif]]
+              : []),
           ],
         });
         return;
       }
       await exportarPlanilla({
-        titulo: `${nombre} — ${tituloCampo} — ${esLM ? `Certificado en LM${fechasLM}` : "Pagado por Ctv"} — ${rotuloPrecios}`,
+        titulo: `${nombre} — ${tituloCampo} — ${esLM ? `Certificado en LM${fechasLM}` : "Pagado por Ctv"}${conPlata ? ` — ${rotuloPrecios}` : ""}`,
         hoja: esLM ? "Certificado en LM" : "Pagado por Ctv",
         archivo: `${nombre} ${tituloCampo} ${esLM ? "LM" : "Ctv"}.xlsx`,
         columnas: [
@@ -848,8 +876,12 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
           { titulo: "Detalle de tarea", ancho: 40, negrita: true },
           { titulo: "Cant.", ancho: 12 },
           { titulo: "Unidad", ancho: 12 },
-          { titulo: "Precio unitario", ancho: 16, moneda: true },
-          { titulo: "Subtotal", ancho: 18, moneda: true },
+          ...(conPlata
+            ? [
+                { titulo: "Precio unitario", ancho: 16, moneda: true },
+                { titulo: "Subtotal", ancho: 18, moneda: true },
+              ]
+            : []),
         ],
         filas: [
           ...visibles.map((g) => [
@@ -857,10 +889,9 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
             g.sinEquivalencia ? `${g.tarea} (sin equivalencia)` : g.tarea,
             g.cantidad,
             g.unidad,
-            g.precio ?? "-",
-            g.subtotal ?? "-",
+            ...(conPlata ? [g.precio ?? "-", g.subtotal ?? "-"] : []),
           ]),
-          ["TOTAL", "", "", "", "", total],
+          ...(conPlata ? [["TOTAL", "", "", "", "", total]] : []),
         ],
       });
     } catch (err) {
@@ -1085,13 +1116,15 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
               </button>
             );
           })}
-          <span
-            className="ms-auto mb-1 px-2 py-1 rounded-3 fw-semibold d-flex align-items-center gap-1"
-            style={{ fontSize: "0.75rem", backgroundColor: col.claro, color: col.oscuro, border: `1px solid ${col.borde}` }}
-          >
-            <i className={`bi ${esCostos && esLM ? "bi-people-fill" : "bi-cash-coin"}`}></i>
-            {rotuloPrecios}
-          </span>
+          {conPlata && (
+            <span
+              className="ms-auto mb-1 px-2 py-1 rounded-3 fw-semibold d-flex align-items-center gap-1"
+              style={{ fontSize: "0.75rem", backgroundColor: col.claro, color: col.oscuro, border: `1px solid ${col.borde}` }}
+            >
+              <i className={`bi ${esCostos && esLM ? "bi-people-fill" : "bi-cash-coin"}`}></i>
+              {rotuloPrecios}
+            </span>
+          )}
         </div>
 
         <div
@@ -1110,30 +1143,36 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
           <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: col.oscuro, color: "#fff" }}>
               <tr>
-                <th style={th}>Detalle de tarea</th>
-                <th style={{ ...th, width: "70px", textAlign: "center" }}>Unidad</th>
+                <th style={th}>Detalle de tarea<AyudaColumna titulo={"Detalle de tarea"} ayuda={ayudas.comp.tarea} color={col.icono} /></th>
+                <th style={{ ...th, width: "70px", textAlign: "center" }}>Unidad<AyudaColumna titulo={"Unidad"} ayuda={ayudas.comp.unidad} color={col.icono} /></th>
                 {/* Líneas gruesas (col-corte, index.css): después de la tarea y
                     su unidad, y entre los bloques de precios, cantidades y plata. */}
-                <th className="col-corte" style={{ ...th, width: "100px", textAlign: "center" }}>Precio unitario Ctv</th>
-                {esCostos && <th style={{ ...th, width: "100px", textAlign: "center" }}>Precio unitario LM</th>}
-                <th className="col-corte" style={{ ...th, width: "90px", textAlign: "center" }}>Cant. pagado Ctv</th>
-                <th style={{ ...th, width: "90px", textAlign: "center" }}>{cantLMTitulo}</th>
-                <th style={{ ...th, width: "80px", textAlign: "center" }}>Dif. cant.</th>
-                <th className="col-corte" style={{ ...th, width: "115px", textAlign: "center" }}>Subtotal Ctv</th>
-                <th style={{ ...th, width: "115px", textAlign: "center" }}>Subtotal LM</th>
-                <th style={{ ...th, width: "115px", textAlign: "center" }}>Diferencia</th>
+                {conPlata && (
+                  <th className="col-corte" style={{ ...th, width: "100px", textAlign: "center" }}>Precio unitario Ctv<AyudaColumna titulo={"Precio unitario Ctv"} ayuda={ayudas.comp.precioCtv} color={col.icono} /></th>
+                )}
+                {esCostos && <th style={{ ...th, width: "100px", textAlign: "center" }}>Precio unitario LM<AyudaColumna titulo={"Precio unitario LM"} ayuda={ayudas.comp.precioLM} color={col.icono} /></th>}
+                <th className="col-corte" style={{ ...th, width: "90px", textAlign: "center" }}>Cant. pagado Ctv<AyudaColumna titulo={"Cant. pagado Ctv"} ayuda={ayudas.comp.cantCtv} color={col.icono} /></th>
+                <th style={{ ...th, width: "90px", textAlign: "center" }}>{cantLMTitulo}<AyudaColumna titulo={cantLMTitulo} ayuda={ayudas.comp.cantLM} color={col.icono} /></th>
+                <th style={{ ...th, width: "80px", textAlign: "center" }}>Dif. cant.<AyudaColumna titulo={"Dif. cant."} ayuda={ayudas.comp.difCant} color={col.icono} /></th>
+                {conPlata && (
+                  <>
+                    <th className="col-corte" style={{ ...th, width: "115px", textAlign: "center" }}>Subtotal Ctv<AyudaColumna titulo={"Subtotal Ctv"} ayuda={ayudas.comp.subCtv} color={col.icono} /></th>
+                    <th style={{ ...th, width: "115px", textAlign: "center" }}>Subtotal LM<AyudaColumna titulo={"Subtotal LM"} ayuda={ayudas.comp.subLM} color={col.icono} /></th>
+                    <th style={{ ...th, width: "115px", textAlign: "center" }}>Diferencia<AyudaColumna titulo={"Diferencia"} ayuda={ayudas.comp.dif} color={col.icono} /></th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
               {cargandoActivo ? (
                 <tr>
-                  <td colSpan={esCostos ? 10 : 9} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={esCostos ? 10 : conPlata ? 9 : 5} className="text-center text-muted py-4" style={td}>
                     <Spinner animation="border" size="sm" style={{ color: col.medio }} />
                   </td>
                 </tr>
               ) : !visibles.length ? (
                 <tr>
-                  <td colSpan={esCostos ? 10 : 9} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={esCostos ? 10 : conPlata ? 9 : 5} className="text-center text-muted py-4" style={td}>
                     {activos.length ? "Ninguna fila coincide con los filtros" : "No hay nada que comparar en este mes"}
                   </td>
                 </tr>
@@ -1172,9 +1211,11 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                           )}
                         </td>
                         <td style={{ ...td, textAlign: "center" }}>{g.unidad || raya}</td>
-                        <td className="col-corte" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
-                          {pesos(g.precio) ?? raya}
-                        </td>
+                        {conPlata && (
+                          <td className="col-corte" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                            {pesos(g.precio) ?? raya}
+                          </td>
+                        )}
                         {esCostos && (
                           <td
                             style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}
@@ -1186,9 +1227,9 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                                   : undefined
                             }
                           >
-                            {g.variosPreciosLM && <span style={{ color: "#64748b" }}>≈ </span>}
                             <span style={g.precioLMVariables ? { color: "#64748b", fontStyle: "italic" } : undefined}>
-                              {pesos(g.precioLM) ?? raya}
+                              {/* El promedio, entre paréntesis con el ≈ adentro (12/11/2026). */}
+                              {g.variosPreciosLM && g.precioLM !== null ? `(≈ ${pesos(g.precioLM)})` : pesos(g.precioLM) ?? raya}
                             </span>
                             {g.precioLMVariables && (
                               <span className="ms-1" style={{ fontSize: "0.6rem", color: "#94a3b8" }}>
@@ -1202,16 +1243,22 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                         <td style={{ ...td, textAlign: "center", fontWeight: 600, color: colorDif(g.difCant) }}>
                           {cantidad(g.difCant) ?? raya}
                         </td>
-                        <td className="col-corte" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
-                          {pesos(g.subCTV) ?? raya}
-                        </td>
-                        <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(g.subLM) ?? raya}</td>
-                        <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap", fontWeight: 700, color: colorDif(g.dif) }}>
-                          {pesos(g.dif) ?? raya}
-                        </td>
+                        {conPlata && (
+                          <>
+                            <td className="col-corte" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                              {pesos(g.subCTV) ?? raya}
+                            </td>
+                            <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(g.subLM) ?? raya}</td>
+                            <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap", fontWeight: 700, color: colorDif(g.dif) }}>
+                              {pesos(g.dif) ?? raya}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
+                  {/* Sin plata no hay total: las cantidades son de unidades distintas. */}
+                  {conPlata && (
                   <tr className="fila-total">
                     <td style={{ ...td, fontWeight: 700, color: col.oscuro }}>TOTAL</td>
                     <td style={td}></td>
@@ -1236,6 +1283,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                       {pesos(totalComp.dif)}
                     </td>
                   </tr>
+                  )}
                 </>
               )}
             </tbody>
@@ -1244,24 +1292,28 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
           <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: col.oscuro, color: "#fff" }}>
               <tr>
-                <th style={{ ...th, width: "16%" }}>Denominación almacén</th>
-                <th style={th}>Detalle de tarea</th>
-                <th style={{ ...th, width: "90px", textAlign: "center" }}>Cant.</th>
-                <th style={{ ...th, width: "80px", textAlign: "center" }}>Unidad</th>
-                <th style={{ ...th, width: "120px", textAlign: "center" }}>Precio unitario</th>
-                <th style={{ ...th, width: "130px", textAlign: "center" }}>Subtotal</th>
+                <th style={{ ...th, width: "16%" }}>Denominación almacén<AyudaColumna titulo={"Denominación almacén"} ayuda={ayudaSolapa.almacen} color={col.icono} /></th>
+                <th style={th}>Detalle de tarea<AyudaColumna titulo={"Detalle de tarea"} ayuda={ayudaSolapa.tarea} color={col.icono} /></th>
+                <th style={{ ...th, width: "90px", textAlign: "center" }}>Cant.<AyudaColumna titulo={"Cant."} ayuda={ayudaSolapa.cantidad} color={col.icono} /></th>
+                <th style={{ ...th, width: "80px", textAlign: "center" }}>Unidad<AyudaColumna titulo={"Unidad"} ayuda={ayudaSolapa.unidad} color={col.icono} /></th>
+                {conPlata && (
+                  <>
+                    <th style={{ ...th, width: "120px", textAlign: "center" }}>Precio unitario<AyudaColumna titulo={"Precio unitario"} ayuda={ayudaSolapa.precio} color={col.icono} /></th>
+                    <th style={{ ...th, width: "130px", textAlign: "center" }}>Subtotal<AyudaColumna titulo={"Subtotal"} ayuda={ayudaSolapa.subtotal} color={col.icono} /></th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
               {cargandoActivo ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={conPlata ? 6 : 4} className="text-center text-muted py-4" style={td}>
                     <Spinner animation="border" size="sm" style={{ color: col.medio }} />
                   </td>
                 </tr>
               ) : !visibles.length ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={conPlata ? 6 : 4} className="text-center text-muted py-4" style={td}>
                     {lm?.error && esLM
                       ? `No se pudo traer lo certificado: ${lm.error}`
                       : activos.length
@@ -1302,25 +1354,31 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                         <td style={{ ...c, textAlign: "center" }}>{g.unidad || raya}</td>
                         {/* Sin precio: la raya gris. Con varios precios de pago
                             al personal, el promedio, con un aviso. */}
-                        <td
-                          style={{ ...c, textAlign: "center", whiteSpace: "nowrap" }}
-                          title={g.variosPrecios ? "Promedio: en el mes hubo más de un precio (cliente, vigencia o alto Rto.)" : undefined}
-                        >
-                          {g.variosPrecios && <span style={{ color: "#64748b" }}>≈ </span>}
-                          {pesos(g.precio) ?? raya}
-                        </td>
-                        <td style={{ ...c, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(g.subtotal) ?? raya}</td>
+                        {conPlata && (
+                          <>
+                            <td
+                              style={{ ...c, textAlign: "center", whiteSpace: "nowrap" }}
+                              title={g.variosPrecios ? "Promedio: en el mes hubo más de un precio (cliente, vigencia o alto Rto.)" : undefined}
+                            >
+                              {g.variosPrecios && g.precio !== null ? `(≈ ${pesos(g.precio)})` : pesos(g.precio) ?? raya}
+                            </td>
+                            <td style={{ ...c, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(g.subtotal) ?? raya}</td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
-                  <tr className="fila-total">
-                    <td style={{ ...td, fontWeight: 700, color: col.oscuro }}>TOTAL</td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={td}></td>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>{pesos(total)}</td>
-                  </tr>
+                  {/* Sin plata no hay total: las cantidades son de unidades distintas. */}
+                  {conPlata && (
+                    <tr className="fila-total">
+                      <td style={{ ...td, fontWeight: 700, color: col.oscuro }}>TOTAL</td>
+                      <td style={td}></td>
+                      <td style={td}></td>
+                      <td style={td}></td>
+                      <td style={td}></td>
+                      <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>{pesos(total)}</td>
+                    </tr>
+                  )}
                 </>
               )}
             </tbody>
@@ -1389,8 +1447,12 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                   <th style={th}>Cliente</th>
                   <th style={{ ...th, textAlign: "center" }}>Cant.</th>
                   <th style={{ ...th, textAlign: "center" }}>Unidad</th>
-                  <th style={{ ...th, textAlign: "center" }}>Precio unitario</th>
-                  <th style={{ ...th, textAlign: "center" }}>Importe</th>
+                  {conPlata && (
+                    <>
+                      <th style={{ ...th, textAlign: "center" }}>Precio unitario</th>
+                      <th style={{ ...th, textAlign: "center" }}>Importe</th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -1415,8 +1477,12 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                       <td style={td}>{f.cliente || raya}</td>
                       <td style={{ ...td, textAlign: "center" }}>{cantidad(f.cantidad) ?? raya}</td>
                       <td style={{ ...td, textAlign: "center" }}>{f.unidad || raya}</td>
-                      <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.precio) ?? raya}</td>
-                      <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.importe) ?? raya}</td>
+                      {conPlata && (
+                        <>
+                          <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.precio) ?? raya}</td>
+                          <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.importe) ?? raya}</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 <tr className="fila-total">
@@ -1425,12 +1491,16 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                   <td style={td}></td>
                   <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{cantidad(detalle.cantidad)}</td>
                   <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{detalle.unidad}</td>
-                  <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
-                    {pesos(detalle.precio) ?? raya}
-                  </td>
-                  <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
-                    {pesos(detalle.subtotal) ?? raya}
-                  </td>
+                  {conPlata && (
+                    <>
+                      <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {pesos(detalle.precio) ?? raya}
+                      </td>
+                      <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
+                        {pesos(detalle.subtotal) ?? raya}
+                      </td>
+                    </>
+                  )}
                 </tr>
               </tbody>
             </Table>
@@ -1446,8 +1516,12 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                   <th style={th}>Tarea Citrusvil</th>
                   <th style={{ ...th, textAlign: "center" }}>Cant.</th>
                   <th style={{ ...th, textAlign: "center" }}>Unidad</th>
-                  <th style={{ ...th, textAlign: "center" }}>Precio unitario</th>
-                  <th style={{ ...th, textAlign: "center" }}>Subtotal</th>
+                  {conPlata && (
+                    <>
+                      <th style={{ ...th, textAlign: "center" }}>Precio unitario</th>
+                      <th style={{ ...th, textAlign: "center" }}>Subtotal</th>
+                    </>
+                  )}
                   <th style={th}>Centro de costo</th>
                   <th style={th}>Activo fijo</th>
                 </tr>
@@ -1461,8 +1535,12 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     <td style={td}>{f.tarea || raya}</td>
                     <td style={{ ...td, textAlign: "center" }}>{cantidad(f.cantidad) ?? raya}</td>
                     <td style={{ ...td, textAlign: "center" }}>{f.unidad || raya}</td>
-                    <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.precioUnitario) ?? raya}</td>
-                    <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.subtotal) ?? raya}</td>
+                    {conPlata && (
+                      <>
+                        <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.precioUnitario) ?? raya}</td>
+                        <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(f.subtotal) ?? raya}</td>
+                      </>
+                    )}
                     <td style={td}>{f.centroCosto || raya}</td>
                     <td style={td}>{f.activoFijo || raya}</td>
                   </tr>
@@ -1475,12 +1553,16 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     <td style={td}></td>
                     <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{cantidad(detalle.cantidad)}</td>
                     <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{detalle.unidad}</td>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {pesos(detalle.precio) ?? raya}
-                    </td>
-                    <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
-                      {pesos(detalle.subtotal) ?? raya}
-                    </td>
+                    {conPlata && (
+                      <>
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {pesos(detalle.precio) ?? raya}
+                        </td>
+                        <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {pesos(detalle.subtotal) ?? raya}
+                        </td>
+                      </>
+                    )}
                     <td style={td}></td>
                     <td style={td}></td>
                   </tr>
@@ -1515,11 +1597,14 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
             <i className="bi bi-clock-history" style={{ color: col.icono }}></i>
             <span>{historial?.tarea}</span>
             <span className="fw-normal" style={{ fontSize: "0.82rem", opacity: 0.8 }}>
-              · {historial?.unidad || "sin unidad"} · Ctv {pesos(historial?.precio) ?? "sin precio"}
+              · {historial?.unidad || "sin unidad"}
+              {conPlata && <> · Ctv {pesos(historial?.precio) ?? "sin precio"}</>}
               {esCostos && (
                 <>
-                  {" "}· LM {historial?.variosPreciosLM ? "≈ " : ""}
-                  {pesos(historial?.precioLM) ?? "sin precio"}
+                  {" "}· LM{" "}
+                  {historial?.variosPreciosLM && historial?.precioLM !== null
+                    ? `(≈ ${pesos(historial.precioLM)})`
+                    : pesos(historial?.precioLM) ?? "sin precio"}
                   {historial?.precioLMVariables ? " (de Variables, sin partes)" : ""}
                 </>
               )}
@@ -1548,19 +1633,23 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
             <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
               <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: col.oscuro, color: "#fff" }}>
                 <tr>
-                  <th style={{ ...th, textAlign: "center" }}>Fecha</th>
-                  <th className="col-corte" style={{ ...th, textAlign: "center" }}>Cant. pagado Ctv</th>
-                  <th style={{ ...th, textAlign: "center" }}>{cantLMTitulo}</th>
-                  <th style={{ ...th, textAlign: "center" }}>Dif. cant.</th>
-                  <th className="col-corte" style={{ ...th, textAlign: "center" }}>Subtotal Ctv</th>
-                  <th style={{ ...th, textAlign: "center" }}>Subtotal LM</th>
-                  <th style={{ ...th, textAlign: "center" }}>Diferencia</th>
+                  <th style={{ ...th, textAlign: "center" }}>Fecha<AyudaColumna titulo={"Fecha"} ayuda={ayudas.comp.fecha} color={col.icono} /></th>
+                  <th className="col-corte" style={{ ...th, textAlign: "center" }}>Cant. pagado Ctv<AyudaColumna titulo={"Cant. pagado Ctv"} ayuda={ayudas.comp.cantCtv} color={col.icono} /></th>
+                  <th style={{ ...th, textAlign: "center" }}>{cantLMTitulo}<AyudaColumna titulo={cantLMTitulo} ayuda={ayudas.comp.cantLM} color={col.icono} /></th>
+                  <th style={{ ...th, textAlign: "center" }}>Dif. cant.<AyudaColumna titulo={"Dif. cant."} ayuda={ayudas.comp.difCant} color={col.icono} /></th>
+                  {conPlata && (
+                    <>
+                      <th className="col-corte" style={{ ...th, textAlign: "center" }}>Subtotal Ctv<AyudaColumna titulo={"Subtotal Ctv"} ayuda={ayudas.comp.subCtv} color={col.icono} /></th>
+                      <th style={{ ...th, textAlign: "center" }}>Subtotal LM<AyudaColumna titulo={"Subtotal LM"} ayuda={ayudas.comp.subLM} color={col.icono} /></th>
+                      <th style={{ ...th, textAlign: "center" }}>Diferencia<AyudaColumna titulo={"Diferencia"} ayuda={ayudas.comp.dif} color={col.icono} /></th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {!diasHistorial?.length ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-muted py-4" style={td}>
+                    <td colSpan={conPlata ? 7 : 4} className="text-center text-muted py-4" style={td}>
                       No hay días para mostrar
                     </td>
                   </tr>
@@ -1586,13 +1675,17 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                           <td style={{ ...td, textAlign: "center", fontWeight: 600, color: colorDif(d.difCant) }}>
                             {cantidad(d.difCant)}
                           </td>
-                          <td className="col-corte" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
-                            {pesos(d.subCTV) ?? raya}
-                          </td>
-                          <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(d.subLM) ?? raya}</td>
-                          <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap", fontWeight: 700, color: colorDif(d.dif) }}>
-                            {pesos(d.dif)}
-                          </td>
+                          {conPlata && (
+                            <>
+                              <td className="col-corte" style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
+                                {pesos(d.subCTV) ?? raya}
+                              </td>
+                              <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>{pesos(d.subLM) ?? raya}</td>
+                              <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap", fontWeight: 700, color: colorDif(d.dif) }}>
+                                {pesos(d.dif)}
+                              </td>
+                            </>
+                          )}
                         </tr>
                       );
                     })}
@@ -1603,13 +1696,17 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                       </td>
                       <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{cantidad(historial.cantLM) ?? raya}</td>
                       <td style={{ ...td, textAlign: "center", fontWeight: 700 }}>{cantidad(historial.difCant)}</td>
-                      <td className="col-corte" style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
-                        {pesos(historial.subCTV) ?? raya}
-                      </td>
-                      <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
-                        {pesos(historial.subLM) ?? raya}
-                      </td>
-                      <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>{pesos(historial.dif)}</td>
+                      {conPlata && (
+                        <>
+                          <td className="col-corte" style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            {pesos(historial.subCTV) ?? raya}
+                          </td>
+                          <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            {pesos(historial.subLM) ?? raya}
+                          </td>
+                          <td style={{ ...td, textAlign: "center", fontWeight: 700, whiteSpace: "nowrap" }}>{pesos(historial.dif)}</td>
+                        </>
+                      )}
                     </tr>
                   </>
                 )}

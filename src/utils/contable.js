@@ -46,7 +46,8 @@ export const TIPOS_COMPARATIVA = {
   // (07/11/2026): cantidad en el cian de Contable, costos en violeta.
   cantidad: {
     ruta: "comparativa",
-    titulo: "Comparativa cantidad tareas",
+    // Antes "Comparativa cantidad tareas" (12/11/2026).
+    titulo: "Comparativa volumétrica",
     colores: { oscuro: "#164e63", medio: "#0e7490", claro: "#ecfeff", borde: "#a5f3fc", icono: "#67e8f9" },
   },
   costos: {
