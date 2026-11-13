@@ -9,22 +9,10 @@ import PrecioConHistorial from "../shared/PrecioConHistorial";
 import { exportarPlanilla } from "../../helpers/excel";
 import { MESES } from "../../utils/contable";
 
-// La vigencia de cada unión (12/11/2026): solo el mes que se está mirando o
-// ese y los que vienen. Lo que se cambia vale desde ese mes en adelante; los
-// meses anteriores no se tocan (el back: catalogos/vigenciaEquivalencia.js).
-const VIGENCIAS = [
-  ["mes", "Solo mes", "Solo este mes"],
-  ["futuros", "Permanente", "Este mes y los que vienen"],
-];
-const MES_CORTO = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-/** 202701 → "ene/27" */
-const mesDeClave = (k) => `${MES_CORTO[(k % 100) - 1]}/${String(Math.floor(k / 100)).slice(2)}`;
-/** La vigencia en palabras, para el Excel. */
-const textoVigencia = (e, c) => {
-  const modo = e?.vigencia?.[c] || "futuros";
-  if (modo === "mes") return "Solo este mes";
-  return e?.hasta?.[c] ? `Hasta ${mesDeClave(e.hasta[c])}` : "Permanente";
-};
+// La vigencia de cada unión (13/11/2026): todo lo que se agrega o cambia
+// vale desde el mes que se está mirando en adelante; los meses anteriores
+// no se tocan (el back: catalogos/vigenciaEquivalencia.js). Se sacaron las
+// columnas "Solo mes" y "Permanente".
 
 // Las tareas de Citrusvil van con las unidades de La Martina (Altas › Tareas):
 // el back traduce las del Excel (HRA y H → Horas, PLA → Plantas…).
@@ -57,102 +45,31 @@ const vacia = (e) => !(e.citrusvil || []).length && !e.observaciones;
 
 /**
  * LM → Ctv: la tarea de La Martina queda con esas de Citrusvil, esas
- * observaciones y esa vigencia ({ nombre: "mes" | "futuros" }).
+ * observaciones.
  */
-const conTareaLM = (eqs, tareaId, citrusvil, observaciones, vigencia) => {
+const conTareaLM = (eqs, tareaId, citrusvil, observaciones) => {
   const resto = eqs.filter((e) => String(e.tarea) !== String(tareaId));
-  const nueva = { tarea: tareaId, citrusvil, observaciones: (observaciones || "").trim(), vigencia };
+  const nueva = { tarea: tareaId, citrusvil, observaciones: (observaciones || "").trim() };
   return vacia(nueva) ? resto : [...resto, nueva];
 };
 
 /**
  * Ctv → LM: la de Citrusvil queda en exactamente esas tareas de La Martina
  * (puede ser más de una desde el 06/11/2026, o ninguna) y sale de las demás.
- * `modos`: tarea → "mes" | "futuros".
  */
-const conTareaCtv = (eqs, nombre, tareaIds, modos = {}) => {
+const conTareaCtv = (eqs, nombre, tareaIds) => {
   const van = new Set(tareaIds.map(String));
-  const conModo = (e) => ({ ...e, vigencia: { ...(e.vigencia || {}), [nombre]: modos[String(e.tarea)] || "futuros" } });
   const lista = eqs.map((e) => {
     const esta = (e.citrusvil || []).includes(nombre);
-    if (van.has(String(e.tarea))) return conModo(esta ? e : { ...e, citrusvil: [...(e.citrusvil || []), nombre] });
+    if (van.has(String(e.tarea))) return esta ? e : { ...e, citrusvil: [...(e.citrusvil || []), nombre] };
     return esta ? { ...e, citrusvil: e.citrusvil.filter((c) => c !== nombre) } : e;
   });
   for (const id of van) {
     if (!lista.some((e) => String(e.tarea) === id))
-      lista.push(conModo({ tarea: id, citrusvil: [nombre], observaciones: "" }));
+      lista.push({ tarea: id, citrusvil: [nombre], observaciones: "" });
   }
   return lista.filter((e) => !vacia(e));
 };
-
-/**
- * Los dos círculos de la vigencia en los modales (12/11/2026): "Mes" (solo
- * este mes) y "Permanente" (este y los que vienen). `hasta`: si vale hasta un mes que no es
- * este, se avisa al lado.
- */
-/**
- * Un solo círculo, sin letras, para las columnas Mes y Permanente de las
- * tablas (12/11/2026): lleno si la unión está en `valor`; vacío, se toca
- * para pasarla ahí. Rojo, con el punto adentro y un poco de aire hasta el borde; vacío, en gris (12/11/2026). Si es
- * permanente pero se corta en un mes que no es este, el mes va en el cartelito.
- */
-function CirculoVigencia({ valor, modo, onCambiar, deshabilitado, hasta }) {
-  const activo = modo === valor;
-  const cortada = activo && valor === "futuros" && hasta;
-  const largo = VIGENCIAS.find(([v]) => v === valor)?.[2];
-  return (
-    <button
-      type="button"
-      onClick={() => !activo && onCambiar(valor)}
-      disabled={deshabilitado}
-      title={cortada ? `${largo}, hasta ${mesDeClave(hasta)}` : largo}
-      className="btn btn-link p-0 border-0 text-decoration-none"
-      style={{
-        lineHeight: 1.35,
-        color: activo ? "#dc2626" : "#94a3b8",
-        cursor: deshabilitado || activo ? "default" : "pointer",
-        opacity: 1,
-      }}
-    >
-      <i className={activo ? "bi bi-record-circle" : "bi bi-circle"} style={{ fontSize: "0.78rem" }}></i>
-    </button>
-  );
-}
-
-function CirculosVigencia({ modo, onCambiar, deshabilitado, hasta }) {
-  return (
-    <div className="d-inline-flex align-items-center gap-2" style={{ whiteSpace: "nowrap", lineHeight: 1.35 }}>
-      {VIGENCIAS.map(([valor, corto, largo]) => {
-        const activo = modo === valor;
-        return (
-          <button
-            key={valor}
-            type="button"
-            onClick={() => !activo && onCambiar(valor)}
-            disabled={deshabilitado}
-            title={largo}
-            className="btn btn-link p-0 d-inline-flex align-items-center gap-1 text-decoration-none"
-            style={{
-              fontSize: "0.68rem",
-              color: activo ? "#dc2626" : "#94a3b8",
-              fontWeight: activo ? 700 : 400,
-              cursor: deshabilitado || activo ? "default" : "pointer",
-              opacity: 1,
-            }}
-          >
-            <i className={activo ? "bi bi-record-circle" : "bi bi-circle"} style={{ fontSize: "0.72rem" }}></i>
-            {corto}
-          </button>
-        );
-      })}
-      {modo === "futuros" && hasta && (
-        <span style={{ fontSize: "0.64rem", color: "#b45309" }} title="Después de ese mes ya no vale">
-          hasta {mesDeClave(hasta)}
-        </span>
-      )}
-    </div>
-  );
-}
 
 // El cian de Contable, para las solapas y el buscador.
 const COLOR = "#164e63";
@@ -199,8 +116,6 @@ function ContableEquivalencias() {
   // Martina tildadas para ella.
   const [editandoCtv, setEditandoCtv] = useState(null);
   const [elegidasLM, setElegidasLM] = useState([]);
-  // La vigencia de cada una tildada: tarea de La Martina → "mes" | "futuros".
-  const [modosLM, setModosLM] = useState({});
   // La de costos (07/11/2026): si en la Comparativa de costos va con otras
   // tareas de La Martina, y cuáles.
   const [distintaCostos, setDistintaCostos] = useState(false);
@@ -232,8 +147,6 @@ function ContableEquivalencias() {
   // El modal de editar: la tarea de La Martina, lo tildado y las observaciones.
   const [editando, setEditando] = useState(null);
   const [tildadas, setTildadas] = useState([]);
-  // La vigencia de cada una tildada: nombre de Citrusvil → "mes" | "futuros".
-  const [modosTildadas, setModosTildadas] = useState({});
   const [observaciones, setObservaciones] = useState("");
 
   const traerAlquileres = () =>
@@ -323,7 +236,6 @@ function ContableEquivalencias() {
     const e = porTarea.get(String(t._id));
     setEditando(t);
     setTildadas(e?.citrusvil || []);
-    setModosTildadas(e?.vigencia || {});
     setObservaciones(e?.observaciones || "");
   };
   const cerrar = () => {
@@ -385,22 +297,11 @@ function ContableEquivalencias() {
     ev.preventDefault();
     const tareaId = editando._id;
     const lista = [...tildadas];
-    const vigencia = Object.fromEntries(lista.map((c) => [c, modosTildadas[c] || "futuros"]));
-    guardarPorDetras(conTareaLM(equivalencias, tareaId, lista, observaciones, vigencia), () =>
-      api.put(`/contable/equivalencias/${tareaId}`, { citrusvil: lista, observaciones, vigencia, ...delMes }).then(() => traer())
+    guardarPorDetras(conTareaLM(equivalencias, tareaId, lista, observaciones), () =>
+      api.put(`/contable/equivalencias/${tareaId}`, { citrusvil: lista, observaciones, ...delMes }).then(() => traer())
     );
     setEditando(null);
     Swal.fire({ icon: "success", title: "Guardado", timer: 1500, showConfirmButton: false, width: "300px" });
-  };
-
-  /** El círculo de la tabla: esa unión vale solo este mes o este y los que vienen. */
-  const cambiarVigencia = (tareaId, nombre, modo) => {
-    guardarPorDetras(
-      equivalencias.map((e) =>
-        String(e.tarea) === String(tareaId) ? { ...e, vigencia: { ...(e.vigencia || {}), [nombre]: modo } } : e
-      ),
-      () => api.put("/contable/equivalencias-vigencia", { tarea: tareaId, nombre, modo, ...delMes }).then(() => traer())
-    );
   };
 
   const agregarCitrusvil = async (nombre, unidad) => {
@@ -475,7 +376,6 @@ function ContableEquivalencias() {
     setEditandoCtv(c);
     const ids = tareasDeCitrusvil.get(c) || [];
     setElegidasLM(ids);
-    setModosLM(Object.fromEntries(ids.map((id) => [id, porTarea.get(id)?.vigencia?.[c] || "futuros"])));
     setElegidasCostos(costosDe.get(c) || []);
     setAlquileresCostos(alquileresDe.get(c) || []);
     setDistintaCostos(costosDe.has(c) || alquileresDe.has(c));
@@ -515,9 +415,8 @@ function ContableEquivalencias() {
     ev.preventDefault();
     const nombre = editandoCtv;
     const ids = [...elegidasLM];
-    const vigencias = Object.fromEntries(ids.map((id) => [id, modosLM[id] || "futuros"]));
-    guardarPorDetras(conTareaCtv(equivalencias, nombre, ids, vigencias), () =>
-      api.put("/contable/equivalencias-ctv", { nombre, tareas: ids, vigencias, ...delMes }).then(() => traer())
+    guardarPorDetras(conTareaCtv(equivalencias, nombre, ids), () =>
+      api.put("/contable/equivalencias-ctv", { nombre, tareas: ids, ...delMes }).then(() => traer())
     );
     // Sin tildar "distinta en costos", o sin ninguna elegida, va con la de siempre.
     guardarCostos(nombre, distintaCostos ? [...elegidasCostos] : [], distintaCostos ? [...alquileresCostos] : []);
@@ -675,7 +574,6 @@ function ContableEquivalencias() {
             { titulo: "Unidades", ancho: 12 },
             { titulo: "Tareas Citrusvil", ancho: 50 },
             { titulo: "Unidad Ctv", ancho: 12 },
-            { titulo: "Vigencia", ancho: 16 },
             { titulo: "Observaciones", ancho: 40 },
           ],
           filas: tareas.map((t, i) => {
@@ -688,7 +586,6 @@ function ContableEquivalencias() {
               ctv.join("\n"),
               // La unidad de cada una, renglón por renglón como en pantalla.
               ctv.map((c) => unidadCitrusvil.get(c) || "—").join("\n"),
-              ctv.map((c) => textoVigencia(e, c)).join("\n"),
               e?.observaciones || "",
             ];
           }).concat(
@@ -700,7 +597,6 @@ function ContableEquivalencias() {
                 "Mes",
                 ctv.join("\n"),
                 ctv.map((c) => unidadCitrusvil.get(c) || "—").join("\n"),
-                "",
                 "",
               ];
             })
@@ -717,7 +613,6 @@ function ContableEquivalencias() {
             { titulo: "Unidades", ancho: 12 },
             { titulo: "Tarea La Martina", ancho: 38 },
             { titulo: "Unidad La Martina", ancho: 16 },
-            { titulo: "Vigencia", ancho: 16 },
             { titulo: "Tarea LM en costos", ancho: 38 },
             { titulo: "Observaciones", ancho: 40 },
           ],
@@ -729,7 +624,6 @@ function ContableEquivalencias() {
               unidadCitrusvil.get(c) || "",
               ids.map((id) => nombreTarea.get(id) || "Tarea borrada").join("\n"),
               ids.map((id) => unidadTarea.get(id) || "—").join("\n"),
-              ids.map((id) => textoVigencia(porTarea.get(id), c)).join("\n"),
               costosEnPalabras(c).length ? costosEnPalabras(c).join("\n") : "La misma",
               ids.map((id) => porTarea.get(id)?.observaciones).filter(Boolean).join("\n"),
             ];
@@ -968,6 +862,9 @@ function ContableEquivalencias() {
           </div>
         )}
 
+        {/* Solapas y marco van juntos y toman el ancho de la tabla (13/11/2026,
+            al sacar Solo mes y Permanente): el marco no queda más ancho que ella. */}
+        <div className="d-flex flex-column flex-grow-1 align-self-start" style={{ minHeight: 0, maxWidth: "100%" }}>
         {/* Las solapas, pegadas arriba de la tabla (como las de Ingresos de
             escaleras). */}
         <div className="d-flex align-items-end gap-1 flex-shrink-0" style={{ marginBottom: "-1px" }}>
@@ -1043,31 +940,24 @@ function ContableEquivalencias() {
           }}
         >
           {solapa === "lm" ? (
-          <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+          <Table className="mb-0 tabla-informe" style={{ width: "auto" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#164e63", color: "#fff" }}>
               <tr>
                 <th style={{ ...th, width: "28px", textAlign: "center" }}>#</th>
-                <th style={{ ...th, width: "26%" }}>Tarea La Martina</th>
+                <th style={th}>Tarea La Martina</th>
                 {/* La unidad de la tarea de La Martina (Altas › Tareas). */}
                 <th style={{ ...th, width: "80px", textAlign: "center" }}>Unidades</th>
                 <th style={th}>Tareas Citrusvil</th>
                 {/* La unidad de cada tarea de Citrusvil, renglón por renglón. */}
                 <th style={{ ...th, width: "80px", textAlign: "center" }}>Unidad Ctv</th>
-                {/* Solo este mes o este y los que vienen, renglón por renglón (12/11/2026). */}
-                <th className="col-negra-izq" style={{ ...th, width: "60px", textAlign: "center" }} title="Solo este mes">
-                  Solo mes
-                </th>
-                <th className="col-negra-der" style={{ ...th, width: "70px", textAlign: "center" }} title="Este mes y los que vienen">
-                  Permanente
-                </th>
-                <th style={{ ...th, width: "22%" }}>Observaciones</th>
+                <th style={{ ...th, minWidth: "180px" }}>Observaciones</th>
                 <th style={{ ...th, width: "70px", textAlign: "center" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando || !tareas.length ? (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={7} className="text-center text-muted py-4" style={td}>
                     {cargando ? "Cargando…" : "No hay tareas de La Martina cargadas (Altas › Tareas)"}
                   </td>
                 </tr>
@@ -1106,23 +996,6 @@ function ContableEquivalencias() {
                             ))
                           : raya}
                       </td>
-                      {VIGENCIAS.map(([valor]) => (
-                        <td key={valor} className={valor === "mes" ? "col-negra-izq" : "col-negra-der"} style={{ ...td, textAlign: "center" }}>
-                          {lista.length
-                            ? lista.map((c) => (
-                                <div key={c}>
-                                  <CirculoVigencia
-                                    valor={valor}
-                                    modo={e?.vigencia?.[c] || "futuros"}
-                                    hasta={e?.hasta?.[c]}
-                                    deshabilitado={sinEditar}
-                                    onCambiar={(m) => cambiarVigencia(t._id, c, m)}
-                                  />
-                                </div>
-                              ))
-                            : raya}
-                        </td>
-                      ))}
                       <td style={{ ...td, whiteSpace: "pre-wrap" }}>{e?.observaciones || raya}</td>
                       <td style={td}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
@@ -1191,8 +1064,6 @@ function ContableEquivalencias() {
                             ))
                           : raya}
                       </td>
-                      <td className="col-negra-izq" style={{ ...td, textAlign: "center" }}>{raya}</td>
-                      <td className="col-negra-der" style={{ ...td, textAlign: "center" }}>{raya}</td>
                       <td style={td}>{raya}</td>
                       <td style={td}>
                         <div className="d-flex justify-content-center align-items-center" style={{ gap: "10px" }}>
@@ -1226,30 +1097,23 @@ function ContableEquivalencias() {
           </Table>
           ) : (
           // Ctv → LM: una fila por tarea de Citrusvil.
-          <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
+          <Table className="mb-0 tabla-informe" style={{ width: "auto" }}>
             <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: "#164e63", color: "#fff" }}>
               <tr>
                 <th style={{ ...th, width: "28px", textAlign: "center" }}>#</th>
-                <th style={{ ...th, width: "30%" }}>Tarea Citrusvil</th>
+                <th style={th}>Tarea Citrusvil</th>
                 <th style={{ ...th, width: "80px", textAlign: "center" }}>Unidades</th>
-                <th style={{ ...th, width: "24%" }}>Tarea La Martina</th>
-                {/* Solo este mes o este y los que vienen, renglón por renglón (12/11/2026). */}
-                <th className="col-negra-izq" style={{ ...th, width: "60px", textAlign: "center" }} title="Solo este mes">
-                  Solo mes
-                </th>
-                <th className="col-negra-der" style={{ ...th, width: "70px", textAlign: "center" }} title="Este mes y los que vienen">
-                  Permanente
-                </th>
+                <th style={th}>Tarea La Martina</th>
                 {/* La de la Comparativa de costos, si no es la misma (07/11/2026). */}
-                <th style={{ ...th, width: "18%" }}>LM en costos</th>
-                <th style={th}>Observaciones</th>
+                <th style={th}>LM en costos</th>
+                <th style={{ ...th, minWidth: "180px" }}>Observaciones</th>
                 <th style={{ ...th, width: "70px", textAlign: "center" }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando || !todasCitrusvil.length ? (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={7} className="text-center text-muted py-4" style={td}>
                     {cargando ? "Cargando…" : "Todavía no hay tareas de Citrusvil"}
                   </td>
                 </tr>
@@ -1300,23 +1164,6 @@ function ContableEquivalencias() {
                             })
                           : raya}
                       </td>
-                      {VIGENCIAS.map(([valor]) => (
-                        <td key={valor} className={valor === "mes" ? "col-negra-izq" : "col-negra-der"} style={{ ...td, textAlign: "center" }}>
-                          {ids.length
-                            ? ids.map((id) => (
-                                <div key={id}>
-                                  <CirculoVigencia
-                                    valor={valor}
-                                    modo={porTarea.get(id)?.vigencia?.[c] || "futuros"}
-                                    hasta={porTarea.get(id)?.hasta?.[c]}
-                                    deshabilitado={sinEditar}
-                                    onCambiar={(m) => cambiarVigencia(id, c, m)}
-                                  />
-                                </div>
-                              ))
-                            : raya}
-                        </td>
-                      ))}
                       <td style={td}>
                         {costosDe.get(c)?.length || alquileresDe.has(c) ? (
                           <>
@@ -1378,6 +1225,7 @@ function ContableEquivalencias() {
             </tbody>
           </Table>
           )}
+        </div>
         </div>
       </Container>
 
@@ -1539,13 +1387,6 @@ function ContableEquivalencias() {
                         </span>
                       }
                     />
-                    {/* La vigencia, solo de las tildadas (12/11/2026). */}
-                    {tildada && (
-                      <CirculosVigencia
-                        modo={modosTildadas[c] || "futuros"}
-                        onCambiar={(m) => setModosTildadas((ant) => ({ ...ant, [c]: m }))}
-                      />
-                    )}
                     </div>
                   );
                 })}
@@ -1649,13 +1490,6 @@ function ContableEquivalencias() {
                     </span>
                   }
                 />
-                {/* La vigencia, solo de las tildadas (12/11/2026). */}
-                {elegida && (
-                  <CirculosVigencia
-                    modo={modosLM[id] || "futuros"}
-                    onCambiar={(m) => setModosLM((ant) => ({ ...ant, [id]: m }))}
-                  />
-                )}
                 </div>
                 );
               })}
