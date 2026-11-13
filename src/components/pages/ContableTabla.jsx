@@ -230,7 +230,8 @@ function ContableTabla() {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "¿Borrar la tabla?",
-      text: "Se borran la tabla del mes y su Excel. Esta acción no se puede deshacer.",
+      // Sin "no se puede deshacer" (13/11/2026, pedido del usuario).
+      text: "Se borran la tabla del mes y su Excel.",
       width: "340px",
       showCancelButton: true,
       confirmButtonText: "Sí, borrar",

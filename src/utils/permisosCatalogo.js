@@ -78,6 +78,9 @@ export const CATALOGO = [
   // La página Costos, el botón de la Comparativa costos tarea (11/11/2026):
   // solo se mira, así que lo que cuenta es "Ver". Nace con los de Contable.
   { seccion: "Contable", clave: "contable.costos", label: "Comparativa costos tarea › Costos", hoy: PERMISOS.produccionContable },
+  // Caja (13/11/2026): la tarjeta abajo de los meses. Acceso bien
+  // restringido: nace solo con el superadmin y a los demás se les tilda.
+  { seccion: "Contable", clave: "contable.caja", label: "Caja", hoy: PERMISOS.comprasUsuarios },
 
   // Altas (las que no son solo del superadmin)
   { seccion: "Altas", clave: "altas.centrosCosto", label: "Centros de costo", hoy: PERMISOS.comprasAnalista },

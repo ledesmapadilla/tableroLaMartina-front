@@ -172,7 +172,8 @@ function ProduccionCertificados({
             bajos y, si igual no entra, esta parte hace scroll en vez de cortar. */}
         <div
           className="flex-grow-1 d-flex flex-column align-items-center pb-4"
-          style={verExtra ? { minHeight: 0, overflowY: "auto", overflowX: "hidden", paddingTop: "4px" } : undefined}
+          // 24px arriba: la grilla un poco más abajo del encabezado (13/11/2026).
+          style={verExtra ? { minHeight: 0, overflowY: "auto", overflowX: "hidden", paddingTop: "24px" } : undefined}
         >
           <div
             style={{

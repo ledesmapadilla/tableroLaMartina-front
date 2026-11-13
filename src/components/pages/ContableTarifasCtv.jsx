@@ -17,6 +17,11 @@ import { exportarPlanilla } from "../../helpers/excel";
  * El precio del mes es el del Excel: subtotal / cantidad de esa tarea en el
  * campo (si vino con más de un precio, el ponderado). Sin multiplicar por la
  * doble pasada: la tarifa es la misma.
+ *
+ * Los meses que tienen tarifas cargadas a mano (13/11/2026: enero a
+ * septiembre de 2026, del Excel "tarifas ctv 2026.xlsx" del usuario; GET
+ * /contable/tarifas-cargadas) usan esas, para los dos campos, y no el Excel
+ * mensual. Desde octubre, el Excel mensual.
  */
 
 const MES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -45,6 +50,8 @@ function ContableTarifasCtv({ tipo = "cantidad" }) {
 
   // mes (1-12) → filas del Excel de ese mes, solo del campo.
   const [porMes, setPorMes] = useState(new Map());
+  // mes (1-12) → tarifas cargadas a mano de ese mes ([{ tarea, clave, precio }]).
+  const [cargadas, setCargadas] = useState(new Map());
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
 
@@ -52,18 +59,34 @@ function ContableTarifasCtv({ tipo = "cantidad" }) {
     if (!campo) return undefined;
     let vigente = true;
     const meses = Array.from({ length: hastaMes }, (_, i) => i + 1);
-    // Solo los Excel de los meses: cada fila ya trae su unidad en la
-    // nomenclatura de La Martina (unidadLM).
-    Promise.all(meses.map((m) => api.get(`/contable/filas/${anio}/${m}`).catch(() => null)))
+    // Primero las cargadas a mano; los Excel se piden solo de los meses que
+    // no las tienen. Cada fila del Excel ya trae su unidad en la nomenclatura
+    // de La Martina (unidadLM).
+    api
+      .get(`/contable/tarifas-cargadas/${anio}`)
+      .catch(() => [])
       .then((lista) => {
+        const c = new Map();
+        for (const t of Array.isArray(lista) ? lista : []) {
+          if (t.mes > hastaMes) continue;
+          if (!c.has(t.mes)) c.set(t.mes, []);
+          c.get(t.mes).push(t);
+        }
+        const conExcel = meses.filter((m) => !c.has(m));
+        return Promise.all(conExcel.map((m) => api.get(`/contable/filas/${anio}/${m}`).catch(() => null))).then(
+          (excels) => ({ c, conExcel, excels })
+        );
+      })
+      .then(({ c, conExcel, excels }) => {
         if (!vigente) return;
         const m = new Map();
-        lista.forEach((d, i) => {
+        excels.forEach((d, i) => {
           const filas = (Array.isArray(d?.filas) ? d.filas : []).filter((f) =>
             campo.almacenes.includes(claveTarea(f.almacen))
           );
-          if (filas.length) m.set(i + 1, filas);
+          if (filas.length) m.set(conExcel[i], filas);
         });
+        setCargadas(c);
         setPorMes(m);
       })
       .catch((err) => vigente && setError(err.message))
@@ -76,6 +99,13 @@ function ContableTarifasCtv({ tipo = "cantidad" }) {
   // Una fila por tarea de Ctv (por su clave: la misma escrita distinto es una).
   const filas = useMemo(() => {
     const t = new Map();
+    // Las cargadas a mano: el precio del mes ya viene hecho.
+    for (const [m, lista] of cargadas) {
+      for (const c of lista) {
+        if (!t.has(c.clave)) t.set(c.clave, { clave: c.clave, tarea: c.tarea, unidad: "", meses: new Map() });
+        t.get(c.clave).meses.set(m, { precio: c.precio });
+      }
+    }
     for (const [m, lista] of porMes) {
       for (const f of lista) {
         const k = claveTarea(f.tarea);
@@ -85,6 +115,8 @@ function ContableTarifasCtv({ tipo = "cantidad" }) {
           a = { clave: k, tarea: f.tarea, unidad: f.unidadLM || f.unidad || "", meses: new Map() };
           t.set(k, a);
         }
+        // La unidad y el nombre, del Excel mensual (las cargadas no los traen).
+        if (!a.unidad) a.unidad = f.unidadLM || f.unidad || "";
         const s = a.meses.get(m) || { cantidad: 0, subtotal: 0 };
         s.cantidad += f.cantidad || 0;
         s.subtotal += f.subtotal || 0;
@@ -98,8 +130,8 @@ function ContableTarifasCtv({ tipo = "cantidad" }) {
         let anterior = null;
         for (let m = 1; m <= hastaMes; m++) {
           const s = a.meses.get(m);
-          if (!s || !s.cantidad) continue;
-          const precio = s.subtotal / s.cantidad;
+          if (!s || (s.precio == null && !s.cantidad)) continue;
+          const precio = s.precio != null ? s.precio : s.subtotal / s.cantidad;
           const cambio = anterior ? ((precio - anterior) / anterior) * 100 : null;
           precios.set(m, { precio, cambio });
           anterior = precio;
@@ -123,7 +155,7 @@ function ContableTarifasCtv({ tipo = "cantidad" }) {
       })
       .filter((a) => a.precios.size)
       .sort((a, b) => ordenar(a.tarea, b.tarea));
-  }, [porMes, hastaMes]);
+  }, [porMes, cargadas, hastaMes]);
 
   if (!campo) return <Error404 />;
   const columnas = hastaMes + 3;

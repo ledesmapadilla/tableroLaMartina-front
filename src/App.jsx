@@ -65,7 +65,11 @@ const ContableComparativa = lazy(() => import("./components/pages/ContableCompar
 const ContableComparativaCampos = lazy(() => import("./components/pages/ContableComparativaCampos"));
 const ContableEquivalencias = lazy(() => import("./components/pages/ContableEquivalencias"));
 const ContableAcumulado = lazy(() => import("./components/pages/ContableAcumulado"));
-const ContableTarifasCtv = lazy(() => import("./components/pages/ContableTarifasCtv"));const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
+const ContableTarifasCtv = lazy(() => import("./components/pages/ContableTarifasCtv"));
+const ContableCaja = lazy(() => import("./components/pages/ContableCaja"));
+const ContableCajaSemana = lazy(() => import("./components/pages/ContableCajaSemana"));
+const ContableCajaAcumulado = lazy(() => import("./components/pages/ContableCajaAcumulado"));
+const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
 const ProduccionCertificadoMenu = lazy(() => import("./components/pages/ProduccionCertificadoMenu"));
 const ProduccionInformesMenu = lazy(() => import("./components/pages/ProduccionInformesMenu"));
 const ProduccionInformeMes = lazy(() => import("./components/pages/ProduccionInformeMes"));
@@ -346,7 +350,25 @@ function LayoutDesktop() {
                   Excel mensual (05/11/2026). */}
               {/* Equivalencias ya no está en la grilla: es una tarjeta dentro
                   de cada mes (12/11/2026). */}
-              <Route path="/contable" element={<ProduccionCertificados base="/contable" />} />
+              {/* Caja (13/11/2026): la tarjeta abajo de los meses, solo para
+                  quien tenga contable.caja en Roles. Abre el calendario de Caja
+                  (formato de Asistencia del Sistema de Gestión Lepa); los días
+                  y los resúmenes, por ahora al 404. */}
+              <Route
+                path="/contable"
+                element={
+                  <ProduccionCertificados
+                    base="/contable"
+                    extra={{ titulo: "Caja", icono: "bi bi-safe2-fill", destino: "/contable/caja", permiso: "contable.caja" }}
+                  />
+                }
+              />
+              <Route path="/contable/caja" element={<ContableCaja />} />
+              {/* El control de caja de una semana (viernes a jueves), por su viernes. */}
+              <Route path="/contable/caja/semana/:inicio" element={<ContableCajaSemana />} />
+              {/* El acumulado del año, por mes y semana (13/11/2026). */}
+              <Route path="/contable/caja/acumulado" element={<ContableCajaAcumulado />} />
+              <Route path="/contable/caja/*" element={<Error404 />} />
               {/* Equivalencias se mira desde un mes (12/11/2026): cada unión vale
                   solo ese mes o ese y los que vienen. */}
               <Route path="/contable/:anio/:mes/equivalencias" element={<ContableEquivalencias />} />

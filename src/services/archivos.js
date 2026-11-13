@@ -48,14 +48,36 @@ export const achicarImagen = async (file) => {
   }
 };
 
+// La firma de Cloudinary vale una hora: se guarda media hora y así cada foto
+// no espera un viaje al back (13/11/2026). Si el pedido falla, se olvida.
+const DURACION_FIRMA_MS = 30 * 60 * 1000;
+let firmaGuardada = null; // { vence, promesa }
+const pedirFirma = () => {
+  if (firmaGuardada && firmaGuardada.vence > Date.now()) return firmaGuardada.promesa;
+  const promesa = api.get("/archivos/firma").catch((err) => {
+    firmaGuardada = null;
+    throw err;
+  });
+  firmaGuardada = { vence: Date.now() + DURACION_FIRMA_MS, promesa };
+  return promesa;
+};
+
+/** Pide la firma por adelantado (al abrir una pantalla que sube fotos). */
+export const prepararSubida = () => {
+  pedirFirma().catch(() => {});
+};
+
 // Con `achicar`, una foto se achica antes de subirla (achicarImagen).
 export const subirArchivo = async (original, { achicar = false } = {}) => {
+  // Achicar y pedir la firma van a la vez.
+  const firmaEnCamino = pedirFirma();
+  firmaEnCamino.catch(() => {});
   const file = achicar ? await achicarImagen(original) : original;
   if (file.size > LIMITE_MB * 1024 * 1024) {
     throw new Error(`El archivo no puede pasar de ${LIMITE_MB} MB.`);
   }
 
-  const firma = await api.get("/archivos/firma");
+  const firma = await firmaEnCamino;
 
   const datos = new FormData();
   datos.append("file", file);

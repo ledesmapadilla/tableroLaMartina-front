@@ -102,6 +102,12 @@ main {
 .tabla-informe tr.fila-fin-grupo > td {
   border-bottom: 1px solid #000 !important;
 }
+/* La línea negra gruesa arriba de la fila que abre un grupo (los meses del
+   Acumulado de Caja, 13/11/2026). Con bordes que chocan gana el más ancho,
+   así que estos 2px le ganan al gris de la fila de arriba. */
+.tabla-informe tr.fila-inicio-grupo > td {
+  border-top: 2px solid #000 !important;
+}
 .tabla-informe tbody tr:nth-of-type(even) > td {
   background-color: #f1f5f4;
 }
