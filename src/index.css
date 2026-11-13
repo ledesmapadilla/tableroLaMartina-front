@@ -78,6 +78,23 @@ main {
 .tabla-informe td.col-corte {
   border-left: 2px solid #000 !important;
 }
+/* Un grupo de columnas encerrado entre líneas negras finas, solo en los
+   extremos (Solo mes y Permanente de Equivalencias, 12/11/2026): la primera
+   lleva la de la izquierda y la última la de la derecha. */
+.tabla-informe th.col-negra-izq,
+.tabla-informe td.col-negra-izq {
+  border-left: 1px solid #000 !important;
+}
+/* Con bordes del mismo ancho gana el de la celda de la izquierda: sin esto la
+   línea de la izquierda queda gris. */
+.tabla-informe th:has(+ th.col-negra-izq),
+.tabla-informe td:has(+ td.col-negra-izq) {
+  border-right: 1px solid #000 !important;
+}
+.tabla-informe th.col-negra-der,
+.tabla-informe td.col-negra-der {
+  border-right: 1px solid #000 !important;
+}
 /* La línea negra fina abajo de una fila que cierra un grupo (las auditorías
    de gasoil: entre Berdina y San Pablo). Va abajo de la fila de arriba y no
    arriba de la de abajo: con bordes del mismo ancho, gana el de la celda de

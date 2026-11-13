@@ -63,6 +63,8 @@ function ModalListaTareas({
       await onAgregar(nombre.trim(), unidad.trim());
       setNombre("");
       setUnidad("");
+      // Agregada, el modal se cierra (12/11/2026, pedido del usuario).
+      onHide();
       Swal.fire({ icon: "success", title: "Tarea agregada", timer: 1500, showConfirmButton: false, width: "300px" });
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo agregar", text: err.message, width: "300px" });
@@ -75,7 +77,7 @@ function ModalListaTareas({
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: "¿Borrar la tarea?",
-      text: `«${fila.nombre}». Esta acción no se puede deshacer.`,
+      text: `Se va a borrar «${fila.nombre}».`,
       width: "320px",
       showCancelButton: true,
       confirmButtonText: "Sí, borrar",

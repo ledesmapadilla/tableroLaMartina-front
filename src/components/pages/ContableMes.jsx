@@ -197,6 +197,7 @@ function ContableMes() {
   const navigate = useNavigate();
   const { puede } = usePermisos();
   const puedeEditar = puede("contable.excel", "editar");
+  const verEquivalencias = puede("contable.equivalencias");
   const input = useRef(null);
 
   // Si la tabla del mes ya se trajo, se sabe que existe sin esperar a la base.
@@ -206,6 +207,7 @@ function ContableMes() {
   const [tabla, setTabla] = useState(enMemoria?.filas.length ? enMemoria.tabla || {} : null);
   const [cargando, setCargando] = useState(!enMemoria);
   const [trabajando, setTrabajando] = useState(false);
+  const [hoverEquiv, setHoverEquiv] = useState(false);
 
   const rutaFilas = `/contable/filas/${anio}/${mes}`;
   const rutaEstado = `/contable/estado/${anio}/${mes}`;
@@ -257,7 +259,7 @@ function ContableMes() {
         width: "300px",
       });
     }
-    if (await avisarDespues(leido, nombre)) return navigate("/contable/equivalencias");
+    if (await avisarDespues(leido, nombre)) return navigate(`/contable/${anio}/${mes}/equivalencias`);
     verTabla();
   };
 
@@ -446,6 +448,42 @@ function ContableMes() {
             </div>
           ))}
           </div>
+
+          {/* Equivalencias (12/11/2026): antes estaba suelta en la grilla de
+              meses; ahora va abajo de todo en cada mes, con el mismo formato
+              que tenía allá. No depende de la tabla. */}
+          {verEquivalencias && (
+            <div
+              className="d-flex align-items-center justify-content-center gap-2 px-4 rounded-3"
+              style={{
+                background: hoverEquiv
+                  ? "linear-gradient(135deg, #164e63 0%, #0e7490 100%)"
+                  : "linear-gradient(135deg, #0e7490 0%, #155e75 100%)",
+                color: "#fff",
+                height: "76px",
+                minWidth: "260px",
+                cursor: "pointer",
+                border: "2px solid rgba(255,255,255,0.3)",
+                boxShadow: hoverEquiv
+                  ? "0 10px 20px rgba(0,0,0,0.35), 0 0 14px rgba(6,182,212,0.4)"
+                  : "0 4px 12px rgba(0,0,0,0.25)",
+                transition: "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease",
+                transform: hoverEquiv ? "scale(1.05)" : "scale(1)",
+                userSelect: "none",
+              }}
+              onClick={() => navigate(`/contable/${anio}/${mes}/equivalencias`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && navigate(`/contable/${anio}/${mes}/equivalencias`)}
+              onMouseEnter={() => setHoverEquiv(true)}
+              onMouseLeave={() => setHoverEquiv(false)}
+            >
+              <i className="bi bi-arrow-left-right" style={{ fontSize: "1.4rem", color: "#67e8f9" }}></i>
+              <span className="fw-bold" style={{ fontSize: "1rem" }}>
+                Equivalencias tareas/variables
+              </span>
+            </div>
+          )}
         </div>
         </div>
       </Container>

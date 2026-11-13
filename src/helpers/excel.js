@@ -46,11 +46,15 @@ export async function descargar(wb, archivo) {
  * `moneda: true` le pone a esa columna el formato de importe de todo el
  * proyecto ("$"#,##0.00) en las celdas con número (08/10/2026). Una fila que
  * empieza con "TOTAL" va en negrita, como la fila de total de la pantalla.
+ *
+ * `zoom` (12/11/2026): con qué tamaño abre la hoja, en %. Sin él, el de Excel.
+ * `letra` (12/11/2026): el tamaño de letra del encabezado y las filas. Sin
+ * él, el de Excel (11).
  */
-export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos", archivo, cortes = [] }) {
+export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos", archivo, cortes = [], zoom, letra }) {
   const conCorte = new Set(cortes);
   const wb = await nuevoWorkbook();
-  const ws = wb.addWorksheet(hoja);
+  const ws = wb.addWorksheet(hoja, zoom ? { views: [{ zoomScale: zoom }] } : undefined);
   const fechaHoy = new Date().toLocaleDateString("es-AR");
 
   // Titulo, cruzando todas las columnas
@@ -71,7 +75,7 @@ export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos"
 
   const filaEnc = ws.addRow(columnas.map((c) => c.titulo));
   filaEnc.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, ...(letra ? { size: letra } : {}) };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1B4332" } };
   });
@@ -82,7 +86,8 @@ export async function exportarPlanilla({ titulo, columnas, filas, hoja = "Datos"
     const esTotal = datos[0] === "TOTAL";
     fila.eachCell({ includeEmpty: true }, (cell, nro) => {
       if (columnas[nro - 1]?.moneda && typeof cell.value === "number") cell.numFmt = '"$"#,##0.00';
-      if (esTotal || columnas[nro - 1]?.negrita) cell.font = { bold: true };
+      if (esTotal || columnas[nro - 1]?.negrita || letra)
+        cell.font = { ...(esTotal || columnas[nro - 1]?.negrita ? { bold: true } : {}), ...(letra ? { size: letra } : {}) };
       // Una celda con varios renglones (una lista, uno por renglón) se ajusta
       // al texto y va a la izquierda, para que se lea (13/10/2026).
       const lista = typeof cell.value === "string" && cell.value.includes("\n");

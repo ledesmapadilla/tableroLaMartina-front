@@ -14,6 +14,8 @@ import { api } from "../../services/api";
  *
  * `ruta` es la del back (GET lista, PUT { fecha, precio }, DELETE /:id).
  * `nombre` va en minúscula en los textos ("el precio del gasoil").
+ * `extra`: botones propios al final del renglón (el lápiz y el tacho de un
+ * alquiler, 12/11/2026).
  */
 
 const hoyISO = () => {
@@ -50,7 +52,7 @@ const fechaHora = (f) =>
 const td = { fontSize: "0.7rem", padding: "1px 5px", verticalAlign: "middle" };
 const raya = <span style={{ color: "#cbd5e1" }}>—</span>;
 
-function PrecioConHistorial({ titulo, subtitulo, nombre, icono, ruta, unidad, color, sinEditar }) {
+function PrecioConHistorial({ titulo, subtitulo, nombre, icono, ruta, unidad, color, sinEditar, extra = null }) {
   const th = {
     backgroundColor: color,
     color: "#fff",
@@ -261,6 +263,7 @@ function PrecioConHistorial({ titulo, subtitulo, nombre, icono, ruta, unidad, co
           <i className="bi bi-clock-history"></i>
           <span>Historial</span>
         </Button>
+        {extra}
       </div>
 
       {/* El historial, como el de Producción › Variables. */}

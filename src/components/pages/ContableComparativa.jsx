@@ -9,11 +9,13 @@ import Error404 from "./Error404";
 import ContableGraficosCostos from "./ContableGraficosCostos";
 import ContableResultadoCostos from "./ContableResultadoCostos";
 import { calcularAjustes, calcularCertificado } from "../../utils/certificado";
-import { precioVigente } from "../../utils/altoRendimiento";
 import { exportarPlanilla } from "../../helpers/excel";
 import SelectBuscador from "../shared/SelectBuscador";
 import AyudaColumna from "../shared/AyudaColumna";
 import { ayudasComparativa } from "../../utils/ayudaComparativa";
+import { calcularComparativa } from "../../utils/calculoComparativa";
+import { BotonesObservacion, ModalesObservacion } from "../shared/ObservacionesComparativa";
+import { useObservaciones } from "../../utils/observacionesComparativa";
 
 const TH = {
   backgroundColor: "#164e63",
@@ -96,261 +98,6 @@ const FILTRO_VACIO = { tarea: "Todas" };
 const COLOR_COSTOS = "#0e7490";
 
 /**
- * Las filas del mes juntadas por almacén y por la tarea de La Martina que le
- * toca a cada tarea de Citrusvil (Equivalencias de tareas). Suma cantidad y
- * subtotal; el precio unitario es subtotal / cantidad, que con una sola
- * tarifa es esa misma y con varias es el promedio pesado. El subtotal de cada
- * fila es Cant. × Precio unitario del Excel, calculado al cargarlo
- * (08/11/2026), no el Subtotal que trae el Excel.
- *
- * Una de Citrusvil sin equivalencia queda con su propio nombre, marcada.
- */
-const agrupar = (filas, laMartinaDe, tareaLM) => {
-  const grupos = new Map();
-  for (const f of filas) {
-    // Por clave y no por el texto exacto: una variante escrita distinto
-    // (mayúsculas, acentos, espacios, signos) es la misma tarea.
-    const idLM = laMartinaDe.get(claveTarea(f.tarea));
-    const lm = idLM ? tareaLM.get(idLM) : null;
-    const tarea = lm ? lm.tarea : f.tarea || "";
-    const clave = `${f.almacen || ""}|${lm ? `lm:${idLM}` : `ctv:${claveTarea(tarea)}`}`;
-    let g = grupos.get(clave);
-    if (!g) {
-      g = {
-        clave,
-        almacen: f.almacen || "",
-        tarea,
-        sinEquivalencia: !lm,
-        idLM: lm ? idLM : null,
-        unidad: lm ? lm.unidad : f.unidad || "",
-        cantidad: 0,
-        subtotal: 0,
-        tareasCtv: new Set(),
-        // Las filas del Excel que forman el grupo: el detalle al tocarlo.
-        filas: [],
-      };
-      grupos.set(clave, g);
-    }
-    g.cantidad += f.cantidad || 0;
-    g.subtotal += f.subtotal || 0;
-    if (f.tarea) g.tareasCtv.add(f.tarea);
-    g.filas.push(f);
-  }
-  return [...grupos.values()]
-    .map((g) => ({ ...g, precio: g.cantidad ? g.subtotal / g.cantidad : null, tareasCtv: [...g.tareasCtv].sort(ordenar) }))
-    .sort((a, b) => ordenar(a.almacen, b.almacen) || ordenar(a.tarea, b.tarea));
-};
-
-/**
- * Las tareas de La Martina que se comparan juntas (06/11/2026). Una de
- * Citrusvil puede estar en varias de La Martina; lo que pagó Citrusvil por
- * ella no se puede repartir, así que esas tareas de La Martina van en una
- * sola fila ("Herbicida + Herbicida Bajo Volumen") y se compara lo pagado
- * contra lo certificado entre todas, sin contar nada dos veces. Las que
- * comparten se encadenan: si A y B comparten una y B y C otra, van A, B y C.
- *
- * → { grupoDe: id de La Martina → id del grupo, tareaDe: id del grupo →
- *     { tarea: nombre (los nombres unidos con " + "), unidad } }
- */
-const juntarTareasLM = (equivalencias, tareas) => {
-  const padre = new Map();
-  const raiz = (x) => {
-    while (padre.get(x) !== x) x = padre.get(x);
-    return x;
-  };
-  const unir = (a, b) => {
-    const ra = raiz(a);
-    const rb = raiz(b);
-    if (ra !== rb) padre.set(rb, ra);
-  };
-  const primeraDe = new Map(); // clave de Citrusvil → primera tarea de La Martina que la tiene
-  for (const e of equivalencias) {
-    const id = String(e.tarea);
-    if (!padre.has(id)) padre.set(id, id);
-    for (const c of e.citrusvil || []) {
-      const k = claveTarea(c);
-      if (primeraDe.has(k)) unir(primeraDe.get(k), id);
-      else primeraDe.set(k, id);
-    }
-  }
-  const porId = new Map(tareas.map((t) => [String(t._id), t]));
-  const miembros = new Map();
-  for (const id of padre.keys()) {
-    const r = raiz(id);
-    miembros.set(r, [...(miembros.get(r) || []), id]);
-  }
-  const grupoDe = new Map();
-  const tareaDe = new Map();
-  for (const [r, ids] of miembros) {
-    const lista = ids.map((id) => porId.get(id)).filter(Boolean);
-    for (const id of ids) grupoDe.set(id, r);
-    tareaDe.set(r, {
-      tarea: lista.map((t) => t.tarea).sort(ordenar).join(" + "),
-      unidad: lista[0]?.unidad || "",
-      juntas: lista.length > 1,
-    });
-  }
-  return { grupoDe, tareaDe };
-};
-
-/**
- * Lo certificado en La Martina en el mes, por tarea (la solapa "Certificado
- * en LM", 05/11/2026). Sale del mismo cálculo que Contable - Pagos
- * (utils/certificado.js): una fila por persona y tarea, que acá se juntan por
- * tarea. Las personas que en Pagos están "sin contar" no cuentan.
- *
- * El precio unitario es el de "Pagado por Ctv" para la misma tarea de La
- * Martina en el mismo campo (`preciosCTV`: id de la tarea → precio), y el
- * subtotal, la cantidad certificada por ese precio (05/11/2026): así se ve
- * cuánto valdría lo certificado a lo que paga Citrusvil. Una tarea que no
- * está en Ctv queda sin precio ni subtotal.
- *
- * `conEquivalencia` son los id de las tareas de La Martina que tienen alguna
- * de Citrusvil en Equivalencias de tareas: las demás van destacadas, igual
- * que en "Pagado por Ctv".
- *
- * Con `precioPersonal` (Comparativa costos tarea, 07/11/2026) el precio es
- * el que se le paga a la gente: el de Variables de remuneración del campo,
- * con el mismo cálculo que Pagos (cliente, vigencia, alto rendimiento y
- * correcciones a mano). Si en la tarea hay más de un precio, va el promedio
- * de lo certificado, que es lo que cierra con el subtotal.
- */
-const agruparLM = (filasCert, excluidos, almacen, preciosCTV, conEquivalencia, juntas, precioPersonal = false) => {
-  const grupos = new Map();
-  for (const f of filasCert) {
-    if (excluidos.has(f.idPersona)) continue;
-    // Las que comparten una tarea de Citrusvil van juntas (juntarTareasLM).
-    const id = String(f.idTarea);
-    const grupo = juntas.grupoDe.get(id) || id;
-    let g = grupos.get(grupo);
-    if (!g) {
-      const junta = juntas.tareaDe.get(grupo);
-      g = {
-        clave: `lm:${grupo}`,
-        almacen,
-        tarea: junta?.tarea || f.tarea,
-        unidad: junta?.unidad || f.unidad,
-        cantidad: 0,
-        precio: preciosCTV.get(grupo) ?? null,
-        sinEquivalencia: !conEquivalencia.has(id),
-        personas: [],
-      };
-      grupos.set(grupo, g);
-    }
-    g.cantidad += f.cantidad || 0;
-    g.personas.push(f);
-  }
-  if (precioPersonal) {
-    return [...grupos.values()]
-      .map((g) => {
-        const conImporte = g.personas.filter((p) => p.importe !== null && p.importe !== undefined);
-        const subtotal = conImporte.length ? conImporte.reduce((a, p) => a + p.importe, 0) : null;
-        const cantConPrecio = conImporte.reduce((a, p) => a + (p.cantidad || 0), 0);
-        const precios = new Set(conImporte.map((p) => p.precio).filter((p) => p !== null && p !== undefined));
-        const precio =
-          precios.size === 1 ? [...precios][0] : cantConPrecio ? subtotal / cantConPrecio : null;
-        return { ...g, precio, subtotal, variosPrecios: precios.size > 1 };
-      })
-      .sort((a, b) => ordenar(a.tarea, b.tarea));
-  }
-  return [...grupos.values()]
-    .map((g) => ({
-      ...g,
-      subtotal: g.precio === null ? null : g.cantidad * g.precio,
-      // Cada persona también al precio de Ctv, para el detalle.
-      personas: g.personas.map((p) => ({
-        ...p,
-        precio: g.precio,
-        importe: g.precio === null ? null : (p.cantidad || 0) * g.precio,
-      })),
-    }))
-    .sort((a, b) => ordenar(a.tarea, b.tarea));
-};
-
-/**
- * La solapa "Comparativa" (antes "Comparación") (05/11/2026): lo pagado por Citrusvil contra lo
- * certificado en La Martina, una fila por tarea de La Martina. Las
- * diferencias son Ctv − LM: positiva, Citrusvil pagó más de lo certificado.
- *
- * Van también las que están de un solo lado: una de Citrusvil sin
- * equivalencia (no hay con qué compararla en LM) y una certificada en LM sin
- * nada en Ctv (sin precio de Ctv no se puede valuar). La diferencia va en
- * todas las filas (06/11/2026): lo que falta de un lado cuenta como cero.
- */
-/**
- * `cruce` (Comparativa de costos, 07/11/2026): grupo de La Martina de la fila
- * de Ctv → grupo de La Martina contra el que se compara. Lo pagado por Ctv
- * queda con su tarea de siempre (ej. Horas Motor Generador) pero se compara
- * con lo pagado a la gente en otra (MotoGenerador-Personal). Lo de LM de la
- * tarea de siempre queda en su propia fila. `nombres`: grupo → { tarea }.
- */
-const compararGrupos = (gruposCTV, gruposLM, cruce = new Map(), nombres = new Map()) => {
-  const filas = new Map();
-  const fila = (clave, base) => {
-    if (!filas.has(clave)) {
-      filas.set(clave, {
-        clave,
-        tarea: base.tarea,
-        unidad: base.unidad,
-        precio: null,
-        // El precio de LM (en la de costos, lo que se le paga a la gente).
-        precioLM: null,
-        variosPreciosLM: false,
-        cantCTV: null,
-        cantLM: null,
-        subCTV: null,
-        subLM: null,
-        sinEquivalencia: false,
-        // Para el historial: las filas del Excel y el grupo de La Martina.
-        filasCtv: [],
-        grupoLM: null,
-      });
-    }
-    return filas.get(clave);
-  };
-  for (const g of gruposCTV) {
-    const destino = g.idLM ? cruce.get(String(g.idLM)) : null;
-    const f = fila(destino ? `lm:${destino}` : g.idLM ? `lm:${g.idLM}` : `ctv:${g.clave}`, g);
-    if (destino) {
-      f.tareaLMCostos = nombres.get(destino)?.tarea || "";
-      f.grupoCtv = String(g.idLM);
-    }
-    f.cantCTV = (f.cantCTV || 0) + g.cantidad;
-    f.subCTV = (f.subCTV || 0) + g.subtotal;
-    // Con varios grupos en la fila (dos almacenes o el cruce de costos), el
-    // precio es el ponderado de todos: subtotal / cantidad (12/11/2026).
-    f.precio = f.cantCTV ? f.subCTV / f.cantCTV : f.precio ?? g.precio;
-    if (g.sinEquivalencia) f.sinEquivalencia = true;
-    f.filasCtv.push(...(g.filas || []));
-    if (g.idLM) f.grupoLM = destino || String(g.idLM);
-  }
-  for (const g of gruposLM) {
-    const f = fila(g.clave, g);
-    f.grupoLM = g.clave.slice(3);
-    f.cantLM = (f.cantLM || 0) + g.cantidad;
-    if (g.subtotal !== null) f.subLM = (f.subLM || 0) + g.subtotal;
-    if (g.precio !== null) f.precioLM = g.precio;
-    if (g.variosPrecios) f.variosPreciosLM = true;
-    if (g.sinEquivalencia) f.sinEquivalencia = true;
-  }
-  return [...filas.values()]
-    .map((f) => {
-      // Con equivalencia y sin partes en LM, lo certificado es cero.
-      const conLM = !f.sinEquivalencia && f.cantCTV !== null;
-      const cantLM = f.cantLM ?? (conLM ? 0 : null);
-      const subLM = f.subLM ?? (conLM && f.cantLM === null ? 0 : null);
-      return {
-        ...f,
-        cantLM,
-        subLM,
-        difCant: (f.cantCTV || 0) - (cantLM || 0),
-        dif: (f.subCTV || 0) - (subLM || 0),
-      };
-    })
-    .sort((a, b) => ordenar(a.tarea, b.tarea));
-};
-
-/**
  * La comparativa de un mes de Contable (05/11/2026): la tabla del mes con las
  * tareas de Citrusvil juntadas por la de La Martina que les toca.
  *
@@ -370,12 +117,16 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   const location = useLocation();
   const [rangoInicial] = useState(() => location.state?.rango || null);
   // Volumétrica (antes cantidad tareas) o costos tarea (07/11/2026): por ahora lo mismo.
-  const { titulo: nombre, colores: col } = TIPOS_COMPARATIVA[tipo] || TIPOS_COMPARATIVA.cantidad;
+  const { titulo: nombre, colores: col, ruta: rutaTipo } = TIPOS_COMPARATIVA[tipo] || TIPOS_COMPARATIVA.cantidad;
   // Los encabezados de las tablas, con el color de esta comparativa.
   const th = { ...TH, backgroundColor: col.oscuro };
   const { anio, mes, campo: campoId } = useParams();
   const campo = CAMPOS_COMPARATIVA.find((c) => c.id === campoId);
   const clave = `${anio}/${mes}`;
+  // Las observaciones de cada fila de la solapa Comparativa (12/11/2026) y la
+  // fila cuyo modal está abierto: { clave, tarea, modo: "agregar" | "ver" }.
+  const observaciones = useObservaciones({ anio, mes, campo: campo?.id, tipo });
+  const [obsFila, setObsFila] = useState(null);
   const enMemoria = memoriaTablas.get(clave);
 
   const [filas, setFilas] = useState(enMemoria?.filas || []);
@@ -383,6 +134,8 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   // Las equivalencias solo para costos (Equivalencias › Ctv → LM, "LM en
   // costos"): [{ nombre de Citrusvil, tareas: [id de La Martina] }].
   const [costosEq, setCostosEq] = useState([]);
+  // Las tareas de Ctv que se multiplican (12/11/2026, doble pasada): clave → factor.
+  const [multiplicadores, setMultiplicadores] = useState(new Map());
   const [tareas, setTareas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState(FILTRO_VACIO);
@@ -399,6 +152,8 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   // El precio del gasoil con su fecha (Equivalencias tareas/variables), para
   // la página Costos. Del más nuevo al más viejo.
   const [preciosGasoil, setPreciosGasoil] = useState([]);
+  // Los alquileres con sus montos (12/11/2026), para la de costos.
+  const [alquileres, setAlquileres] = useState([]);
   // Lo certificado en LM: null hasta que se abre la solapa.
   const [lm, setLm] = useState(null);
 
@@ -409,11 +164,12 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
     let vigente = true;
     Promise.all([
       api.get(`/contable/filas/${anio}/${mes}`).catch(() => null),
-      api.get("/contable/equivalencias").catch(() => null),
+      api.get(`/contable/equivalencias?anio=${anio}&mes=${mes}&liviano=1`).catch(() => null),
       api.get("/tareas").catch(() => []),
       resultado ? api.get("/contable/gasoil").catch(() => []) : [],
+      tipo === "costos" ? api.get("/contable/alquileres").catch(() => []) : [],
     ])
-      .then(([datos, eq, lista, gasoil]) => {
+      .then(([datos, eq, lista, gasoil, alqs]) => {
         if (datos) {
           memoriaTablas.set(clave, { filas: Array.isArray(datos.filas) ? datos.filas : [], tabla: datos.tabla || null });
         }
@@ -421,14 +177,18 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
         if (datos) setFilas(Array.isArray(datos.filas) ? datos.filas : []);
         setEquivalencias(Array.isArray(eq?.equivalencias) ? eq.equivalencias : []);
         setCostosEq(Array.isArray(eq?.costos) ? eq.costos : []);
+        setMultiplicadores(
+          new Map((Array.isArray(eq?.multiplicadores) ? eq.multiplicadores : []).map((m) => [claveTarea(m.nombre), m.factor]))
+        );
         setTareas(Array.isArray(lista) ? lista : lista?.data || []);
         setPreciosGasoil(Array.isArray(gasoil) ? gasoil : []);
+        setAlquileres(Array.isArray(alqs) ? alqs : []);
       })
       .finally(() => vigente && setCargando(false));
     return () => {
       vigente = false;
     };
-  }, [anio, mes, clave, resultado]);
+  }, [anio, mes, clave, resultado, tipo]);
 
   // Lo del mes que no depende de las fechas: el período de la certificación,
   // los precios, las correcciones a mano y quiénes están "sin contar".
@@ -532,54 +292,6 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   }, [base, rango, rangoValido, lmAlDia, esRangoCert, campo, anio, mes]);
 
 
-  // Clave de Citrusvil → id de La Martina, e id → la tarea de La Martina.
-  // Las tareas de La Martina que tienen alguna de Citrusvil.
-  // En la de costos también las que son "LM en costos" de alguna de Ctv.
-  const conEquivalencia = useMemo(() => {
-    const ids = new Set(equivalencias.filter((e) => (e.citrusvil || []).length).map((e) => String(e.tarea)));
-    if (tipo === "costos") for (const c of costosEq) for (const id of c.tareas || []) ids.add(String(id));
-    return ids;
-  }, [equivalencias, costosEq, tipo]);
-  // Las tareas de La Martina que comparten una de Citrusvil, juntas.
-  const juntas = useMemo(() => juntarTareasLM(equivalencias, tareas), [equivalencias, tareas]);
-  // Clave de Citrusvil → el grupo de tareas de La Martina, y grupo → nombre.
-  const laMartinaDe = useMemo(() => {
-    const m = new Map();
-    for (const e of equivalencias)
-      for (const c of e.citrusvil || []) m.set(claveTarea(c), juntas.grupoDe.get(String(e.tarea)) || String(e.tarea));
-    return m;
-  }, [equivalencias, juntas]);
-  const tareaLM = juntas.tareaDe;
-
-  // Solo las filas del campo: su "Denominación almacén", comparada sin
-  // mayúsculas, acentos ni espacios.
-  const filasCampo = useMemo(
-    () => (campo ? filas.filter((f) => campo.almacenes.includes(claveTarea(f.almacen))) : []),
-    [filas, campo]
-  );
-  const grupos = useMemo(() => agrupar(filasCampo, laMartinaDe, tareaLM), [filasCampo, laMartinaDe, tareaLM]);
-
-  // El precio de Ctv de cada tarea de La Martina en este campo. Si está en
-  // más de un almacén, el ponderado de todos: subtotal / cantidad (12/11/2026).
-  const preciosCTV = useMemo(() => {
-    const suma = new Map();
-    for (const g of grupos) {
-      if (!g.idLM) continue;
-      const id = String(g.idLM);
-      const s = suma.get(id) || { cantidad: 0, subtotal: 0 };
-      s.cantidad += g.cantidad;
-      s.subtotal += g.subtotal;
-      suma.set(id, s);
-    }
-    const m = new Map();
-    for (const [id, s] of suma) if (s.cantidad) m.set(id, s.subtotal / s.cantidad);
-    return m;
-  }, [grupos]);
-  const gruposLM = useMemo(
-    () => (lm && campo ? agruparLM(lm.filas, lm.excluidos, campo.titulo, preciosCTV, conEquivalencia, juntas) : []),
-    [lm, campo, preciosCTV, conEquivalencia, juntas]
-  );
-
   // En la de costos, la solapa de LM va con lo que se le paga a la gente
   // (Variables de remuneración de ese campo), y la Comparativa también
   // (07/11/2026): cuánto paga Ctv contra cuánto gasta LM.
@@ -591,69 +303,29 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   const conPlata = esCostos;
   // El ayudamemoria de cada columna (ⓘ en los encabezados, 12/11/2026).
   const ayudas = useMemo(() => ayudasComparativa({ esCostos }), [esCostos]);
-  const gruposLMPersonal = useMemo(
+
+  // Todo el cálculo de la comparativa del mes, en utils/calculoComparativa.js
+  // (12/11/2026): lo usa también el Acumulado, mes por mes.
+  const calculo = useMemo(
     () =>
-      esCostos && lm && campo
-        ? agruparLM(lm.filas, lm.excluidos, campo.titulo, preciosCTV, conEquivalencia, juntas, true)
-        : [],
-    [esCostos, lm, campo, preciosCTV, conEquivalencia, juntas]
+      calcularComparativa({
+        tipo,
+        campo,
+        anio,
+        mes,
+        filas,
+        equivalencias,
+        costosEq,
+        tareas,
+        alquileres,
+        multiplicadores,
+        lm,
+        base,
+        rango,
+      }),
+    [tipo, campo, anio, mes, filas, equivalencias, costosEq, tareas, alquileres, multiplicadores, lm, base, rango]
   );
-  // En la de costos, una tarea sin partes en el período no tiene lo pagado
-  // de dónde sacar el precio: va el vigente de Variables de remuneración del
-  // campo al último día del rango, con el cliente Citrusvil (07/11/2026). Se
-  // marca para que se vea que no sale de lo pagado. Con varias tareas juntas
-  // ("A + B") y precios distintos, el promedio.
-  // El cruce de la Comparativa de costos: el grupo de La Martina de cada tarea
-  // de Ctv con "LM en costos" → el grupo de esa tarea de costos. Va por la
-  // fila de Ctv entera: si en la fila hay varias de Ctv, manda la primera que
-  // tenga. Con varias tareas de costos, la primera.
-  const cruceCostos = useMemo(() => {
-    const m = new Map();
-    if (!esCostos) return m;
-    for (const c of costosEq) {
-      const grupoCtv = laMartinaDe.get(claveTarea(c.nombre));
-      const t = (c.tareas || []).map(String)[0];
-      if (!grupoCtv || !t || m.has(grupoCtv)) continue;
-      const grupoCostos = juntas.grupoDe.get(t) || t;
-      if (grupoCostos !== grupoCtv) m.set(grupoCtv, grupoCostos);
-    }
-    return m;
-  }, [esCostos, costosEq, laMartinaDe, juntas]);
-
-  // En la de costos, la tarea de siempre de una que tiene "LM en costos" no
-  // va en lo pagado a la gente: en su lugar va la de costos (ej. Horas Motor
-  // Generador sale y queda MotoGenerador-Personal).
-  const gruposLMCostos = useMemo(
-    () => gruposLMPersonal.filter((g) => !cruceCostos.has(g.clave.slice(3))),
-    [gruposLMPersonal, cruceCostos]
-  );
-
-  const gruposComp = useMemo(() => {
-    const nombres = new Map(juntas.tareaDe);
-    for (const t of tareas) if (!nombres.has(String(t._id))) nombres.set(String(t._id), { tarea: t.tarea });
-    const comparados = compararGrupos(grupos, esCostos ? gruposLMCostos : gruposLM, cruceCostos, nombres);
-    if (!esCostos || !base?.variables || !rango?.hasta) return comparados;
-    const miembros = new Map();
-    for (const [id, grupo] of juntas.grupoDe) miembros.set(grupo, [...(miembros.get(grupo) || []), id]);
-    return comparados.map((f) => {
-      if (f.precioLM !== null || !f.grupoLM) return f;
-      const ids = miembros.get(f.grupoLM) || [f.grupoLM];
-      const precios = [
-        ...new Set(
-          ids
-            .map((id) => precioVigente(base.variables, id, "Citrusvil", rango.hasta)?.neto)
-            .filter((p) => Number.isFinite(p))
-        ),
-      ];
-      if (!precios.length) return f;
-      return {
-        ...f,
-        precioLM: precios.reduce((a, p) => a + p, 0) / precios.length,
-        variosPreciosLM: precios.length > 1,
-        precioLMVariables: true,
-      };
-    });
-  }, [grupos, gruposLM, gruposLMCostos, esCostos, base, rango, juntas, cruceCostos, tareas]);
+  const { juntas, grupos, gruposLM, gruposLMCostos, gruposComp } = calculo;
 
   /**
    * La página Costos (07/11/2026): por cada fila de la Comparativa de costos,
@@ -683,7 +355,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
       porGrupo.set(grupo, g);
     }
     return gruposComp.map((f) => {
-      const grupos = [...new Set([f.grupoLM, f.grupoCtv].filter(Boolean))];
+      const grupos = [...new Set([f.grupoLM, f.grupoCtv, ...(f.gruposLM || []), ...(f.gruposCtv || [])].filter(Boolean))];
       const datos = grupos.map((g) => porGrupo.get(g)).filter(Boolean);
       const litros = datos.length ? datos.reduce((a, d) => a + d.litros, 0) : null;
       const gasoil = datos.length ? datos.reduce((a, d) => a + d.pesos, 0) : null;
@@ -704,24 +376,47 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
   // en la de costos, a lo que se le pagó a la gente ese día.
   const diasHistorial = useMemo(() => {
     if (!historial) return null;
+    // El nombre de cada tarea de La Martina, para la columna Tarea (12/11/2026).
+    const nombreDe = (g) =>
+      juntas.tareaDe.get(g)?.tarea || tareas.find((t) => String(t._id) === g)?.tarea || "Tarea borrada";
+    const principal = historial.grupoLM ? nombreDe(historial.grupoLM) : historial.tarea;
     const porFecha = new Map();
-    const dia = (f) => {
-      if (!porFecha.has(f)) porFecha.set(f, { fecha: f, ctv: null, subCTV: null, lm: null });
-      return porFecha.get(f);
+    // `grupo`: una tarea que suma al subtotal va en su propio renglón.
+    const dia = (f, grupo = null) => {
+      const k = grupo ? `${f}|${grupo}` : f;
+      if (!porFecha.has(k)) {
+        porFecha.set(k, {
+          clave: k,
+          fecha: f,
+          tareaLM: grupo ? nombreDe(grupo) : principal,
+          extra: Boolean(grupo),
+          ctv: null,
+          subCTV: null,
+          lm: null,
+        });
+      }
+      return porFecha.get(k);
     };
     for (const f of historial.filasCtv) {
       const d = dia(String(f.fecha || "").slice(0, 10));
       d.ctv = (d.ctv || 0) + (f.cantidad || 0);
       d.subCTV = (d.subCTV || 0) + (f.subtotal || 0);
     }
-    if (historial.grupoLM && lm?.dias) {
+    // Los grupos de LM de la fila: uno, o varios en una juntada de costos.
+    const gruposH = new Set([historial.grupoLM, ...(historial.gruposLM || [])].filter(Boolean));
+    const soloPlata = new Set(historial.gruposSoloPlata || []);
+    if (gruposH.size && lm?.dias) {
       for (const [idPersona, lista] of lm.dias) {
         if (lm.excluidos.has(idPersona)) continue;
         for (const x of lista) {
           const id = String(x.idTarea);
-          if ((juntas.grupoDe.get(id) || id) !== historial.grupoLM) continue;
-          const d = dia(x.fecha);
-          d.lm = (d.lm || 0) + (x.cantidad || 0);
+          const grupo = juntas.grupoDe.get(id) || id;
+          if (!gruposH.has(grupo)) continue;
+          const d = dia(x.fecha, soloPlata.has(grupo) ? grupo : null);
+          // De una tarea extra de costos, la cantidad va aparte, solo para
+          // ver: no se suma a la de la fila (12/11/2026).
+          if (!soloPlata.has(grupo)) d.lm = (d.lm || 0) + (x.cantidad || 0);
+          else d.lmInfo = (d.lmInfo || 0) + (x.cantidad || 0);
           if (x.importe !== null && x.importe !== undefined) d.pagadoLM = (d.pagadoLM || 0) + x.importe;
         }
       }
@@ -729,9 +424,34 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
     const precio = historial.precio;
     const conPlata = (d) => {
       const subLM = esCostos ? (d.pagadoLM ?? null) : d.lm === null || precio === null ? null : d.lm * precio;
-      return { ...d, subLM, difCant: (d.ctv || 0) - (d.lm || 0), dif: (d.subCTV || 0) - (subLM || 0) };
+      return {
+        ...d,
+        subLM,
+        difCant: d.extra ? null : (d.ctv || 0) - (d.lm || 0),
+        dif: (d.subCTV || 0) - (subLM || 0),
+      };
     };
-    const dias = [...porFecha.values()].sort((a, b) => a.fecha.localeCompare(b.fecha)).map(conPlata);
+    const dias = [...porFecha.values()]
+      .sort((a, b) => a.fecha.localeCompare(b.fecha) || Number(a.extra) - Number(b.extra))
+      .map(conPlata);
+    // Los alquileres de la fila (12/11/2026): un renglón cada uno con su
+    // monto, así no quedan como corrección a mano. Sin tareas en la fila,
+    // cada uno cuenta 1.
+    const soloAlquiler = !historial.grupoLM && !(historial.gruposLM || []).length;
+    for (const a of historial.alquileresFila || []) {
+      dias.push(
+        conPlata({
+          clave: `alq:${a.nombre}`,
+          fecha: `alq:${a.nombre}`,
+          alquiler: a.nombre,
+          tareaLM: a.nombre,
+          ctv: null,
+          subCTV: null,
+          lm: soloAlquiler ? 1 : null,
+          pagadoLM: a.monto,
+        })
+      );
+    }
     // Las correcciones a mano (Contable - Pagos) no son de un día: si el
     // total de LM no da la suma de los días, la diferencia va en su renglón.
     const sumaLM = dias.reduce((a, d) => a + (d.lm || 0), 0);
@@ -742,6 +462,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
     if (Math.abs(ajuste) > 0.0005 || Math.abs(ajustePlata) > 0.005) {
       dias.push(
         conPlata({
+          clave: "ajuste",
           fecha: "ajuste",
           ctv: null,
           subCTV: null,
@@ -751,25 +472,27 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
       );
     }
     return dias;
-  }, [historial, lm, juntas, esCostos]);
+  }, [historial, lm, juntas, esCostos, tareas]);
 
   // El historial de la página Costos (07/11/2026): el de arriba más los litros
   // de gasoil de cada día (de las dos tareas en una fila cruzada), lo que
   // valen al precio del gasoil del cierre siguiente y el resultado del día.
   const diasCostos = useMemo(() => {
     if (!resultado || !historial || !diasHistorial) return null;
-    const grupos = new Set([historial.grupoLM, historial.grupoCtv].filter(Boolean));
+    const grupos = new Set(
+      [historial.grupoLM, historial.grupoCtv, ...(historial.gruposLM || []), ...(historial.gruposCtv || [])].filter(Boolean)
+    );
     const litrosDia = new Map();
     for (const x of lm?.litros || []) {
       const g = juntas.grupoDe.get(x.idTarea) || x.idTarea;
       if (grupos.has(g)) litrosDia.set(x.fecha, (litrosDia.get(x.fecha) || 0) + x.litros);
     }
     const dias = diasHistorial.map((d) => ({ ...d }));
-    const porFecha = new Map(dias.map((d) => [d.fecha, d]));
+    const porFecha = new Map(dias.filter((d) => !d.extra && !d.alquiler).map((d) => [d.fecha, d]));
     for (const [f, litros] of litrosDia) {
       let d = porFecha.get(f);
       if (!d) {
-        d = { fecha: f, ctv: null, subCTV: null, lm: null, subLM: null };
+        d = { clave: f, fecha: f, tareaLM: diasHistorial[0]?.tareaLM, ctv: null, subCTV: null, lm: null, subLM: null };
         dias.push(d);
         porFecha.set(f, d);
       }
@@ -781,8 +504,17 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
         const gasoil = d.litros && precio !== null ? d.litros * precio : null;
         return { ...d, gasoil, resultado: (d.subCTV || 0) - (d.subLM || 0) - (gasoil || 0) };
       })
-      .sort((a, b) => (a.fecha === "ajuste" ? 1 : b.fecha === "ajuste" ? -1 : a.fecha.localeCompare(b.fecha)));
+      .sort((a, b) =>
+        a.fecha === "ajuste"
+          ? 1
+          : b.fecha === "ajuste"
+            ? -1
+            : a.fecha.localeCompare(b.fecha) || Number(Boolean(a.extra)) - Number(Boolean(b.extra))
+      );
   }, [resultado, historial, diasHistorial, lm, juntas, gasoilCierre]);
+
+  // Si la fila del historial junta varias tareas o alquileres: columna Tarea.
+  const historialVarias = Boolean(historial?.gruposSoloPlata?.length || historial?.alquileresFila?.length);
 
   // Lo de la solapa abierta.
   const esLM = solapa === "lm";
@@ -912,6 +644,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
         gasoil={gasoilCierre}
         historial={historial}
         diasHistorial={diasCostos}
+        historialVarias={historialVarias}
         onVerHistorial={setHistorial}
         onCerrarHistorial={() => setHistorial(null)}
       />
@@ -944,7 +677,9 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
       <Container
         fluid
         className="px-4 py-3 d-flex flex-column flex-grow-1"
-        style={{ maxWidth: "1100px", width: "100%", margin: "0 auto", minHeight: 0 }}
+        // La de costos tiene más columnas: más ancha, para que entre
+        // Observaciones (12/11/2026).
+        style={{ maxWidth: esCostos ? "1320px" : "1100px", width: "100%", margin: "0 auto", minHeight: 0 }}
       >
         {/* Encabezado. El volver está en el navbar de Contable, arriba. */}
         <div className="d-flex align-items-center gap-3 mb-3 flex-wrap">
@@ -1079,6 +814,28 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                 )}
               </div>
             )}
+            {/* La evolución de las tarifas de Ctv y el acumulado del año
+                (12/11/2026): a la derecha, a la altura del filtro de tarea. */}
+            <button
+              type="button"
+              className="btn btn-sm d-flex align-items-center gap-2 px-3 fw-semibold ms-auto rounded-3"
+              style={{ backgroundColor: "#fff", borderColor: col.medio, color: col.oscuro, fontSize: "0.78rem", height: "32px" }}
+              onClick={() => navigate(`/contable/${anio}/${mes}/${rutaTipo}/${campo.id}/tarifas`)}
+              title={`Precio unitario de Ctv de cada mes de ${anio}`}
+            >
+              <i className="bi bi-graph-up-arrow"></i>
+              Evolución tarifas Ctv
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm d-flex align-items-center gap-2 px-3 fw-semibold rounded-3"
+              style={{ backgroundColor: col.medio, borderColor: col.medio, color: "#fff", fontSize: "0.78rem", height: "32px" }}
+              onClick={() => navigate(`/contable/${anio}/${mes}/${rutaTipo}/${campo.id}/acumulado`)}
+              title={`Diferencia de cada mes de ${anio}`}
+            >
+              <i className="bi bi-calendar3"></i>
+              Acumulado {anio}
+            </button>
           </div>
         </Card>
 
@@ -1134,6 +891,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
             minHeight: 0,
             width: "100%",
             overflowY: "auto",
+            // Sin scroll de costado (pedido del usuario, 12/11/2026).
             overflowX: "hidden",
             border: "1px solid #cbd5e1",
             borderRadius: "0 0.5rem 0.5rem 0.5rem",
@@ -1161,18 +919,20 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     <th style={{ ...th, width: "115px", textAlign: "center" }}>Diferencia<AyudaColumna titulo={"Diferencia"} ayuda={ayudas.comp.dif} color={col.icono} /></th>
                   </>
                 )}
+                {/* Cualquiera escribe con el "+"; el ojo, si hay algo (12/11/2026). */}
+                <th className="col-corte" style={{ ...th, width: "95px", minWidth: "95px", textAlign: "center" }}>Observaciones</th>
               </tr>
             </thead>
             <tbody>
               {cargandoActivo ? (
                 <tr>
-                  <td colSpan={esCostos ? 10 : conPlata ? 9 : 5} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={esCostos ? 11 : conPlata ? 10 : 6} className="text-center text-muted py-4" style={td}>
                     <Spinner animation="border" size="sm" style={{ color: col.medio }} />
                   </td>
                 </tr>
               ) : !visibles.length ? (
                 <tr>
-                  <td colSpan={esCostos ? 10 : conPlata ? 9 : 5} className="text-center text-muted py-4" style={td}>
+                  <td colSpan={esCostos ? 11 : conPlata ? 10 : 6} className="text-center text-muted py-4" style={td}>
                     {activos.length ? "Ninguna fila coincide con los filtros" : "No hay nada que comparar en este mes"}
                   </td>
                 </tr>
@@ -1207,6 +967,26 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                               title="Equivalencia de costos (Equivalencias › Ctv → LM)"
                             >
                               LM: {g.tareaLMCostos}
+                              {g.sinMontoAlquiler && !g.tareasCtvCostos?.length && (
+                                <span className="ms-1" style={{ color: "#dc2626", fontWeight: 600 }}>
+                                  · alquiler sin monto cargado a esa fecha
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {/* Una fila juntada de costos (12/11/2026): de qué tareas de Ctv viene. */}
+                          {g.tareasCtvCostos?.length > 0 && (
+                            <div
+                              style={{ fontSize: "0.62rem", color: "#64748b" }}
+                              title="Equivalencia de costos (Equivalencias › Ctv → LM): se suman todas"
+                            >
+                              {g.alquileresFila?.length > 0 && <i className="bi bi-key-fill me-1"></i>}
+                              Ctv: {g.tareasCtvCostos.join(", ")}
+                              {g.sinMontoAlquiler && (
+                                <span className="ms-1" style={{ color: "#dc2626", fontWeight: 600 }}>
+                                  · alquiler sin monto cargado a esa fecha
+                                </span>
+                              )}
                             </div>
                           )}
                         </td>
@@ -1254,6 +1034,13 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                             </td>
                           </>
                         )}
+                        <td className="col-corte" style={td}>
+                          <BotonesObservacion
+                            notas={observaciones.porClave.get(g.clave)}
+                            onAgregar={() => setObsFila({ clave: g.clave, tarea: g.tarea, modo: "agregar" })}
+                            onVer={() => setObsFila({ clave: g.clave, tarea: g.tarea, modo: "ver" })}
+                          />
+                        </td>
                       </tr>
                     );
                   })}
@@ -1282,6 +1069,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     >
                       {pesos(totalComp.dif)}
                     </td>
+                    <td className="col-corte" style={td}></td>
                   </tr>
                   )}
                 </>
@@ -1387,6 +1175,16 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
         </div>
       </Container>
 
+      {/* Escribir y ver las observaciones de una fila de la Comparativa. */}
+      <ModalesObservacion
+        fila={obsFila}
+        onCerrar={() => setObsFila(null)}
+        notas={obsFila ? observaciones.porClave.get(obsFila.clave) || [] : []}
+        onAgregar={observaciones.agregar}
+        onBorrar={observaciones.borrar}
+        color={col.oscuro}
+      />
+
       {/* El detalle de un grupo: las filas del Excel que lo forman. */}
       <Modal
         show={Boolean(detalle)}
@@ -1429,7 +1227,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
               <button
                 className="btn btn-sm ms-auto d-flex align-items-center gap-1 px-3"
                 style={{ backgroundColor: col.medio, borderColor: col.medio, color: "#fff", fontSize: "0.78rem" }}
-                onClick={() => navigate("/contable/equivalencias")}
+                onClick={() => navigate(`/contable/${anio}/${mes}/equivalencias`)}
               >
                 <i className="bi bi-arrow-left-right"></i>
                 Cargar la equivalencia
@@ -1475,7 +1273,14 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                         )}
                       </td>
                       <td style={td}>{f.cliente || raya}</td>
-                      <td style={{ ...td, textAlign: "center" }}>{cantidad(f.cantidad) ?? raya}</td>
+                      <td style={{ ...td, textAlign: "center" }}>
+                        {cantidad(f.cantidad) ?? raya}
+                        {f.factor && (
+                          <span className="ms-1" style={{ fontSize: "0.6rem", color: "#7c3aed", fontWeight: 700 }} title="Multiplicada (Equivalencias › Ctv → LM)">
+                            ×{f.factor}
+                          </span>
+                        )}
+                      </td>
                       <td style={{ ...td, textAlign: "center" }}>{f.unidad || raya}</td>
                       {conPlata && (
                         <>
@@ -1533,7 +1338,14 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     <td style={{ ...td, textAlign: "center" }}>{f.documentoCompras || raya}</td>
                     <td style={{ ...td, textAlign: "center" }}>{f.ordenTrabajo || raya}</td>
                     <td style={td}>{f.tarea || raya}</td>
-                    <td style={{ ...td, textAlign: "center" }}>{cantidad(f.cantidad) ?? raya}</td>
+                    <td style={{ ...td, textAlign: "center" }}>
+                      {cantidad(f.cantidad) ?? raya}
+                      {f.factor && (
+                        <span className="ms-1" style={{ fontSize: "0.6rem", color: "#7c3aed", fontWeight: 700 }} title="Multiplicada (Equivalencias › Ctv → LM)">
+                          ×{f.factor}
+                        </span>
+                      )}
+                    </td>
                     <td style={{ ...td, textAlign: "center" }}>{f.unidad || raya}</td>
                     {conPlata && (
                       <>
@@ -1579,7 +1391,8 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
         show={Boolean(historial)}
         onHide={() => setHistorial(null)}
         centered
-        size="lg"
+        // Más ancho con la columna Tarea LM, así no hay scroll de costado.
+        size={historialVarias ? "xl" : "lg"}
         contentClassName="border-0 shadow-lg rounded-4"
       >
         <Modal.Header
@@ -1622,18 +1435,20 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
               <button
                 className="btn btn-sm ms-auto d-flex align-items-center gap-1 px-3"
                 style={{ backgroundColor: col.medio, borderColor: col.medio, color: "#fff", fontSize: "0.78rem" }}
-                onClick={() => navigate("/contable/equivalencias")}
+                onClick={() => navigate(`/contable/${anio}/${mes}/equivalencias`)}
               >
                 <i className="bi bi-arrow-left-right"></i>
                 Cargar la equivalencia
               </button>
             </div>
           )}
-          <div className="rounded-3 bg-white" style={{ maxHeight: "60vh", overflowY: "auto", border: "1px solid #cbd5e1" }}>
+          <div className="rounded-3 bg-white" style={{ maxHeight: "60vh", overflowY: "auto", overflowX: "hidden", border: "1px solid #cbd5e1" }}>
             <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
               <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: col.oscuro, color: "#fff" }}>
                 <tr>
                   <th style={{ ...th, textAlign: "center" }}>Fecha<AyudaColumna titulo={"Fecha"} ayuda={ayudas.comp.fecha} color={col.icono} /></th>
+                  {/* A qué tarea va cada valor, si la fila junta varias (12/11/2026). */}
+                  {historialVarias && <th style={th}>Tarea LM</th>}
                   <th className="col-corte" style={{ ...th, textAlign: "center" }}>Cant. pagado Ctv<AyudaColumna titulo={"Cant. pagado Ctv"} ayuda={ayudas.comp.cantCtv} color={col.icono} /></th>
                   <th style={{ ...th, textAlign: "center" }}>{cantLMTitulo}<AyudaColumna titulo={cantLMTitulo} ayuda={ayudas.comp.cantLM} color={col.icono} /></th>
                   <th style={{ ...th, textAlign: "center" }}>Dif. cant.<AyudaColumna titulo={"Dif. cant."} ayuda={ayudas.comp.difCant} color={col.icono} /></th>
@@ -1649,7 +1464,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
               <tbody>
                 {!diasHistorial?.length ? (
                   <tr>
-                    <td colSpan={conPlata ? 7 : 4} className="text-center text-muted py-4" style={td}>
+                    <td colSpan={(conPlata ? 7 : 4) + (historialVarias ? 1 : 0)} className="text-center text-muted py-4" style={td}>
                       No hay días para mostrar
                     </td>
                   </tr>
@@ -1658,9 +1473,18 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     {diasHistorial.map((d) => {
                       const colorDif = (v) => (v > 0.005 ? "#15803d" : v < -0.005 ? "#dc2626" : undefined);
                       return (
-                        <tr key={d.fecha}>
+                        <tr key={d.clave || d.fecha}>
                           <td style={{ ...td, textAlign: "center", whiteSpace: "nowrap" }}>
-                            {d.fecha === "ajuste" ? (
+                            {d.alquiler ? (
+                              historialVarias ? (
+                                <span style={{ color: "#64748b", fontStyle: "italic" }}>Del mes</span>
+                              ) : (
+                                <span style={{ color: "#7c3aed", fontWeight: 600 }} title="Monto del alquiler del mes (Equivalencias)">
+                                  <i className="bi bi-key-fill me-1"></i>
+                                  {d.alquiler}
+                                </span>
+                              )
+                            ) : d.fecha === "ajuste" ? (
                               <span style={{ color: "#64748b", fontStyle: "italic" }} title="Correcciones a mano de Contable - Pagos">
                                 Correcciones a mano
                               </span>
@@ -1670,10 +1494,25 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                               raya
                             )}
                           </td>
+                          {historialVarias && (
+                            <td style={{ ...td, color: d.extra || d.alquiler ? "#7c3aed" : undefined }}>
+                              {d.alquiler && <i className="bi bi-key-fill me-1"></i>}
+                              {d.fecha === "ajuste" ? raya : d.tareaLM || raya}
+                              {d.extra && <span style={{ fontSize: "0.62rem", color: "#94a3b8" }}> (suma al subtotal)</span>}
+                            </td>
+                          )}
                           <td className="col-corte" style={{ ...td, textAlign: "center" }}>{cantidad(d.ctv) ?? raya}</td>
-                          <td style={{ ...td, textAlign: "center" }}>{cantidad(d.lm) ?? raya}</td>
+                          <td style={{ ...td, textAlign: "center" }}>
+                            {d.extra ? (
+                              <span style={{ color: "#94a3b8" }} title="Horas de esta tarea: no se suman a las de la fila">
+                                {cantidad(d.lmInfo) ?? raya}
+                              </span>
+                            ) : (
+                              cantidad(d.lm) ?? raya
+                            )}
+                          </td>
                           <td style={{ ...td, textAlign: "center", fontWeight: 600, color: colorDif(d.difCant) }}>
-                            {cantidad(d.difCant)}
+                            {d.difCant === null ? raya : cantidad(d.difCant)}
                           </td>
                           {conPlata && (
                             <>
@@ -1691,6 +1530,7 @@ function ContableComparativa({ tipo = "cantidad", graficos = false, resultado = 
                     })}
                     <tr className="fila-total">
                       <td style={{ ...td, fontWeight: 700, color: col.oscuro }}>TOTAL</td>
+                      {historialVarias && <td style={td}></td>}
                       <td className="col-corte" style={{ ...td, textAlign: "center", fontWeight: 700 }}>
                         {cantidad(historial.cantCTV) ?? raya}
                       </td>

@@ -63,7 +63,9 @@ const ContableMes = lazy(() => import("./components/pages/ContableMes"));
 const ContableTabla = lazy(() => import("./components/pages/ContableTabla"));
 const ContableComparativa = lazy(() => import("./components/pages/ContableComparativa"));
 const ContableComparativaCampos = lazy(() => import("./components/pages/ContableComparativaCampos"));
-const ContableEquivalencias = lazy(() => import("./components/pages/ContableEquivalencias"));const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
+const ContableEquivalencias = lazy(() => import("./components/pages/ContableEquivalencias"));
+const ContableAcumulado = lazy(() => import("./components/pages/ContableAcumulado"));
+const ContableTarifasCtv = lazy(() => import("./components/pages/ContableTarifasCtv"));const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
 const ProduccionCertificadoMenu = lazy(() => import("./components/pages/ProduccionCertificadoMenu"));
 const ProduccionInformesMenu = lazy(() => import("./components/pages/ProduccionInformesMenu"));
 const ProduccionInformeMes = lazy(() => import("./components/pages/ProduccionInformeMes"));
@@ -342,27 +344,24 @@ function LayoutDesktop() {
               {/* Contable: la misma grilla de meses que los certificados de
                   Producción (con los períodos de Berdina). Cada mes tiene su
                   Excel mensual (05/11/2026). */}
-              <Route
-                path="/contable"
-                element={
-                  <ProduccionCertificados
-                    base="/contable"
-                    extra={{
-                      titulo: "Equivalencias tareas/variables",
-                      icono: "bi bi-arrow-left-right",
-                      destino: "/contable/equivalencias",
-                      permiso: "contable.equivalencias",
-                    }}
-                  />
-                }
-              />
-              <Route path="/contable/equivalencias" element={<ContableEquivalencias />} />
+              {/* Equivalencias ya no está en la grilla: es una tarjeta dentro
+                  de cada mes (12/11/2026). */}
+              <Route path="/contable" element={<ProduccionCertificados base="/contable" />} />
+              {/* Equivalencias se mira desde un mes (12/11/2026): cada unión vale
+                  solo ese mes o ese y los que vienen. */}
+              <Route path="/contable/:anio/:mes/equivalencias" element={<ContableEquivalencias />} />
               {/* El mes: primero el Excel mensual, después su tabla. */}
               <Route path="/contable/:anio/:mes" element={<ContableMes />} />
               <Route path="/contable/:anio/:mes/tabla" element={<ContableTabla />} />
               {/* La tabla del mes juntada por tarea de La Martina (05/11/2026). */}
               <Route path="/contable/:anio/:mes/comparativa" element={<ContableComparativaCampos />} />
               <Route path="/contable/:anio/:mes/comparativa/:campo" element={<ContableComparativa />} />
+              {/* El acumulado del año de cada campo (12/11/2026): la diferencia de cada mes. */}
+              <Route path="/contable/:anio/:mes/comparativa/:campo/acumulado" element={<ContableAcumulado key="acum-cantidad" />} />
+              <Route path="/contable/:anio/:mes/comparativa-costos/:campo/acumulado" element={<ContableAcumulado key="acum-costos" tipo="costos" />} />
+              {/* La evolución de las tarifas de Ctv del año (12/11/2026). */}
+              <Route path="/contable/:anio/:mes/comparativa/:campo/tarifas" element={<ContableTarifasCtv key="tar-cantidad" />} />
+              <Route path="/contable/:anio/:mes/comparativa-costos/:campo/tarifas" element={<ContableTarifasCtv key="tar-costos" tipo="costos" />} />
               <Route path="/contable/:anio/:mes/comparativa-costos" element={<ContableComparativaCampos key="costos" tipo="costos" />} />
               <Route path="/contable/:anio/:mes/comparativa-costos/:campo" element={<ContableComparativa key="costos" tipo="costos" />} />
               <Route path="/contable/:anio/:mes/comparativa-costos/:campo/graficos" element={<ContableComparativa key="costos-graficos" tipo="costos" graficos />} />

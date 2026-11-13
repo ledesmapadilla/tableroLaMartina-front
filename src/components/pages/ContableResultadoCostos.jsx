@@ -238,6 +238,8 @@ function ContableResultadoCostos({
   gasoil,
   historial,
   diasHistorial,
+  // Si la fila junta varias tareas o alquileres: columna Tarea (12/11/2026).
+  historialVarias = false,
   onVerHistorial,
   onCerrarHistorial,
 }) {
@@ -490,11 +492,12 @@ function ContableResultadoCostos({
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-3">
-          <div className="rounded-3 bg-white" style={{ maxHeight: "60vh", overflowY: "auto", border: "1px solid #cbd5e1" }}>
+          <div className="rounded-3 bg-white" style={{ maxHeight: "60vh", overflowY: "auto", overflowX: "hidden", border: "1px solid #cbd5e1" }}>
             <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
               <thead style={{ position: "sticky", top: 0, zIndex: 10, backgroundColor: col.oscuro, color: "#fff" }}>
                 <tr>
                   <th style={th}>Fecha</th>
+                  {historialVarias && <th style={th}>Tarea LM</th>}
                   <th className="col-corte" style={th}>Cant. pagado Ctv</th>
                   <th style={th}>Cant. pagado LM</th>
                   <th className="col-corte" style={th}>Pagado por Ctv</th>
@@ -507,16 +510,25 @@ function ContableResultadoCostos({
               <tbody>
                 {!diasHistorial?.length ? (
                   <tr>
-                    <td colSpan={8} className="text-center text-muted py-4" style={td}>
+                    <td colSpan={historialVarias ? 9 : 8} className="text-center text-muted py-4" style={td}>
                       No hay días para mostrar
                     </td>
                   </tr>
                 ) : (
                   <>
                     {diasHistorial.map((d) => (
-                      <tr key={d.fecha}>
+                      <tr key={d.clave || d.fecha}>
                         <td style={td}>
-                          {d.fecha === "ajuste" ? (
+                          {d.alquiler ? (
+                            historialVarias ? (
+                              <span style={{ color: "#64748b", fontStyle: "italic" }}>Del mes</span>
+                            ) : (
+                              <span style={{ color: "#7c3aed", fontWeight: 600 }} title="Monto del alquiler del mes (Equivalencias)">
+                                <i className="bi bi-key-fill me-1"></i>
+                                {d.alquiler}
+                              </span>
+                            )
+                          ) : d.fecha === "ajuste" ? (
                             <span style={{ color: "#64748b", fontStyle: "italic" }} title="Correcciones a mano de Contable - Pagos">
                               Correcciones a mano
                             </span>
@@ -526,8 +538,23 @@ function ContableResultadoCostos({
                             raya
                           )}
                         </td>
+                        {historialVarias && (
+                          <td style={{ ...td, color: d.extra || d.alquiler ? "#7c3aed" : undefined }}>
+                            {d.alquiler && <i className="bi bi-key-fill me-1"></i>}
+                            {d.fecha === "ajuste" ? raya : d.tareaLM || raya}
+                            {d.extra && <span style={{ fontSize: "0.62rem", color: "#94a3b8" }}> (suma al subtotal)</span>}
+                          </td>
+                        )}
                         <td className="col-corte" style={td}>{cantidad(d.ctv) ?? raya}</td>
-                        <td style={td}>{cantidad(d.lm) ?? raya}</td>
+                        <td style={td}>
+                          {d.extra ? (
+                            <span style={{ color: "#94a3b8" }} title="Horas de esta tarea: no se suman a las de la fila">
+                              {cantidad(d.lmInfo) ?? raya}
+                            </span>
+                          ) : (
+                            cantidad(d.lm) ?? raya
+                          )}
+                        </td>
                         <td className="col-corte" style={td}>{pesos(d.subCTV) ?? raya}</td>
                         <td style={td}>{pesos(d.subLM) ?? raya}</td>
                         <td className="col-corte" style={td}>{litrosTexto(d.litros) ?? raya}</td>
@@ -539,6 +566,7 @@ function ContableResultadoCostos({
                     ))}
                     <tr className="fila-total">
                       <td style={{ ...td, fontWeight: 700, color: col.oscuro }}>TOTAL</td>
+                      {historialVarias && <td style={td}></td>}
                       <td className="col-corte" style={{ ...td, fontWeight: 700 }}>{cantidad(historial?.cantCTV) ?? raya}</td>
                       <td style={{ ...td, fontWeight: 700 }}>{cantidad(historial?.cantLM) ?? raya}</td>
                       <td className="col-corte" style={{ ...td, fontWeight: 700 }}>{pesos(historial?.subCTV) ?? raya}</td>
