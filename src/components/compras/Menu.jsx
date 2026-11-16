@@ -34,6 +34,7 @@ const SECCIONES = [
   { ruta: '/compras/analista', nombre: 'Analista', icono: 'bi bi-clipboard-data-fill', fondo: '#4f46e5', borde: '#818cf8' },
   { ruta: '/compras/comprador', nombre: 'Comprador', icono: 'bi bi-cart-fill', fondo: '#0e7490', borde: '#22d3ee' },
   { ruta: '/compras/gerencia', nombre: 'Gerencia', icono: 'bi bi-patch-check-fill', fondo: '#2d6a4f', borde: '#10b981' },
+  { ruta: '/compras/caja', nombre: 'Caja', icono: 'bi bi-safe2-fill', fondo: '#164e63', borde: '#22d3ee' },
 ]
 
 const seccionDe = (pathname) => SECCIONES.find((s) => pathname.startsWith(s.ruta)) || null

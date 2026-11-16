@@ -45,6 +45,10 @@ const AnalizarItem = lazy(() => import("./components/compras/AnalizarItem"));
 const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
 const Gerencia = lazy(() => import("./components/compras/Gerencia"));
 const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistorial"));
+// Caja desde el celular (13/11/2026): la caja de Contable en pantallas de teléfono.
+const CajaCelInicio = lazy(() => import("./components/compras/caja/CajaInicio"));
+const CajaCelNuevo = lazy(() => import("./components/compras/caja/CajaNuevo"));
+const CajaCelMes = lazy(() => import("./components/compras/caja/CajaMes"));
 const VerOP = lazy(() => import("./components/compras/VerOP"));
 const Usuarios = lazy(() => import("./components/compras/Usuarios"));
 const Roles = lazy(() => import("./components/compras/Roles"));
@@ -67,8 +71,6 @@ const ContableEquivalencias = lazy(() => import("./components/pages/ContableEqui
 const ContableAcumulado = lazy(() => import("./components/pages/ContableAcumulado"));
 const ContableTarifasCtv = lazy(() => import("./components/pages/ContableTarifasCtv"));
 const ContableCaja = lazy(() => import("./components/pages/ContableCaja"));
-const ContableCajaSemana = lazy(() => import("./components/pages/ContableCajaSemana"));
-const ContableCajaAcumulado = lazy(() => import("./components/pages/ContableCajaAcumulado"));
 const ProduccionCertificados = lazy(() => import("./components/pages/ProduccionCertificados"));
 const ProduccionCertificadoMenu = lazy(() => import("./components/pages/ProduccionCertificadoMenu"));
 const ProduccionInformesMenu = lazy(() => import("./components/pages/ProduccionInformesMenu"));
@@ -321,6 +323,14 @@ function LayoutDesktop() {
               <Route path="/compras/gerencia" element={<RutaProtegida><Gerencia /></RutaProtegida>} />
               <Route path="/compras/gerencia/historial" element={<RutaProtegida><GerenciaHistorial /></RutaProtegida>} />
 
+              {/* Caja desde el celular (13/11/2026): la misma caja de Contable,
+                  con las pantallas de la carga de gasoil del SGL. Va en Compras
+                  porque es lo único del Tablero que se abre en el teléfono.
+                  Permiso compras.caja (rol celular, javiercel). */}
+              <Route path="/compras/caja" element={<RutaProtegida><CajaCelInicio /></RutaProtegida>} />
+              <Route path="/compras/caja/nuevo" element={<RutaProtegida><CajaCelNuevo /></RutaProtegida>} />
+              <Route path="/compras/caja/mes" element={<RutaProtegida><CajaCelMes /></RutaProtegida>} />
+
               {/* Gasoil (20/10/2026, en lugar de Resultados): una tarjeta por
                   campo y su planilla. Permiso compras.gasoil. */}
               <Route path="/compras/gasoil" element={<RutaProtegida><Gasoil /></RutaProtegida>} />
@@ -351,9 +361,9 @@ function LayoutDesktop() {
               {/* Equivalencias ya no está en la grilla: es una tarjeta dentro
                   de cada mes (12/11/2026). */}
               {/* Caja (13/11/2026): la tarjeta abajo de los meses, solo para
-                  quien tenga contable.caja en Roles. Abre el calendario de Caja
-                  (formato de Asistencia del Sistema de Gestión Lepa); los días
-                  y los resúmenes, por ahora al 404. */}
+                  quien tenga contable.caja en Roles. Abre directo la tabla de
+                  ingresos y gastos con filtros (segunda versión, como Gasoil
+                  del Sistema de Gestión Lepa). */}
               <Route
                 path="/contable"
                 element={
@@ -364,10 +374,6 @@ function LayoutDesktop() {
                 }
               />
               <Route path="/contable/caja" element={<ContableCaja />} />
-              {/* El control de caja de una semana (viernes a jueves), por su viernes. */}
-              <Route path="/contable/caja/semana/:inicio" element={<ContableCajaSemana />} />
-              {/* El acumulado del año, por mes y semana (13/11/2026). */}
-              <Route path="/contable/caja/acumulado" element={<ContableCajaAcumulado />} />
               <Route path="/contable/caja/*" element={<Error404 />} />
               {/* Equivalencias se mira desde un mes (12/11/2026): cada unión vale
                   solo ese mes o ese y los que vienen. */}

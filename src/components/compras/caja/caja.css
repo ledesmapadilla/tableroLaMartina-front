@@ -1,0 +1,30 @@
+/* Pantallas de Caja del celular (13/11/2026), centradas en lo que queda de
+   alto debajo de la barra de Compras. Los tres valores son escalones de
+   respaldo: el navegador se queda con el último que entiende. --alto-vista lo
+   escribe useAltoVista (comun.js) con el alto visible de verdad. */
+.caja-cel-centrado {
+  min-height: calc(100vh - 80px);
+  min-height: calc(100dvh - 80px);
+  min-height: calc(var(--alto-vista, 100dvh) - 80px);
+}
+
+/* Las opciones de los paneles (Ingreso / Gasto) son <button>: el hover global
+   de index.css las agranda y se salen del panel. Llevan hover igual, pero
+   adentro del panel: se tiñen y se marcan con una sombra hacia adentro. */
+.caja-cel-opcion {
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.caja-cel-opcion:hover {
+  transform: none !important;
+  background-color: rgba(22, 78, 99, 0.14) !important;
+  box-shadow: inset 4px 0 0 #164e63 !important;
+}
+
+/* El valor de la tarjeta puede ocupar dos renglones. */
+.caja-cel-valor {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}

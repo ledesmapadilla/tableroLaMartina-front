@@ -24,6 +24,9 @@ const REGLAS = [
   [/^\/compras\/comprador/, "compras.comprador"],
   [/^\/compras\/gerencia/, "compras.gerencia"],
   [/^\/compras\/gasoil/, "compras.gasoil"],
+  // Caja desde el celular (13/11/2026): cargar pide "Editar".
+  [/^\/compras\/caja\/nuevo/, "compras.caja", "editar"],
+  [/^\/compras\/caja/, "compras.caja"],
   [/^\/compras\/altas\/proveedores/, "altas.proveedores"],
   [/^\/compras\/altas\/centros-costo/, "altas.centrosCosto"],
   [/^\/compras\/?$/, GRUPO.compras],

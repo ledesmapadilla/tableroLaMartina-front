@@ -8,6 +8,7 @@ import { GRUPO } from '../../utils/permisosCatalogo'
 import { seccionPropia, COLORES_NEUTROS } from '../../utils/seccionPropia'
 import { ultimaCentrada } from '../../utils/grillaTarjetas'
 import { api } from '../../services/api'
+import { isMobile } from '../../utils/device'
 import { PERMISO_RESPONSABLE } from './apuro'
 
 // De qué tarjeta es cada permiso, para saber sobre cuál va el aviso de apuro.
@@ -131,11 +132,15 @@ export default function Inicio() {
   // El encargado de taller, en Gasoil, ve solo los ingresos de su campo
   // (camposGasoil.js): la tarjeta lo dice así.
   const campoTaller = user?.rol === 'solicitante' ? camposVisibles(user)[0] : null
-  const visibles = SECCIONES.filter((s) => puede(s.permiso)).map((s) =>
-    s.id === 'gasoil' && user?.rol === 'solicitante'
-      ? { ...s, subtitulo: campoTaller ? `Ingresos de ${campoTaller.titulo}` : 'Ingresos de gasoil' }
-      : s
-  )
+  const visibles = SECCIONES.filter((s) => puede(s.permiso)).map((s) => {
+    if (s.id === 'gasoil' && user?.rol === 'solicitante') {
+      return { ...s, subtitulo: campoTaller ? `Ingresos de ${campoTaller.titulo}` : 'Ingresos de gasoil' }
+    }
+    // El rol celular (javiercel) ve dos tarjetas, Compras y Caja (13/11/2026):
+    // para él Gerencia es "Compras".
+    if (s.id === 'gerencia' && user?.rol === 'celular') return { ...s, titulo: 'Compras' }
+    return s
+  })
 
   // La sección de quien está logueado va con su color y el resto en gris, para
   // que cada uno reconozca la suya de entrada (utils/seccionPropia.js). Si no
@@ -176,14 +181,15 @@ export default function Inicio() {
 
   // Tres tarjetas por fila como máximo: más chicas no se leen. Con una o dos
   // el ancho se achica para que no queden estiradas a lo ancho de la pantalla.
-  const columnas = Math.min(visibles.length, 3) || 1
+  // En el celular, una abajo de la otra: de a dos no entran en ~360px.
+  const columnas = isMobile ? 1 : Math.min(visibles.length, 3) || 1
   const anchoGrilla = columnas === 1 ? '320px' : columnas === 2 ? '640px' : '960px'
 
   // Con las cinco secciones a la vista van dos arriba y tres abajo, y las de
   // arriba caen justo sobre los huecos de la fila de abajo. Sale de una grilla
   // de seis columnas: cada tarjeta ocupa dos, y la fila de arriba arranca
   // corrida una, así queda centrada sobre las juntas.
-  const enCinco = visibles.length === 5
+  const enCinco = !isMobile && visibles.length === 5
   const COLUMNA = ['2 / span 2', '4 / span 2', '1 / span 2', '3 / span 2', '5 / span 2']
 
   return (
@@ -236,7 +242,7 @@ export default function Inicio() {
                       ...(enCinco ? {} : ultimaCentrada(i, visibles.length, columnas)),
                       background: isHovered ? colores.fondoHover : colores.fondo,
                       borderRadius: '20px',
-                      height: '230px',
+                      height: isMobile ? '170px' : '230px',
                       color: '#fff',
                       cursor: 'pointer',
                       // La propia lleva su borde siempre, no solo al pasar el

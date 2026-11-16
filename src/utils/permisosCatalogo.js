@@ -23,6 +23,10 @@ export const CATALOGO = [
   // superadmin y a los demás roles se les tilda. "Editar" deja cargar,
   // corregir y borrar en las planillas.
   { seccion: "Compras", clave: "compras.gasoil", label: "Gasoil", hoy: PERMISOS.comprasUsuarios },
+  // Caja desde el celular (13/11/2026): la caja de Contable en pantallas de
+  // teléfono, adentro de Compras para que llegue al celular. Nace solo con el
+  // superadmin; se le tilda al rol celular (javiercel).
+  { seccion: "Compras", clave: "compras.caja", label: "Caja (celular)", hoy: PERMISOS.comprasUsuarios },
   // El almacén (20/09/2026). Hoy lo lleva el analista; cuando cada taller
   // tenga el suyo, cada uno va a sumar su propia fila.
   { seccion: "Compras", clave: "compras.stock", label: "Almacén de repuestos", hoy: PERMISOS.comprasAnalista },
