@@ -222,19 +222,30 @@ export default function ProduccionJornalizados({ establecimiento = "caspinchango
   );
 }
 
-const redondear = (v) => Math.round((Number(v) || 0) * 100) / 100;
 const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 // "2026-10" → "Octubre 2026".
 const nombreMes = (clave) => {
   const [a, m] = clave.split("-");
   return `${MESES[Number(m) - 1] || m} ${a}`;
 };
-// Un jornal cada 8 horas trabajadas; lo que no llega a otro jornal queda
-// como horas de más (02/11/2026).
-const HS_JORNAL = 8;
-const jornalesDe = (horas) => {
-  const jornales = Math.floor((horas + 1e-9) / HS_JORNAL);
-  return { jornales, resto: redondear(horas - jornales * HS_JORNAL) };
+// Jornales (16/11/2026): se cuentan por día, nunca fracciones. Un día es un
+// jornal si llega a 6 hs de lunes a viernes (y domingo) o a 4 hs el sábado;
+// con menos, ese día no suma. Las horas del día son las de todos sus registros.
+const HS_JORNAL_SEMANA = 6;
+const HS_JORNAL_SABADO = 4;
+const minimoDelDia = (dia) => {
+  const [a, m, d] = dia.split("-").map(Number);
+  return new Date(a, m - 1, d).getDay() === 6 ? HS_JORNAL_SABADO : HS_JORNAL_SEMANA;
+};
+const jornalesDe = (registros) => {
+  const horasPorDia = new Map();
+  for (const j of registros) {
+    const dia = soloFecha(j.fecha);
+    if (dia) horasPorDia.set(dia, (horasPorDia.get(dia) || 0) + (Number(j.totalHoras) || 0));
+  }
+  let jornales = 0;
+  for (const [dia, horas] of horasPorDia) if (horas + 1e-9 >= minimoDelDia(dia)) jornales += 1;
+  return jornales;
 };
 const comparar = (a, b) => String(a).localeCompare(String(b), "es", { sensitivity: "base" });
 
@@ -326,43 +337,16 @@ function ResumenJornalizados({ establecimiento }) {
   for (const j of filtrados) {
     const id = j.persona?._id || "sin-persona";
     if (!porPersona.has(id)) {
-      porPersona.set(id, { id, nombre: j.persona?.apellidoNombre || "(sin persona)", dias: new Set(), horas: 0, registros: [] });
+      porPersona.set(id, { id, nombre: j.persona?.apellidoNombre || "(sin persona)", registros: [] });
     }
-    const fila = porPersona.get(id);
-    fila.dias.add(soloFecha(j.fecha));
-    fila.horas += Number(j.totalHoras) || 0;
-    fila.registros.push(j);
+    porPersona.get(id).registros.push(j);
   }
+  // Solo personal y jornales (16/11/2026).
   const filas = [...porPersona.values()]
-    .map((f) => ({
-      ...f,
-      dias: f.dias.size,
-      horas: redondear(f.horas),
-      promedio: f.dias.size ? redondear(f.horas / f.dias.size) : 0,
-      ...jornalesDe(f.horas),
-    }))
+    .map((f) => ({ ...f, jornales: jornalesDe(f.registros) }))
     .sort((a, b) => comparar(a.nombre, b.nombre));
-  const totales = {
-    // Suma de los días de cada uno: dos personas el mismo día son dos.
-    dias: filas.reduce((s, f) => s + f.dias, 0),
-    horas: redondear(filas.reduce((s, f) => s + f.horas, 0)),
-    // Los jornales de cada uno sumados, y aparte lo que le sobra a cada uno.
-    jornales: filas.reduce((s, f) => s + f.jornales, 0),
-    resto: redondear(filas.reduce((s, f) => s + f.resto, 0)),
-  };
+  const totalJornales = filas.reduce((s, f) => s + f.jornales, 0);
   const numero = (v) => nfHoras.format(v || 0);
-  // "10 +7,5": los jornales completos y las horas que sobran.
-  const textoJornales = (j, resto) => (resto ? `${j} +${numero(resto)}` : String(j));
-  const celdaJornales = (j, resto, negrita = false) => (
-    <td style={{ ...td, fontWeight: negrita ? 700 : 600, whiteSpace: "nowrap" }}>
-      {j}
-      {resto > 0 && (
-        <span className="ms-1" style={{ color: "#b45309", fontWeight: 600 }} title={`${numero(resto)} hs más`}>
-          +{numero(resto)}
-        </span>
-      )}
-    </td>
-  );
   const hayFiltro = Boolean(desde || hasta || filtroPersona !== "Todos");
   const textoPeriodo =
     desde || hasta
@@ -372,7 +356,7 @@ function ResumenJornalizados({ establecimiento }) {
   const exportarExcel = async () => {
     const wb = await nuevoWorkbook();
     const ws = wb.addWorksheet("Resumen por personal");
-    const columnas = ["Personal", "Días trabajados", "Jornales (8 hs)", "Prom. hs/día", "Total horas"];
+    const columnas = ["Personal", "Jornales"];
 
     ws.mergeCells(1, 1, 1, columnas.length);
     const celdaTitulo = ws.getCell("A1");
@@ -404,14 +388,14 @@ function ResumenJornalizados({ establecimiento }) {
 
     const borde = { style: "thin", color: { argb: "FFE2E8F0" } };
     filas.forEach((f) => {
-      const fila = ws.addRow([f.nombre, f.dias, textoJornales(f.jornales, f.resto), f.promedio, f.horas]);
+      const fila = ws.addRow([f.nombre, f.jornales]);
       fila.eachCell({ includeEmpty: true }, (cell, col) => {
         cell.border = { top: borde, left: borde, bottom: borde, right: borde };
         cell.alignment = { horizontal: col === 1 ? "left" : "center", vertical: "middle" };
       });
     });
 
-    const filaTotal = ws.addRow(["TOTAL", totales.dias, textoJornales(totales.jornales, totales.resto), "", totales.horas]);
+    const filaTotal = ws.addRow(["TOTAL", totalJornales]);
     filaTotal.eachCell({ includeEmpty: true }, (cell, col) => {
       cell.font = { bold: true, color: { argb: "FF1B4332" } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE8F5EE" } };
@@ -419,7 +403,7 @@ function ResumenJornalizados({ establecimiento }) {
       cell.alignment = { horizontal: col === 1 ? "left" : "center", vertical: "middle" };
     });
 
-    ws.columns = [{ width: 30 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 14 }];
+    ws.columns = [{ width: 30 }, { width: 14 }];
 
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], {
@@ -512,28 +496,28 @@ function ResumenJornalizados({ establecimiento }) {
 
         {/* Tabla */}
         <div className="flex-grow-1" style={{ overflow: "auto", minHeight: 0 }}>
-          {/* Angosta (02/11/2026): son cuatro números por persona. */}
+          {/* Angosta: solo personal y jornales (16/11/2026). */}
           <div
             className="bg-white rounded-3 shadow-sm"
-            style={{ border: "1px solid #e2e8f0", overflow: "clip", maxWidth: "800px" }}
+            style={{ border: "1px solid #e2e8f0", overflow: "clip", maxWidth: "460px" }}
           >
             <Table className="mb-0 tabla-informe" style={{ width: "100%" }}>
               <thead style={{ position: "sticky", top: 0, zIndex: 2 }}>
                 <tr>
                   <th style={{ ...thIzq, minWidth: "110px" }}>Personal</th>
-                  <th style={th}>Días<br />trabajados</th>
-                  <th style={th} title="Un jornal cada 8 hs; con + las horas que sobran">
-                    Jornales<br />(8 hs)
+                  <th
+                    style={{ ...th, width: "90px" }}
+                    title="Un jornal por día con 6 hs o más de lunes a viernes, o 4 hs o más el sábado"
+                  >
+                    Jornales
                   </th>
-                  <th style={th}>Prom.<br />hs/día</th>
-                  <th style={th}>Total<br />horas</th>
                   <th style={{ ...th, width: "52px" }}></th>
                 </tr>
               </thead>
               <tbody>
                 {cargando || filas.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-muted py-4" style={td}>
+                    <td colSpan={3} className="text-center text-muted py-4" style={td}>
                       {cargando
                         ? "Cargando…"
                         : hayFiltro
@@ -546,10 +530,7 @@ function ResumenJornalizados({ establecimiento }) {
                     {filas.map((f) => (
                       <tr key={f.id}>
                         <td style={{ ...tdIzq, fontWeight: 500 }}>{f.nombre}</td>
-                        <td style={td}>{f.dias}</td>
-                        {celdaJornales(f.jornales, f.resto)}
-                        <td style={td}>{numero(f.promedio)}</td>
-                        <td style={{ ...td, fontWeight: 600 }}>{numero(f.horas)}</td>
+                        <td style={{ ...td, fontWeight: 600 }}>{f.jornales}</td>
                         <td style={td}>
                           <button
                             onClick={() => setVerPersona(f)}
@@ -564,10 +545,7 @@ function ResumenJornalizados({ establecimiento }) {
                     ))}
                     <tr className="fila-total">
                       <td style={{ ...tdIzq, fontWeight: 700, color: "#1b4332" }}>TOTAL</td>
-                      <td style={{ ...td, fontWeight: 700 }}>{totales.dias}</td>
-                      {celdaJornales(totales.jornales, totales.resto, true)}
-                      <td style={td}></td>
-                      <td style={{ ...td, fontWeight: 700 }}>{numero(totales.horas)}</td>
+                      <td style={{ ...td, fontWeight: 700 }}>{totalJornales}</td>
                       <td style={td}></td>
                     </tr>
                   </>
@@ -587,12 +565,7 @@ function ResumenJornalizados({ establecimiento }) {
         </Modal.Header>
         <Modal.Body style={{ backgroundColor: "#f8f9fa" }}>
           <div className="d-flex flex-wrap gap-2 mb-3">
-            {[
-              ["Días trabajados", verPersona?.dias ?? 0],
-              ["Jornales (8 hs)", verPersona ? textoJornales(verPersona.jornales, verPersona.resto) : 0],
-              ["Prom. hs/día", numero(verPersona?.promedio)],
-              ["Total horas", numero(verPersona?.horas)],
-            ].map(([etiqueta, valor]) => (
+            {[["Jornales", verPersona?.jornales ?? 0]].map(([etiqueta, valor]) => (
               <div
                 key={etiqueta}
                 className="px-3 py-2 rounded-3 bg-white"
