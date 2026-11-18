@@ -13,6 +13,10 @@ import {
   resolverPermisos,
 } from '../../utils/permisosCatalogo'
 
+// Los permisos sensibles (16/11/2026): ámbar, y rojo claro si el rol los tiene.
+const SENSIBLE = '#fde047'
+const SENSIBLE_DADO = '#f87171'
+
 /** La casilla de Ver o Editar: una cruz cuando el rol puede. */
 const Cruz = ({ activa, onClick, titulo }) => (
   <button
@@ -203,6 +207,13 @@ export default function Roles() {
           <span className="text-muted" style={{ fontSize: '0.78rem' }}>
             Una cruz en Ver deja entrar a la pantalla; en Editar, además, cargar, cambiar y borrar.
           </span>
+          <span
+            className="rounded-3 px-2 py-1"
+            style={{ fontSize: '0.74rem', backgroundColor: SENSIBLE, color: '#7f1d1d', fontWeight: 700, border: '1px solid #dc2626' }}
+          >
+            <i className="bi bi-shield-lock-fill me-1"></i>
+            Sensible: plata y pagos, revisar a quién se le da
+          </span>
         </div>
 
         {/* Los roles, con quién tiene cada uno. */}
@@ -275,17 +286,29 @@ export default function Roles() {
                   </tr>,
                   ...CATALOGO.filter((p) => p.seccion === seccion).map((p) => {
                     const { ver, editar } = permisos[p.clave]
+                    // Sensibles (16/11/2026): fondo ámbar y candado; si el rol
+                    // tiene acceso, en rojo para que no pase de largo.
+                    const fondo = p.sensible ? (ver ? SENSIBLE_DADO : SENSIBLE) : undefined
+                    const celda = fondo ? { backgroundColor: fondo } : null
                     return (
                       <tr key={p.clave}>
-                        <td style={{ ...td, paddingLeft: '14px' }}>{p.label}</td>
-                        <td style={tdCentro}>
+                        <td
+                          style={{ ...td, ...celda, paddingLeft: '14px', fontWeight: p.sensible ? 700 : undefined }}
+                          title={p.sensible ? 'Permiso sensible: revisar bien a quién se le da' : undefined}
+                        >
+                          {p.sensible && (
+                            <i className="bi bi-shield-lock-fill me-1" style={{ color: ver ? '#7f1d1d' : '#b91c1c' }}></i>
+                          )}
+                          {p.label}
+                        </td>
+                        <td style={{ ...tdCentro, ...celda }}>
                           <Cruz
                             activa={ver}
                             onClick={() => alternar(p.clave, 'ver')}
                             titulo={ver ? 'Puede ver (tocar para sacar)' : 'No puede ver (tocar para dar)'}
                           />
                         </td>
-                        <td style={tdCentro}>
+                        <td style={{ ...tdCentro, ...celda }}>
                           <Cruz
                             activa={editar}
                             onClick={() => alternar(p.clave, 'editar')}

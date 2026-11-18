@@ -11,6 +11,9 @@ import { PERMISOS, ROLES } from "./permisos";
  * no le quita ni le da acceso a nadie.
  *
  * Usuarios y la propia pantalla Roles no están: son solo del superadmin.
+ *
+ * `sensible` (16/11/2026): plata y pagos, lo que no se le puede dar a
+ * cualquiera por error. La pantalla Roles los pinta para que se vean.
  */
 export const CATALOGO = [
   // Compras
@@ -26,7 +29,7 @@ export const CATALOGO = [
   // Caja desde el celular (13/11/2026): la caja de Contable en pantallas de
   // teléfono, adentro de Compras para que llegue al celular. Nace solo con el
   // superadmin; se le tilda al rol celular (javiercel).
-  { seccion: "Compras", clave: "compras.caja", label: "Caja (celular)", hoy: PERMISOS.comprasUsuarios },
+  { seccion: "Compras", clave: "compras.caja", label: "Caja (celular)", hoy: PERMISOS.comprasUsuarios, sensible: true },
   // El almacén (20/09/2026). Hoy lo lleva el analista; cuando cada taller
   // tenga el suyo, cada uno va a sumar su propia fila.
   { seccion: "Compras", clave: "compras.stock", label: "Almacén de repuestos", hoy: PERMISOS.comprasAnalista },
@@ -62,7 +65,7 @@ export const CATALOGO = [
   // Variables son las tres tarjetas de /produccion/variables. `produccion.variables`
   // es la de Remuneración, que era la pantalla Variables de antes: así lo que
   // ya estaba guardado sigue valiendo para ella.
-  { seccion: "Producción", clave: "produccion.variables", label: "Variables › Remuneración", hoy: PERMISOS.produccion },
+  { seccion: "Producción", clave: "produccion.variables", label: "Variables › Remuneración", hoy: PERMISOS.produccion, sensible: true },
   { seccion: "Producción", clave: "produccion.lotes", label: "Variables › Lotes", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.admisibles", label: "Variables › Valores admisibles", hoy: PERMISOS.produccion },
   { seccion: "Producción", clave: "produccion.certificacion", label: "Tarjeta del mes › Datos certificación", hoy: PERMISOS.produccion },
@@ -71,20 +74,20 @@ export const CATALOGO = [
   // el Encargado de taller, que es quien da de alta los trabajos en el campo.
   { seccion: "Producción", clave: "produccion.guiaTareas", label: "Tarjeta del mes › Guía de tareas (?)", hoy: PERMISOS.mantenimiento },
   { seccion: "Producción", clave: "produccion.informeMes", label: "Tarjeta del mes › Informe del mes", hoy: PERMISOS.produccion },
-  { seccion: "Producción", clave: "produccion.contable", label: "Tarjeta del mes › Contable - Pagos", hoy: PERMISOS.produccionContable },
+  { seccion: "Producción", clave: "produccion.contable", label: "Tarjeta del mes › Contable - Pagos", hoy: PERMISOS.produccionContable, sensible: true },
 
   // Contable (05/11/2026): la tarjeta de la principal. "Editar" deja subir,
   // reemplazar y quitar el Excel mensual. Nace con los mismos roles que
   // Contable - Pagos.
-  { seccion: "Contable", clave: "contable.excel", label: "Excel mensual", hoy: PERMISOS.produccionContable },
+  { seccion: "Contable", clave: "contable.excel", label: "Excel mensual", hoy: PERMISOS.produccionContable, sensible: true },
   // Qué tareas de Citrusvil equivalen a cada una de La Martina (05/11/2026).
-  { seccion: "Contable", clave: "contable.equivalencias", label: "Equivalencias de tareas", hoy: PERMISOS.produccionContable },
+  { seccion: "Contable", clave: "contable.equivalencias", label: "Equivalencias de tareas", hoy: PERMISOS.produccionContable, sensible: true },
   // La página Costos, el botón de la Comparativa costos tarea (11/11/2026):
   // solo se mira, así que lo que cuenta es "Ver". Nace con los de Contable.
-  { seccion: "Contable", clave: "contable.costos", label: "Comparativa costos tarea › Costos", hoy: PERMISOS.produccionContable },
+  { seccion: "Contable", clave: "contable.costos", label: "Comparativa costos tarea › Costos", hoy: PERMISOS.produccionContable, sensible: true },
   // Caja (13/11/2026): la tarjeta abajo de los meses. Acceso bien
   // restringido: nace solo con el superadmin y a los demás se les tilda.
-  { seccion: "Contable", clave: "contable.caja", label: "Caja", hoy: PERMISOS.comprasUsuarios },
+  { seccion: "Contable", clave: "contable.caja", label: "Caja", hoy: PERMISOS.comprasUsuarios, sensible: true },
 
   // Altas (las que no son solo del superadmin)
   { seccion: "Altas", clave: "altas.centrosCosto", label: "Centros de costo", hoy: PERMISOS.comprasAnalista },
