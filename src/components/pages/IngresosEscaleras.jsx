@@ -35,7 +35,14 @@ const COLUMNAS = { ingresos: 11, egresos: 8 };
 
 // Los encargados del ingreso y el retiro (08/10/2026), obligatorio en los dos.
 // El back controla la misma lista.
-const ENCARGADOS = ["Germán Diaz", "Luis Paredes", "Daniel Perea", "Carlos Chumiento", "Nicolás Galvan"];
+const ENCARGADOS = [
+  "Germán Diaz",
+  "Luis Paredes",
+  "Daniel Perea",
+  "Carlos Chumiento",
+  "Nicolás Galvan",
+  "Tomas Marques",
+];
 // La zona de cada uno, como referencia debajo de la tabla.
 const ZONA_ENCARGADO = {
   "Germán Diaz": "Citrusvil Sur",
@@ -1113,7 +1120,7 @@ export default function IngresosEscaleras({ icono }) {
               style={{ backgroundColor: COLOR_SUAVE, border: "1px solid #cbd5e1", color: TEXTO }}
             >
               <span className="fw-semibold">{e}</span>
-              <span className="text-muted"> · {ZONA_ENCARGADO[e]}</span>
+              {ZONA_ENCARGADO[e] ? <span className="text-muted"> · {ZONA_ENCARGADO[e]}</span> : null}
             </span>
           ))}
         </div>
