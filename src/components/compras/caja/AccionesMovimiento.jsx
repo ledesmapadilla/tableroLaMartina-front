@@ -1,25 +1,40 @@
 /**
- * Editar y borrar un movimiento desde el celular (23/11/2026): un lápiz y un
- * tacho debajo del detalle, en el detalle del día y en el historial de la
- * semana. Sin permiso de editar no aparecen.
+ * Editar y borrar un movimiento desde el celular (23/11/2026): una columna
+ * angosta al final de la tabla, solo con los íconos (lápiz arriba, tacho
+ * abajo), en el detalle del día y en el historial de la semana. Sin permiso
+ * de editar la columna no está (conAcciones, en comun.js).
  */
-export default function AccionesMovimiento({ mov, onEditar, onBorrar, sinEditar }) {
-  if (sinEditar || (!onEditar && !onBorrar)) return null;
-  const estilo = { fontSize: "0.78rem", fontWeight: 600 };
+const boton = { fontSize: "1rem", lineHeight: 1 };
+
+export default function CeldaAcciones({ mov, onEditar, onBorrar }) {
   return (
-    <div className="d-flex gap-3 mt-1">
-      {onEditar && (
-        <button type="button" className="caja-cel-radio border-0 bg-transparent p-0" style={{ ...estilo, color: "#1d4ed8" }} onClick={() => onEditar(mov)}>
-          <i className="bi bi-pencil-fill me-1"></i>
-          Editar
-        </button>
-      )}
-      {onBorrar && (
-        <button type="button" className="caja-cel-radio border-0 bg-transparent p-0" style={{ ...estilo, color: "#dc2626" }} onClick={() => onBorrar(mov)}>
-          <i className="bi bi-trash-fill me-1"></i>
-          Borrar
-        </button>
-      )}
-    </div>
+    <td className="text-center" style={{ width: 34, verticalAlign: "middle" }}>
+      <div className="d-flex flex-column align-items-center gap-2">
+        {onEditar && (
+          <button
+            type="button"
+            className="caja-cel-radio border-0 bg-transparent p-0"
+            style={{ ...boton, color: "#1d4ed8" }}
+            onClick={() => onEditar(mov)}
+            aria-label="Editar"
+            title="Editar"
+          >
+            <i className="bi bi-pencil-fill"></i>
+          </button>
+        )}
+        {onBorrar && (
+          <button
+            type="button"
+            className="caja-cel-radio border-0 bg-transparent p-0"
+            style={{ ...boton, color: "#dc2626" }}
+            onClick={() => onBorrar(mov)}
+            aria-label="Borrar"
+            title="Borrar"
+          >
+            <i className="bi bi-trash-fill"></i>
+          </button>
+        )}
+      </div>
+    </td>
   );
 }

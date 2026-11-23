@@ -1,6 +1,6 @@
 import { Button, Modal, Table } from "react-bootstrap";
-import { COLOR, CONCEPTOS, MESES, pesos } from "./comun";
-import AccionesMovimiento from "./AccionesMovimiento";
+import { COLOR, CONCEPTOS, MESES, pesos, conAcciones } from "./comun";
+import CeldaAcciones from "./AccionesMovimiento";
 
 /**
  * El detalle de un día de caja en el celular: cada movimiento con su monto y
@@ -11,6 +11,7 @@ import AccionesMovimiento from "./AccionesMovimiento";
  */
 export default function DetalleDia({ dia, onHide, onNueva, onEditar, onBorrar, sinEditar = false }) {
   const vacio = (dia?.movimientos || []).length === 0;
+  const acciones = conAcciones({ onEditar, onBorrar, sinEditar });
   return (
     <Modal show={dia !== null} onHide={onHide} centered>
       <Modal.Header closeButton>
@@ -40,6 +41,7 @@ export default function DetalleDia({ dia, onHide, onNueva, onEditar, onBorrar, s
               <th className="text-end" style={{ backgroundColor: COLOR, color: "#fff" }}>
                 Monto
               </th>
+              {acciones && <th style={{ backgroundColor: COLOR, width: 34 }}></th>}
             </tr>
           </thead>
           <tbody>
@@ -60,12 +62,12 @@ export default function DetalleDia({ dia, onHide, onNueva, onEditar, onBorrar, s
                         ))}
                       </div>
                     )}
-                    <AccionesMovimiento mov={m} onEditar={onEditar} onBorrar={onBorrar} sinEditar={sinEditar} />
                   </td>
                   <td className="text-end fw-semibold" style={{ color: c.color, whiteSpace: "nowrap" }}>
                     {c.signo}
                     {pesos(m.monto)}
                   </td>
+                  {acciones && <CeldaAcciones mov={m} onEditar={onEditar} onBorrar={onBorrar} />}
                 </tr>
               );
             })}
@@ -77,6 +79,7 @@ export default function DetalleDia({ dia, onHide, onNueva, onEditar, onBorrar, s
               <td className="text-end" style={{ whiteSpace: "nowrap" }}>
                 {dia ? pesos(dia.entradas - dia.gastos) : ""}
               </td>
+              {acciones && <td></td>}
             </tr>
           </tfoot>
         </Table>

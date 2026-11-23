@@ -77,3 +77,6 @@ export const montoRecuadro = (valor, base) => {
   const numero = texto.replace(/^\$ /, "");
   return { texto: numero, grande: true, tam: `${Math.max(0.55, (base * 9) / numero.length).toFixed(2)}rem` };
 };
+
+/** Si las tablas del celular llevan la columna de editar y borrar (AccionesMovimiento.jsx). */
+export const conAcciones = ({ onEditar, onBorrar, sinEditar }) => !sinEditar && Boolean(onEditar || onBorrar);
