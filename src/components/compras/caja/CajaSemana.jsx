@@ -94,7 +94,6 @@ export default function CajaSemana() {
     const { isConfirmed } = await Swal.fire({
       icon: "warning",
       title: `¿Borrar el ${c.texto.toLowerCase()}?`,
-      text: `${ddmm(m.fecha)} · ${pesos(m.monto)}${m.descripcion ? ` · ${m.descripcion}` : ""}. Esta acción no se puede deshacer.`,
       width: "320px",
       showCancelButton: true,
       confirmButtonText: "Sí, borrar",
