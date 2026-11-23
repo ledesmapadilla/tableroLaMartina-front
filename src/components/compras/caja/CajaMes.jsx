@@ -3,6 +3,7 @@ import { Button, Col, Row, Spinner, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../services/api";
 import { COLOR, CONCEPTOS, MESES, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
+import { SEMANA_VACIA, semanasCaja } from "../../../helpers/cajaSemanas";
 import "./caja.css";
 
 /**
@@ -11,9 +12,14 @@ import "./caja.css";
  * y abajo una fila por semana (viernes a jueves). Como en Contable › Caja,
  * cada semana va en el mes de su viernes. Al tocar una semana se abre la
  * pantalla Semanal en esa semana. Solo consulta.
+ *
+ * Arrastre (23/11/2026, helpers/cajaSemanas.js): el saldo positivo de una
+ * semana entra como entrada de la siguiente; el negativo no pasa. Por eso el
+ * saldo del mes es el de su última semana, y si alguna cerró en negativo no
+ * coincide con entradas − gastos.
  */
 
-const suma = (l) => Math.round(l.reduce((t, x) => t + (Number(x.monto) || 0), 0) * 100) / 100;
+const suma = (l) => Math.round(l.reduce((t, x) => t + (Number(x) || 0), 0) * 100) / 100;
 
 /** Los viernes de un mes ("2026-11"), igual que ContableCaja.jsx. */
 const viernesDelMes = (mes) => {
@@ -50,25 +56,20 @@ export default function CajaMes() {
   };
 
   // Las semanas del mes, hasta la de hoy: las que todavía no empezaron no van.
+  // La cadena de semanas con el arrastre, de toda la caja.
+  const cadena = useMemo(() => semanasCaja(movimientos, hoyIso()), [movimientos]);
   const semanas = useMemo(() => {
     const hoy = hoyIso();
     return viernesDelMes(mes)
       .filter((v) => v <= hoy)
-      .map((viernes) => {
-        const jueves = masDias(viernes, 6);
-        const lista = (movimientos || []).filter((m) => m.fecha >= viernes && m.fecha <= jueves);
-        return {
-          viernes,
-          jueves,
-          cantidad: lista.length,
-          entradas: suma(lista.filter((m) => m.concepto === "ingreso")),
-          gastos: suma(lista.filter((m) => m.concepto === "gasto")),
-        };
-      });
-  }, [movimientos, mes]);
+      .map((viernes) => ({ viernes, jueves: masDias(viernes, 6), ...(cadena[viernes] || SEMANA_VACIA) }));
+  }, [cadena, mes]);
 
-  const entradas = suma(semanas.map((s) => ({ monto: s.entradas })));
-  const gastos = suma(semanas.map((s) => ({ monto: s.gastos })));
+  // Entradas del mes: lo que vino de la semana anterior al mes más lo
+  // ingresado en el mes (los arrastres de adentro no se cuentan dos veces).
+  const entradas = suma([semanas[0]?.anterior, ...semanas.map((s) => s.ingresos)]);
+  const gastos = suma(semanas.map((s) => s.gastos));
+  const saldo = semanas.length ? semanas[semanas.length - 1].saldo : 0;
   const cantidad = semanas.reduce((t, s) => t + s.cantidad, 0);
   const raya = <span style={{ color: "#94a3b8" }}>–</span>;
 
@@ -102,7 +103,7 @@ export default function CajaMes() {
           {[
             ["Entradas", entradas, CONCEPTOS.ingreso.color],
             ["Gastos", gastos, CONCEPTOS.gasto.color],
-            ["Saldo", entradas - gastos, entradas - gastos < 0 ? "#dc2626" : COLOR],
+            ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR],
           ].map(([titulo, valor, color]) => (
             <Col xs={4} key={titulo}>
               <div className="rounded-3 py-1 px-1 h-100" style={{ border: "1px solid #cbd5e1" }}>
@@ -123,51 +124,68 @@ export default function CajaMes() {
           <Spinner animation="border" style={{ color: COLOR }} />
         </div>
       ) : (
-        <Table className="mb-0 tabla-informe w-100" style={{ fontSize: "0.85rem" }}>
+        // Cuatro columnas en ~360px: la semana va en dos renglones y la letra
+        // un poco más chica que en el resto de la pantalla.
+        <Table className="mb-0 tabla-informe w-100" style={{ fontSize: "0.78rem" }}>
           <thead>
             <tr>
               <th style={{ backgroundColor: COLOR, color: "#fff" }}>Semana</th>
-              <th className="text-center" style={{ backgroundColor: COLOR, color: "#fff" }}>
-                Entradas
-              </th>
-              <th className="text-center" style={{ backgroundColor: COLOR, color: "#fff" }}>
-                Gastos
-              </th>
+              {["Entradas", "Gastos", "Saldo"].map((t) => (
+                <th key={t} className="text-center" style={{ backgroundColor: COLOR, color: "#fff" }}>
+                  {t}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {semanas.map((s) => (
-              <tr
-                key={s.viernes}
-                role="button"
-                onClick={() => navigate(`/compras/caja/semana?semana=${s.viernes}`)}
-                style={{ cursor: "pointer" }}
-              >
-                <td style={{ whiteSpace: "nowrap" }}>
-                  {ddmm(s.viernes)} al {ddmm(s.jueves)}
-                  <span className="text-muted ms-1" style={{ fontSize: "0.72rem" }}>
-                    ({s.cantidad})
-                  </span>
-                </td>
-                <td className="text-center fw-semibold" style={{ color: CONCEPTOS.ingreso.color, whiteSpace: "nowrap" }}>
-                  {s.entradas > 0 ? pesos(s.entradas) : raya}
-                </td>
-                <td className="text-center fw-semibold" style={{ color: CONCEPTOS.gasto.color, whiteSpace: "nowrap" }}>
-                  {s.gastos > 0 ? pesos(s.gastos) : raya}
-                </td>
-              </tr>
-            ))}
+            {semanas.map((s) => {
+              return (
+                <tr
+                  key={s.viernes}
+                  role="button"
+                  onClick={() => navigate(`/compras/caja/semana?semana=${s.viernes}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <td style={{ whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                    <div>{ddmm(s.viernes)} al</div>
+                    <div>
+                      {ddmm(s.jueves)}
+                      <span className="text-muted ms-1" style={{ fontSize: "0.68rem" }}>
+                        ({s.cantidad})
+                      </span>
+                    </div>
+                  </td>
+                  <td className="text-center fw-semibold" style={{ color: CONCEPTOS.ingreso.color, whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                    {s.entradas > 0 ? pesos(s.entradas) : raya}
+                    {s.anterior > 0 && (
+                      <div className="fw-normal text-muted" style={{ fontSize: "0.64rem" }}>
+                        ant. {pesos(s.anterior)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="text-center fw-semibold" style={{ color: CONCEPTOS.gasto.color, whiteSpace: "nowrap" }}>
+                    {s.gastos > 0 ? pesos(s.gastos) : raya}
+                  </td>
+                  <td className="text-center fw-semibold" style={{ color: s.saldo < 0 ? "#dc2626" : COLOR, whiteSpace: "nowrap" }}>
+                    {s.cantidad > 0 || s.anterior > 0 ? pesos(s.saldo) : raya}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="fila-total fw-bold">
               <td>
-                Total <span className="text-muted fw-normal" style={{ fontSize: "0.72rem" }}>({cantidad})</span>
+                Total <span className="text-muted fw-normal" style={{ fontSize: "0.68rem" }}>({cantidad})</span>
               </td>
               <td className="text-center" style={{ color: CONCEPTOS.ingreso.color, whiteSpace: "nowrap" }}>
                 {pesos(entradas)}
               </td>
               <td className="text-center" style={{ color: CONCEPTOS.gasto.color, whiteSpace: "nowrap" }}>
                 {pesos(gastos)}
+              </td>
+              <td className="text-center" style={{ color: saldo < 0 ? "#dc2626" : COLOR, whiteSpace: "nowrap" }}>
+                {pesos(saldo)}
               </td>
             </tr>
           </tfoot>

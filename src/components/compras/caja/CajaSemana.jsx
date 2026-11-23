@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../services/api";
 import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
 import DetalleDia from "./DetalleDia";
+import { SEMANA_VACIA, semanasCaja } from "../../../helpers/cajaSemanas";
 import "./caja.css";
 
 /**
@@ -13,6 +14,8 @@ import "./caja.css";
  * salió; al tocar el día se abre el detalle de cada movimiento. Arriba, la
  * semana con flechas y su total. Editar y borrar siguen en Contable › Caja.
  * Desde el 23/11/2026 es "Semanal" (/compras/caja/semana); el mes va en CajaMes.
+ * Ese mismo día: el saldo positivo de la semana anterior entra como entrada
+ * de esta; el negativo no pasa (helpers/cajaSemanas.js).
  */
 
 const suma = (l) => Math.round(l.reduce((t, x) => t + (Number(x.monto) || 0), 0) * 100) / 100;
@@ -66,8 +69,9 @@ export default function CajaSemana() {
     });
   }, [movimientos, semana, jueves]);
 
-  const entradas = suma(dias.map((d) => ({ monto: d.entradas })));
-  const gastos = suma(dias.map((d) => ({ monto: d.gastos })));
+  // Los totales salen de la cadena de semanas, con lo que viene de la anterior.
+  const cadena = useMemo(() => semanasCaja(movimientos, hoyIso()), [movimientos]);
+  const { anterior, entradas, gastos, saldo } = cadena[semana] || SEMANA_VACIA;
 
   const mover = (n) => {
     setSemana((s) => masDias(s, 7 * n));
@@ -111,7 +115,7 @@ export default function CajaSemana() {
           {[
             ["Entradas", entradas, CONCEPTOS.ingreso.color],
             ["Gastos", gastos, CONCEPTOS.gasto.color],
-            ["Saldo", entradas - gastos, entradas - gastos < 0 ? "#dc2626" : COLOR],
+            ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR],
           ].map(([titulo, valor, color]) => (
             <Col xs={4} key={titulo}>
               <div className="rounded-3 py-1 px-1 h-100" style={{ border: "1px solid #cbd5e1" }}>
@@ -119,6 +123,11 @@ export default function CajaSemana() {
                 <div className="fw-bold" style={{ fontSize: "0.85rem", color, overflowWrap: "anywhere" }}>
                   {pesos(valor)}
                 </div>
+                {titulo === "Entradas" && anterior > 0 && (
+                  <div className="text-muted" style={{ fontSize: "0.64rem" }}>
+                    ant. {pesos(anterior)}
+                  </div>
+                )}
               </div>
             </Col>
           ))}

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Button, Card, Container, Form, Modal, Spinner, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
 import { api } from "../../services/api";
@@ -8,6 +7,7 @@ import { usePermisos } from "../../context/permisos";
 import { FiltroSelect } from "../compras/estilos";
 import { exportarPlanilla } from "../../helpers/excel";
 import { formatearMonto, leerMonto, montoAInput } from "../../helpers/montoInput";
+import { SEMANA_VACIA, semanasCaja } from "../../helpers/cajaSemanas";
 
 /**
  * Contable › Caja (13/11/2026, segunda versión): la tarjeta Caja abre directo
@@ -87,7 +87,6 @@ const vacio = () => ({ fecha: hoyIso(), concepto: "gasto", monto: "", descripcio
 
 function ContableCaja() {
   const { puede } = usePermisos();
-  const navigate = useNavigate();
   const sinEditar = !puede("contable.caja", "editar");
 
   const [movimientos, setMovimientos] = useState(ultimos);
@@ -189,11 +188,15 @@ function ContableCaja() {
     const actual = viernesDe(hoyIso());
     setSemana(lista.includes(actual) ? actual : lista[0]);
   };
-  const finSemana = masDias(semana, 6);
-  const deLaSemana = (movimientos || []).filter((m) => m.fecha >= semana && m.fecha <= finSemana);
-  const ingresosSemana = suma(deLaSemana.filter((m) => m.concepto === "ingreso"));
-  const gastosSemana = suma(deLaSemana.filter((m) => m.concepto === "gasto"));
-  const saldoSemana = Math.round((ingresosSemana - gastosSemana) * 100) / 100;
+  // Los totales de la semana con el arrastre (23/11/2026, helpers/cajaSemanas.js):
+  // el saldo positivo de la semana anterior entra como entrada; el negativo no.
+  const cadena = useMemo(() => semanasCaja(movimientos, hoyIso()), [movimientos]);
+  const {
+    anterior: anteriorSemana,
+    entradas: ingresosSemana,
+    gastos: gastosSemana,
+    saldo: saldoSemana,
+  } = cadena[semana] || SEMANA_VACIA;
 
   // ── Alta y edición ──
   const abrir = (mov) => {
@@ -407,18 +410,6 @@ function ContableCaja() {
               <i className="bi bi-plus-lg"></i>
               Nuevo movimiento
             </button>
-            {/* PROVISORIO (13/11/2026): para probar en local la carga del
-                celular (/compras/caja). Se borra cuando esté ajustada. */}
-            <button
-              type="button"
-              onClick={() => navigate("/compras/caja")}
-              className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 px-3"
-              style={{ borderColor: COLOR, color: COLOR, fontSize: "0.78rem", height: "30px", fontWeight: 600 }}
-              title="Probar la carga de caja del celular"
-            >
-              <i className="bi bi-phone"></i>
-              Carga celular
-            </button>
             <Button
               size="sm"
               onClick={exportarExcel}
@@ -491,13 +482,18 @@ function ContableCaja() {
                 <div
                   key={titulo}
                   className="d-flex flex-column align-items-center justify-content-center rounded-3 px-2"
-                  style={{ border: `1px solid ${titulo === "Saldo" ? color : "#cbd5e1"}`, height: 50, minWidth: 104 }}
+                  style={{ border: `1px solid ${titulo === "Saldo" ? color : "#cbd5e1"}`, minHeight: 50, minWidth: 104 }}
                 >
                   <span style={{ fontSize: "0.66rem", color: "#64748b", fontWeight: 600 }}>{titulo} semana</span>
                   <span className="fw-bold" style={{ fontSize: "0.9rem", color, whiteSpace: "nowrap" }}>
                     {signo}
                     {pesos(valor)}
                   </span>
+                  {titulo === "Entradas" && anteriorSemana > 0 && (
+                    <span style={{ fontSize: "0.6rem", color: "#64748b", lineHeight: 1, whiteSpace: "nowrap" }}>
+                      incl. {pesos(anteriorSemana)} anterior
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

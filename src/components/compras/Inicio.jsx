@@ -149,7 +149,9 @@ export default function Inicio() {
   // El encargado de taller, en Gasoil, ve solo los ingresos de su campo
   // (camposGasoil.js): la tarjeta lo dice así.
   const campoTaller = user?.rol === 'solicitante' ? camposVisibles(user)[0] : null
-  const visibles = SECCIONES.filter((s) => puede(s.permiso)).map((s) => {
+  // La tarjeta Caja es solo del celular (23/11/2026): el resto carga la caja en
+  // Contable › Caja y no la quiere en el inicio de Compras.
+  const visibles = SECCIONES.filter((s) => puede(s.permiso) && (s.id !== 'caja' || user?.rol === 'celular')).map((s) => {
     if (s.id === 'gasoil' && user?.rol === 'solicitante') {
       return { ...s, subtitulo: campoTaller ? `Ingresos de ${campoTaller.titulo}` : 'Ingresos de gasoil' }
     }
