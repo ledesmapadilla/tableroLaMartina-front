@@ -5,6 +5,7 @@ import { api } from "../../../services/api";
 import { usePermisos } from "../../../context/permisos";
 import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
 import DetalleDia from "./DetalleDia";
+import HistorialSemana from "./HistorialSemana";
 import { SEMANA_VACIA, semanasCaja } from "../../../helpers/cajaSemanas";
 import "./caja.css";
 
@@ -41,6 +42,8 @@ export default function CajaSemana() {
   const [error, setError] = useState("");
   // El día abierto en el detalle, o null.
   const [diaAbierto, setDiaAbierto] = useState(null);
+  // El historial de Entradas o de Gastos de la semana (23/11/2026): "ingreso", "gasto" o null.
+  const [historial, setHistorial] = useState(null);
 
   // El back devuelve todos los movimientos: se trae una vez y la semana se arma acá.
   useEffect(() => {
@@ -84,6 +87,7 @@ export default function CajaSemana() {
   const mover = (n) => {
     setSemana((s) => masDias(s, 7 * n));
     setDiaAbierto(null);
+    setHistorial(null);
   };
 
   return (
@@ -131,21 +135,27 @@ export default function CajaSemana() {
       {movimientos && (
         <Row className="g-2 mb-3 text-center">
           {[
-            ["Entradas", entradas, CONCEPTOS.ingreso.color],
-            ["Gastos", gastos, CONCEPTOS.gasto.color],
-            ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR],
-          ].map(([titulo, valor, color]) => (
+            ["Entradas", entradas, CONCEPTOS.ingreso.color, "ingreso"],
+            ["Gastos", gastos, CONCEPTOS.gasto.color, "gasto"],
+            ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR, null],
+          ].map(([titulo, valor, color, concepto]) => (
             <Col xs={4} key={titulo}>
               {/* El saldo, destacado (23/11/2026): relleno con su color y letra blanca. */}
+              {/* Entradas y Gastos se tocan: abren su historial de la semana. */}
               <div
+                role={concepto ? "button" : undefined}
+                onClick={concepto ? () => setHistorial(concepto) : undefined}
                 className="rounded-3 py-1 px-1 h-100"
                 style={
                   titulo === "Saldo"
                     ? { border: `1px solid ${color}`, backgroundColor: color, boxShadow: "0 2px 6px rgba(0,0,0,0.18)" }
-                    : { border: "1px solid #cbd5e1" }
+                    : { border: `1px solid ${color}`, cursor: "pointer", backgroundColor: "#fff" }
                 }
               >
-                <div style={{ fontSize: "0.68rem", color: titulo === "Saldo" ? "rgba(255,255,255,0.85)" : "#64748b", fontWeight: 600 }}>{titulo}</div>
+                <div style={{ fontSize: "0.68rem", color: titulo === "Saldo" ? "rgba(255,255,255,0.85)" : "#64748b", fontWeight: 600 }}>
+                  {titulo}
+                  {concepto && <i className="bi bi-chevron-right ms-1" style={{ fontSize: "0.6rem" }}></i>}
+                </div>
                 <div
                   className="fw-bold"
                   style={{
@@ -223,6 +233,15 @@ export default function CajaSemana() {
         </Row>
       )}
 
+      <HistorialSemana
+        concepto={historial}
+        semana={semana}
+        jueves={jueves}
+        movimientos={movimientos}
+        anterior={anterior}
+        total={historial === "gasto" ? gastos : entradas}
+        onHide={() => setHistorial(null)}
+      />
       <DetalleDia
         dia={diaAbierto}
         onHide={() => setDiaAbierto(null)}
