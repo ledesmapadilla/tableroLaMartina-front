@@ -31,6 +31,14 @@ window.addEventListener('load', () => {
   }, 10000)
 })
 
+// Para que el celular pueda instalar el Tablero como app (public/sw.js). Solo
+// en lo publicado: en desarrollo Vite recarga solo y no hace falta.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* sin instalar como app */ })
+  })
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     {/* Fuera de App: sale igual en el celular, en el login y en el 404. */}
