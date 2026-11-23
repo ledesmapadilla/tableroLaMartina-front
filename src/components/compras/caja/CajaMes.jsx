@@ -13,10 +13,9 @@ import "./caja.css";
  * cada semana va en el mes de su viernes. Al tocar una semana se abre la
  * pantalla Semanal en esa semana. Solo consulta.
  *
- * Arrastre (23/11/2026, helpers/cajaSemanas.js): el saldo positivo de una
- * semana entra como entrada de la siguiente; el negativo no pasa. Por eso el
- * saldo del mes es el de su última semana, y si alguna cerró en negativo no
- * coincide con entradas − gastos.
+ * Arrastre (23/11/2026, helpers/cajaSemanas.js): el saldo de cada semana pasa
+ * a la siguiente, positivo como entrada y negativo como gasto. El saldo del
+ * mes es el de su última semana.
  */
 
 const suma = (l) => Math.round(l.reduce((t, x) => t + (Number(x) || 0), 0) * 100) / 100;
@@ -65,10 +64,12 @@ export default function CajaMes() {
       .map((viernes) => ({ viernes, jueves: masDias(viernes, 6), ...(cadena[viernes] || SEMANA_VACIA) }));
   }, [cadena, mes]);
 
-  // Entradas del mes: lo que vino de la semana anterior al mes más lo
-  // ingresado en el mes (los arrastres de adentro no se cuentan dos veces).
-  const entradas = suma([semanas[0]?.anterior, ...semanas.map((s) => s.ingresos)]);
-  const gastos = suma(semanas.map((s) => s.gastos));
+  // Del mes: lo que vino de la semana anterior al mes (a entradas si era
+  // positivo, a gastos si era negativo) más lo cargado en el mes. Los arrastres
+  // de adentro no se cuentan dos veces.
+  const antMes = semanas[0]?.anterior || 0;
+  const entradas = suma([Math.max(antMes, 0), ...semanas.map((s) => s.ingresos)]);
+  const gastos = suma([Math.max(-antMes, 0), ...semanas.map((s) => s.gastosMov)]);
   const saldo = semanas.length ? semanas[semanas.length - 1].saldo : 0;
   const cantidad = semanas.reduce((t, s) => t + s.cantidad, 0);
   const raya = <span style={{ color: "#94a3b8" }}>–</span>;
@@ -163,11 +164,16 @@ export default function CajaMes() {
                       </div>
                     )}
                   </td>
-                  <td className="text-center fw-semibold" style={{ color: CONCEPTOS.gasto.color, whiteSpace: "nowrap" }}>
+                  <td className="text-center fw-semibold" style={{ color: CONCEPTOS.gasto.color, whiteSpace: "nowrap", lineHeight: 1.2 }}>
                     {s.gastos > 0 ? pesos(s.gastos) : raya}
+                    {s.anterior < 0 && (
+                      <div className="fw-normal text-muted" style={{ fontSize: "0.64rem" }}>
+                        ant. {pesos(-s.anterior)}
+                      </div>
+                    )}
                   </td>
                   <td className="text-center fw-semibold" style={{ color: s.saldo < 0 ? "#dc2626" : COLOR, whiteSpace: "nowrap" }}>
-                    {s.cantidad > 0 || s.anterior > 0 ? pesos(s.saldo) : raya}
+                    {s.cantidad > 0 || s.anterior !== 0 ? pesos(s.saldo) : raya}
                   </td>
                 </tr>
               );

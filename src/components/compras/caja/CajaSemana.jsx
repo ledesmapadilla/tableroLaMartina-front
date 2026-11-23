@@ -15,8 +15,8 @@ import "./caja.css";
  * salió; al tocar el día se abre el detalle de cada movimiento. Arriba, la
  * semana con flechas y su total. Editar y borrar siguen en Contable › Caja.
  * Desde el 23/11/2026 es "Semanal"; el mes va en CajaMes.
- * Ese mismo día: el saldo positivo de la semana anterior entra como entrada
- * de esta; el negativo no pasa (helpers/cajaSemanas.js).
+ * Ese mismo día: el saldo de la semana anterior pasa a esta, positivo como
+ * entrada y negativo como gasto (helpers/cajaSemanas.js).
  * Desde el 23/11/2026 también es la entrada de Caja (/compras/caja, la página
  * con la tarjeta "Nueva carga" se borró): cada día abre su detalle y, desde
  * ahí, "Nueva carga" lleva al alta con ese día ya puesto.
@@ -141,9 +141,9 @@ export default function CajaSemana() {
                 <div className="fw-bold" style={{ fontSize: "0.85rem", color, overflowWrap: "anywhere" }}>
                   {pesos(valor)}
                 </div>
-                {titulo === "Entradas" && anterior > 0 && (
+                {((titulo === "Entradas" && anterior > 0) || (titulo === "Gastos" && anterior < 0)) && (
                   <div className="text-muted" style={{ fontSize: "0.64rem" }}>
-                    ant. {pesos(anterior)}
+                    ant. {pesos(Math.abs(anterior))}
                   </div>
                 )}
               </div>

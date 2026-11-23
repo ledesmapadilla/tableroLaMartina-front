@@ -189,7 +189,8 @@ function ContableCaja() {
     setSemana(lista.includes(actual) ? actual : lista[0]);
   };
   // Los totales de la semana con el arrastre (23/11/2026, helpers/cajaSemanas.js):
-  // el saldo positivo de la semana anterior entra como entrada; el negativo no.
+  // el saldo de la semana anterior pasa a esta, positivo como entrada y
+  // negativo como gasto.
   const cadena = useMemo(() => semanasCaja(movimientos, hoyIso()), [movimientos]);
   const {
     anterior: anteriorSemana,
@@ -489,9 +490,9 @@ function ContableCaja() {
                     {signo}
                     {pesos(valor)}
                   </span>
-                  {titulo === "Entradas" && anteriorSemana > 0 && (
+                  {((titulo === "Entradas" && anteriorSemana > 0) || (titulo === "Gastos" && anteriorSemana < 0)) && (
                     <span style={{ fontSize: "0.6rem", color: "#64748b", lineHeight: 1, whiteSpace: "nowrap" }}>
-                      incl. {pesos(anteriorSemana)} anterior
+                      incl. {pesos(Math.abs(anteriorSemana))} anterior
                     </span>
                   )}
                 </div>
