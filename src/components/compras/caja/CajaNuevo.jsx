@@ -32,6 +32,9 @@ const ETIQUETAS = {
 
 const montoDe = (s) => leerMonto(s) || 0;
 
+// La descripción del ingreso semanal de la caja (el círculo "Semanal" del monto).
+const DESCRIPCION_SEMANAL = "Semanal";
+
 // Lo cargado queda en la pestaña (23/11/2026): si el celular recarga la página
 // (Android a veces la cierra mientras se usa la cámara o la galería), al
 // volver siguen los datos y las fotos que ya habían subido.
@@ -112,6 +115,7 @@ export default function CajaNuevo() {
   const abrirCamara = () => (hayCamaraEnPagina() ? setCamara(true) : inputCamara.current?.click());
 
   const fotosOk = subidas.filter((s) => !s.fallo);
+  const esSemanal = valores.descripcion.trim() === DESCRIPCION_SEMANAL;
   const completo = (campo) => {
     if (campo === "fotos") return fotosOk.length > 0;
     if (campo === "monto") return montoDe(valores.monto) > 0;
@@ -263,7 +267,7 @@ export default function CajaNuevo() {
                                 className="caja-cel-radio d-flex align-items-center gap-1 border-0 bg-transparent p-0 fw-semibold"
                                 style={{ color: c.color, fontSize: "0.95rem" }}
                               >
-                                <i className={`bi ${tildado ? "bi-record-circle-fill" : "bi-circle"}`} style={{ fontSize: "1.15rem" }}></i>
+                                <i className={`bi ${tildado ? "bi-record-circle" : "bi-circle"}`} style={{ fontSize: "1.15rem" }}></i>
                                 {c.texto}
                               </button>
                             );
@@ -321,6 +325,21 @@ export default function CajaNuevo() {
                     }}
                     onChange={(e) => setValores((prev) => ({ ...prev, monto: formatearMonto(e.target.value) }))}
                   />
+                  {/* En un ingreso, "Semanal" (23/11/2026): tildarlo pone esa
+                      descripción; destildarlo la borra. */}
+                  {valores.concepto === "ingreso" && (
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={esSemanal}
+                      onClick={() => setValores((prev) => ({ ...prev, descripcion: esSemanal ? "" : DESCRIPCION_SEMANAL }))}
+                      className="caja-cel-radio d-flex align-items-center gap-1 border-0 bg-transparent p-0 mt-2 fw-semibold"
+                      style={{ color: CONCEPTOS.ingreso.color, fontSize: "0.95rem" }}
+                    >
+                      <i className={`bi ${esSemanal ? "bi-record-circle" : "bi-circle"}`} style={{ fontSize: "1.15rem" }}></i>
+                      Semanal
+                    </button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline-secondary"
