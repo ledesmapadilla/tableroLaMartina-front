@@ -89,6 +89,17 @@ export const CARROS_REPARACION = {
     tituloGeneral: "Colectivos · General",
     prefijo: "",
     porFila: 6,
+    // Las tarjetas de General (20/11/2026), como las de Manitous General,
+    // más la del Presupuesto. Todas van al 404 por ahora. `colorTitulo`, el
+    // del nombre grande y la línea del encabezado de General.
+    colorTitulo: "#991b1b",
+    sistemas: [
+      { id: "motor", titulo: "Motor", icono: "bi bi-gear-wide-connected" },
+      { id: "frenos", titulo: "Frenos", icono: "bi bi-disc-fill" },
+      { id: "tren-delantero-trasero", titulo: "Tren delantero y trasero", icono: "bi bi-arrows-vertical" },
+      { id: "transmision", titulo: "Transmisión", icono: "bi bi-gear-fill" },
+      { id: "electricidad-carroceria", titulo: "Electricidad y carrocería", icono: "bi bi-lightning-charge-fill" },
+    ],
     equipo: "Colectivo",
     solapa: "colectivos",
     ruta: "colectivos",

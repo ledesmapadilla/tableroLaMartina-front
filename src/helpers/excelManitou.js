@@ -27,10 +27,10 @@ export const estadoDeFila = (f, cotizaciones) => {
  * `filtro` sale solo lo que se ve, con el número de la tabla completa.
  */
 // Las reparaciones de una fila en una celda (11/10/2026): una por renglón,
-// "problema: detalle" y si se realizó.
+// el trabajo a realizar y si se realizó (el problema se sacó el 20/11/2026).
 const reparacionesTexto = (f) =>
   (f.reparaciones || [])
-    .map((r) => `${r.problema}${r.detalle ? `: ${r.detalle}` : ""}${r.realizado ? " (realizado)" : ""}${r.notas ? ` — ${r.notas}` : ""}`)
+    .map((r) => `${r.detalle || r.problema}${r.realizado ? " (realizado)" : ""}${r.notas ? ` — ${r.notas}` : ""}`)
     .join("\n");
 
 // Los repuestos de una fila en una celda (13/10/2026): uno por renglón,

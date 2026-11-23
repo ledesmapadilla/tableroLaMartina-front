@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TractorIcon from "./TractorIcon";
 
@@ -51,8 +51,12 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
           const apaisada = ancho > alto;
           const ruta = `${base}/${t.id}`;
           return (
+            <Fragment key={t.id}>
+            {/* `nuevaFila` (20/11/2026, General de Colectivos): la tarjeta
+                arranca otra fila aunque en la de arriba haya lugar. El corte
+                no suma alto: los márgenes negativos se comen su gap. */}
+            {t.nuevaFila && <div style={{ flexBasis: "100%", height: 0, margin: `calc(${gap} / -2) 0` }} />}
             <div
-              key={t.id}
               className={`d-flex ${apaisada ? "flex-row gap-3 p-2" : `flex-column ${ajustadas ? "p-1" : parejas ? "p-2" : "p-3"}`} align-items-center justify-content-center text-center`}
               style={{
                 background: isHovered ? t.hoverBg : t.bg,
@@ -231,6 +235,7 @@ export default function TarjetasSanPablo({ tarjetas, base, porFila, maxWidth, ch
                 </span>
               )}
             </div>
+            </Fragment>
           );
         })}
       </div>
