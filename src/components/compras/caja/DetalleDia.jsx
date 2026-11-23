@@ -1,5 +1,6 @@
 import { Button, Modal, Table } from "react-bootstrap";
 import { COLOR, CONCEPTOS, MESES, pesos } from "./comun";
+import AccionesMovimiento from "./AccionesMovimiento";
 
 /**
  * El detalle de un día de caja en el celular: cada movimiento con su monto y
@@ -8,7 +9,7 @@ import { COLOR, CONCEPTOS, MESES, pesos } from "./comun";
  * Con `onNueva` (23/11/2026) lleva arriba el botón "Nueva carga", que abre el
  * alta con ese día ya puesto; `sinEditar` lo deja apagado.
  */
-export default function DetalleDia({ dia, onHide, onNueva, sinEditar = false }) {
+export default function DetalleDia({ dia, onHide, onNueva, onEditar, onBorrar, sinEditar = false }) {
   const vacio = (dia?.movimientos || []).length === 0;
   return (
     <Modal show={dia !== null} onHide={onHide} centered>
@@ -59,6 +60,7 @@ export default function DetalleDia({ dia, onHide, onNueva, sinEditar = false }) 
                         ))}
                       </div>
                     )}
+                    <AccionesMovimiento mov={m} onEditar={onEditar} onBorrar={onBorrar} sinEditar={sinEditar} />
                   </td>
                   <td className="text-end fw-semibold" style={{ color: c.color, whiteSpace: "nowrap" }}>
                     {c.signo}

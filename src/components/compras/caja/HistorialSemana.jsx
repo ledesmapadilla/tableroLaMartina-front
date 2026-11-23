@@ -1,5 +1,6 @@
 import { Button, Modal, Table } from "react-bootstrap";
 import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, pesos } from "./comun";
+import AccionesMovimiento from "./AccionesMovimiento";
 
 /**
  * El historial de la semana de un concepto (23/11/2026): se abre al tocar
@@ -10,7 +11,7 @@ import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, pesos } from "./comun";
  *
  * `concepto`: "ingreso" | "gasto" | null (cerrado).
  */
-export default function HistorialSemana({ concepto, semana, jueves, movimientos, anterior, total, onHide }) {
+export default function HistorialSemana({ concepto, semana, jueves, movimientos, anterior, total, onHide, onEditar, onBorrar, sinEditar }) {
   const c = CONCEPTOS[concepto] || CONCEPTOS.ingreso;
   const lista = (movimientos || [])
     .filter((m) => m.concepto === concepto && m.fecha >= semana && m.fecha <= jueves)
@@ -70,6 +71,7 @@ export default function HistorialSemana({ concepto, semana, jueves, movimientos,
                         ))}
                       </div>
                     )}
+                    <AccionesMovimiento mov={m} onEditar={onEditar} onBorrar={onBorrar} sinEditar={sinEditar} />
                   </td>
                   <td className="text-end fw-semibold" style={{ color: c.color, whiteSpace: "nowrap" }}>
                     {pesos(m.monto)}

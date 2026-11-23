@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Col, Row, Spinner } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import Swal from "sweetalert2";
 import { api } from "../../../services/api";
+import { borrarArchivo } from "../../../services/archivos";
 import { usePermisos } from "../../../context/permisos";
 import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe, montoRecuadro } from "./comun";
 import DetalleDia from "./DetalleDia";
@@ -41,7 +43,9 @@ export default function CajaSemana() {
   const [movimientos, setMovimientos] = useState(null);
   const [error, setError] = useState("");
   // El día abierto en el detalle, o null.
-  const [diaAbierto, setDiaAbierto] = useState(null);
+  // La fecha del día abierto: el detalle se arma de los movimientos, así al
+  // borrar uno se actualiza solo.
+  const [fechaAbierta, setFechaAbierta] = useState(null);
   // El historial de Entradas o de Gastos de la semana (23/11/2026): "ingreso", "gasto" o null.
   const [historial, setHistorial] = useState(null);
 
@@ -80,13 +84,43 @@ export default function CajaSemana() {
     });
   }, [movimientos, semana, jueves]);
 
+  const diaAbierto = dias.find((d) => d.fecha === fechaAbierta) || null;
+
+  // Editar y borrar desde el celular (23/11/2026). Editar abre la pantalla de
+  // carga con el movimiento; al volver, la semana se trae de nuevo.
+  const editar = (m) => navigate(`/compras/caja/nuevo?editar=${m._id}&fecha=${m.fecha}`);
+  const borrar = async (m) => {
+    const c = CONCEPTOS[m.concepto] || CONCEPTOS.gasto;
+    const { isConfirmed } = await Swal.fire({
+      icon: "warning",
+      title: `¿Borrar el ${c.texto.toLowerCase()}?`,
+      text: `${ddmm(m.fecha)} · ${pesos(m.monto)}${m.descripcion ? ` · ${m.descripcion}` : ""}. Esta acción no se puede deshacer.`,
+      width: "320px",
+      showCancelButton: true,
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+    });
+    if (!isConfirmed) return;
+    try {
+      await api.delete(`/contable/caja/${m._id}`);
+      // Los adjuntos los borra la pantalla (caja.controller.js).
+      (m.archivos || []).forEach((a) => borrarArchivo(a));
+      setMovimientos((l) => (l || []).filter((x) => x._id !== m._id));
+      Swal.fire({ icon: "success", title: "Borrado", timer: 1400, showConfirmButton: false, width: "300px" });
+    } catch (err) {
+      Swal.fire({ icon: "error", title: "No se pudo borrar", text: err.message, width: "300px" });
+    }
+  };
+
   // Los totales salen de la cadena de semanas, con lo que viene de la anterior.
   const cadena = useMemo(() => semanasCaja(movimientos, hoyIso()), [movimientos]);
   const { anterior, entradas, gastos, saldo } = cadena[semana] || SEMANA_VACIA;
 
   const mover = (n) => {
     setSemana((s) => masDias(s, 7 * n));
-    setDiaAbierto(null);
+    setFechaAbierta(null);
     setHistorial(null);
   };
 
@@ -199,7 +233,7 @@ export default function CajaSemana() {
               <Col xs={6} key={d.fecha}>
                 <Card
                   role={tocable ? "button" : undefined}
-                  onClick={tocable ? () => setDiaAbierto(d) : undefined}
+                  onClick={tocable ? () => setFechaAbierta(d.fecha) : undefined}
                   className="h-100"
                   style={{
                     cursor: tocable ? "pointer" : undefined,
@@ -246,11 +280,16 @@ export default function CajaSemana() {
         anterior={anterior}
         total={historial === "gasto" ? gastos : entradas}
         onHide={() => setHistorial(null)}
+        sinEditar={sinEditar}
+        onEditar={editar}
+        onBorrar={borrar}
       />
       <DetalleDia
         dia={diaAbierto}
-        onHide={() => setDiaAbierto(null)}
+        onHide={() => setFechaAbierta(null)}
         sinEditar={sinEditar}
+        onEditar={editar}
+        onBorrar={borrar}
         onNueva={(fecha) => navigate(`/compras/caja/nuevo?fecha=${fecha}`)}
       />
     </div>

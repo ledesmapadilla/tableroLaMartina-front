@@ -5,7 +5,7 @@ import Swal from "sweetalert2";
 import { api } from "../../../services/api";
 import { subirArchivo, borrarArchivo, prepararSubida } from "../../../services/archivos";
 import { COLOR, CONCEPTOS, dmy, hayCamaraEnPagina, hoyIso, pesos, useAltoVista } from "./comun";
-import { formatearMonto, leerMonto } from "../../../helpers/montoInput";
+import { formatearMonto, leerMonto, montoAInput } from "../../../helpers/montoInput";
 import Camara from "./Camara";
 import "./caja.css";
 
@@ -15,6 +15,10 @@ import "./caja.css";
  * campos, una tarjeta por dato que se despliega al tocarla, tres por fila, y
  * las alternativas en un panel ancho debajo de la fila tocada.
  * Back: POST /api/contable/caja (permiso compras.caja, "Editar").
+ *
+ * Desde el 23/11/2026 también edita: con ?editar=<id> carga ese movimiento y
+ * guarda con PUT. Las fotos que ya tenía no se borran de Cloudinary hasta
+ * guardar (si se cancela, quedan como estaban).
  */
 
 const CAMPOS = ["fecha", "concepto", "monto", "descripcion", "observaciones", "fotos"];
@@ -62,13 +66,17 @@ export default function CajaNuevo() {
   const pedida = params.get("fecha");
   const fechaPedida = /^\d{4}-\d{2}-\d{2}$/.test(pedida || "") && pedida <= hoyIso() ? pedida : null;
   const volver = () => navigate(fechaPedida ? `/compras/caja?semana=${fechaPedida}` : "/compras/caja");
+  const pedidoEditar = params.get("editar");
+  const editarId = /^[0-9a-f]{24}$/i.test(pedidoEditar || "") ? pedidoEditar : null;
+  // De qué carga es lo guardado en la pestaña: un alta (el día pedido) o una edición.
+  const origen = editarId ? `editar:${editarId}` : fechaPedida;
   useAltoVista();
 
   // Lo guardado vale solo si es de esta misma carga (mismo día pedido): si se
   // abandonó otra a medias, no se mezcla con la nueva.
   const [guardado] = useState(() => {
     const g = leerGuardado();
-    return g && (g.origen || null) === fechaPedida ? g : null;
+    return g && (g.origen || null) === origen ? g : null;
   });
   const [valores, setValores] = useState(
     () => guardado?.valores || { fecha: fechaPedida || hoyIso(), concepto: "", monto: "", descripcion: "", observaciones: "" }
@@ -83,6 +91,10 @@ export default function CajaNuevo() {
   const [guardando, setGuardando] = useState(false);
   const enCurso = useRef(false);
   const [camara, setCamara] = useState(false);
+  // Editando: las fotos que ya tenía y se sacaron; se borran de Cloudinary al guardar.
+  const [quitadas, setQuitadas] = useState(() => guardado?.quitadas || []);
+  // Editando sin nada en la pestaña: se trae el movimiento.
+  const [cargando, setCargando] = useState(() => Boolean(editarId && !guardado));
   const inputCamara = useRef(null);
 
   // La firma de Cloudinary, pedida de antemano: la primera foto sale más rápido.
@@ -90,13 +102,52 @@ export default function CajaNuevo() {
     prepararSubida();
   }, []);
 
+  // Editar: el movimiento, tal como está guardado.
+  useEffect(() => {
+    if (!editarId || guardado) return;
+    let vigente = true;
+    api
+      .get("/contable/caja")
+      .then((lista) => {
+        if (!vigente) return;
+        const mov = (lista || []).find((m) => m._id === editarId);
+        if (!mov) throw new Error("Ya no existe: puede que lo haya borrado otro.");
+        setValores({
+          fecha: mov.fecha,
+          concepto: mov.concepto,
+          monto: montoAInput(mov.monto),
+          descripcion: mov.descripcion || "",
+          observaciones: mov.observaciones || "",
+        });
+        const previas = (mov.archivos || []).map((a, i) => ({
+          clave: `previa-${i}`,
+          nombre: a.nombre || `Foto ${i + 1}`,
+          archivo: a,
+          fallo: false,
+          previa: true,
+        }));
+        previas.forEach((p) => promesas.current.set(p.clave, Promise.resolve(p.archivo)));
+        setSubidas(previas);
+        setCargando(false);
+      })
+      .catch((err) => {
+        if (!vigente) return;
+        Swal.fire({ icon: "error", title: "No se pudo abrir", text: err.message, width: "300px" });
+        navigate("/compras/caja");
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [editarId, guardado, navigate]);
+
   // Solo las fotos ya subidas: las que estaban subiendo se pierden con la recarga.
   useEffect(() => {
     try {
       sessionStorage.setItem(
         GUARDADO,
         JSON.stringify({
-          origen: fechaPedida,
+          origen,
+          quitadas,
           valores,
           abierto: abierto === "fotos" ? "fotos" : null,
           subidas: subidas.filter((s) => s.archivo),
@@ -106,7 +157,7 @@ export default function CajaNuevo() {
     } catch {
       // Sin sessionStorage la carga anda igual, solo que no sobrevive a una recarga.
     }
-  }, [valores, abierto, subidas, fechaPedida]);
+  }, [valores, abierto, subidas, origen, quitadas]);
 
   const sinCamaraEnPagina = useCallback(() => {
     setCamara(false);
@@ -165,6 +216,11 @@ export default function CajaNuevo() {
     setSubidas((l) => l.filter((x) => x.clave !== s.clave));
     const promesa = promesas.current.get(s.clave);
     promesas.current.delete(s.clave);
+    // Una que ya tenía el movimiento se borra recién al guardar.
+    if (s.previa) {
+      setQuitadas((q) => [...q, s.archivo]);
+      return;
+    }
     // Si ya subió (o cuando termine), fuera de Cloudinary.
     promesa?.then((a) => a && borrarArchivo(a));
   };
@@ -190,16 +246,26 @@ export default function CajaNuevo() {
     try {
       // Se esperan las fotos que todavía están subiendo.
       const archivos = (await Promise.all([...promesas.current.values()])).filter(Boolean);
-      await api.post("/contable/caja", {
+      const cuerpo = {
         fecha: valores.fecha,
         concepto: valores.concepto,
         monto: montoDe(valores.monto),
         descripcion: valores.descripcion.trim(),
         observaciones: valores.observaciones.trim(),
         archivos,
-      });
+      };
+      if (editarId) await api.put(`/contable/caja/${editarId}`, cuerpo);
+      else await api.post("/contable/caja", cuerpo);
+      // Las fotos que se sacaron al editar, ahora sí fuera de Cloudinary.
+      quitadas.forEach((a) => borrarArchivo(a));
       borrarGuardado();
-      await Swal.fire({ icon: "success", title: "Movimiento cargado", timer: 1500, showConfirmButton: false, width: "300px" });
+      await Swal.fire({
+        icon: "success",
+        title: editarId ? "Movimiento guardado" : "Movimiento cargado",
+        timer: 1500,
+        showConfirmButton: false,
+        width: "300px",
+      });
       // Vuelve a la semana del día cargado, que puede no ser el pedido.
       navigate(`/compras/caja?semana=${valores.fecha}`);
     } catch (err) {
@@ -212,15 +278,27 @@ export default function CajaNuevo() {
 
   const subiendo = subidas.some((s) => !s.archivo && !s.fallo);
 
+  if (cargando) {
+    return (
+      <div className="caja-cel-centrado d-flex align-items-center justify-content-center">
+        <Spinner animation="border" style={{ color: COLOR }} />
+      </div>
+    );
+  }
+
   return (
     <div className="caja-cel-centrado mx-auto px-3 py-3 d-flex flex-column justify-content-center" style={{ maxWidth: "480px" }}>
-      <div className="d-flex justify-content-end mb-2">
+      <div className="d-flex justify-content-between align-items-center mb-2">
+        <span className="fw-bold" style={{ color: COLOR }}>
+          {editarId ? "Editar movimiento" : ""}
+        </span>
         <Button
           size="sm"
           variant="outline-secondary"
           onClick={() => {
-            // Lo que ya había subido no se va a usar: fuera de Cloudinary.
-            subidas.forEach((s) => s.archivo && borrarArchivo(s.archivo));
+            // Lo que se subió acá no se va a usar: fuera de Cloudinary. Las
+            // que ya tenía el movimiento quedan como estaban.
+            subidas.forEach((s) => s.archivo && !s.previa && borrarArchivo(s.archivo));
             borrarGuardado();
             volver();
           }}
