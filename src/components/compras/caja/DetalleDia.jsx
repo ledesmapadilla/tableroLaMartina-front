@@ -18,8 +18,10 @@ export default function DetalleDia({ dia, onHide, onNueva, sinEditar = false }) 
       <Modal.Body>
         {onNueva && (
           <Button
-            className="w-100 mb-3 fw-semibold"
-            style={{ backgroundColor: COLOR, borderColor: COLOR }}
+            // La mitad del ancho, centrado y en verde: se distingue del color
+            // de la sección (23/11/2026).
+            className="w-50 d-block mx-auto mb-3 fw-semibold"
+            style={{ backgroundColor: "#15803d", borderColor: "#15803d" }}
             disabled={sinEditar}
             title={sinEditar ? "Sin permiso para editar" : undefined}
             onClick={() => onNueva(dia.fecha)}
