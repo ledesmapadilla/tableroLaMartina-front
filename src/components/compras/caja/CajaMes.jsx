@@ -107,9 +107,24 @@ export default function CajaMes() {
             ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR],
           ].map(([titulo, valor, color]) => (
             <Col xs={4} key={titulo}>
-              <div className="rounded-3 py-1 px-1 h-100" style={{ border: "1px solid #cbd5e1" }}>
-                <div style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 600 }}>{titulo}</div>
-                <div className="fw-bold" style={{ fontSize: "0.85rem", color, overflowWrap: "anywhere" }}>
+              {/* El saldo, destacado (23/11/2026): relleno con su color y letra blanca. */}
+              <div
+                className="rounded-3 py-1 px-1 h-100"
+                style={
+                  titulo === "Saldo"
+                    ? { border: `1px solid ${color}`, backgroundColor: color, boxShadow: "0 2px 6px rgba(0,0,0,0.18)" }
+                    : { border: "1px solid #cbd5e1" }
+                }
+              >
+                <div style={{ fontSize: "0.68rem", color: titulo === "Saldo" ? "rgba(255,255,255,0.85)" : "#64748b", fontWeight: 600 }}>{titulo}</div>
+                <div
+                  className="fw-bold"
+                  style={{
+                    fontSize: titulo === "Saldo" ? "0.98rem" : "0.85rem",
+                    color: titulo === "Saldo" ? "#fff" : color,
+                    overflowWrap: "anywhere",
+                  }}
+                >
                   {pesos(valor)}
                 </div>
               </div>
