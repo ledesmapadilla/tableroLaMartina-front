@@ -1,17 +1,17 @@
 import { Button, Modal, Table } from "react-bootstrap";
-import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, pesos, conAcciones } from "./comun";
-import CeldaAcciones from "./AccionesMovimiento";
+import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, pesos } from "./comun";
 
 /**
  * El historial de la semana de un concepto (23/11/2026): se abre al tocar
  * Entradas o Gastos en la Semanal del celular. Cada movimiento con su día, su
  * detalle y su monto; arriba, si corresponde, el saldo que vino de la semana
  * anterior (positivo en entradas, negativo en gastos, helpers/cajaSemanas.js).
- * El total del pie es el mismo del recuadro tocado.
+ * El total del pie es el mismo del recuadro tocado. Solo consulta: editar y
+ * borrar van en el detalle de cada día (pedido del usuario, 23/11/2026).
  *
  * `concepto`: "ingreso" | "gasto" | null (cerrado).
  */
-export default function HistorialSemana({ concepto, semana, jueves, movimientos, anterior, total, onHide, onEditar, onBorrar, sinEditar }) {
+export default function HistorialSemana({ concepto, semana, jueves, movimientos, anterior, total, onHide }) {
   const c = CONCEPTOS[concepto] || CONCEPTOS.ingreso;
   const lista = (movimientos || [])
     .filter((m) => m.concepto === concepto && m.fecha >= semana && m.fecha <= jueves)
@@ -19,7 +19,6 @@ export default function HistorialSemana({ concepto, semana, jueves, movimientos,
   // Lo que vino de la semana anterior y va en este concepto.
   const arrastre = concepto === "ingreso" ? Math.max(anterior, 0) : Math.max(-anterior, 0);
   const th = { backgroundColor: COLOR, color: "#fff" };
-  const acciones = conAcciones({ onEditar, onBorrar, sinEditar });
 
   return (
     <Modal show={concepto !== null} onHide={onHide} centered scrollable>
@@ -40,7 +39,6 @@ export default function HistorialSemana({ concepto, semana, jueves, movimientos,
                 <th className="text-end" style={th}>
                   Monto
                 </th>
-                {acciones && <th style={{ ...th, width: 34 }}></th>}
               </tr>
             </thead>
             <tbody>
@@ -53,7 +51,6 @@ export default function HistorialSemana({ concepto, semana, jueves, movimientos,
                   <td className="text-end fw-semibold" style={{ color: c.color, whiteSpace: "nowrap" }}>
                     {pesos(arrastre)}
                   </td>
-                  {acciones && <td></td>}
                 </tr>
               )}
               {lista.map((m) => (
@@ -78,7 +75,6 @@ export default function HistorialSemana({ concepto, semana, jueves, movimientos,
                   <td className="text-end fw-semibold" style={{ color: c.color, whiteSpace: "nowrap" }}>
                     {pesos(m.monto)}
                   </td>
-                  {acciones && <CeldaAcciones mov={m} onEditar={onEditar} onBorrar={onBorrar} />}
                 </tr>
               ))}
             </tbody>
@@ -90,7 +86,6 @@ export default function HistorialSemana({ concepto, semana, jueves, movimientos,
                 <td className="text-end" style={{ color: c.color, whiteSpace: "nowrap" }}>
                   {pesos(total)}
                 </td>
-                {acciones && <td></td>}
               </tr>
             </tfoot>
           </Table>

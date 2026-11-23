@@ -280,9 +280,6 @@ export default function CajaSemana() {
         anterior={anterior}
         total={historial === "gasto" ? gastos : entradas}
         onHide={() => setHistorial(null)}
-        sinEditar={sinEditar}
-        onEditar={editar}
-        onBorrar={borrar}
       />
       <DetalleDia
         dia={diaAbierto}
