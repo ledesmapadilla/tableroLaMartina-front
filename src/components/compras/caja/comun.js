@@ -65,3 +65,15 @@ export const useAltoVista = () => {
  * falta getUserMedia y https (o localhost).
  */
 export const hayCamaraEnPagina = () => Boolean(navigator.mediaDevices?.getUserMedia) && window.isSecureContext;
+
+/**
+ * Un monto en los recuadros de arriba (Entradas, Gastos, Saldo), siempre en
+ * un renglón (23/11/2026). Si "$ 1.234.567" no entra a la letra de siempre,
+ * se achica la letra y el "$" pasa al título ("Entradas $"): `grande` lo dice.
+ */
+export const montoRecuadro = (valor, base) => {
+  const texto = pesos(valor);
+  if (texto.length <= 10) return { texto, grande: false, tam: `${base}rem` };
+  const numero = texto.replace(/^\$ /, "");
+  return { texto: numero, grande: true, tam: `${Math.max(0.55, (base * 9) / numero.length).toFixed(2)}rem` };
+};

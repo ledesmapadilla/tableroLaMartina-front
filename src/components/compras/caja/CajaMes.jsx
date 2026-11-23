@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Col, Row, Spinner, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../../services/api";
-import { COLOR, CONCEPTOS, MESES, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
+import { COLOR, CONCEPTOS, MESES, ddmm, hoyIso, masDias, pesos, viernesDe, montoRecuadro } from "./comun";
 import { SEMANA_VACIA, semanasCaja } from "../../../helpers/cajaSemanas";
 import "./caja.css";
 
@@ -105,7 +105,10 @@ export default function CajaMes() {
             ["Entradas", entradas, CONCEPTOS.ingreso.color],
             ["Gastos", gastos, CONCEPTOS.gasto.color],
             ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR],
-          ].map(([titulo, valor, color]) => (
+          ].map(([titulo, valor, color]) => {
+            // Un renglón siempre: con números grandes, letra más chica y el $ al título.
+            const m = montoRecuadro(valor, titulo === "Saldo" ? 0.98 : 0.85);
+            return (
             <Col xs={4} key={titulo}>
               {/* El saldo, destacado (23/11/2026): relleno con su color y letra blanca. */}
               <div
@@ -116,20 +119,24 @@ export default function CajaMes() {
                     : { border: "1px solid #cbd5e1" }
                 }
               >
-                <div style={{ fontSize: "0.68rem", color: titulo === "Saldo" ? "rgba(255,255,255,0.85)" : "#64748b", fontWeight: 600 }}>{titulo}</div>
+                <div style={{ fontSize: "0.68rem", color: titulo === "Saldo" ? "rgba(255,255,255,0.85)" : "#64748b", fontWeight: 600 }}>
+                  {titulo}
+                  {m.grande && " $"}
+                </div>
                 <div
                   className="fw-bold"
                   style={{
-                    fontSize: titulo === "Saldo" ? "0.98rem" : "0.85rem",
+                    fontSize: m.tam,
                     color: titulo === "Saldo" ? "#fff" : color,
-                    overflowWrap: "anywhere",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {pesos(valor)}
+                  {m.texto}
                 </div>
               </div>
             </Col>
-          ))}
+            );
+          })}
         </Row>
       )}
 

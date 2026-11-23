@@ -3,7 +3,7 @@ import { Button, Card, Col, Row, Spinner } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../services/api";
 import { usePermisos } from "../../../context/permisos";
-import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
+import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe, montoRecuadro } from "./comun";
 import DetalleDia from "./DetalleDia";
 import HistorialSemana from "./HistorialSemana";
 import { SEMANA_VACIA, semanasCaja } from "../../../helpers/cajaSemanas";
@@ -138,7 +138,10 @@ export default function CajaSemana() {
             ["Entradas", entradas, CONCEPTOS.ingreso.color, "ingreso"],
             ["Gastos", gastos, CONCEPTOS.gasto.color, "gasto"],
             ["Saldo", saldo, saldo < 0 ? "#dc2626" : COLOR, null],
-          ].map(([titulo, valor, color, concepto]) => (
+          ].map(([titulo, valor, color, concepto]) => {
+            // Un renglón siempre: con números grandes, letra más chica y el $ al título.
+            const m = montoRecuadro(valor, titulo === "Saldo" ? 0.98 : 0.85);
+            return (
             <Col xs={4} key={titulo}>
               {/* El saldo, destacado (23/11/2026): relleno con su color y letra blanca. */}
               {/* Entradas y Gastos se tocan: abren su historial de la semana. */}
@@ -154,17 +157,18 @@ export default function CajaSemana() {
               >
                 <div style={{ fontSize: "0.68rem", color: titulo === "Saldo" ? "rgba(255,255,255,0.85)" : "#64748b", fontWeight: 600 }}>
                   {titulo}
+                  {m.grande && " $"}
                   {concepto && <i className="bi bi-chevron-right ms-1" style={{ fontSize: "0.6rem" }}></i>}
                 </div>
                 <div
                   className="fw-bold"
                   style={{
-                    fontSize: titulo === "Saldo" ? "0.98rem" : "0.85rem",
+                    fontSize: m.tam,
                     color: titulo === "Saldo" ? "#fff" : color,
-                    overflowWrap: "anywhere",
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  {pesos(valor)}
+                  {m.texto}
                 </div>
                 {((titulo === "Entradas" && anterior > 0) || (titulo === "Gastos" && anterior < 0)) && (
                   <div className="text-muted" style={{ fontSize: "0.64rem" }}>
@@ -173,7 +177,8 @@ export default function CajaSemana() {
                 )}
               </div>
             </Col>
-          ))}
+            );
+          })}
         </Row>
       )}
 
