@@ -48,6 +48,7 @@ const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistor
 // Caja desde el celular (13/11/2026): la caja de Contable en pantallas de teléfono.
 const CajaCelInicio = lazy(() => import("./components/compras/caja/CajaInicio"));
 const CajaCelNuevo = lazy(() => import("./components/compras/caja/CajaNuevo"));
+const CajaCelSemana = lazy(() => import("./components/compras/caja/CajaSemana"));
 const CajaCelMes = lazy(() => import("./components/compras/caja/CajaMes"));
 const VerOP = lazy(() => import("./components/compras/VerOP"));
 const Usuarios = lazy(() => import("./components/compras/Usuarios"));
@@ -329,6 +330,7 @@ function LayoutDesktop() {
                   Permiso compras.caja (rol celular, javiercel). */}
               <Route path="/compras/caja" element={<RutaProtegida><CajaCelInicio /></RutaProtegida>} />
               <Route path="/compras/caja/nuevo" element={<RutaProtegida><CajaCelNuevo /></RutaProtegida>} />
+              <Route path="/compras/caja/semana" element={<RutaProtegida><CajaCelSemana /></RutaProtegida>} />
               <Route path="/compras/caja/mes" element={<RutaProtegida><CajaCelMes /></RutaProtegida>} />
 
               {/* Gasoil (20/10/2026, en lugar de Resultados): una tarjeta por

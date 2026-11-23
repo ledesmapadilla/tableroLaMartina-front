@@ -59,3 +59,9 @@ export const useAltoVista = () => {
     };
   }, []);
 };
+
+/**
+ * Si el navegador deja usar la cámara dentro de la página (Camara.jsx): hace
+ * falta getUserMedia y https (o localhost).
+ */
+export const hayCamaraEnPagina = () => Boolean(navigator.mediaDevices?.getUserMedia) && window.isSecureContext;

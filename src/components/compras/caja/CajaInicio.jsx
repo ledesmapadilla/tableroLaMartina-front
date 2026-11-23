@@ -16,19 +16,38 @@ export default function CajaInicio() {
   useAltoVista();
 
   return (
-    <div className="caja-cel-centrado d-flex align-items-center justify-content-center px-3">
-      {/* El ancho lo fija la columna y no la tarjeta, así "Ver" queda alineado
-          con el borde derecho de la tarjeta. */}
+    <div className="caja-cel-centrado position-relative d-flex align-items-center justify-content-center px-3">
+      {/* Volver a Compras, arriba de todo a la derecha como en las otras
+          pantallas de Caja; no corre la tarjeta del centro. */}
+      <Button
+        size="sm"
+        variant="outline-secondary"
+        className="position-absolute"
+        style={{ top: "12px", right: "16px" }}
+        onClick={() => navigate("/compras")}
+      >
+        Volver
+      </Button>
+      {/* El ancho lo fija la columna y no la tarjeta, así los botones de
+          arriba quedan alineados con los bordes de la tarjeta. */}
       <div className="w-100" style={{ maxWidth: "240px" }}>
-        <div className="d-flex justify-content-end mb-4">
-          <Button
-            size="sm"
-            className="rounded-4"
-            style={{ backgroundColor: "rgba(22, 78, 99, 0.12)", borderColor: COLOR, color: COLOR, fontWeight: 600 }}
-            onClick={() => navigate("/compras/caja/mes")}
-          >
-            Ver
-          </Button>
+        {/* Semanal a la izquierda y Mensual a la derecha (23/11/2026: "Ver"
+            pasó a ser "Semanal" y se sumó "Mensual"). */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          {[
+            ["Semanal", "/compras/caja/semana"],
+            ["Mensual", "/compras/caja/mes"],
+          ].map(([texto, ruta]) => (
+            <Button
+              key={ruta}
+              size="sm"
+              className="rounded-4"
+              style={{ backgroundColor: "rgba(22, 78, 99, 0.12)", borderColor: COLOR, color: COLOR, fontWeight: 600 }}
+              onClick={() => navigate(ruta)}
+            >
+              {texto}
+            </Button>
+          ))}
         </div>
 
         <Card

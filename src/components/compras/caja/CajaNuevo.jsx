@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Col, Form, ListGroup, Row, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { api } from "../../../services/api";
 import { subirArchivo, borrarArchivo, prepararSubida } from "../../../services/archivos";
-import { COLOR, CONCEPTOS, dmy, hoyIso, pesos, useAltoVista } from "./comun";
+import { COLOR, CONCEPTOS, dmy, hayCamaraEnPagina, hoyIso, pesos, useAltoVista } from "./comun";
 import { formatearMonto, leerMonto } from "../../../helpers/montoInput";
+import Camara from "./Camara";
 import "./caja.css";
 
 /**
@@ -31,24 +32,72 @@ const ETIQUETAS = {
 
 const montoDe = (s) => leerMonto(s) || 0;
 
+// Lo cargado queda en la pestaña (23/11/2026): si el celular recarga la página
+// (Android a veces la cierra mientras se usa la cámara o la galería), al
+// volver siguen los datos y las fotos que ya habían subido.
+const GUARDADO = "caja-cel-nuevo";
+const leerGuardado = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem(GUARDADO)) || null;
+  } catch {
+    return null;
+  }
+};
+const borrarGuardado = () => {
+  try {
+    sessionStorage.removeItem(GUARDADO);
+  } catch {
+    // Sin sessionStorage no hay nada que borrar.
+  }
+};
+
 export default function CajaNuevo() {
   const navigate = useNavigate();
   useAltoVista();
 
-  const [valores, setValores] = useState({ fecha: hoyIso(), concepto: "", monto: "", descripcion: "", observaciones: "" });
+  const [guardado] = useState(leerGuardado);
+  const [valores, setValores] = useState(
+    () => guardado?.valores || { fecha: hoyIso(), concepto: "", monto: "", descripcion: "", observaciones: "" }
+  );
   // Arranca con todas cerradas: la pantalla se ve entera antes de tocar nada.
-  const [abierto, setAbierto] = useState(null);
+  // Si se recargó en medio de las fotos, vuelve abierta ahí.
+  const [abierto, setAbierto] = useState(() => guardado?.abierto || null);
   // Las fotos se suben apenas se eligen: { clave, nombre, archivo, fallo }.
-  const [subidas, setSubidas] = useState([]);
-  const promesas = useRef(new Map());
-  const contador = useRef(0);
+  const [subidas, setSubidas] = useState(() => guardado?.subidas || []);
+  const promesas = useRef(new Map((guardado?.subidas || []).map((s) => [s.clave, Promise.resolve(s.archivo)])));
+  const contador = useRef(guardado?.contador || 0);
   const [guardando, setGuardando] = useState(false);
   const enCurso = useRef(false);
+  const [camara, setCamara] = useState(false);
+  const inputCamara = useRef(null);
 
   // La firma de Cloudinary, pedida de antemano: la primera foto sale más rápido.
   useEffect(() => {
     prepararSubida();
   }, []);
+
+  // Solo las fotos ya subidas: las que estaban subiendo se pierden con la recarga.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        GUARDADO,
+        JSON.stringify({
+          valores,
+          abierto: abierto === "fotos" ? "fotos" : null,
+          subidas: subidas.filter((s) => s.archivo),
+          contador: contador.current,
+        })
+      );
+    } catch {
+      // Sin sessionStorage la carga anda igual, solo que no sobrevive a una recarga.
+    }
+  }, [valores, abierto, subidas]);
+
+  const sinCamaraEnPagina = useCallback(() => {
+    setCamara(false);
+    inputCamara.current?.click();
+  }, [setCamara]);
+  const abrirCamara = () => (hayCamaraEnPagina() ? setCamara(true) : inputCamara.current?.click());
 
   const fotosOk = subidas.filter((s) => !s.fallo);
   const completo = (campo) => {
@@ -75,6 +124,10 @@ export default function CajaNuevo() {
   const agregarFotos = (ev) => {
     const files = [...(ev.target.files || [])];
     ev.target.value = "";
+    agregarArchivos(files);
+  };
+
+  const agregarArchivos = (files) => {
     for (const f of files) {
       contador.current += 1;
       const clave = `foto-${contador.current}`;
@@ -129,6 +182,7 @@ export default function CajaNuevo() {
         observaciones: valores.observaciones.trim(),
         archivos,
       });
+      borrarGuardado();
       await Swal.fire({ icon: "success", title: "Movimiento cargado", timer: 1500, showConfirmButton: false, width: "300px" });
       navigate("/compras/caja");
     } catch (err) {
@@ -144,7 +198,16 @@ export default function CajaNuevo() {
   return (
     <div className="caja-cel-centrado mx-auto px-3 py-3 d-flex flex-column justify-content-center" style={{ maxWidth: "480px" }}>
       <div className="d-flex justify-content-end mb-2">
-        <Button size="sm" variant="outline-secondary" onClick={() => navigate("/compras/caja")}>
+        <Button
+          size="sm"
+          variant="outline-secondary"
+          onClick={() => {
+            // Lo que ya había subido no se va a usar: fuera de Cloudinary.
+            subidas.forEach((s) => s.archivo && borrarArchivo(s.archivo));
+            borrarGuardado();
+            navigate("/compras/caja");
+          }}
+        >
           Cancelar
         </Button>
       </div>
@@ -290,10 +353,11 @@ export default function CajaNuevo() {
                     </ListGroup>
                   )}
                   <div className="d-flex gap-2 justify-content-center">
-                    <Form.Label className="btn btn-sm btn-outline-secondary mb-0">
+                    <Button size="sm" variant="outline-secondary" onClick={abrirCamara}>
                       <i className="bi bi-camera-fill me-1"></i>Sacar foto
-                      <input type="file" accept="image/*" capture="environment" hidden onChange={agregarFotos} />
-                    </Form.Label>
+                    </Button>
+                    {/* La cámara de siempre, por si el teléfono no deja usarla en la página. */}
+                    <input ref={inputCamara} type="file" accept="image/*" capture="environment" hidden onChange={agregarFotos} />
                     <Form.Label className="btn btn-sm btn-outline-secondary mb-0">
                       <i className="bi bi-images me-1"></i>Galería
                       <input type="file" accept="image/*,application/pdf" multiple hidden onChange={agregarFotos} />
@@ -318,6 +382,8 @@ export default function CajaNuevo() {
           {guardando ? <Spinner animation="border" size="sm" /> : "Guardar"}
         </Button>
       </div>
+
+      {camara && <Camara onHide={() => setCamara(false)} onFoto={(f) => agregarArchivos([f])} onSinCamara={sinCamaraEnPagina} />}
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Col, Modal, Row, Spinner, Table } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Button, Card, Col, Row, Spinner } from "react-bootstrap";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../services/api";
-import { COLOR, CONCEPTOS, DIAS_SEMANA, MESES, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
+import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
+import DetalleDia from "./DetalleDia";
 import "./caja.css";
 
 /**
@@ -11,14 +12,20 @@ import "./caja.css";
  * jueves, como la Caja de Contable: una tarjeta por día con lo que entró y
  * salió; al tocar el día se abre el detalle de cada movimiento. Arriba, la
  * semana con flechas y su total. Editar y borrar siguen en Contable › Caja.
+ * Desde el 23/11/2026 es "Semanal" (/compras/caja/semana); el mes va en CajaMes.
  */
 
 const suma = (l) => Math.round(l.reduce((t, x) => t + (Number(x.monto) || 0), 0) * 100) / 100;
 
-export default function CajaMes() {
+export default function CajaSemana() {
   const navigate = useNavigate();
-  // El viernes que abre la semana elegida; arranca en la de hoy.
-  const [semana, setSemana] = useState(() => viernesDe(hoyIso()));
+  // Desde el resumen del mes llega con ?semana=<viernes> (23/11/2026); y
+  // Volver regresa al mes.
+  const [params] = useSearchParams();
+  const pedida = params.get("semana");
+  const desdeMes = /^\d{4}-\d{2}-\d{2}$/.test(pedida || "");
+  // El viernes que abre la semana elegida; arranca en la pedida o en la de hoy.
+  const [semana, setSemana] = useState(() => viernesDe(desdeMes ? pedida : hoyIso()));
   const [movimientos, setMovimientos] = useState(null);
   const [error, setError] = useState("");
   // El día abierto en el detalle, o null.
@@ -73,7 +80,7 @@ export default function CajaMes() {
         <h5 className="mb-0 fw-bold" style={{ color: COLOR }}>
           Caja de la semana
         </h5>
-        <Button size="sm" variant="outline-secondary" onClick={() => navigate("/compras/caja")}>
+        <Button size="sm" variant="outline-secondary" onClick={() => navigate(desdeMes ? "/compras/caja/mes" : "/compras/caja")}>
           Volver
         </Button>
       </div>
@@ -171,66 +178,7 @@ export default function CajaMes() {
         </Row>
       )}
 
-      <Modal show={diaAbierto !== null} onHide={() => setDiaAbierto(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title style={{ fontSize: "1.1rem" }}>
-            {diaAbierto ? `${diaAbierto.diaSemana} ${diaAbierto.dia} de ${MESES[diaAbierto.mes]}` : ""}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Table bordered size="sm" className="mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
-            <thead>
-              <tr>
-                <th style={{ backgroundColor: COLOR, color: "#fff" }}>Detalle</th>
-                <th className="text-end" style={{ backgroundColor: COLOR, color: "#fff" }}>
-                  Monto
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(diaAbierto?.movimientos || []).map((m) => {
-                const c = CONCEPTOS[m.concepto] || CONCEPTOS.gasto;
-                return (
-                  <tr key={m._id}>
-                    <td style={{ overflowWrap: "anywhere" }}>
-                      <div>{m.descripcion || <span className="text-muted fst-italic">{c.texto}</span>}</div>
-                      {m.observaciones && <div className="text-muted" style={{ fontSize: "0.75rem" }}>{m.observaciones}</div>}
-                      {(m.archivos || []).length > 0 && (
-                        <div className="d-flex gap-2 flex-wrap mt-1">
-                          {m.archivos.map((a, i) => (
-                            <a key={a.publicId || i} href={a.url} target="_blank" rel="noreferrer" style={{ fontSize: "0.75rem" }}>
-                              <i className={`bi ${a.tipo === "image" ? "bi-image" : "bi-paperclip"} me-1`}></i>
-                              {a.tipo === "image" ? `Foto ${i + 1}` : a.nombre || `Archivo ${i + 1}`}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="text-end fw-semibold" style={{ color: c.color, whiteSpace: "nowrap" }}>
-                      {c.signo}
-                      {pesos(m.monto)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            {/* El saldo del día es lo primero que se mira: abajo y en negrita. */}
-            <tfoot>
-              <tr className="fw-bold">
-                <td className="text-center">Saldo del día</td>
-                <td className="text-end" style={{ whiteSpace: "nowrap" }}>
-                  {diaAbierto ? pesos(diaAbierto.entradas - diaAbierto.gastos) : ""}
-                </td>
-              </tr>
-            </tfoot>
-          </Table>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setDiaAbierto(null)}>
-            Cerrar
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <DetalleDia dia={diaAbierto} onHide={() => setDiaAbierto(null)} />
     </div>
   );
 }
