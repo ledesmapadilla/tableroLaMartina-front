@@ -7,6 +7,7 @@ import { subirArchivo, borrarArchivo, prepararSubida } from "../../services/arch
 import { usePermisos } from "../../context/permisos";
 import { FiltroSelect } from "../compras/estilos";
 import { exportarPlanilla } from "../../helpers/excel";
+import { formatearMonto, leerMonto, montoAInput } from "../../helpers/montoInput";
 
 /**
  * Contable › Caja (13/11/2026, segunda versión): la tarjeta Caja abre directo
@@ -202,7 +203,7 @@ function ContableCaja() {
       form: mov
         ? {
             ...mov,
-            monto: String(mov.monto).replace(".", ","),
+            monto: montoAInput(mov.monto),
             descripcion: mov.descripcion || "",
             observaciones: mov.observaciones || "",
             archivos: mov.archivos || [],
@@ -247,9 +248,15 @@ function ContableCaja() {
   const guardar = (ev) => {
     ev.preventDefault();
     const { original, form } = editando;
-    const monto = Math.round(Number(String(form.monto).replace(/\./g, "").replace(",", ".")) * 100) / 100;
-    if (!Number.isFinite(monto) || monto <= 0) {
-      Swal.fire({ icon: "error", title: "Revisá el monto", text: "Tiene que ser mayor que cero.", width: "300px" });
+    const monto = leerMonto(form.monto);
+    const faltan = [
+      !form.fecha && "la fecha",
+      !(monto > 0) && "el monto",
+      !form.descripcion.trim() && "la descripción",
+    ].filter(Boolean);
+    if (faltan.length) {
+      const lista = faltan.length > 1 ? `${faltan.slice(0, -1).join(", ")} y ${faltan.at(-1)}` : faltan[0];
+      Swal.fire({ icon: "error", title: "Faltan datos", text: `Completá ${lista}.`, width: "300px" });
       return;
     }
     const cuerpo = {
@@ -652,23 +659,28 @@ function ContableCaja() {
               </div>
               <div className="d-flex gap-3">
                 <Form.Group style={{ flex: 1 }}>
-                  <Form.Label className="fw-semibold small mb-1">Fecha</Form.Label>
-                  <Form.Control type="date" required value={editando.form.fecha} onChange={(e) => cambiar("fecha", e.target.value)} />
+                  <Form.Label className="fw-semibold small mb-1">
+                    Fecha <span className="text-danger">*</span>
+                  </Form.Label>
+                  <Form.Control type="date" value={editando.form.fecha} onChange={(e) => cambiar("fecha", e.target.value)} />
                 </Form.Group>
                 <Form.Group style={{ flex: 1 }}>
-                  <Form.Label className="fw-semibold small mb-1">Monto</Form.Label>
+                  <Form.Label className="fw-semibold small mb-1">
+                    Monto <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     inputMode="decimal"
-                    required
                     autoFocus
                     value={editando.form.monto}
-                    onChange={(e) => cambiar("monto", e.target.value.replace(/[^\d,]/g, ""))}
+                    onChange={(e) => cambiar("monto", formatearMonto(e.target.value))}
                   />
                 </Form.Group>
               </div>
               <Form.Group>
-                <Form.Label className="fw-semibold small mb-1">Descripción</Form.Label>
+                <Form.Label className="fw-semibold small mb-1">
+                  Descripción <span className="text-danger">*</span>
+                </Form.Label>
                 <Form.Control
                   type="text"
                   maxLength={300}

@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { api } from "../../../services/api";
 import { subirArchivo, borrarArchivo, prepararSubida } from "../../../services/archivos";
 import { COLOR, CONCEPTOS, dmy, hoyIso, pesos, useAltoVista } from "./comun";
+import { formatearMonto, leerMonto } from "../../../helpers/montoInput";
 import "./caja.css";
 
 /**
@@ -28,7 +29,7 @@ const ETIQUETAS = {
   fotos: "Fotos",
 };
 
-const montoDe = (s) => Math.round(Number(String(s || "").replace(",", ".")) * 100) / 100;
+const montoDe = (s) => leerMonto(s) || 0;
 
 export default function CajaNuevo() {
   const navigate = useNavigate();
@@ -225,10 +226,8 @@ export default function CajaNuevo() {
                 <Card.Body className="d-flex flex-column align-items-center">
                   {/* Sin placeholder: un 0 en gris se lee como un valor cargado. */}
                   <Form.Control
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    step="0.01"
-                    min="0"
                     autoFocus
                     value={valores.monto}
                     className="text-center"
@@ -237,7 +236,7 @@ export default function CajaNuevo() {
                       const el = e.target;
                       setTimeout(() => el.select(), 0);
                     }}
-                    onChange={(e) => setValores((prev) => ({ ...prev, monto: e.target.value }))}
+                    onChange={(e) => setValores((prev) => ({ ...prev, monto: formatearMonto(e.target.value) }))}
                   />
                   <Button
                     size="sm"

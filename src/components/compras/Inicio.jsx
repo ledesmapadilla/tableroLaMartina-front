@@ -121,6 +121,23 @@ const SECCIONES = [
       brillo: 'rgba(251,191,36,0.25)',
     },
   },
+  {
+    // Caja desde el celular (13/11/2026; tarjeta de vuelta el 23/11/2026):
+    // la caja de Contable para cargar desde el teléfono (rol celular).
+    id: 'caja',
+    titulo: 'Caja',
+    subtitulo: 'Cargar movimientos de caja',
+    icono: 'bi bi-safe2-fill',
+    destino: '/compras/caja',
+    permiso: 'compras.caja',
+    colores: {
+      fondo: 'linear-gradient(135deg, #164e63 0%, #0e7490 100%)',
+      fondoHover: 'linear-gradient(135deg, #083344 0%, #164e63 100%)',
+      borde: '#22d3ee',
+      icono: '#a5f3fc',
+      brillo: 'rgba(34,211,238,0.25)',
+    },
+  },
 ]
 
 export default function Inicio() {
