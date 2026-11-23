@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, Col, Row, Spinner } from "react-bootstrap";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../services/api";
+import { usePermisos } from "../../../context/permisos";
 import { COLOR, CONCEPTOS, DIAS_SEMANA, aFecha, ddmm, hoyIso, masDias, pesos, viernesDe } from "./comun";
 import DetalleDia from "./DetalleDia";
 import { SEMANA_VACIA, semanasCaja } from "../../../helpers/cajaSemanas";
@@ -13,22 +14,29 @@ import "./caja.css";
  * jueves, como la Caja de Contable: una tarjeta por día con lo que entró y
  * salió; al tocar el día se abre el detalle de cada movimiento. Arriba, la
  * semana con flechas y su total. Editar y borrar siguen en Contable › Caja.
- * Desde el 23/11/2026 es "Semanal" (/compras/caja/semana); el mes va en CajaMes.
+ * Desde el 23/11/2026 es "Semanal"; el mes va en CajaMes.
  * Ese mismo día: el saldo positivo de la semana anterior entra como entrada
  * de esta; el negativo no pasa (helpers/cajaSemanas.js).
+ * Desde el 23/11/2026 también es la entrada de Caja (/compras/caja, la página
+ * con la tarjeta "Nueva carga" se borró): cada día abre su detalle y, desde
+ * ahí, "Nueva carga" lleva al alta con ese día ya puesto.
  */
 
 const suma = (l) => Math.round(l.reduce((t, x) => t + (Number(x.monto) || 0), 0) * 100) / 100;
 
 export default function CajaSemana() {
   const navigate = useNavigate();
-  // Desde el resumen del mes llega con ?semana=<viernes> (23/11/2026); y
-  // Volver regresa al mes.
+  const { puede } = usePermisos();
+  const sinEditar = !puede("compras.caja", "editar");
+  // ?semana=<día> abre esa semana (23/11/2026): llega así desde el resumen
+  // del mes (con &desde=mes, y entonces Volver regresa al mes) y al terminar
+  // una carga.
   const [params] = useSearchParams();
   const pedida = params.get("semana");
-  const desdeMes = /^\d{4}-\d{2}-\d{2}$/.test(pedida || "");
+  const valida = /^\d{4}-\d{2}-\d{2}$/.test(pedida || "");
+  const desdeMes = params.get("desde") === "mes";
   // El viernes que abre la semana elegida; arranca en la pedida o en la de hoy.
-  const [semana, setSemana] = useState(() => viernesDe(desdeMes ? pedida : hoyIso()));
+  const [semana, setSemana] = useState(() => viernesDe(valida ? pedida : hoyIso()));
   const [movimientos, setMovimientos] = useState(null);
   const [error, setError] = useState("");
   // El día abierto en el detalle, o null.
@@ -84,9 +92,19 @@ export default function CajaSemana() {
         <h5 className="mb-0 fw-bold" style={{ color: COLOR }}>
           Caja de la semana
         </h5>
-        <Button size="sm" variant="outline-secondary" onClick={() => navigate(desdeMes ? "/compras/caja/mes" : "/compras/caja")}>
-          Volver
-        </Button>
+        <div className="d-flex gap-2">
+          <Button
+            size="sm"
+            className="rounded-4"
+            style={{ backgroundColor: "rgba(22, 78, 99, 0.12)", borderColor: COLOR, color: COLOR, fontWeight: 600 }}
+            onClick={() => navigate("/compras/caja/mes")}
+          >
+            Mensual
+          </Button>
+          <Button size="sm" variant="outline-secondary" onClick={() => navigate(desdeMes ? "/compras/caja/mes" : "/compras")}>
+            Volver
+          </Button>
+        </div>
       </div>
 
       {/* La semana, de viernes a jueves, con flechas para ir y venir. */}
@@ -144,15 +162,18 @@ export default function CajaSemana() {
         <Row className="g-2">
           {dias.map((d) => {
             const hubo = d.movimientos.length > 0;
+            // Todos los días hasta hoy se tocan, aunque estén vacíos: desde el
+            // detalle se carga. Los que todavía no llegaron, no.
+            const tocable = d.fecha <= hoyIso();
             return (
               <Col xs={6} key={d.fecha}>
-                {/* Los días sin movimientos no se tocan: no hay detalle. */}
                 <Card
-                  role={hubo ? "button" : undefined}
-                  onClick={hubo ? () => setDiaAbierto(d) : undefined}
+                  role={tocable ? "button" : undefined}
+                  onClick={tocable ? () => setDiaAbierto(d) : undefined}
                   className="h-100"
                   style={{
-                    cursor: hubo ? "pointer" : undefined,
+                    cursor: tocable ? "pointer" : undefined,
+                    opacity: tocable ? 1 : 0.55,
                     backgroundColor: hubo ? "rgba(22, 78, 99, 0.10)" : "#f8f9fa",
                     borderColor: hubo ? "rgba(22, 78, 99, 0.35)" : "#dee2e6",
                   }}
@@ -187,7 +208,12 @@ export default function CajaSemana() {
         </Row>
       )}
 
-      <DetalleDia dia={diaAbierto} onHide={() => setDiaAbierto(null)} />
+      <DetalleDia
+        dia={diaAbierto}
+        onHide={() => setDiaAbierto(null)}
+        sinEditar={sinEditar}
+        onNueva={(fecha) => navigate(`/compras/caja/nuevo?fecha=${fecha}`)}
+      />
     </div>
   );
 }

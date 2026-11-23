@@ -4,15 +4,33 @@ import { COLOR, CONCEPTOS, MESES, pesos } from "./comun";
 /**
  * El detalle de un día de caja en el celular: cada movimiento con su monto y
  * el saldo del día. Lo usan la semana y el mes (23/11/2026).
- * `dia`: { diaSemana, dia, mes, movimientos, entradas, gastos } o null.
+ * `dia`: { fecha, diaSemana, dia, mes, movimientos, entradas, gastos } o null.
+ * Con `onNueva` (23/11/2026) lleva arriba el botón "Nueva carga", que abre el
+ * alta con ese día ya puesto; `sinEditar` lo deja apagado.
  */
-export default function DetalleDia({ dia, onHide }) {
+export default function DetalleDia({ dia, onHide, onNueva, sinEditar = false }) {
+  const vacio = (dia?.movimientos || []).length === 0;
   return (
     <Modal show={dia !== null} onHide={onHide} centered>
       <Modal.Header closeButton>
         <Modal.Title style={{ fontSize: "1.1rem" }}>{dia ? `${dia.diaSemana} ${dia.dia} de ${MESES[dia.mes]}` : ""}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
+        {onNueva && (
+          <Button
+            className="w-100 mb-3 fw-semibold"
+            style={{ backgroundColor: COLOR, borderColor: COLOR }}
+            disabled={sinEditar}
+            title={sinEditar ? "Sin permiso para editar" : undefined}
+            onClick={() => onNueva(dia.fecha)}
+          >
+            <i className="bi bi-plus-lg me-1"></i>
+            Nueva carga
+          </Button>
+        )}
+        {vacio ? (
+          <div className="text-center fst-italic text-body-tertiary py-2">Sin movimientos</div>
+        ) : (
         <Table bordered size="sm" className="mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
           <thead>
             <tr>
@@ -59,6 +77,7 @@ export default function DetalleDia({ dia, onHide }) {
             </tr>
           </tfoot>
         </Table>
+        )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="outline-secondary" onClick={onHide}>

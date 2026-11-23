@@ -46,7 +46,6 @@ const OrdenPago = lazy(() => import("./components/compras/OrdenPago"));
 const Gerencia = lazy(() => import("./components/compras/Gerencia"));
 const GerenciaHistorial = lazy(() => import("./components/compras/GerenciaHistorial"));
 // Caja desde el celular (13/11/2026): la caja de Contable en pantallas de teléfono.
-const CajaCelInicio = lazy(() => import("./components/compras/caja/CajaInicio"));
 const CajaCelNuevo = lazy(() => import("./components/compras/caja/CajaNuevo"));
 const CajaCelSemana = lazy(() => import("./components/compras/caja/CajaSemana"));
 const CajaCelMes = lazy(() => import("./components/compras/caja/CajaMes"));
@@ -328,9 +327,10 @@ function LayoutDesktop() {
                   con las pantallas de la carga de gasoil del SGL. Va en Compras
                   porque es lo único del Tablero que se abre en el teléfono.
                   Permiso compras.caja (rol celular, javiercel). */}
-              <Route path="/compras/caja" element={<RutaProtegida><CajaCelInicio /></RutaProtegida>} />
+              {/* Desde el 23/11/2026 la entrada es la semana: la página con la
+                  tarjeta "Nueva carga" se borró y se carga desde cada día. */}
+              <Route path="/compras/caja" element={<RutaProtegida><CajaCelSemana /></RutaProtegida>} />
               <Route path="/compras/caja/nuevo" element={<RutaProtegida><CajaCelNuevo /></RutaProtegida>} />
-              <Route path="/compras/caja/semana" element={<RutaProtegida><CajaCelSemana /></RutaProtegida>} />
               <Route path="/compras/caja/mes" element={<RutaProtegida><CajaCelMes /></RutaProtegida>} />
 
               {/* Gasoil (20/10/2026, en lugar de Resultados): una tarjeta por

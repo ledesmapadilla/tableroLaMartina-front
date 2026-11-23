@@ -143,7 +143,7 @@ export default function CajaMes() {
                 <tr
                   key={s.viernes}
                   role="button"
-                  onClick={() => navigate(`/compras/caja/semana?semana=${s.viernes}`)}
+                  onClick={() => navigate(`/compras/caja?semana=${s.viernes}&desde=mes`)}
                   style={{ cursor: "pointer" }}
                 >
                   <td style={{ whiteSpace: "nowrap", lineHeight: 1.2 }}>

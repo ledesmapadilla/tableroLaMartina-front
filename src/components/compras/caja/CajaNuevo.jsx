@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Card, Col, Form, ListGroup, Row, Spinner } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { api } from "../../../services/api";
 import { subirArchivo, borrarArchivo, prepararSubida } from "../../../services/archivos";
@@ -53,11 +53,22 @@ const borrarGuardado = () => {
 
 export default function CajaNuevo() {
   const navigate = useNavigate();
+  // Desde el detalle de un día de la semana (23/11/2026) llega con
+  // ?fecha=<día>: el alta arranca con ese día, y al terminar vuelve a esa semana.
+  const [params] = useSearchParams();
+  const pedida = params.get("fecha");
+  const fechaPedida = /^\d{4}-\d{2}-\d{2}$/.test(pedida || "") && pedida <= hoyIso() ? pedida : null;
+  const volver = () => navigate(fechaPedida ? `/compras/caja?semana=${fechaPedida}` : "/compras/caja");
   useAltoVista();
 
-  const [guardado] = useState(leerGuardado);
+  // Lo guardado vale solo si es de esta misma carga (mismo día pedido): si se
+  // abandonó otra a medias, no se mezcla con la nueva.
+  const [guardado] = useState(() => {
+    const g = leerGuardado();
+    return g && (g.origen || null) === fechaPedida ? g : null;
+  });
   const [valores, setValores] = useState(
-    () => guardado?.valores || { fecha: hoyIso(), concepto: "", monto: "", descripcion: "", observaciones: "" }
+    () => guardado?.valores || { fecha: fechaPedida || hoyIso(), concepto: "", monto: "", descripcion: "", observaciones: "" }
   );
   // Arranca con todas cerradas: la pantalla se ve entera antes de tocar nada.
   // Si se recargó en medio de las fotos, vuelve abierta ahí.
@@ -82,6 +93,7 @@ export default function CajaNuevo() {
       sessionStorage.setItem(
         GUARDADO,
         JSON.stringify({
+          origen: fechaPedida,
           valores,
           abierto: abierto === "fotos" ? "fotos" : null,
           subidas: subidas.filter((s) => s.archivo),
@@ -91,7 +103,7 @@ export default function CajaNuevo() {
     } catch {
       // Sin sessionStorage la carga anda igual, solo que no sobrevive a una recarga.
     }
-  }, [valores, abierto, subidas]);
+  }, [valores, abierto, subidas, fechaPedida]);
 
   const sinCamaraEnPagina = useCallback(() => {
     setCamara(false);
@@ -184,7 +196,8 @@ export default function CajaNuevo() {
       });
       borrarGuardado();
       await Swal.fire({ icon: "success", title: "Movimiento cargado", timer: 1500, showConfirmButton: false, width: "300px" });
-      navigate("/compras/caja");
+      // Vuelve a la semana del día cargado, que puede no ser el pedido.
+      navigate(`/compras/caja?semana=${valores.fecha}`);
     } catch (err) {
       Swal.fire({ icon: "error", title: "No se pudo guardar", text: err.message, width: "300px" });
     } finally {
@@ -205,7 +218,7 @@ export default function CajaNuevo() {
             // Lo que ya había subido no se va a usar: fuera de Cloudinary.
             subidas.forEach((s) => s.archivo && borrarArchivo(s.archivo));
             borrarGuardado();
-            navigate("/compras/caja");
+            volver();
           }}
         >
           Cancelar
