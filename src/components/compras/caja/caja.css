@@ -35,3 +35,27 @@
   transform: none !important;
   opacity: 0.8;
 }
+
+/* El micrófono para dictar la descripción (23/11/2026): un círculo con el
+   color de Caja; mientras escucha se pone rojo y late. */
+.caja-cel-mic {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background-color: #164e63;
+  color: #fff;
+  font-size: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.caja-cel-mic.escuchando {
+  background-color: #dc2626;
+  animation: caja-cel-latido 1s ease-in-out infinite;
+}
+@keyframes caja-cel-latido {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+}

@@ -7,6 +7,7 @@ import { subirArchivo, borrarArchivo, prepararSubida } from "../../../services/a
 import { COLOR, CONCEPTOS, dmy, hayCamaraEnPagina, hoyIso, pesos, useAltoVista } from "./comun";
 import { formatearMonto, leerMonto, montoAInput } from "../../../helpers/montoInput";
 import Camara from "./Camara";
+import useDictado, { MAX_PALABRAS } from "./useDictado";
 import "./caja.css";
 
 /**
@@ -164,6 +165,12 @@ export default function CajaNuevo() {
     inputCamara.current?.click();
   }, [setCamara]);
   const abrirCamara = () => (hayCamaraEnPagina() ? setCamara(true) : inputCamara.current?.click());
+
+  // Dictar la descripción con el micrófono (23/11/2026): hasta MAX_PALABRAS.
+  const dictado = useDictado({
+    alTexto: (texto) => setValores((prev) => ({ ...prev, descripcion: texto })),
+    alError: (mensaje) => Swal.fire({ icon: "error", title: "No se pudo dictar", text: mensaje, width: "300px" }),
+  });
 
   const fotosOk = subidas.filter((s) => !s.fallo);
   const esSemanal = valores.descripcion.trim() === DESCRIPCION_SEMANAL;
@@ -442,6 +449,21 @@ export default function CajaNuevo() {
                     onChange={(e) => setValores((prev) => ({ ...prev, [abierto]: e.target.value }))}
                     style={{ fontSize: "1rem" }}
                   />
+                  {abierto === "descripcion" && dictado.soportado && (
+                    <div className="d-flex flex-column align-items-center mt-2">
+                      <button
+                        type="button"
+                        onClick={dictado.escuchando ? dictado.parar : dictado.empezar}
+                        className={`caja-cel-radio caja-cel-mic${dictado.escuchando ? " escuchando" : ""}`}
+                        aria-label={dictado.escuchando ? "Dejar de escuchar" : "Dictar la descripción"}
+                      >
+                        <i className={`bi ${dictado.escuchando ? "bi-stop-fill" : "bi-mic-fill"}`}></i>
+                      </button>
+                      <span className="text-muted mt-1" style={{ fontSize: "0.72rem" }}>
+                        {dictado.escuchando ? "Escuchando… hablá" : `Dictar (hasta ${MAX_PALABRAS} palabras)`}
+                      </span>
+                    </div>
+                  )}
                   <Button size="sm" variant="outline-secondary" className="mt-2" style={{ maxWidth: "180px", width: "100%" }} onClick={() => setAbierto(null)}>
                     Listo
                   </Button>
