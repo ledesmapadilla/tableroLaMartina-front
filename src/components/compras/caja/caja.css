@@ -28,3 +28,10 @@
   overflow: hidden;
   overflow-wrap: anywhere;
 }
+
+/* Los círculos de Ingreso / Gasto de la carga (23/11/2026): sin el hover
+   global de index.css, que agranda los <button>. */
+.caja-cel-radio:hover {
+  transform: none !important;
+  opacity: 0.8;
+}

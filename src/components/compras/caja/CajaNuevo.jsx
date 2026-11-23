@@ -127,7 +127,6 @@ export default function CajaNuevo() {
 
   const textoValor = (campo) => {
     if (campo === "fecha") return dmy(valores.fecha);
-    if (campo === "concepto") return CONCEPTOS[valores.concepto]?.texto || "";
     if (campo === "monto") return pesos(montoDe(valores.monto));
     if (campo === "fotos") return fotosOk.length === 1 ? "1 foto" : `${fotosOk.length} fotos`;
     return valores[campo];
@@ -178,7 +177,8 @@ export default function CajaNuevo() {
         confirmButtonColor: "#1e293b",
       });
       // Abre la primera que falta, para no tener que buscarla.
-      setAbierto(faltantes[0]);
+      // El concepto se tilda en su tarjeta: no tiene panel para abrir.
+      setAbierto(faltantes[0] === "concepto" ? null : faltantes[0]);
       return;
     }
     enCurso.current = true;
@@ -231,12 +231,13 @@ export default function CajaNuevo() {
             {fila.map((campo) => {
               const estaAbierto = abierto === campo;
               const listo = completo(campo);
-              const colorConcepto = campo === "concepto" && listo ? CONCEPTOS[valores.concepto].color : null;
+              // El concepto (23/11/2026) se tilda ahí mismo, con dos círculos.
+              const esConcepto = campo === "concepto";
               return (
                 <Col xs={4} key={campo}>
                   <Card
-                    role="button"
-                    onClick={() => alternar(campo)}
+                    role={esConcepto ? undefined : "button"}
+                    onClick={esConcepto ? undefined : () => alternar(campo)}
                     className="h-100"
                     style={{
                       backgroundColor: listo ? "rgba(22, 78, 99, 0.10)" : "#f8f9fa",
@@ -248,13 +249,35 @@ export default function CajaNuevo() {
                         {ETIQUETAS[campo]}
                         {!OBLIGATORIOS.includes(campo) && <span style={{ textTransform: "none" }}> (opc.)</span>}
                       </div>
-                      <div
-                        title={listo ? textoValor(campo) : undefined}
-                        className={`caja-cel-valor ${listo ? "fw-semibold" : "fst-italic text-body-tertiary"}`}
-                        style={{ fontSize: "1rem", lineHeight: 1.2, opacity: listo ? 1 : 0.7, color: colorConcepto || undefined }}
-                      >
-                        {listo ? textoValor(campo) : campo === "fotos" && subiendo ? "Subiendo…" : "Tocar"}
-                      </div>
+                      {esConcepto ? (
+                        <div className="d-flex flex-column align-items-start mx-auto gap-1">
+                          {Object.entries(CONCEPTOS).map(([clave, c]) => {
+                            const tildado = valores.concepto === clave;
+                            return (
+                              <button
+                                key={clave}
+                                type="button"
+                                role="radio"
+                                aria-checked={tildado}
+                                onClick={() => elegir("concepto", clave)}
+                                className="caja-cel-radio d-flex align-items-center gap-1 border-0 bg-transparent p-0 fw-semibold"
+                                style={{ color: c.color, fontSize: "0.95rem" }}
+                              >
+                                <i className={`bi ${tildado ? "bi-record-circle-fill" : "bi-circle"}`} style={{ fontSize: "1.15rem" }}></i>
+                                {c.texto}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div
+                          title={listo ? textoValor(campo) : undefined}
+                          className={`caja-cel-valor ${listo ? "fw-semibold" : "fst-italic text-body-tertiary"}`}
+                          style={{ fontSize: "1rem", lineHeight: 1.2, opacity: listo ? 1 : 0.7 }}
+                        >
+                          {listo ? textoValor(campo) : campo === "fotos" && subiendo ? "Subiendo…" : "Tocar"}
+                        </div>
+                      )}
                     </Card.Body>
                   </Card>
                 </Col>
@@ -280,22 +303,6 @@ export default function CajaNuevo() {
                     style={{ maxWidth: "200px", height: "48px", fontSize: "1.1rem" }}
                   />
                 </Card.Body>
-              )}
-
-              {abierto === "concepto" && (
-                <ListGroup variant="flush">
-                  {Object.entries(CONCEPTOS).map(([clave, c]) => (
-                    <ListGroup.Item
-                      key={clave}
-                      action
-                      onClick={() => elegir("concepto", clave)}
-                      className="caja-cel-opcion py-3 bg-transparent fw-semibold"
-                      style={{ color: c.color, backgroundColor: valores.concepto === clave ? "rgba(22, 78, 99, 0.10)" : undefined }}
-                    >
-                      {c.texto}
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
               )}
 
               {abierto === "monto" && (
