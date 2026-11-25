@@ -826,62 +826,73 @@ export default function IngresosEscaleras({ icono }) {
           </div>
         </div>
 
-        {/* Totales, fuera de la tabla. */}
-        <Card
-          className="mb-3 px-3 py-2 shadow-sm rounded-3 flex-shrink-0"
-          style={{ border: "1px solid #000" }}
-        >
-          <div className="d-flex justify-content-around align-items-center flex-wrap gap-3">
-            {totales.map(([rotulo, valor, color]) =>
-              rotulo === "En taller" ? (
-                // Lo que hay hoy en el taller es el número que más se mira: va
-                // en un recuadro oscuro y más grande.
-                <div
-                  key={rotulo}
-                  className="d-flex flex-column align-items-center lh-sm px-3 py-1 rounded-3 shadow-sm"
-                  style={{ backgroundColor: COLOR, color: "#fff" }}
+        {/* Totales, fuera de la tabla (25/11/2026): En taller al centro y
+            suelto; a cada lado, un recuadro con los demás (lo que entra y
+            sale a la izquierda, el estado de las escaleras a la derecha). */}
+        {(() => {
+          const iTaller = totales.findIndex(([rotulo]) => rotulo === "En taller");
+          const [, valorTaller] = totales[iTaller];
+          const unTotal = ([rotulo, valor, color]) => (
+            <div key={rotulo} className="d-flex flex-column align-items-center lh-sm">
+              {/* Rotas abre la carga de reparadas; Reparadas, Retiradas y
+                  Dadas de baja, su historial (28/10/2026). */}
+              {rotulo === "Rotas" || HISTORIAL_DE_TOTAL[rotulo] ? (
+                <button
+                  type="button"
+                  onClick={rotulo === "Rotas" ? abrirReparacion : () => setHistorial(HISTORIAL_DE_TOTAL[rotulo])}
+                  disabled={rotulo === "Rotas" && sinEditar}
+                  className="btn btn-link p-0 fw-bold"
+                  style={{ fontSize: "1.3rem", color, lineHeight: 1.2, textDecoration: "underline" }}
+                  title={
+                    rotulo === "Rotas"
+                      ? sinEditar
+                        ? "Sin permiso para editar"
+                        : "Cargar escaleras reparadas"
+                      : `Ver el historial de las ${rotulo.toLowerCase()}`
+                  }
                 >
-                  <span className="fw-bold" style={{ fontSize: "1.75rem" }}>
-                    {cargando ? "—" : valor}
-                  </span>
-                  <span className="fw-semibold" style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.8)" }}>
-                    {rotulo}
-                  </span>
-                </div>
+                  {cargando ? "—" : valor}
+                </button>
               ) : (
-              <div key={rotulo} className="d-flex flex-column align-items-center lh-sm">
-                {/* Rotas abre la carga de reparadas; Reparadas, Retiradas y
-                    Dadas de baja, su historial (28/10/2026). */}
-                {rotulo === "Rotas" || HISTORIAL_DE_TOTAL[rotulo] ? (
-                  <button
-                    type="button"
-                    onClick={rotulo === "Rotas" ? abrirReparacion : () => setHistorial(HISTORIAL_DE_TOTAL[rotulo])}
-                    disabled={rotulo === "Rotas" && sinEditar}
-                    className="btn btn-link p-0 fw-bold"
-                    style={{ fontSize: "1.3rem", color, lineHeight: 1.2, textDecoration: "underline" }}
-                    title={
-                      rotulo === "Rotas"
-                        ? sinEditar
-                          ? "Sin permiso para editar"
-                          : "Cargar escaleras reparadas"
-                        : `Ver el historial de las ${rotulo.toLowerCase()}`
-                    }
-                  >
-                    {cargando ? "—" : valor}
-                  </button>
-                ) : (
                 <span className="fw-bold" style={{ fontSize: "1.3rem", color }}>
                   {cargando ? "—" : valor}
                 </span>
-                )}
-                <span className="text-muted" style={{ fontSize: "0.7rem" }}>
-                  {rotulo}
+              )}
+              <span className="text-muted" style={{ fontSize: "0.7rem" }}>
+                {rotulo}
+              </span>
+            </div>
+          );
+          const recuadro = (lista) => (
+            <Card
+              className="px-3 py-2 shadow-sm rounded-3 flex-grow-1"
+              style={{ border: "1px solid #000", flexBasis: 0 }}
+            >
+              <div className="d-flex justify-content-around align-items-center flex-wrap gap-3 h-100">
+                {lista.map(unTotal)}
+              </div>
+            </Card>
+          );
+          return (
+            <div className="d-flex align-items-stretch gap-3 mb-3 flex-shrink-0">
+              {recuadro(totales.slice(0, iTaller))}
+              {/* Lo que hay hoy en el taller es el número que más se mira: va
+                  en un recuadro oscuro y más grande, al medio. */}
+              <div
+                className="d-flex flex-column align-items-center justify-content-center lh-sm px-4 py-1 rounded-3 shadow-sm flex-shrink-0"
+                style={{ backgroundColor: COLOR, color: "#fff" }}
+              >
+                <span className="fw-bold" style={{ fontSize: "1.75rem" }}>
+                  {cargando ? "—" : valorTaller}
+                </span>
+                <span className="fw-semibold" style={{ fontSize: "0.74rem", color: "rgba(255,255,255,0.8)" }}>
+                  En taller
                 </span>
               </div>
-              )
-            )}
-          </div>
-        </Card>
+              {recuadro(totales.slice(iTaller + 1))}
+            </div>
+          );
+        })()}
 
         {/* Las solapas, pegadas arriba de la tabla, y al centro el control
             con el año pasado. */}
