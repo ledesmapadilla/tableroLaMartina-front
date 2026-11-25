@@ -146,16 +146,6 @@ function ContableCaja() {
   const listo = (titulo = "Guardado") =>
     Swal.fire({ icon: "success", title: titulo, timer: 1400, showConfirmButton: false, width: "300px" });
 
-  // ── Filtros ──
-  const filtrados = useMemo(() => {
-    const concepto = filtroConcepto === "Ingreso" ? "ingreso" : filtroConcepto === "Gasto" ? "gasto" : "";
-    return (movimientos || []).filter(
-      (m) => !concepto || m.concepto === concepto
-    );
-  }, [movimientos, filtroConcepto]);
-  const hayFiltro = Boolean(filtroConcepto);
-  const totalIngresos = suma(filtrados.filter((m) => m.concepto === "ingreso"));
-  const totalGastos = suma(filtrados.filter((m) => m.concepto === "gasto"));
 
   // ── El saldo total de la caja (todo, sin filtros) ──
   const saldoTotal = useMemo(
@@ -188,6 +178,19 @@ function ContableCaja() {
     const actual = viernesDe(hoyIso());
     setSemana(lista.includes(actual) ? actual : lista[0]);
   };
+  // ── Filtros ──
+  // La tabla muestra la semana elegida (24/11/2026: antes la semana solo
+  // movía los recuadros de totales y la tabla traía todo) y, si hay, el concepto.
+  const jueves = masDias(semana, 6);
+  const filtrados = useMemo(() => {
+    const concepto = filtroConcepto === "Ingreso" ? "ingreso" : filtroConcepto === "Gasto" ? "gasto" : "";
+    return (movimientos || []).filter(
+      (m) => m.fecha >= semana && m.fecha <= jueves && (!concepto || m.concepto === concepto)
+    );
+  }, [movimientos, filtroConcepto, semana, jueves]);
+  const totalIngresos = suma(filtrados.filter((m) => m.concepto === "ingreso"));
+  const totalGastos = suma(filtrados.filter((m) => m.concepto === "gasto"));
+
   // Los totales de la semana con el arrastre (23/11/2026, helpers/cajaSemanas.js):
   // el saldo de la semana anterior pasa a esta, positivo como entrada y
   // negativo como gasto.
@@ -333,9 +336,9 @@ function ContableCaja() {
     }
     try {
       await exportarPlanilla({
-        titulo: `Caja${filtroConcepto ? ` — ${filtroConcepto}s` : ""}`,
+        titulo: `Caja — vie ${ddmm(semana)} al jue ${ddmm(jueves)}${filtroConcepto ? ` — ${filtroConcepto}s` : ""}`,
         hoja: "Caja",
-        archivo: `Caja ${hoyIso()}.xlsx`,
+        archivo: `Caja semana ${semana}.xlsx`,
         columnas: [
           { titulo: "Fecha", ancho: 12 },
           { titulo: "Concepto", ancho: 11 },
@@ -534,7 +537,7 @@ function ContableCaja() {
               ) : !filtrados.length ? (
                 <tr>
                   <td colSpan={columnas} className="text-center text-muted py-4" style={td}>
-                    {hayFiltro ? "Ningún movimiento coincide con los filtros" : "No hay movimientos cargados"}
+                    {filtroConcepto ? "Ningún movimiento coincide con los filtros" : "No hay movimientos en esta semana"}
                   </td>
                 </tr>
               ) : (
@@ -602,8 +605,8 @@ function ContableCaja() {
                   );
                 })
               )}
-              {/* El total, solo con algún filtro puesto (como en Gasoil del Sistema de Gestión Lepa). */}
-              {hayFiltro && filtrados.length > 0 && (
+              {/* El total de lo que se ve: la semana, y el concepto si hay. */}
+              {filtrados.length > 0 && (
                 <tr className="fila-total">
                   <td colSpan={2} style={{ ...td, fontWeight: 700, color: "#1b4332" }}>
                     TOTAL ({filtrados.length} {filtrados.length === 1 ? "movimiento" : "movimientos"})
