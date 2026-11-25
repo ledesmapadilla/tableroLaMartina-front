@@ -45,8 +45,9 @@ export const etiquetaFuente = (fuente, campo) => {
   return CAMPOS[campo] ? `${base} (${CAMPOS[campo]})` : base;
 };
 
-// Las cuatro salidas del aviso. Sweetalert trae tres botones, así que se
-// dibujan a mano, cada uno con su explicación debajo.
+// Las salidas del aviso. Sweetalert trae tres botones, así que se dibujan a
+// mano, cada uno con su explicación debajo. "control" (24/11/2026) solo
+// aparece donde la pantalla lo permite (los services de Preventivo).
 const OPCIONES = [
   {
     accion: "chequear",
@@ -80,25 +81,37 @@ const OPCIONES = [
     texto: ({ ultima }) =>
       `La lectura nueva está bien: el que estaba mal cargado es el ${ultima?.horometro}.`,
   },
+  {
+    accion: "control",
+    soloSi: "permitirSoloControl",
+    titulo: "Asentar para control de services",
+    color: "#7c3aed",
+    fondo: "#f5f3ff",
+    // Las horas del modal sirven solo para calcular el próximo service; la
+    // hora actual del CC sigue siendo el horómetro más alto registrado.
+    texto: ({ ultima, lectura }) =>
+      `Se asientan las <b>${lectura}</b> horas para el control de services. La hora actual del CC es <b>${ultima?.horometro}</b>.`,
+  },
 ];
 
 /**
  * Muestra el aviso con las cuatro alternativas.
- * Devuelve "chequear" | "descartar" | "cambio" | "correccion" | null (si
- * cerró el cartel).
+ * Devuelve "chequear" | "descartar" | "cambio" | "correccion" | "control" |
+ * null (si cerró el cartel).
  */
-export const preguntarQueHacer = async (conflicto, { descartarCancela = false } = {}) => {
+export const preguntarQueHacer = async (conflicto, { descartarCancela = false, permitirSoloControl = false } = {}) => {
   const { lectura, ultima } = conflicto || {};
   let elegida = null;
+  const permitidas = { permitirSoloControl };
 
-  const botones = OPCIONES.map(
+  const botones = OPCIONES.filter((o) => !o.soloSi || permitidas[o.soloSi]).map(
     (o) => `
       <button type="button" data-accion="${o.accion}"
         style="display:block;width:100%;text-align:left;padding:.55rem .75rem;cursor:pointer;
                border:1px solid ${o.color};border-radius:8px;background:${o.fondo}">
         <div style="font-weight:700;color:${o.color}">${o.titulo}</div>
         <div style="font-size:.8rem;color:#475569;margin-top:.1rem">
-          ${o.texto({ ultima, descartarCancela })}
+          ${o.texto({ ultima, lectura, descartarCancela })}
         </div>
       </button>`
   ).join("");
@@ -134,9 +147,11 @@ export const preguntarQueHacer = async (conflicto, { descartarCancela = false } 
 /**
  * Envuelve un guardado para que respete la regla del horómetro.
  *
- * `enviar({ sinHorometro })` tiene que mandar la petición y devolver la
- * Response; recibe sinHorometro:true cuando el usuario elige descartar la
- * lectura. `tractor` es el id contra el que se registraría un cambio.
+ * `enviar({ sinHorometro, soloControl })` tiene que mandar la petición y
+ * devolver la Response; recibe sinHorometro:true cuando el usuario elige
+ * descartar la lectura, y soloControl:true cuando elige asentarla solo para el
+ * control de services (con permitirSoloControl). `tractor` es el id contra el
+ * que se registraría un cambio.
  *
  * Devuelve { ok, res, cuerpo, cancelado }. Con cancelado:true el usuario eligió
  * chequear o cerró el cartel: no hay que mostrar ningún error.
@@ -148,8 +163,11 @@ export const guardarConReglaHorometro = async ({
   // Pantallas donde la lectura ES el registro (la carga manual): ahí descartar
   // no puede guardar una fila vacía, cancela.
   descartarCancela = false,
+  // Los services de Preventivo (24/11/2026): se puede guardar el service con
+  // esas horas solo para el control de services, sin que cuente como lectura.
+  permitirSoloControl = false,
 }) => {
-  let res = await enviar({ sinHorometro: false });
+  let res = await enviar({ sinHorometro: false, soloControl: false });
   let accion = null;
   const cancelar = () => ({ ok: false, cancelado: true, accion });
 
@@ -162,8 +180,13 @@ export const guardarConReglaHorometro = async ({
       return { ok: false, res, cuerpo: conflicto };
     }
 
-    accion = await preguntarQueHacer(conflicto, { descartarCancela });
+    accion = await preguntarQueHacer(conflicto, { descartarCancela, permitirSoloControl });
     if (accion === "chequear" || accion === null) return cancelar();
+
+    if (accion === "control") {
+      res = await enviar({ sinHorometro: false, soloControl: true });
+      continue;
+    }
 
     if (accion === "descartar") {
       if (descartarCancela) return cancelar();

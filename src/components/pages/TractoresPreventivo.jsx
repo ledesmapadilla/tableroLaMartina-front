@@ -413,13 +413,18 @@ function TractoresPreventivo() {
       const { ok, cuerpo, cancelado } = await guardarConReglaHorometro({
         tractor: data.tractor,
         fecha: data.fecha,
-        enviar: ({ sinHorometro }) =>
+        // Un service con horas menores a las actuales se puede asentar solo
+        // para el control de services (24/11/2026).
+        permitirSoloControl: true,
+        enviar: ({ sinHorometro, soloControl }) =>
           fetch(
             editando ? `/api/services-tractor/${servicioEditandoId}` : "/api/services-tractor",
             {
               method: editando ? "PUT" : "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(sinHorometro ? { ...data, horometro: "" } : data),
+              body: JSON.stringify(
+                sinHorometro ? { ...data, horometro: "" } : soloControl ? { ...data, soloControl: true } : data
+              ),
             }
           ),
       });
