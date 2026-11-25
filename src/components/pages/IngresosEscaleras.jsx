@@ -23,6 +23,8 @@ const AZUL = "#1d4ed8";
 const ROJO = "#dc2626";
 const VERDE = "#15803d";
 const NARANJA = "#c2410c";
+// El botón Reparación escaleras (25/11/2026).
+const VIOLETA = "#7c3aed";
 // El control con el año pasado: un color que no usa ninguna acción.
 const TURQUESA = "#0f766e";
 const GRIS_CLARO = "#a0aec0";
@@ -802,6 +804,10 @@ export default function IngresosEscaleras({ icono }) {
               <i className="bi bi-tools"></i>
               <span>Reparación carros</span>
             </Button>
+            {/* Reparación escaleras (25/11/2026): abre la misma carga que tocar
+                las Rotas. Sin contador, a pedido del usuario. Violeta, para
+                no confundirlo con Reparación carros. */}
+            {botonEncabezado("Reparación escaleras", "bi-wrench-adjustable", abrirReparacion, VIOLETA)}
             {botonEncabezado("Baja de escaleras", "bi-trash3", abrirBaja, ROJO)}
             {botonEncabezado("Retiro de escaleras", "bi-box-arrow-right", abrirRetiro, NARANJA)}
             {botonEncabezado("Ingreso", "bi-box-arrow-in-down", abrirSinCarro, AZUL)}
