@@ -37,9 +37,10 @@ export default function GasoilAuditorias() {
   const { user } = useAuth()
   const sinEditar = !puede('compras.gasoil', 'editar')
   const esEncargado = user?.rol === 'solicitante'
-  // Pide (y borra) Compras; carga el encargado. El superadmin, las dos cosas.
+  // Pide (y borra) Compras; carga el encargado y el analista (27/11/2026). El
+  // superadmin, las dos cosas.
   const puedePedir = !sinEditar && !esEncargado
-  const puedeCargar = !sinEditar && (esEncargado || user?.rol === 'superadmin')
+  const puedeCargar = !sinEditar && (esEncargado || user?.rol === 'analista' || user?.rol === 'superadmin')
   // La tabla del resultado (27/10/2026): la ve el que tiene Ver y Editar en
   // Gasoil, sea cual sea su rol. El back no lo manda a los demás.
   const verResultado = puede('compras.gasoil', 'ver') && !sinEditar
