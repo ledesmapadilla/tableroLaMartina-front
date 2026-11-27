@@ -41,6 +41,10 @@ export default function GasoilAuditorias() {
   // superadmin, las dos cosas.
   const puedePedir = !sinEditar && !esEncargado
   const puedeCargar = !sinEditar && (esEncargado || user?.rol === 'analista' || user?.rol === 'superadmin')
+  // Borrar una auditoría (27/11/2026): solo superadmin, gerente y comprador.
+  // A los demás no les aparece el botón. Copia de BORRAN_AUDITORIA del back.
+  const borraAuditorias = ['superadmin', 'gerente', 'comprador'].includes(user?.rol)
+  const puedeBorrar = !sinEditar && borraAuditorias
   // La tabla del resultado (27/10/2026): la ve el que tiene Ver y Editar en
   // Gasoil, sea cual sea su rol. El back no lo manda a los demás.
   const verResultado = puede('compras.gasoil', 'ver') && !sinEditar
@@ -386,7 +390,7 @@ export default function GasoilAuditorias() {
     )
   }
 
-  const columnas = esEncargado ? 5 : 6
+  const columnas = borraAuditorias ? 6 : 5
 
   // La primera fila de cada pedido va con la línea gris arriba.
   const bordeFila = (a, n) => (n === 0 ? { borderTop: '2px solid #94a3b8' } : {})
@@ -621,7 +625,7 @@ export default function GasoilAuditorias() {
                     <th style={{ ...thCentro, width: '100px' }}>Stock (lts)</th>
                     <th style={{ ...thCentro, width: '70px' }}>Foto</th>
                     <th style={th}>Cargó</th>
-                    {!esEncargado && <th style={{ ...thCentro, width: '60px' }}></th>}
+                    {borraAuditorias && <th style={{ ...thCentro, width: '60px' }}></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -686,13 +690,13 @@ export default function GasoilAuditorias() {
                                 <Raya />
                               )}
                             </td>
-                            {primera && !esEncargado && (
+                            {primera && borraAuditorias && (
                               <td style={tdCentro} rowSpan={a.cargas.length}>
                                 <BotonAccion
                                   icono="bi-trash"
-                                  titulo={puedePedir ? 'Borrar la auditoría' : 'Sin permiso para editar'}
+                                  titulo={puedeBorrar ? 'Borrar la auditoría' : 'Sin permiso para editar'}
                                   variante="danger"
-                                  deshabilitado={!puedePedir}
+                                  deshabilitado={!puedeBorrar}
                                   onClick={() => borrar(a)}
                                 />
                               </td>
